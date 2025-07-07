@@ -1,6 +1,5 @@
 import { DocumentParser } from '../ingestion/parser';
 import fs from 'fs/promises';
-import path from 'path';
 
 jest.mock('fs/promises');
 

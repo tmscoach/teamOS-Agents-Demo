@@ -1,11 +1,9 @@
 #!/usr/bin/env node
 
-import { IngestionPipeline } from '@/lib/knowledge-base';
+import { IngestionPipeline } from '../src/lib/knowledge-base';
 import path from 'path';
-import dotenv from 'dotenv';
 
-// Load environment variables
-dotenv.config();
+// Environment variables should be loaded by Next.js
 
 async function main() {
   console.log('📚 TMS Knowledge Base Document Ingestion');

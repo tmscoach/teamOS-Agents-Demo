@@ -5,7 +5,7 @@ import { knowledgeBaseTools } from '../tools/agent-tools';
 describe('Knowledge Base Integration', () => {
   describe('Document Processing Pipeline', () => {
     it('should process a document from parsing to chunking', async () => {
-      const parser = new DocumentParser();
+      // Parser would be used here in a real integration test
       const chunker = new DocumentChunker();
       
       const mockDocument = {

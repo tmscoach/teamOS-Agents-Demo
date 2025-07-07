@@ -1,4 +1,4 @@
-import { DocumentChunk, ChunkMetadata, ProcessedDocument } from '../types';
+import { DocumentChunk, ProcessedDocument } from '../types';
 
 export interface ChunkerOptions {
   chunkSize: number;

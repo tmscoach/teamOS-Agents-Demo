@@ -1,4 +1,4 @@
-import { AgentTool } from '@/lib/agents/types';
+import { AgentTool } from '../../agents/types';
 import { KnowledgeBaseSearch } from '../retrieval/search';
 
 export const knowledgeBaseTools: AgentTool[] = [
@@ -22,13 +22,12 @@ export const knowledgeBaseTools: AgentTool[] = [
         },
         limit: {
           type: 'number',
-          description: 'Maximum number of results to return',
-          default: 5
+          description: 'Maximum number of results to return (default: 5)'
         }
       },
       required: ['query']
     },
-    execute: async (params: any, context: any) => {
+    execute: async (params: any) => {
       const search = new KnowledgeBaseSearch();
       
       try {
@@ -41,17 +40,20 @@ export const knowledgeBaseTools: AgentTool[] = [
         
         return {
           success: true,
-          results: results.map(r => ({
-            content: r.content,
-            source: r.source,
-            relevance: r.relevance,
-            citation: r.citation
-          }))
+          output: {
+            results: results.map(r => ({
+              content: r.content,
+              source: r.source,
+              relevance: r.relevance,
+              citation: r.citation
+            }))
+          }
         };
       } catch (error) {
         await search.close();
         return {
           success: false,
+          output: null,
           error: `Failed to search knowledge base: ${error}`
         };
       }
@@ -76,7 +78,7 @@ export const knowledgeBaseTools: AgentTool[] = [
       },
       required: ['assessment_type']
     },
-    execute: async (params: any, context: any) => {
+    execute: async (params: any) => {
       const search = new KnowledgeBaseSearch();
       
       try {
@@ -93,17 +95,20 @@ export const knowledgeBaseTools: AgentTool[] = [
         
         return {
           success: true,
-          assessment_type: params.assessment_type,
-          methodology: results.map(r => ({
-            content: r.content,
-            source: r.source,
-            citation: r.citation
-          }))
+          output: {
+            assessment_type: params.assessment_type,
+            methodology: results.map(r => ({
+              content: r.content,
+              source: r.source,
+              citation: r.citation
+            }))
+          }
         };
       } catch (error) {
         await search.close();
         return {
           success: false,
+          output: null,
           error: `Failed to retrieve assessment methodology: ${error}`
         };
       }
@@ -132,7 +137,7 @@ export const knowledgeBaseTools: AgentTool[] = [
         }
       }
     },
-    execute: async (params: any, context: any) => {
+    execute: async (params: any) => {
       const search = new KnowledgeBaseSearch();
       
       try {
@@ -146,12 +151,15 @@ export const knowledgeBaseTools: AgentTool[] = [
         
         return {
           success: true,
-          questionnaire_items: items
+          output: {
+            questionnaire_items: items
+          }
         };
       } catch (error) {
         await search.close();
         return {
           success: false,
+          output: null,
           error: `Failed to retrieve questionnaire items: ${error}`
         };
       }
@@ -176,7 +184,7 @@ export const knowledgeBaseTools: AgentTool[] = [
       },
       required: ['scenario']
     },
-    execute: async (params: any, context: any) => {
+    execute: async (params: any) => {
       const search = new KnowledgeBaseSearch();
       
       try {
@@ -195,17 +203,20 @@ export const knowledgeBaseTools: AgentTool[] = [
         
         return {
           success: true,
-          strategies: results.map(r => ({
-            content: r.content,
-            source: r.source,
-            relevance: r.relevance,
-            citation: r.citation
-          }))
+          output: {
+            strategies: results.map(r => ({
+              content: r.content,
+              source: r.source,
+              relevance: r.relevance,
+              citation: r.citation
+            }))
+          }
         };
       } catch (error) {
         await search.close();
         return {
           success: false,
+          output: null,
           error: `Failed to search intervention strategies: ${error}`
         };
       }
@@ -229,7 +240,7 @@ export const knowledgeBaseTools: AgentTool[] = [
       },
       required: ['metric']
     },
-    execute: async (params: any, context: any) => {
+    execute: async (params: any) => {
       const search = new KnowledgeBaseSearch();
       
       try {
@@ -244,16 +255,19 @@ export const knowledgeBaseTools: AgentTool[] = [
         
         return {
           success: true,
-          benchmarks: results.map(r => ({
-            content: r.content,
-            source: r.source,
-            citation: r.citation
-          }))
+          output: {
+            benchmarks: results.map(r => ({
+              content: r.content,
+              source: r.source,
+              citation: r.citation
+            }))
+          }
         };
       } catch (error) {
         await search.close();
         return {
           success: false,
+          output: null,
           error: `Failed to retrieve benchmark data: ${error}`
         };
       }

@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 
-import { DocumentParser } from '@/lib/knowledge-base/ingestion/parser';
-import { DocumentChunker } from '@/lib/knowledge-base/ingestion/chunker';
-import { EmbeddingService } from '@/lib/knowledge-base/ingestion/embeddings';
-import { KnowledgeBaseSearch } from '@/lib/knowledge-base/retrieval/search';
+import { DocumentParser } from '../src/lib/knowledge-base/ingestion/parser';
+import { DocumentChunker } from '../src/lib/knowledge-base/ingestion/chunker';
+import { EmbeddingService } from '../src/lib/knowledge-base/ingestion/embeddings';
+import { KnowledgeBaseSearch } from '../src/lib/knowledge-base/retrieval/search';
 import path from 'path';
 
 async function testKnowledgeBase() {
@@ -55,7 +55,7 @@ Effective decision-making processes...`;
   
   console.log('✓ Chunker test completed');
   console.log(`  - Generated ${chunks.length} chunks`);
-  console.log(`  - Average chunk size: ${Math.round(chunks.reduce((sum, c) => sum + c.content.length, 0) / chunks.length)} chars\n`);
+  console.log(`  - Average chunk size: ${Math.round(chunks.reduce((sum: number, c: any) => sum + c.content.length, 0) / chunks.length)} chars\n`);
   
   // Test 3: Embedding Service (Mock)
   console.log('3️⃣ Testing Embedding Service...');
@@ -70,9 +70,9 @@ Effective decision-making processes...`;
   
   // Test 5: Knowledge Base Tools
   console.log('5️⃣ Testing Knowledge Base Tools...');
-  const { knowledgeBaseTools } = await import('@/lib/knowledge-base/tools/agent-tools');
+  const { knowledgeBaseTools } = await import('../src/lib/knowledge-base/tools/agent-tools');
   console.log(`✓ Found ${knowledgeBaseTools.length} agent tools:`);
-  knowledgeBaseTools.forEach(tool => {
+  knowledgeBaseTools.forEach((tool: any) => {
     console.log(`  - ${tool.name}: ${tool.description}`);
   });
   

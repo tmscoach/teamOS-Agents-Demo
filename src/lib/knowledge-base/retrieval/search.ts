@@ -112,7 +112,7 @@ export class KnowledgeBaseSearch {
     try {
       const searchPattern = keywords.join(' | ');
       
-      let whereConditions = [`to_tsvector('english', dc.content) @@ to_tsquery('english', $1)`];
+      const whereConditions = [`to_tsvector('english', dc.content) @@ to_tsquery('english', $1)`];
       const params: any[] = [searchPattern];
       
       if (documentTypes.length > 0) {

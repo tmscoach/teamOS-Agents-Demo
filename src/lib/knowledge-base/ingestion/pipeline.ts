@@ -88,7 +88,7 @@ export class IngestionPipeline {
       data: {
         title: document.title,
         sourcePath: document.sourcePath,
-        documentType: document.documentType,
+        documentType: document.documentType as any,
         content: document.content,
         metadata: document.metadata
       }

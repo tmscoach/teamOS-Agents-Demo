@@ -1,6 +1,6 @@
 import { OpenAIAgent } from './base-openai-agent';
-import { AgentConfig, AgentContext, AgentResponse } from '../types';
-import { knowledgeBaseTools } from '@/lib/knowledge-base';
+import { AgentConfig, AgentContext } from '../types';
+import { knowledgeBaseTools } from '../../knowledge-base';
 
 /**
  * Example of an agent with knowledge base capabilities
@@ -59,8 +59,7 @@ export function createOnboardingAgent(): KnowledgeEnabledAgent {
 Use the knowledge base to provide accurate information about TMS methodologies and assessments.`,
     handoffs: [
       {
-        name: 'AssessmentAgent',
-        description: 'Transfer to Assessment Agent when ready to begin assessments'
+        targetAgent: 'AssessmentAgent'
       }
     ]
   });
