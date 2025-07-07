@@ -8,8 +8,8 @@ export interface ChunkerOptions {
 
 export class DocumentChunker {
   private readonly defaultOptions: ChunkerOptions = {
-    chunkSize: 800,
-    chunkOverlap: 200,
+    chunkSize: 600, // Reduced chunk size to avoid memory issues
+    chunkOverlap: 150,
     preserveSections: true
   };
   

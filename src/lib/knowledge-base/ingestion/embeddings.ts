@@ -4,7 +4,7 @@ import { DocumentChunk, EmbeddedChunk } from '../types';
 export class EmbeddingService {
   private openai: OpenAI;
   private modelName = 'text-embedding-3-small';
-  private batchSize = 100;
+  private batchSize = 10; // Further reduced batch size to avoid memory issues
   
   constructor() {
     this.openai = new OpenAI({

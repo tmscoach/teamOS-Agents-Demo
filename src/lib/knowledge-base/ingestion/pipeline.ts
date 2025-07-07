@@ -26,16 +26,31 @@ export class IngestionPipeline {
       const documents = await this.scanDocumentFolder(folderPath);
       console.log(`Found ${documents.length} documents to process`);
       
-      for (const docPath of documents) {
-        try {
-          await this.processDocument(docPath);
-          console.log(`Successfully processed: ${path.basename(docPath)}`);
-        } catch (error) {
-          console.error(`Error processing ${docPath}:`, error);
+      // Process documents in batches to avoid memory issues
+      const batchSize = 5;
+      for (let i = 0; i < documents.length; i += batchSize) {
+        const batch = documents.slice(i, i + batchSize);
+        console.log(`\nProcessing batch ${Math.floor(i / batchSize) + 1} of ${Math.ceil(documents.length / batchSize)}`);
+        
+        for (const docPath of batch) {
+          try {
+            await this.processDocument(docPath);
+            console.log(`✓ Successfully processed: ${path.basename(docPath)}`);
+            
+            // Force garbage collection between documents
+            if (global.gc) {
+              global.gc();
+            }
+          } catch (error) {
+            console.error(`✗ Error processing ${path.basename(docPath)}:`, error);
+          }
         }
+        
+        // Small delay between batches
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
       
-      console.log('Document ingestion completed');
+      console.log('\n✅ Document ingestion completed');
     } catch (error) {
       console.error('Ingestion pipeline error:', error);
       throw error;
