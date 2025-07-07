@@ -35,9 +35,9 @@ TMS (Team Management Systems) transformation platform - An intelligent multi-age
 
 3. Set up environment variables:
    ```bash
-   cp .env.example .env.local
+   cp .env.example .env
    ```
-   Update `.env.local` with your actual credentials.
+   **Important**: Update `.env` with your actual Clerk credentials to avoid runtime errors. See [Setup Guide](./docs/SETUP.md) for detailed instructions.
 
 4. Set up the database:
    ```bash
@@ -51,6 +51,8 @@ TMS (Team Management Systems) transformation platform - An intelligent multi-age
    ```
 
 Open [http://localhost:3000](http://localhost:3000) to see the application.
+
+**Note**: For troubleshooting runtime errors and detailed setup instructions, please refer to the [Setup Guide](./docs/SETUP.md).
 
 ## Project Structure
 
