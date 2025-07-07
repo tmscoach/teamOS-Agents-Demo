@@ -1,0 +1,63 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model for team members and managers
+model User {
+  id                  String    @id @default(cuid())
+  clerkId             String    @unique
+  email               String    @unique
+  name                String?
+  role                UserRole  @default(TEAM_MEMBER)
+  teamId              String?
+  team                Team?     @relation(fields: [teamId], references: [id])
+  managedTeams        Team[]    @relation("TeamManager")
+  department          String?
+  profileData         Json?     // Stores profile data from TMS assessments
+  engagementMetrics   Json?
+  assessmentStatus    Json?     // Tracks completion status of various assessments
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  
+  @@index([teamId])
+  @@index([clerkId])
+}
+
+// Team model
+model Team {
+  id                    String    @id @default(cuid())
+  name                  String
+  managerId             String
+  manager               User      @relation("TeamManager", fields: [managerId], references: [id])
+  members               User[]
+  department            String?
+  maturityIndicators    Json?     // Team maturity based on TMS methodology
+  performanceData       Json?     // Historical performance metrics
+  transformationStatus  String    @default("pending")
+  currentProgram        String?   // Current TMS program (e.g., "TMP", "QO2", etc.)
+  programStartDate      DateTime?
+  programEndDate        DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  
+  @@index([managerId])
+}
+
+// Enum for user roles
+enum UserRole {
+  TEAM_MEMBER
+  MANAGER
+  ADMIN
+}
