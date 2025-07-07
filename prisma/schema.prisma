@@ -110,3 +110,64 @@ model AgentEvent {
   @@index([conversationId])
   @@index([type])
 }
+
+// Document model for TMS intellectual property
+model Document {
+  id                String      @id @default(cuid())
+  title             String
+  sourcePath        String      @unique
+  documentType      DocumentType
+  content           String      @db.Text
+  metadata          Json?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  
+  chunks            DocumentChunk[]
+  questionnaireItems QuestionnaireItem[]
+  
+  @@index([documentType])
+}
+
+// Document chunks for vector search
+model DocumentChunk {
+  id                String      @id @default(cuid())
+  documentId        String
+  chunkIndex        Int
+  content           String      @db.Text
+  embedding         Json?       // Temporarily store as JSON
+  metadata          Json?       // section, headers, context
+  createdAt         DateTime    @default(now())
+  
+  document          Document    @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  
+  @@index([documentId])
+  @@index([chunkIndex])
+}
+
+// Questionnaire items for structured retrieval
+model QuestionnaireItem {
+  id                String      @id @default(cuid())
+  documentId        String
+  questionId        String
+  questionText      String      @db.Text
+  responseOptions   Json?
+  scoringFormula    String?
+  category          String?
+  assessmentType    String      // TMP, QO2, WoWV, LLP
+  metadata          Json?
+  createdAt         DateTime    @default(now())
+  
+  document          Document    @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  
+  @@unique([documentId, questionId])
+  @@index([assessmentType])
+  @@index([category])
+}
+
+// Enum for document types
+enum DocumentType {
+  HANDBOOK
+  QUESTIONNAIRE
+  REPORT
+  RESEARCH
+}
