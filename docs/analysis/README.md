@@ -12,6 +12,18 @@ The complete analysis of 40+ years of TMS IP, including:
 - Multi-agent system architecture
 - Success and failure patterns
 
+### [System Architecture Diagrams](./diagrams.md)
+Visual representations of the system design, including:
+- High Energy Teams framework flow
+- TMS assessment tools ecosystem
+- Multi-agent system architecture
+- Tool selection decision tree
+- 16-week transformation timeline
+- Agent communication sequences
+- Core TMS models (Workplace Behaviour Pyramid, Types of Work Wheel)
+- Success pattern implementation flow
+- Data flow architecture
+
 ## Key Findings
 
 1. **High-performing teams** continuously address 8 fundamental questions through the High Energy Teams framework
