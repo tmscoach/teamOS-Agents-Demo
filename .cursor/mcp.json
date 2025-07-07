@@ -1,0 +1,29 @@
+{
+  "mcpServers": {
+    "dataforseo": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "mcp-remote@latest",
+        "https://mcp.pipedream.net/78b9236e-6dd9-48c2-92b0-0b64fe2e3325/dataforseo"
+      ]
+    },
+    "firecrawl-mcp": {
+      "command": "npx",
+      "args": ["-y", "firecrawl-mcp"],
+      "env": {
+        "FIRECRAWL_API_KEY": "fc-ff0baa5a0008422aa911d2de85e30c67"
+      }
+    },
+    "perplexity-ask": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "server-perplexity-ask"
+      ],
+      "env": {
+        "PERPLEXITY_API_KEY": "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"
+      }
+    }
+  }
+}
