@@ -62,7 +62,7 @@ describe('AgentRouter', () => {
   let agent2: MockAgent;
   let context: AgentContext;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     router = new AgentRouter({ enableEventLogging: false });
     agent1 = new MockAgent('Agent1', ['Agent2']);
     agent2 = new MockAgent('Agent2', ['Agent1']);
@@ -70,15 +70,10 @@ describe('AgentRouter', () => {
     router.registerAgent(agent1);
     router.registerAgent(agent2);
 
-    context = {
-      teamId: 'team-123',
-      managerId: 'manager-456',
-      transformationPhase: 'onboarding',
-      currentAgent: 'Agent1',
-      conversationId: 'conv-789',
-      messageHistory: [],
-      metadata: {},
-    };
+    // Create context through router to ensure it's properly initialized
+    context = await router.createConversation('team-123', 'manager-456', {
+      initialAgent: 'Agent1',
+    });
   });
 
   describe('agent registration', () => {
@@ -115,10 +110,14 @@ describe('AgentRouter', () => {
     });
 
     it('should throw error for non-existent agent', async () => {
-      context.currentAgent = 'NonExistent';
+      // Create a new context with non-existent agent
+      const badContext = {
+        ...context,
+        currentAgent: 'NonExistent',
+      };
 
       await expect(
-        router.routeMessage('Hello', context)
+        router.routeMessage('Hello', badContext)
       ).rejects.toThrow('Agent not found: NonExistent');
     });
 
@@ -148,19 +147,16 @@ describe('AgentRouter', () => {
       // Create an agent that can handoff to a non-existent agent
       const badAgent = new MockAgent('BadAgent', ['NonExistent']);
       router.registerAgent(badAgent);
-      context.currentAgent = 'BadAgent';
-
-      const response = await router.routeMessage('transfer to NonExistent', context);
       
-      // The handoff should succeed from the agent's perspective
-      expect(response.handoff).toEqual({
-        targetAgent: 'NonExistent',
-        reason: 'User requested transfer',
+      // Create new context for bad agent
+      const badContext = await router.createConversation('team-123', 'manager-456', {
+        initialAgent: 'BadAgent',
       });
-      
-      // But the router should detect the missing target
-      const handoffEvent = response.events.find(e => e.type === 'handoff');
-      expect(handoffEvent).toBeDefined();
+
+      // The router should throw when attempting handoff to non-existent agent
+      await expect(
+        router.routeMessage('transfer to NonExistent', badContext)
+      ).rejects.toThrow('Target agent not found: NonExistent');
     });
   });
 
@@ -239,20 +235,22 @@ describe('AgentRouter', () => {
     });
 
     it('should emit error events', async () => {
-      context.currentAgent = 'NonExistent';
+      const badContext = {
+        ...context,
+        currentAgent: 'NonExistent',
+      };
       
       const errorHandler = jest.fn();
       router.on('message:error', errorHandler);
 
-      await expect(router.routeMessage('Hello', context)).rejects.toThrow();
+      await expect(router.routeMessage('Hello', badContext)).rejects.toThrow('Agent not found: NonExistent');
       
-      expect(errorHandler).toHaveBeenCalledWith(
-        expect.objectContaining({
-          conversationId: context.conversationId,
-          agent: 'NonExistent',
-          error: 'Agent not found: NonExistent',
-        })
-      );
+      expect(errorHandler).toHaveBeenCalled();
+      expect(errorHandler.mock.calls[0][0]).toMatchObject({
+        conversationId: badContext.conversationId,
+        agent: 'NonExistent',
+        error: 'Agent not found: NonExistent',
+      });
     });
   });
 });

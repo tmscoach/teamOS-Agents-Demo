@@ -74,27 +74,26 @@ export class AgentRouter extends EventEmitter {
     message: string,
     context: AgentContext
   ): Promise<AgentResponse> {
-    // Get the current agent
-    const currentAgent = this.agents.get(context.currentAgent);
-    
-    if (!currentAgent) {
-      throw new Error(`Agent not found: ${context.currentAgent}`);
-    }
-
-    // Add user message to context
-    const userMessage: Message = {
-      id: this.generateId(),
-      role: 'user',
-      content: message,
-      timestamp: new Date(),
-    };
-
-    await this.contextManager.addMessage(context.conversationId, userMessage);
-
-    // Process the message with the current agent
-    let response: AgentResponse;
-    
     try {
+      // Get the current agent
+      const currentAgent = this.agents.get(context.currentAgent);
+      
+      if (!currentAgent) {
+        throw new Error(`Agent not found: ${context.currentAgent}`);
+      }
+
+      // Add user message to context
+      const userMessage: Message = {
+        id: this.generateId(),
+        role: 'user',
+        content: message,
+        timestamp: new Date(),
+      };
+
+      await this.contextManager.addMessage(context.conversationId, userMessage);
+
+      // Process the message with the current agent
+      let response: AgentResponse;
       this.emit('message:processing', {
         conversationId: context.conversationId,
         agent: currentAgent.name,
@@ -135,7 +134,7 @@ export class AgentRouter extends EventEmitter {
     } catch (error) {
       this.emit('message:error', {
         conversationId: context.conversationId,
-        agent: currentAgent.name,
+        agent: context.currentAgent,
         error: error instanceof Error ? error.message : 'Unknown error',
       });
 
