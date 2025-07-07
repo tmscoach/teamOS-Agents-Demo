@@ -10,9 +10,9 @@ export interface User {
   role: UserRole
   teamId?: string
   department?: string
-  profileData?: Record<string, any>
-  engagementMetrics?: Record<string, any>
-  assessmentStatus?: Record<string, any>
+  profileData?: Record<string, unknown>
+  engagementMetrics?: Record<string, unknown>
+  assessmentStatus?: Record<string, unknown>
   createdAt: Date
   updatedAt: Date
 }
@@ -22,8 +22,8 @@ export interface Team {
   name: string
   managerId: string
   department?: string
-  maturityIndicators?: Record<string, any>
-  performanceData?: Record<string, any>
+  maturityIndicators?: Record<string, unknown>
+  performanceData?: Record<string, unknown>
   transformationStatus: string
   currentProgram?: string
   programStartDate?: Date
