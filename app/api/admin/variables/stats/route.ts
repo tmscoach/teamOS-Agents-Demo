@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { VariableExtractionService } from '@/lib/services/variable-extraction';
+import { VariableExtractionService } from '@/src/lib/services/variable-extraction';
 
 export async function GET(req: NextRequest) {
   try {

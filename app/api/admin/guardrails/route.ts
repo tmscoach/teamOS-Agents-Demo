@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { GuardrailTrackingService } from '@/lib/services/guardrail-tracking';
+import { GuardrailTrackingService } from '@/src/lib/services/guardrail-tracking';
 
 export async function GET(req: NextRequest) {
   try {
