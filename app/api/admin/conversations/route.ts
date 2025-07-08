@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { currentUser } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/db/prisma';
 import { ConversationState } from '@/src/lib/agents/implementations/onboarding-agent';
+import { adminFilterSchema, validateRequest } from '@/src/lib/validation';
 
 export async function GET(req: NextRequest) {
   try {
@@ -17,8 +18,55 @@ export async function GET(req: NextRequest) {
     // TODO: Add proper admin role check
     // For now, we'll allow all authenticated users
 
+    // Parse and validate query parameters
+    const searchParams = req.nextUrl.searchParams;
+    const filters = {
+      status: searchParams.get('status'),
+      agentName: searchParams.get('agentName'),
+      dateFrom: searchParams.get('dateFrom'),
+      dateTo: searchParams.get('dateTo'),
+      managerId: searchParams.get('managerId'),
+      teamId: searchParams.get('teamId'),
+    };
+
+    const validation = validateRequest(filters, adminFilterSchema);
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: validation.error },
+        { status: 400 }
+      );
+    }
+
+    const validatedFilters = validation.data;
+
+    // Build query conditions
+    const where: any = {};
+    
+    if (validatedFilters.agentName) {
+      where.currentAgent = validatedFilters.agentName;
+    }
+    
+    if (validatedFilters.managerId) {
+      where.managerId = validatedFilters.managerId;
+    }
+    
+    if (validatedFilters.teamId) {
+      where.teamId = validatedFilters.teamId;
+    }
+    
+    if (validatedFilters.dateFrom || validatedFilters.dateTo) {
+      where.createdAt = {};
+      if (validatedFilters.dateFrom) {
+        where.createdAt.gte = new Date(validatedFilters.dateFrom);
+      }
+      if (validatedFilters.dateTo) {
+        where.createdAt.lte = new Date(validatedFilters.dateTo);
+      }
+    }
+
     // Fetch conversations with aggregated data
     const conversations = await prisma.conversation.findMany({
+      where,
       include: {
         messages: {
           orderBy: {
@@ -29,7 +77,8 @@ export async function GET(req: NextRequest) {
       },
       orderBy: {
         updatedAt: 'desc'
-      }
+      },
+      take: 100 // Limit results
     });
 
     // Fetch teams and managers separately

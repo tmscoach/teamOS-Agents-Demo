@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
+import { ragQuerySchema, validateRequest, sanitizeHtml } from '@/src/lib/validation';
 
 // Import Prisma client directly to avoid connection issues
 async function searchDocuments(searchTerms: string[]) {
@@ -34,7 +35,18 @@ async function searchDocuments(searchTerms: string[]) {
 
 export async function POST(request: Request) {
   try {
-    const { question } = await request.json();
+    const body = await request.json();
+    
+    // Validate input
+    const validation = validateRequest(body, ragQuerySchema);
+    if (!validation.success) {
+      return NextResponse.json({
+        success: false,
+        error: validation.error,
+      }, { status: 400 });
+    }
+    
+    const { question } = validation.data;
 
     if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json({

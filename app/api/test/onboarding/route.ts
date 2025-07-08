@@ -3,6 +3,7 @@ import { createOnboardingAgent } from '@/src/lib/agents/implementations/onboardi
 import { AgentRouter, ContextManager } from '@/src/lib/agents';
 import OpenAI from 'openai';
 import { ConversationState } from '@/src/lib/agents/implementations/onboarding-agent';
+import { onboardingRequestSchema, validateRequest, sanitizeHtml } from '@/src/lib/validation';
 
 // Helper function to extract team info from message
 function extractTeamInfoFromMessage(message: string): Record<string, any> {
@@ -76,7 +77,20 @@ Keep responses concise (3-4 sentences).`,
 
 export async function POST(req: NextRequest) {
   try {
-    const { message, conversationState = 'greeting', conversationHistory = [] } = await req.json();
+    const body = await req.json();
+    
+    // Validate input
+    const validation = validateRequest(body, onboardingRequestSchema);
+    if (!validation.success) {
+      return NextResponse.json(
+        { error: validation.error },
+        { status: 400 }
+      );
+    }
+    
+    const { message } = validation.data;
+    const conversationState = body.conversationState || 'greeting';
+    const conversationHistory = body.conversationHistory || [];
     
     // Extract team information from the message
     const extractedData = extractTeamInfoFromMessage(message);

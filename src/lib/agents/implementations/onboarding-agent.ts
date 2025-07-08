@@ -2,6 +2,8 @@ import { KnowledgeEnabledAgent } from './knowledge-enabled-agent';
 import { AgentContext, Message, AgentResponse, ToolCall, AgentTool } from '../types';
 import { createOnboardingTools } from '../tools/onboarding-tools';
 import { OnboardingGuardrails } from '../guardrails/onboarding-guardrails';
+import { OnboardingStateMachine } from './onboarding-state-machine';
+import { OnboardingQualityCalculator, QualityMetrics } from './onboarding-quality-metrics';
 
 export enum ConversationState {
   GREETING = "greeting",
@@ -33,6 +35,9 @@ export interface OnboardingMetadata {
 }
 
 export class OnboardingAgent extends KnowledgeEnabledAgent {
+  private stateMachine: OnboardingStateMachine;
+  private qualityCalculator: OnboardingQualityCalculator;
+  
   private static readonly REQUIRED_FIELDS = [
     "team_size",
     "team_tenure",
@@ -106,7 +111,7 @@ export class OnboardingAgent extends KnowledgeEnabledAgent {
   constructor() {
     const tools = createOnboardingTools();
     const guardrails = OnboardingGuardrails.createGuardrails();
-
+    
     super({
       name: 'OnboardingAgent',
       description: 'Guides managers through initial TMS platform setup with personalized onboarding',
@@ -142,6 +147,9 @@ Required fields to capture: ${OnboardingAgent.REQUIRED_FIELDS.join(', ')}`;
       }],
       inputGuardrails: guardrails
     });
+    
+    this.stateMachine = new OnboardingStateMachine();
+    this.qualityCalculator = new OnboardingQualityCalculator();
   }
 
   async processMessage(message: string, context: AgentContext): Promise<AgentResponse> {
@@ -189,6 +197,9 @@ Required fields to capture: ${OnboardingAgent.REQUIRED_FIELDS.join(', ')}`;
       requiredFieldsStatus[field] = false;
     });
 
+    // Reset state machine to initial state
+    this.stateMachine.setState(ConversationState.GREETING);
+    
     return {
       state: ConversationState.GREETING,
       startTime: new Date(),
@@ -238,49 +249,35 @@ Required fields to capture: ${OnboardingAgent.REQUIRED_FIELDS.join(', ')}`;
   }
 
   private determineNextState(metadata: OnboardingMetadata, context: AgentContext): ConversationState {
-    const { state, capturedFields } = metadata;
-    const messageCount = context.messageHistory.filter(m => m.role === 'user').length;
-
-    // State transition logic
-    switch (state) {
-      case ConversationState.GREETING:
-        if (capturedFields.name || messageCount > 1) {
-          return ConversationState.CONTEXT_DISCOVERY;
-        }
-        break;
-      case ConversationState.CONTEXT_DISCOVERY:
-        if (capturedFields.team_size && capturedFields.team_tenure) {
-          return ConversationState.CHALLENGE_EXPLORATION;
-        }
-        break;
-      case ConversationState.CHALLENGE_EXPLORATION:
-        if (capturedFields.primary_challenge) {
-          return ConversationState.TMS_EXPLANATION;
-        }
-        break;
-      case ConversationState.TMS_EXPLANATION:
-        if (messageCount > 6) { // After explanation and Q&A
-          return ConversationState.GOAL_SETTING;
-        }
-        break;
-      case ConversationState.GOAL_SETTING:
-        if (capturedFields.success_metrics) {
-          return ConversationState.RESOURCE_CONFIRMATION;
-        }
-        break;
-      case ConversationState.RESOURCE_CONFIRMATION:
-        if (capturedFields.budget_range && capturedFields.leader_commitment) {
-          return ConversationState.STAKEHOLDER_MAPPING;
-        }
-        break;
-      case ConversationState.STAKEHOLDER_MAPPING:
-        if (capturedFields.key_stakeholders || messageCount > 12) {
-          return ConversationState.RECAP_AND_HANDOFF;
-        }
-        break;
+    // Update state machine with current state
+    this.stateMachine.setState(metadata.state);
+    
+    // Map captured fields to conversation data format
+    const conversationData = this.mapToConversationData(metadata.capturedFields);
+    
+    // Attempt state transition
+    if (this.stateMachine.attemptTransition(conversationData)) {
+      return this.stateMachine.getState();
     }
-
-    return state;
+    
+    return metadata.state;
+  }
+  
+  private mapToConversationData(capturedFields: Record<string, any>): any {
+    return {
+      managerName: capturedFields.name,
+      teamSize: capturedFields.team_size,
+      teamStructure: capturedFields.team_tenure,
+      primaryChallenge: capturedFields.primary_challenge,
+      tmsUnderstanding: capturedFields.tms_understanding,
+      goals: capturedFields.success_metrics ? [capturedFields.success_metrics] : [],
+      resources: capturedFields.budget_range && capturedFields.leader_commitment ? {
+        budget: capturedFields.budget_range,
+        commitment: capturedFields.leader_commitment
+      } : undefined,
+      stakeholders: capturedFields.key_stakeholders || [],
+      timeline: capturedFields.timeline_preference
+    };
   }
 
   private transitionState(metadata: OnboardingMetadata, newState: ConversationState) {
@@ -293,27 +290,33 @@ Required fields to capture: ${OnboardingAgent.REQUIRED_FIELDS.join(', ')}`;
   }
 
   private updateQualityMetrics(metadata: OnboardingMetadata, context: AgentContext) {
-    const messageCount = context.messageHistory.filter(m => m.role === 'user').length;
-    const avgMessageLength = context.messageHistory
-      .filter(m => m.role === 'user')
-      .reduce((sum, m) => sum + m.content.length, 0) / messageCount;
-
-    // Simple rapport scoring based on engagement
-    metadata.qualityMetrics.rapportScore = Math.min(100, messageCount * 5 + avgMessageLength / 10);
-
-    // Manager confidence based on progress and engagement
-    if (metadata.qualityMetrics.completionPercentage > 70 && metadata.qualityMetrics.rapportScore > 60) {
+    const conversationData = this.mapToConversationData(metadata.capturedFields);
+    const metrics = this.qualityCalculator.calculateMetrics(conversationData, context.messageHistory);
+    
+    metadata.qualityMetrics.rapportScore = metrics.rapportScore;
+    metadata.qualityMetrics.completionPercentage = metrics.completionPercentage;
+    
+    // Map confidence level to string
+    if (metrics.managerConfidenceLevel >= 70) {
       metadata.qualityMetrics.managerConfidence = 'high';
-    } else if (metadata.qualityMetrics.completionPercentage > 40 || metadata.qualityMetrics.rapportScore > 40) {
+    } else if (metrics.managerConfidenceLevel >= 40) {
       metadata.qualityMetrics.managerConfidence = 'medium';
+    } else {
+      metadata.qualityMetrics.managerConfidence = 'low';
     }
   }
 
   private isReadyForHandoff(metadata: OnboardingMetadata): boolean {
-    const requiredFieldsComplete = Object.values(metadata.requiredFieldsStatus)
-      .filter(Boolean).length >= OnboardingAgent.REQUIRED_FIELDS.length * 0.8; // 80% complete
+    const conversationData = this.mapToConversationData(metadata.capturedFields);
+    const metrics: QualityMetrics = {
+      completionPercentage: metadata.qualityMetrics.completionPercentage,
+      rapportScore: metadata.qualityMetrics.rapportScore,
+      managerConfidenceLevel: metadata.qualityMetrics.managerConfidence === 'high' ? 80 : 
+                             metadata.qualityMetrics.managerConfidence === 'medium' ? 50 : 20
+    };
     
-    return metadata.state === ConversationState.RECAP_AND_HANDOFF && requiredFieldsComplete;
+    return this.qualityCalculator.isReadyForHandoff(conversationData, metrics) && 
+           metadata.state === ConversationState.RECAP_AND_HANDOFF;
   }
 
   private async generateHandoffDocument(metadata: OnboardingMetadata, context: AgentContext): Promise<any> {
