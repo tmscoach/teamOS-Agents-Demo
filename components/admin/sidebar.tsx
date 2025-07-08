@@ -10,11 +10,17 @@ import {
   FileText,
   Settings,
   BarChart,
+  Shield,
+  Database,
+  Cog,
 } from "lucide-react";
 
 const navigation = [
   { name: "Dashboard", href: "/admin", icon: LayoutDashboard },
   { name: "Conversations", href: "/admin/conversations", icon: MessageSquare },
+  { name: "Guardrails", href: "/admin/guardrails", icon: Shield },
+  { name: "Variables", href: "/admin/variables", icon: Database },
+  { name: "Agent Config", href: "/admin/agents/config", icon: Cog },
   { name: "Teams", href: "/admin/teams", icon: Users },
   { name: "Reports", href: "/admin/reports", icon: FileText },
   { name: "Analytics", href: "/admin/analytics", icon: BarChart },
