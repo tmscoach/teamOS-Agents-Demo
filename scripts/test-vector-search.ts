@@ -2,9 +2,8 @@
 
 import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
-import dotenv from 'dotenv';
+import 'dotenv/config';
 
-dotenv.config();
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -43,7 +42,18 @@ async function testVectorSearch(query: string) {
         documentId,
         document:Document(title, documentType)
       `)
-      .limit(10);
+      .limit(10) as { 
+        data: Array<{
+          id: string;
+          content: string;
+          documentId: string;
+          document: {
+            title: string;
+            documentType: string;
+          } | null;
+        }> | null;
+        error: any;
+      };
     
     if (error) {
       console.error('Search error:', error);

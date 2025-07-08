@@ -1,9 +1,8 @@
 #!/usr/bin/env node
 
 import { createClient } from '@supabase/supabase-js';
-import dotenv from 'dotenv';
+import 'dotenv/config';
 
-dotenv.config();
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -80,7 +79,7 @@ async function verifyKnowledgeBase() {
   
   // Summary
   console.log('\n📋 Summary:');
-  if (chunksWithoutEmbeddings === 0 && docCount > 0 && totalChunks > 0) {
+  if (chunksWithoutEmbeddings === 0 && (docCount ?? 0) > 0 && totalChunks > 0) {
     console.log('✅ Knowledge base is fully set up and ready!');
     console.log('\nNext steps:');
     console.log('1. Test vector search functionality');
@@ -88,7 +87,7 @@ async function verifyKnowledgeBase() {
     console.log('3. Create PR for this work');
   } else {
     console.log('❌ Knowledge base setup incomplete');
-    if (docCount === 0) console.log('- No documents found');
+    if (!docCount || docCount === 0) console.log('- No documents found');
     if (totalChunks === 0) console.log('- No chunks found');
     if (chunksWithoutEmbeddings > 0) console.log(`- ${chunksWithoutEmbeddings} chunks need embeddings`);
   }

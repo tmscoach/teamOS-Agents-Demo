@@ -1,8 +1,7 @@
 #!/usr/bin/env node
 
-import dotenv from 'dotenv';
+import 'dotenv/config';
 
-dotenv.config();
 
 async function testKnowledgeBase() {
   console.log('🤖 Testing Knowledge Base Setup\n');
