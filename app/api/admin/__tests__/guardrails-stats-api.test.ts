@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { GET } from '../guardrails/stats/route';
-import { GuardrailTrackingService } from '@/lib/services/guardrail-tracking';
+import { GuardrailTrackingService } from '@/src/lib/services/guardrail-tracking';
 import { auth } from '@clerk/nextjs/server';
 
 // Mock dependencies
@@ -8,7 +8,7 @@ jest.mock('@clerk/nextjs/server', () => ({
   auth: jest.fn(),
 }));
 
-jest.mock('@/lib/services/guardrail-tracking');
+jest.mock('@/src/lib/services/guardrail-tracking');
 
 describe('Guardrails Stats API', () => {
   const mockAuth = auth as jest.MockedFunction<typeof auth>;

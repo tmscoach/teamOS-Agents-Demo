@@ -1,11 +1,11 @@
 import { BaseAgent } from '../base';
-import { GuardrailTrackingService } from '@/lib/services/guardrail-tracking';
-import { VariableExtractionService } from '@/lib/services/variable-extraction';
+import { GuardrailTrackingService } from '@/src/lib/services/guardrail-tracking';
+import { VariableExtractionService } from '@/src/lib/services/variable-extraction';
 import { AgentContext, GuardrailResult, Guardrail } from '../types';
 
 // Mock services
-jest.mock('@/lib/services/guardrail-tracking');
-jest.mock('@/lib/services/variable-extraction');
+jest.mock('@/src/lib/services/guardrail-tracking');
+jest.mock('@/src/lib/services/variable-extraction');
 
 describe('Guardrail and Variable Extraction Integration', () => {
   const mockGuardrailService = GuardrailTrackingService as jest.Mocked<typeof GuardrailTrackingService>;
