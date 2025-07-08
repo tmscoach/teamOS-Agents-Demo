@@ -2,7 +2,7 @@
 
 import { vectorSearch } from '../src/lib/knowledge-base/search/vector-search';
 import { createClient } from '@supabase/supabase-js';
-import dotenv from 'dotenv';
+import * as dotenv from 'dotenv';
 
 dotenv.config();
 

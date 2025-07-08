@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { createOnboardingAgent } from '../src/lib/agents/implementations/knowledge-enabled-agent';
-import dotenv from 'dotenv';
+import * as dotenv from 'dotenv';
 
 dotenv.config();
 

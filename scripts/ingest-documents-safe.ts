@@ -6,7 +6,7 @@ import { DocumentChunker } from '../src/lib/knowledge-base/ingestion/chunker';
 import { EmbeddingService } from '../src/lib/knowledge-base/ingestion/embeddings';
 import fs from 'fs/promises';
 import path from 'path';
-import dotenv from 'dotenv';
+import * as dotenv from 'dotenv';
 
 // Load environment variables
 dotenv.config();
