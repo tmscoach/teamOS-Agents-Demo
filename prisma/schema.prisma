@@ -77,6 +77,8 @@ model Conversation {
   
   messages          Message[]
   events            AgentEvent[]
+  guardrailChecks   GuardrailCheck[]
+  variableExtractions VariableExtraction[]
   
   @@index([teamId])
   @@index([managerId])
@@ -111,6 +113,61 @@ model AgentEvent {
   
   @@index([conversationId])
   @@index([type])
+}
+
+// Guardrail check tracking
+model GuardrailCheck {
+  id              String   @id @default(cuid())
+  conversationId  String
+  agentName       String
+  guardrailType   String
+  input           String   @db.Text
+  passed          Boolean
+  severity        String?  // low, medium, high
+  reasoning       String   @db.Text
+  timestamp       DateTime @default(now())
+  
+  conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  
+  @@index([conversationId])
+  @@index([guardrailType])
+  @@index([passed])
+}
+
+// Variable extraction tracking
+model VariableExtraction {
+  id              String   @id @default(cuid())
+  conversationId  String
+  agentName       String
+  fieldName       String
+  attempted       Boolean
+  successful      Boolean
+  extractedValue  String?  @db.Text
+  confidence      Float?
+  timestamp       DateTime @default(now())
+  
+  conversation    Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  
+  @@index([conversationId])
+  @@index([fieldName])
+  @@index([successful])
+}
+
+// Agent configuration management
+model AgentConfiguration {
+  id              String   @id @default(cuid())
+  agentName       String
+  version         Int
+  prompts         Json     // State-specific prompts
+  flowConfig      Json     // Conversation flow configuration
+  extractionRules Json     // Variable extraction rules
+  active          Boolean  @default(false)
+  createdBy       String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  @@unique([agentName, version])
+  @@index([agentName, active])
 }
 
 // Document model for TMS intellectual property
