@@ -6,10 +6,9 @@ import { DocumentChunker } from '../src/lib/knowledge-base/ingestion/chunker';
 import { EmbeddingService } from '../src/lib/knowledge-base/ingestion/embeddings';
 import fs from 'fs/promises';
 import path from 'path';
-import * as dotenv from 'dotenv';
+import 'dotenv/config';
 
 // Load environment variables
-dotenv.config();
 
 // Override DATABASE_URL to use direct connection for this script
 process.env.DATABASE_URL = "postgresql://postgres:PcShKCqEPCMGsHfp@db.vkgtigmrazhmsvmlsglb.supabase.co:5432/postgres";

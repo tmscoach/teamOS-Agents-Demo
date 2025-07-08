@@ -2,9 +2,8 @@
 
 import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
-import * as dotenv from 'dotenv';
+import 'dotenv/config';
 
-dotenv.config();
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,

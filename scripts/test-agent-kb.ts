@@ -1,9 +1,8 @@
 #!/usr/bin/env node
 
 import { createOnboardingAgent } from '../src/lib/agents/implementations/knowledge-enabled-agent';
-import * as dotenv from 'dotenv';
+import 'dotenv/config';
 
-dotenv.config();
 
 async function testAgentWithKnowledgeBase() {
   console.log('🤖 Testing Agent with Knowledge Base\n');

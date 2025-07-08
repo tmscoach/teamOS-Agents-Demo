@@ -4,10 +4,9 @@ import { createClient } from '@supabase/supabase-js';
 import OpenAI from 'openai';
 import fs from 'fs/promises';
 import path from 'path';
-import * as dotenv from 'dotenv';
+import 'dotenv/config';
 
 // Load environment variables
-dotenv.config();
 
 // Initialize clients
 const supabase = createClient(

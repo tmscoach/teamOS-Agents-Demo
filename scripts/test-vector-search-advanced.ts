@@ -2,9 +2,8 @@
 
 import { vectorSearch } from '../src/lib/knowledge-base/search/vector-search';
 import { createClient } from '@supabase/supabase-js';
-import * as dotenv from 'dotenv';
+import 'dotenv/config';
 
-dotenv.config();
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
