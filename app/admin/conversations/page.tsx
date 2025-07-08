@@ -118,7 +118,7 @@ export default function ConversationsPage() {
           </div>
           <select
             value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilterStatus(e.target.value)}
             className="px-4 py-2 border rounded-md"
           >
             <option value="all">All Status</option>

@@ -55,7 +55,7 @@ export function createOnboardingTools(): AgentTool[] {
           if (lowerMessage.includes(keyword)) {
             // Extract the sentence containing the challenge
             const sentences = message.split(/[.!?]+/);
-            const challengeSentence = sentences.find(s => s.toLowerCase().includes(keyword));
+            const challengeSentence = sentences.find((s: string) => s.toLowerCase().includes(keyword));
             if (challengeSentence) {
               extracted.primary_challenge = challengeSentence.trim();
             }

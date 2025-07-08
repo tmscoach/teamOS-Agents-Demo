@@ -20,16 +20,11 @@ export async function GET(req: NextRequest) {
     // Fetch conversations with aggregated data
     const conversations = await prisma.conversation.findMany({
       include: {
-        team: true,
-        manager: true,
         messages: {
           orderBy: {
-            createdAt: 'desc'
+            timestamp: 'desc'
           },
           take: 1
-        },
-        _count: {
-          select: { messages: true }
         }
       },
       orderBy: {
@@ -37,14 +32,32 @@ export async function GET(req: NextRequest) {
       }
     });
 
+    // Fetch teams and managers separately
+    const teamIds = [...new Set(conversations.map(c => c.teamId))];
+    const managerIds = [...new Set(conversations.map(c => c.managerId))];
+
+    const teams = await prisma.team.findMany({
+      where: { id: { in: teamIds } }
+    });
+
+    const managers = await prisma.user.findMany({
+      where: { id: { in: managerIds } }
+    });
+
+    const teamMap = new Map(teams.map(t => [t.id, t]));
+    const managerMap = new Map(managers.map(m => [m.id, m]));
+
     // Transform data for the frontend
     const transformedConversations = conversations.map(conv => {
-      const metadata = conv.metadata as any;
+      const contextData = conv.contextData as any;
+      const metadata = contextData?.metadata;
       const onboardingData = metadata?.onboarding;
       const lastMessage = conv.messages[0];
+      const team = teamMap.get(conv.teamId);
+      const manager = managerMap.get(conv.managerId);
       
       // Determine status based on last activity
-      const lastActivityTime = lastMessage?.createdAt || conv.updatedAt;
+      const lastActivityTime = lastMessage?.timestamp || conv.updatedAt;
       const minutesSinceActivity = (Date.now() - lastActivityTime.getTime()) / 60000;
       let status: 'active' | 'completed' | 'abandoned' = 'active';
       
@@ -54,17 +67,20 @@ export async function GET(req: NextRequest) {
         status = 'abandoned';
       }
 
+      // Count total messages
+      const messageCount = conv.messages.length;
+
       return {
         id: conv.id,
         managerId: conv.managerId,
-        managerName: conv.manager.name || 'Unknown',
+        managerName: manager?.name || 'Unknown',
         teamId: conv.teamId,
-        teamName: conv.team.name,
+        teamName: team?.name || 'Unknown Team',
         currentAgent: conv.currentAgent,
         state: onboardingData?.state || ConversationState.GREETING,
         startTime: conv.createdAt,
         lastMessageTime: lastActivityTime,
-        messageCount: conv._count.messages,
+        messageCount,
         completionPercentage: onboardingData?.qualityMetrics?.completionPercentage || 0,
         rapportScore: onboardingData?.qualityMetrics?.rapportScore || 0,
         managerConfidence: onboardingData?.qualityMetrics?.managerConfidence || 'low',

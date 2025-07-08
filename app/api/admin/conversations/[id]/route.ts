@@ -25,11 +25,9 @@ export async function GET(
     const conversation = await prisma.conversation.findUnique({
       where: { id: conversationId },
       include: {
-        team: true,
-        manager: true,
         messages: {
           orderBy: {
-            createdAt: 'asc'
+            timestamp: 'asc'
           }
         },
         events: {
@@ -47,28 +45,38 @@ export async function GET(
       );
     }
 
+    // Fetch team and manager details
+    const [team, manager] = await Promise.all([
+      prisma.team.findUnique({ where: { id: conversation.teamId } }),
+      prisma.user.findUnique({ where: { id: conversation.managerId } })
+    ]);
+
+    // Extract metadata from contextData
+    const contextData = conversation.contextData as any;
+    const metadata = contextData?.metadata || {};
+
     // Transform the data
     const transformedConversation = {
       id: conversation.id,
       managerId: conversation.managerId,
-      managerName: conversation.manager.name || 'Unknown',
+      managerName: manager?.name || 'Unknown',
       teamId: conversation.teamId,
-      teamName: conversation.team.name,
+      teamName: team?.name || 'Unknown Team',
       currentAgent: conversation.currentAgent,
       messages: conversation.messages.map(msg => ({
         id: msg.id,
         role: msg.role,
         content: msg.content,
-        timestamp: msg.createdAt,
+        timestamp: msg.timestamp,
         agent: msg.agent
       })),
-      metadata: conversation.metadata,
+      metadata,
       events: conversation.events.map(event => ({
         id: event.id,
         type: event.type,
         timestamp: event.timestamp,
         agent: event.agent,
-        data: event.data
+        data: event.metadata
       }))
     };
 

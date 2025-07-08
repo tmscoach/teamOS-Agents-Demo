@@ -1,5 +1,5 @@
 import { KnowledgeEnabledAgent } from './knowledge-enabled-agent';
-import { AgentContext, Message, AgentResponse, ToolCall } from '../types';
+import { AgentContext, Message, AgentResponse, ToolCall, AgentTool } from '../types';
 import { createOnboardingTools } from '../tools/onboarding-tools';
 import { OnboardingGuardrails } from '../guardrails/onboarding-guardrails';
 
@@ -211,7 +211,7 @@ Required fields to capture: ${OnboardingAgent.REQUIRED_FIELDS.join(', ')}`;
       parameters: { message, context }
     };
 
-    const tool = this.config.tools?.find(t => t.name === 'extractTeamInfo');
+    const tool = this.tools.find((t: AgentTool) => t.name === 'extractTeamInfo');
     if (tool) {
       const result = await tool.execute(toolCall.parameters, context);
       return result.output || {};
@@ -317,7 +317,7 @@ Required fields to capture: ${OnboardingAgent.REQUIRED_FIELDS.join(', ')}`;
   }
 
   private async generateHandoffDocument(metadata: OnboardingMetadata, context: AgentContext): Promise<any> {
-    const tool = this.config.tools?.find(t => t.name === 'generateHandoffDocument');
+    const tool = this.tools.find((t: AgentTool) => t.name === 'generateHandoffDocument');
     if (tool) {
       const result = await tool.execute({ metadata, context }, context);
       return result.output;
