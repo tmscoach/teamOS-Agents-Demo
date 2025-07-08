@@ -1,6 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createOnboardingAgent } from '@/src/lib/agents/implementations/onboarding-agent';
 import { AgentRouter, ContextManager } from '@/src/lib/agents';
+import OpenAI from 'openai';
+import { ConversationState } from '@/src/lib/agents/implementations/onboarding-agent';
+
+// Helper function to extract team info from message
+function extractTeamInfoFromMessage(message: string): Record<string, any> {
+  const extracted: Record<string, any> = {};
+  
+  // Extract name
+  const nameMatch = message.match(/(?:i'm|i am|my name is|this is)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i);
+  if (nameMatch) {
+    extracted.manager_name = nameMatch[1];
+  }
+  
+  // Extract team size
+  const teamSizeMatch = message.match(/(\d+)\s*(?:people|members|employees|staff|direct reports)/i);
+  if (teamSizeMatch) {
+    extracted.team_size = parseInt(teamSizeMatch[1]);
+  }
+  
+  // Extract department
+  const deptMatch = message.match(/(?:in|from|work in|manage)\s+(?:the\s+)?([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\s+(?:department|team|division)/i);
+  if (deptMatch) {
+    extracted.department = deptMatch[1];
+  }
+  
+  // Extract challenge keywords
+  if (message.toLowerCase().includes('challenge') || message.toLowerCase().includes('problem') || message.toLowerCase().includes('issue')) {
+    extracted.primary_challenge = message;
+  }
+  
+  return extracted;
+}
 
 // Mock context for testing without auth
 const mockContext = {
@@ -19,67 +51,111 @@ const router = new AgentRouter({ contextManager });
 const onboardingAgent = createOnboardingAgent();
 router.registerAgent(onboardingAgent);
 
+// System prompts for different conversation states
+const SYSTEM_PROMPTS: Record<string, string> = {
+  greeting: `You are an OnboardingAgent for TMS (Team Management Systems). 
+Your goal is to warmly welcome the user and learn their name and role. 
+Be friendly, professional, and encouraging. Ask for their name and role in one message.
+Keep responses concise (2-3 sentences).`,
+  
+  context_discovery: `You are learning about the user's team context.
+Ask about their team size, structure, and department. 
+Keep it conversational and show genuine interest.
+Keep responses concise (2-3 sentences).`,
+  
+  challenge_exploration: `You are exploring the team's challenges.
+Ask about their biggest team challenge or pain point.
+Be empathetic and show you understand their situation.
+Keep responses concise (2-3 sentences).`,
+  
+  tms_explanation: `You are explaining how TMS can help.
+Based on their challenge, briefly explain how TMS's 40+ years of research can help.
+Mention the multi-phase approach: assessment, analysis, transformation, and monitoring.
+Keep responses concise (3-4 sentences).`,
+};
+
 export async function POST(req: NextRequest) {
   try {
-    const { message } = await req.json();
+    const { message, conversationState = 'greeting', conversationHistory = [] } = await req.json();
     
-    // For testing, we'll use a mock response since OpenAI isn't configured
-    // In production, this would call the actual agent
-    const mockResponses: Record<string, string> = {
-      default: "Welcome to TMS! I'm your onboarding guide. I'm here to help you get started with transforming your team. Could you tell me your name and a bit about what brings you here today?",
-      name: "Nice to meet you, {name}! I'm excited to help you on this journey. Can you tell me about your team? How many people do you manage and how long have you been working together?",
-      team: "That's great! A team of {size} people with {tenure} of experience together. What would you say is the biggest challenge your team is facing right now?",
-      challenge: "I understand. {challenge} is indeed a common challenge that many teams face. The good news is that TMS has specific tools and methodologies to address this. Let me tell you a bit about how we can help...",
-      tms: "Based on what you've shared, I'd recommend starting with our Team Signals assessment. This will give us a baseline understanding of your team's current state. What are your main goals for this transformation?",
-      goals: "Those are excellent goals! To make sure we set you up for success, can you tell me about your timeline and any budget considerations?",
-      resources: "Perfect! I have all the information I need to get you started. Let me summarize what we've discussed...",
-      handoff: "You're all set! I'm going to hand you off to our Assessment Agent who will guide you through the Team Signals assessment. They'll help you understand which assessment is best for your team's current needs."
-    };
-
-    // Simple keyword matching for demo purposes
-    let response = mockResponses.default;
-    const lowerMessage = message.toLowerCase();
+    // Extract team information from the message
+    const extractedData = extractTeamInfoFromMessage(message);
     
-    if (lowerMessage.includes('name is') || lowerMessage.includes("i'm ") || lowerMessage.includes('i am')) {
-      response = mockResponses.name.replace('{name}', message.split(/name is|i'm |i am /i)[1]?.split(' ')[0] || 'there');
-    } else if (lowerMessage.includes('team') || lowerMessage.includes('people') || lowerMessage.includes('manage')) {
-      response = mockResponses.team
-        .replace('{size}', message.match(/\d+/)?.[0] || 'several')
-        .replace('{tenure}', message.match(/\d+\s*(year|month)/i)?.[0] || 'some time');
-    } else if (lowerMessage.includes('challenge') || lowerMessage.includes('problem') || lowerMessage.includes('issue')) {
-      response = mockResponses.challenge.replace('{challenge}', 'This');
-    } else if (lowerMessage.includes('understand') || lowerMessage.includes('got it') || lowerMessage.includes('yes')) {
-      response = mockResponses.tms;
-    } else if (lowerMessage.includes('goal') || lowerMessage.includes('improve') || lowerMessage.includes('better')) {
-      response = mockResponses.goals;
-    } else if (lowerMessage.includes('budget') || lowerMessage.includes('timeline') || lowerMessage.includes('month')) {
-      response = mockResponses.resources;
-    } else if (lowerMessage.includes('ready') || lowerMessage.includes('let\'s') || lowerMessage.includes('sounds good')) {
-      response = mockResponses.handoff;
+    // Determine conversation state based on extracted data
+    let nextState = conversationState;
+    if (conversationState === 'greeting' && extractedData.manager_name) {
+      nextState = 'context_discovery';
+    } else if (conversationState === 'context_discovery' && extractedData.team_size) {
+      nextState = 'challenge_exploration';
+    } else if (conversationState === 'challenge_exploration' && extractedData.primary_challenge) {
+      nextState = 'tms_explanation';
     }
-
-    // Simulate extracted data
-    const extractedData: Record<string, any> = {};
-    if (lowerMessage.includes('name is') || lowerMessage.includes("i'm ")) {
-      extractedData.name = message.split(/name is|i'm |i am /i)[1]?.split(' ')[0];
+    
+    let response: string;
+    
+    // Try to use OpenAI if configured
+    if (process.env.OPENAI_API_KEY) {
+      try {
+        const openai = new OpenAI({
+          apiKey: process.env.OPENAI_API_KEY,
+        });
+        
+        const systemPrompt = SYSTEM_PROMPTS[conversationState] || SYSTEM_PROMPTS.greeting;
+        
+        // Build conversation history for context
+        const messages: any[] = [
+          { role: "system", content: systemPrompt }
+        ];
+        
+        // Add previous messages if any
+        conversationHistory.forEach((msg: any) => {
+          messages.push({ role: msg.role, content: msg.content });
+        });
+        
+        // Add current user message
+        messages.push({ role: "user", content: message });
+        
+        const completion = await openai.chat.completions.create({
+          model: "gpt-4",
+          messages,
+          max_tokens: 150,
+          temperature: 0.7,
+        });
+        
+        response = completion.choices[0].message.content || "I'm here to help you with your team transformation journey.";
+      } catch (error) {
+        console.error('OpenAI error:', error);
+        // Fallback to mock response
+        response = getMockResponse(conversationState, message, extractedData);
+      }
+    } else {
+      // Use mock responses if OpenAI not configured
+      response = getMockResponse(conversationState, message, extractedData);
     }
-    if (message.match(/\d+\s*people/i)) {
-      extractedData.team_size = parseInt(message.match(/\d+/)?.[0] || '0');
-    }
-    if (lowerMessage.includes('challenge')) {
-      extractedData.primary_challenge = message;
-    }
-
+    
     return NextResponse.json({
       message: response,
       currentAgent: 'OnboardingAgent',
       extractedData,
-      conversationState: 'active'
+      conversationState: nextState,
+      nextState
     });
   } catch (error) {
+    console.error('Route error:', error);
     return NextResponse.json(
       { error: 'Failed to process message' },
       { status: 500 }
     );
   }
+}
+
+function getMockResponse(state: string, message: string, extractedData: any): string {
+  const mockResponses: Record<string, string> = {
+    greeting: "Welcome to TMS! I'm your onboarding guide. I'm here to help you get started with transforming your team. Could you tell me your name and a bit about your role?",
+    context_discovery: `Nice to meet you${extractedData.manager_name ? ', ' + extractedData.manager_name : ''}! Can you tell me about your team? How many people do you manage?`,
+    challenge_exploration: `A team of ${extractedData.team_size || 'that size'} - that's great! What would you say is the biggest challenge your team is facing right now?`,
+    tms_explanation: "I understand. That's a common challenge many teams face. TMS uses proven methodologies from 40+ years of research to help teams like yours improve. We'll start with assessment, then analysis, transformation, and ongoing monitoring.",
+  };
+  
+  return mockResponses[state] || mockResponses.greeting;
 }

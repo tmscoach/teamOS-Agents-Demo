@@ -13,7 +13,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  extensions = [vector]
+  extensions = [uuid_ossp(map: "uuid-ossp", schema: "extensions"), vector]
 }
 
 // User model for team members and managers
@@ -115,14 +115,14 @@ model AgentEvent {
 
 // Document model for TMS intellectual property
 model Document {
-  id                String      @id @default(cuid())
+  id                String      @id @default(dbgenerated("(gen_random_uuid())::text"))
   title             String
   sourcePath        String      @unique
   documentType      DocumentType
   content           String      @db.Text
   metadata          Json?
   createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
+  updatedAt         DateTime    @default(now()) @updatedAt
   
   chunks            DocumentChunk[]
   questionnaireItems QuestionnaireItem[]
@@ -132,11 +132,11 @@ model Document {
 
 // Document chunks for vector search
 model DocumentChunk {
-  id                String      @id @default(cuid())
+  id                String      @id @default(dbgenerated("(gen_random_uuid())::text"))
   documentId        String
   chunkIndex        Int
   content           String      @db.Text
-  embedding         Unsupported("vector(1536)")?
+  embedding         Unsupported("vector")?
   metadata          Json?       // section, headers, context
   createdAt         DateTime    @default(now())
   
@@ -144,11 +144,12 @@ model DocumentChunk {
   
   @@index([documentId])
   @@index([chunkIndex])
+  @@index([embedding], map: "document_chunk_embedding_idx")
 }
 
 // Questionnaire items for structured retrieval
 model QuestionnaireItem {
-  id                String      @id @default(cuid())
+  id                String      @id @default(dbgenerated("(gen_random_uuid())::text"))
   documentId        String
   questionId        String
   questionText      String      @db.Text
