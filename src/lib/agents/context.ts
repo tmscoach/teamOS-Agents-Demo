@@ -185,6 +185,13 @@ export class ContextManager {
   }
 
   /**
+   * Set a context directly (useful for loading from persistence)
+   */
+  async setContext(conversationId: string, context: AgentContext): Promise<void> {
+    this.contexts.set(conversationId, context);
+  }
+
+  /**
    * Clear a context from memory
    */
   async clearContext(conversationId: string): Promise<void> {

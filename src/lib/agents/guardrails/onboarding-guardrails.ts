@@ -170,6 +170,9 @@ export class OnboardingGuardrails {
       name: 'Professionalism',
       description: 'Ensures conversation maintains professional standards',
       validate: async (input: string, context: AgentContext): Promise<GuardrailResult> => {
+        let warnings = [];
+        let inappropriateLanguageFound = false;
+        
         // Check for inappropriate language
         const inappropriatePatterns = [
           /\b(damn|hell|crap)\b/i, // Mild profanity
@@ -179,23 +182,32 @@ export class OnboardingGuardrails {
 
         for (const pattern of inappropriatePatterns) {
           if (pattern.test(input)) {
-            return {
-              passed: true, // Allow but note for context
-              metadata: {
-                warning: 'Detected potentially negative language. Maintain supportive tone.',
-                pattern: pattern.source
-              }
-            };
+            inappropriateLanguageFound = true;
+            warnings.push('Detected potentially negative language. Maintain supportive tone.');
+            break; // We found inappropriate language, no need to check more patterns
           }
         }
 
-        // Check for ALL CAPS (shouting)
+        // Check for ALL CAPS (shouting) - This should ALWAYS be checked
         const capsRatio = (input.match(/[A-Z]/g) || []).length / input.length;
         if (capsRatio > 0.5 && input.length > 10) {
           return {
             passed: false,
             reason: 'Please avoid using all caps as it can be perceived as shouting.',
-            metadata: { capsRatio }
+            metadata: { 
+              capsRatio,
+              inappropriateLanguage: inappropriateLanguageFound
+            }
+          };
+        }
+
+        // If we only found inappropriate language (no caps issue)
+        if (inappropriateLanguageFound) {
+          return {
+            passed: true,
+            metadata: {
+              warning: warnings.join(' ')
+            }
           };
         }
 

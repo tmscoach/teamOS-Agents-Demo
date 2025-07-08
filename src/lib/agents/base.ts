@@ -63,12 +63,15 @@ export abstract class Agent implements BaseAgent {
 
   /**
    * Validate input using configured guardrails
+   * Returns all guardrail events and a flag indicating if validation passed
    */
   protected async validateInput(
     input: string,
     context: AgentContext
-  ): Promise<GuardrailEvent[]> {
+  ): Promise<{ events: GuardrailEvent[]; passed: boolean; failureReason?: string }> {
     const events: GuardrailEvent[] = [];
+    let passed = true;
+    let failureReason: string | undefined;
 
     for (const guardrail of this.inputGuardrails) {
       const result = await guardrail.validate(input, context);
@@ -85,13 +88,14 @@ export abstract class Agent implements BaseAgent {
 
       events.push(event);
 
-      // If any guardrail fails, stop processing
-      if (!result.passed) {
-        throw new Error(`Guardrail ${guardrail.name} failed: ${result.reason}`);
+      // Track the first failure but continue checking all guardrails
+      if (!result.passed && passed) {
+        passed = false;
+        failureReason = `${guardrail.name}: ${result.reason}`;
       }
     }
 
-    return events;
+    return { events, passed, failureReason };
   }
 
   /**

@@ -1,6 +1,5 @@
-import { PrismaClient, VariableExtraction } from '@/lib/generated/prisma';
-
-const prisma = new PrismaClient();
+import { VariableExtraction } from '@/lib/generated/prisma';
+import prisma from '@/lib/db';
 
 export interface VariableExtractionInput {
   conversationId: string;

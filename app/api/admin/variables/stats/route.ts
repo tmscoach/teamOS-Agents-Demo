@@ -52,11 +52,35 @@ export async function GET(req: NextRequest) {
         };
 
         const stats = await VariableExtractionService.getExtractionStats(filters);
-        return NextResponse.json(stats);
+        
+        // Transform the response to match expected format
+        return NextResponse.json({
+          totalExtractions: stats.totalAttempts,
+          successfulExtractions: stats.successfulExtractions,
+          successRate: stats.overallSuccessRate,
+          fieldsBySuccessRate: stats.byField?.sort((a, b) => b.successRate - a.successRate) || [],
+          fields: stats.byField || [],
+          byAgent: stats.byAgent || []
+        });
       }
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching variable extraction stats:', error);
+    
+    // Handle missing database table error
+    if (error.code === 'P2021' && error.message?.includes('table `public.VariableExtraction` does not exist')) {
+      return NextResponse.json({
+        totalExtractions: 0,
+        successfulExtractions: 0,
+        successRate: 0,
+        fieldsBySuccessRate: [],
+        fields: [],
+        trends: [],
+        warning: 'Variable extraction table not initialized. Please run database migrations.',
+        instructions: 'Run: npx prisma migrate dev'
+      });
+    }
+    
     return NextResponse.json(
       { error: 'Failed to fetch variable extraction statistics' },
       { status: 500 }

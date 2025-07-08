@@ -60,8 +60,19 @@ export async function GET(req: NextRequest) {
     // Get all agent configurations
     const allConfigs = await AgentConfigurationService.getAllAgentConfigurations();
     return NextResponse.json(allConfigs);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching agent configurations:', error);
+    
+    // Handle missing database table error
+    if (error.code === 'P2021' && error.message?.includes('table `public.AgentConfiguration` does not exist')) {
+      return NextResponse.json({
+        agents: [],
+        configurations: [],
+        warning: 'Agent configuration table not initialized. Please run database migrations.',
+        instructions: 'Run: npx prisma migrate dev'
+      });
+    }
+    
     return NextResponse.json(
       { error: 'Failed to fetch agent configurations' },
       { status: 500 }
@@ -94,8 +105,20 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json(config);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error creating agent configuration:', error);
+    
+    // Handle missing database table error
+    if (error.code === 'P2021' && error.message?.includes('table `public.AgentConfiguration` does not exist')) {
+      return NextResponse.json(
+        { 
+          error: 'Agent configuration table not initialized. Please run database migrations.',
+          instructions: 'Run: npx prisma migrate dev'
+        },
+        { status: 503 }
+      );
+    }
+    
     return NextResponse.json(
       { error: 'Failed to create agent configuration' },
       { status: 500 }

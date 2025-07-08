@@ -54,8 +54,15 @@ export class OpenAIAgent extends Agent {
 
     try {
       // Validate input with guardrails
-      const guardrailEvents = await this.validateInput(message, context);
-      events.push(...guardrailEvents);
+      const validationResult = await this.validateInput(message, context);
+      events.push(...validationResult.events);
+
+      // If validation failed, return early with the guardrail failure message
+      if (!validationResult.passed) {
+        return this.buildResponse(context, events, {
+          message: `I cannot process that message. ${validationResult.failureReason}`,
+        });
+      }
 
       // Build conversation messages
       const messages = this.buildMessages(message, context);

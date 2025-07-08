@@ -45,10 +45,10 @@ export const ragQuerySchema = z.object({
 });
 
 export const adminFilterSchema = z.object({
-  status: z.enum(['active', 'completed', 'failed']).optional(),
+  status: z.enum(['active', 'completed', 'failed', 'abandoned']).optional(),
   agentName: agentNameSchema.optional(),
-  dateFrom: z.string().datetime().optional(),
-  dateTo: z.string().datetime().optional(),
+  dateFrom: z.string().optional(),
+  dateTo: z.string().optional(),
   managerId: z.string().optional(),
   teamId: z.string().optional(),
 });
