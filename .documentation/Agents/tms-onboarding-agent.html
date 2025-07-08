@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TMS Team Transformation Onboarding Agent</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            width: 100%;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .header p {
+            font-size: 1.2em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .question-section {
+            display: none;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        .question-section.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .question {
+            font-size: 1.4em;
+            color: #333;
+            margin-bottom: 30px;
+            font-weight: 600;
+        }
+
+        .options {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .option {
+            background: #f7f7f7;
+            border: 2px solid transparent;
+            border-radius: 10px;
+            padding: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1.1em;
+        }
+
+        .option:hover {
+            background: #e9ecef;
+            border-color: #667eea;
+            transform: translateX(5px);
+        }
+
+        .option.selected {
+            background: #e7e5ff;
+            border-color: #667eea;
+        }
+
+        .nav-buttons {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 30px;
+            gap: 20px;
+        }
+
+        .btn {
+            padding: 12px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1em;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: #e9ecef;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #dee2e6;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .progress-bar {
+            height: 6px;
+            background: #e9ecef;
+            border-radius: 3px;
+            margin-bottom: 30px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 3px;
+            transition: width 0.5s ease;
+            width: 0%;
+        }
+
+        .results {
+            display: none;
+        }
+
+        .diagnosis {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+
+        .diagnosis h3 {
+            color: #667eea;
+            margin-bottom: 15px;
+            font-size: 1.4em;
+        }
+
+        .diagnosis p {
+            line-height: 1.6;
+            color: #555;
+        }
+
+        .journey {
+            margin-top: 30px;
+        }
+
+        .journey h3 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.6em;
+        }
+
+        .journey-intro {
+            background: #e7e5ff;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            color: #667eea;
+            font-weight: 500;
+        }
+
+        .tool-card {
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+
+        .tool-card:hover {
+            border-color: #667eea;
+            transform: translateX(5px);
+        }
+
+        .tool-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .tool-name {
+            font-weight: 600;
+            color: #333;
+            font-size: 1.3em;
+        }
+
+        .tool-timing {
+            color: #667eea;
+            font-weight: 500;
+            font-size: 0.95em;
+        }
+
+        .tool-description {
+            color: #666;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+
+        .tool-purpose {
+            background: #f8f9fa;
+            padding: 12px;
+            border-radius: 6px;
+            color: #555;
+            font-size: 0.95em;
+            margin-bottom: 15px;
+        }
+
+        .tool-insights {
+            border-top: 1px solid #e9ecef;
+            padding-top: 15px;
+            margin-top: 15px;
+        }
+
+        .insight-title {
+            font-weight: 600;
+            color: #667eea;
+            margin-bottom: 8px;
+            font-size: 1em;
+        }
+
+        .insight-item {
+            color: #666;
+            line-height: 1.5;
+            margin-bottom: 5px;
+            padding-left: 20px;
+            position: relative;
+        }
+
+        .insight-item:before {
+            content: '→';
+            position: absolute;
+            left: 0;
+            color: #667eea;
+        }
+
+        .restart-btn {
+            margin-top: 30px;
+            width: 100%;
+        }
+
+        .intro-text {
+            font-size: 1.1em;
+            line-height: 1.6;
+            color: #555;
+            margin-bottom: 25px;
+        }
+
+        .tool-badge {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            margin-right: 8px;
+            font-weight: 500;
+        }
+
+        .order-number {
+            background: #667eea;
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 1.1em;
+        }
+
+        @media (max-width: 600px) {
+            .header h1 {
+                font-size: 2em;
+            }
+            
+            .question {
+                font-size: 1.2em;
+            }
+            
+            .option {
+                font-size: 1em;
+                padding: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Team Transformation Journey</h1>
+            <p>Your Personal TMS Onboarding Agent</p>
+        </div>
+        
+        <div class="content">
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressBar"></div>
+            </div>
+            
+            <!-- Question 1: Situation -->
+            <div class="question-section active" id="q1">
+                <div class="intro-text">
+                    Welcome! I'm your TMS Onboarding Agent. In just 4 questions, I'll design a customized team transformation journey using proven Team Management Systems tools.
+                    <br><br>
+                    Let's discover the perfect approach for your team's unique needs.
+                </div>
+                <div class="question">What's your current team situation?</div>
+                <div class="options">
+                    <div class="option" data-value="new">I'm building or have recently formed a new team</div>
+                    <div class="option" data-value="struggling">My existing team is struggling with performance or conflicts</div>
+                    <div class="option" data-value="good">My team is good but I want to make them great</div>
+                    <div class="option" data-value="change">We're going through major changes (merger, restructure, new direction)</div>
+                </div>
+            </div>
+            
+            <!-- Question 2: Biggest Pain Point -->
+            <div class="question-section" id="q2">
+                <div class="question">What's your biggest pain point right now?</div>
+                <div class="options">
+                    <div class="option" data-value="communication">People aren't communicating effectively or misunderstand each other</div>
+                    <div class="option" data-value="conflict">There's tension, conflicts, or lack of trust in the team</div>
+                    <div class="option" data-value="direction">We lack clear direction or people don't know their roles</div>
+                    <div class="option" data-value="innovation">We're stuck in old ways and need fresh thinking</div>
+                </div>
+            </div>
+            
+            <!-- Question 3: Timeline -->
+            <div class="question-section" id="q3">
+                <div class="question">How quickly do you need to see results?</div>
+                <div class="options">
+                    <div class="option" data-value="urgent">ASAP - We need improvements within 4 weeks</div>
+                    <div class="option" data-value="moderate">Within 2-3 months would be ideal</div>
+                    <div class="option" data-value="planned">We can invest 3-4 months for lasting change</div>
+                </div>
+            </div>
+            
+            <!-- Question 4: Previous Experience -->
+            <div class="question-section" id="q4">
+                <div class="question">Have you used team assessments before?</div>
+                <div class="options">
+                    <div class="option" data-value="never">No, this would be our first time</div>
+                    <div class="option" data-value="disappointing">Yes, but they didn't lead to real change</div>
+                    <div class="option" data-value="helpful">Yes, and they were somewhat helpful</div>
+                    <div class="option" data-value="tms">Yes, we've used TMS tools specifically</div>
+                </div>
+            </div>
+            
+            <!-- Results Section -->
+            <div class="results" id="results">
+                <div class="diagnosis" id="diagnosis">
+                    <!-- Diagnosis will be inserted here -->
+                </div>
+                
+                <div class="journey" id="journey">
+                    <!-- Journey will be inserted here -->
+                </div>
+                
+                <button class="btn btn-primary restart-btn" onclick="restart()">Start Another Assessment</button>
+            </div>
+            
+            <!-- Navigation -->
+            <div class="nav-buttons" id="navigation">
+                <button class="btn btn-secondary" id="prevBtn" onclick="previousQuestion()" style="display: none;">Previous</button>
+                <button class="btn btn-primary" id="nextBtn" onclick="nextQuestion()" disabled>Next</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentQuestion = 1;
+        const totalQuestions = 4;
+        const answers = {};
+
+        // Add click handlers to all options
+        document.querySelectorAll('.option').forEach(option => {
+            option.addEventListener('click', function() {
+                const section = this.closest('.question-section');
+                section.querySelectorAll('.option').forEach(opt => opt.classList.remove('selected'));
+                this.classList.add('selected');
+                
+                const questionId = section.id;
+                answers[questionId] = this.dataset.value;
+                
+                document.getElementById('nextBtn').disabled = false;
+            });
+        });
+
+        function updateProgress() {
+            const progress = (currentQuestion / totalQuestions) * 100;
+            document.getElementById('progressBar').style.width = progress + '%';
+        }
+
+        function nextQuestion() {
+            if (currentQuestion < totalQuestions) {
+                document.getElementById(`q${currentQuestion}`).classList.remove('active');
+                currentQuestion++;
+                document.getElementById(`q${currentQuestion}`).classList.add('active');
+                
+                document.getElementById('prevBtn').style.display = 'block';
+                document.getElementById('nextBtn').disabled = true;
+                
+                updateProgress();
+            } else {
+                // Show results
+                showResults();
+            }
+        }
+
+        function previousQuestion() {
+            if (currentQuestion > 1) {
+                document.getElementById(`q${currentQuestion}`).classList.remove('active');
+                currentQuestion--;
+                document.getElementById(`q${currentQuestion}`).classList.add('active');
+                
+                if (currentQuestion === 1) {
+                    document.getElementById('prevBtn').style.display = 'none';
+                }
+                
+                // Check if this question was already answered
+                const questionId = `q${currentQuestion}`;
+                if (answers[questionId]) {
+                    document.getElementById('nextBtn').disabled = false;
+                }
+                
+                updateProgress();
+            }
+        }
+
+        function showResults() {
+            // Hide questions and navigation
+            document.querySelectorAll('.question-section').forEach(section => {
+                section.style.display = 'none';
+            });
+            document.getElementById('navigation').style.display = 'none';
+            
+            // Generate diagnosis
+            const diagnosis = generateDiagnosis();
+            document.getElementById('diagnosis').innerHTML = diagnosis;
+            
+            // Generate journey
+            const journey = generateJourney();
+            document.getElementById('journey').innerHTML = journey;
+            
+            // Show results
+            document.querySelector('.results').style.display = 'block';
+        }
+
+        function generateDiagnosis() {
+            let diagnosis = '<h3>Your Team Diagnosis</h3>';
+            
+            const situation = answers.q1;
+            const painPoint = answers.q2;
+            const timeline = answers.q3;
+            const experience = answers.q4;
+            
+            diagnosis += '<p>';
+            
+            // Situation-specific opening
+            if (situation === 'new') {
+                diagnosis += '<strong>New Team Foundation:</strong> You have a unique opportunity to build strong foundations from day one. ';
+            } else if (situation === 'struggling') {
+                diagnosis += '<strong>Performance Recovery:</strong> Your team needs both diagnostic insight and targeted interventions to break current negative patterns. ';
+            } else if (situation === 'good') {
+                diagnosis += '<strong>Excellence Journey:</strong> Your team has solid foundations, which means we can focus on optimization and advanced performance strategies. ';
+            } else {
+                diagnosis += '<strong>Change Navigation:</strong> Major transitions require careful management of both tasks and emotions. ';
+            }
+            
+            // Pain point analysis
+            const painPointInsights = {
+                'communication': 'The communication challenges you\'re experiencing likely stem from different work preferences and pacing styles among team members.',
+                'conflict': 'The conflicts and trust issues often arise from misaligned values or unspoken expectations between team members.',
+                'direction': 'Without clear purpose and roles, even talented individuals struggle to perform as a cohesive team.',
+                'innovation': 'When teams get stuck in routine thinking, they need tools to shift from obstacle-focus to opportunity-focus.'
+            };
+            
+            diagnosis += painPointInsights[painPoint];
+            
+            // Timeline consideration
+            if (timeline === 'urgent') {
+                diagnosis += ' Given your urgent timeline, we\'ll focus on high-impact assessments that deliver immediate insights.';
+            } else if (timeline === 'moderate') {
+                diagnosis += ' Your 2-3 month timeline allows for meaningful assessment and integration of insights.';
+            } else {
+                diagnosis += ' Your investment in a longer journey will enable deep, sustainable transformation.';
+            }
+            
+            // Experience consideration
+            if (experience === 'never') {
+                diagnosis += ' Since this is your first assessment experience, we\'ll ensure extra support and clear explanations throughout.';
+            } else if (experience === 'disappointing') {
+                diagnosis += ' Unlike previous assessments, TMS tools are designed for action, not just insight.';
+            }
+            
+            diagnosis += '</p>';
+            
+            return diagnosis;
+        }
+
+        function generateJourney() {
+            const situation = answers.q1;
+            const painPoint = answers.q2;
+            const timeline = answers.q3;
+            const experience = answers.q4;
+            
+            let journey = '<h3>Your Customized TMS Journey</h3>';
+            
+            // Determine which tools and sequence
+            const tools = determineToolSequence(situation, painPoint, timeline);
+            
+            journey += '<div class="journey-intro">';
+            if (timeline === 'urgent') {
+                journey += '🚀 <strong>Rapid Impact Program:</strong> Focused assessments with immediate actionable insights';
+            } else if (timeline === 'moderate') {
+                journey += '📈 <strong>Accelerated Transformation:</strong> Comprehensive assessment with quick wins built in';
+            } else {
+                journey += '🎯 <strong>Complete Transformation Journey:</strong> Full suite of assessments for lasting change';
+            }
+            journey += '</div>';
+            
+            // Generate tool cards
+            tools.forEach((tool, index) => {
+                journey += generateToolCard(tool, index + 1, situation, painPoint);
+            });
+            
+            // Add ongoing support note
+            journey += `
+                <div class="tool-card" style="background: #f8f9fa;">
+                    <div class="tool-header">
+                        <div class="tool-name">🔄 Continuous Support</div>
+                        <div class="tool-timing">Ongoing</div>
+                    </div>
+                    <div class="tool-description">
+                        Throughout your journey, you'll receive:
+                    </div>
+                    <div class="insight-item">Weekly micro-learning nuggets based on your team's results</div>
+                    <div class="insight-item">Monthly Team Signals pulse checks to track progress</div>
+                    <div class="insight-item">Personalized insights and tips for common situations</div>
+                    <div class="insight-item">Access to TMS best practices library</div>
+                </div>
+            `;
+            
+            return journey;
+        }
+
+        function determineToolSequence(situation, painPoint, timeline) {
+            let sequence = [];
+            
+            // Always start with Team Signals for baseline
+            sequence.push({
+                name: 'Team Signals',
+                timing: 'Week 1',
+                duration: '5 minutes per person'
+            });
+            
+            // Logic for tool selection based on inputs
+            if (timeline === 'urgent') {
+                // Urgent: 1-2 more tools max
+                if (painPoint === 'communication') {
+                    sequence.push({
+                        name: 'TMP',
+                        timing: 'Week 2',
+                        duration: '30 minutes per person'
+                    });
+                } else if (painPoint === 'conflict') {
+                    sequence.push({
+                        name: 'WoWV',
+                        timing: 'Week 2',
+                        duration: '15 minutes per person'
+                    });
+                } else if (painPoint === 'innovation') {
+                    sequence.push({
+                        name: 'QO2',
+                        timing: 'Week 2',
+                        duration: '20 minutes per person'
+                    });
+                } else {
+                    sequence.push({
+                        name: 'TMP',
+                        timing: 'Week 2',
+                        duration: '30 minutes per person'
+                    });
+                }
+            } else if (timeline === 'moderate') {
+                // Moderate: 3-4 tools
+                if (situation === 'new' || painPoint === 'communication' || painPoint === 'direction') {
+                    sequence.push({
+                        name: 'TMP',
+                        timing: 'Week 2-3',
+                        duration: '30 minutes per person'
+                    });
+                    sequence.push({
+                        name: 'WoWV',
+                        timing: 'Week 4-5',
+                        duration: '15 minutes per person'
+                    });
+                } else {
+                    sequence.push({
+                        name: 'WoWV',
+                        timing: 'Week 2-3',
+                        duration: '15 minutes per person'
+                    });
+                    sequence.push({
+                        name: 'TMP',
+                        timing: 'Week 4-5',
+                        duration: '30 minutes per person'
+                    });
+                }
+                
+                if (situation === 'change' || painPoint === 'innovation') {
+                    sequence.push({
+                        name: 'QO2',
+                        timing: 'Week 6-7',
+                        duration: '20 minutes per person'
+                    });
+                }
+            } else {
+                // Planned: Full suite
+                sequence.push({
+                    name: 'TMP',
+                    timing: 'Week 2-3',
+                    duration: '30 minutes per person'
+                });
+                sequence.push({
+                    name: 'WoWV',
+                    timing: 'Week 4-5',
+                    duration: '15 minutes per person'
+                });
+                sequence.push({
+                    name: 'QO2',
+                    timing: 'Week 8-9',
+                    duration: '20 minutes per person'
+                });
+                sequence.push({
+                    name: 'LLP',
+                    timing: 'Week 12-13',
+                    duration: '40 minutes per rater'
+                });
+            }
+            
+            return sequence;
+        }
+
+        function generateToolCard(tool, orderNumber, situation, painPoint) {
+            const toolInfo = {
+                'Team Signals': {
+                    description: 'Quick pulse check across 8 dimensions of team effectiveness',
+                    purpose: 'Establishes baseline and identifies priority areas for improvement',
+                    insights: {
+                        'new': [
+                            'Identify early warning signs before they become issues',
+                            'Track team formation progress week by week',
+                            'Spot gaps in role clarity or purpose alignment'
+                        ],
+                        'struggling': [
+                            'Pinpoint exactly which of the 8 team dimensions need attention',
+                            'Create urgency with visual evidence of gaps',
+                            'Measure progress as improvements are made'
+                        ],
+                        'communication': [
+                            'Reveal if communication issues stem from unclear expectations',
+                            'Show whether team members feel heard and valued',
+                            'Identify information flow blockages'
+                        ],
+                        'conflict': [
+                            'Assess psychological safety levels',
+                            'Identify if conflicts stem from role confusion',
+                            'Measure trust and collaboration scores'
+                        ]
+                    }
+                },
+                'TMP': {
+                    description: 'Comprehensive work preferences assessment measuring how people prefer to relate, gather information, make decisions, and organize work',
+                    purpose: 'Reveals why team members work differently and how to optimize collaboration',
+                    insights: {
+                        'new': [
+                            'Assign roles that match natural preferences',
+                            'Prevent conflicts by understanding differences upfront',
+                            'Create balanced sub-teams for projects'
+                        ],
+                        'struggling': [
+                            'Discover preference clashes causing friction',
+                            'Reallocate work to match strengths',
+                            'Improve meeting effectiveness with pacing insights'
+                        ],
+                        'communication': [
+                            'Learn each person\'s communication style',
+                            'Understand why some people need details while others want big picture',
+                            'Adapt your management approach to each individual'
+                        ],
+                        'direction': [
+                            'Match roles to preferences for clarity',
+                            'Identify who naturally sees the big picture vs details',
+                            'Balance creative and practical perspectives'
+                        ]
+                    }
+                },
+                'WoWV': {
+                    description: 'Values assessment that uncovers what truly matters to each team member at work',
+                    purpose: 'Aligns team on shared values and creates foundation for trust',
+                    insights: {
+                        'new': [
+                            'Establish team charter based on shared values',
+                            'Create ground rules everyone believes in',
+                            'Prevent future conflicts through early alignment'
+                        ],
+                        'struggling': [
+                            'Uncover hidden value conflicts causing tension',
+                            'Find common ground despite differences',
+                            'Rebuild trust through shared understanding'
+                        ],
+                        'conflict': [
+                            'Reveal root causes of persistent conflicts',
+                            'Identify non-negotiable values for each person',
+                            'Create value-based conflict resolution approach'
+                        ],
+                        'change': [
+                            'Understand what people fear losing in change',
+                            'Identify values to preserve during transition',
+                            'Build change strategy honoring core values'
+                        ]
+                    }
+                },
+                'QO2': {
+                    description: 'Measures mindset orientation - whether people see opportunities or obstacles',
+                    purpose: 'Shifts team thinking toward possibilities and solutions',
+                    insights: {
+                        'new': [
+                            'Set positive team culture from the start',
+                            'Identify natural optimists and realists',
+                            'Balance perspectives for better decisions'
+                        ],
+                        'struggling': [
+                            'Break out of negative thinking patterns',
+                            'Identify who\'s stuck in obstacle thinking',
+                            'Create action plans focused on possibilities'
+                        ],
+                        'innovation': [
+                            'Unlock creative thinking in obstacle-focused members',
+                            'Build multiple solution pathways',
+                            'Increase comfort with experimentation'
+                        ],
+                        'change': [
+                            'Identify change champions vs resisters',
+                            'Understand fears blocking progress',
+                            'Build resilience for ongoing transitions'
+                        ]
+                    }
+                },
+                'LLP': {
+                    description: '360-degree leadership assessment measuring 13 critical linking skills',
+                    purpose: 'Develops leaders who can connect people, tasks, and purpose',
+                    insights: {
+                        'new': [
+                            'Establish leadership credibility early',
+                            'Identify development priorities',
+                            'Model behaviors you want to see'
+                        ],
+                        'struggling': [
+                            'Reveal leadership gaps affecting performance',
+                            'Get honest feedback on blind spots',
+                            'Focus development on highest-impact skills'
+                        ],
+                        'direction': [
+                            'Assess vision-setting capabilities',
+                            'Identify gaps in communication skills',
+                            'Improve goal-setting and delegation'
+                        ],
+                        'change': [
+                            'Build change leadership capabilities',
+                            'Develop influencing skills',
+                            'Strengthen resilience and adaptability'
+                        ]
+                    }
+                }
+            };
+            
+            const info = toolInfo[tool.name];
+            let relevantInsights = info.insights[situation] || info.insights[painPoint] || info.insights['new'];
+            
+            return `
+                <div class="tool-card">
+                    <div class="tool-header">
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <div class="order-number">${orderNumber}</div>
+                            <div class="tool-name">${tool.name}</div>
+                        </div>
+                        <div class="tool-timing">${tool.timing}</div>
+                    </div>
+                    <div class="tool-badge">${tool.duration}</div>
+                    <div class="tool-description">
+                        ${info.description}
+                    </div>
+                    <div class="tool-purpose">
+                        <strong>Why this tool now:</strong> ${info.purpose}
+                    </div>
+                    <div class="tool-insights">
+                        <div class="insight-title">What you'll discover:</div>
+                        ${relevantInsights.map(insight => `<div class="insight-item">${insight}</div>`).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function restart() {
+            // Reset everything
+            currentQuestion = 1;
+            Object.keys(answers).forEach(key => delete answers[key]);
+            
+            // Hide results
+            document.querySelector('.results').style.display = 'none';
+            
+            // Reset all selections
+            document.querySelectorAll('.option').forEach(opt => opt.classList.remove('selected'));
+            
+            // Show first question
+            document.querySelectorAll('.question-section').forEach(section => {
+                section.classList.remove('active');
+                section.style.display = '';
+            });
+            document.getElementById('q1').classList.add('active');
+            
+            // Reset navigation
+            document.getElementById('navigation').style.display = 'flex';
+            document.getElementById('prevBtn').style.display = 'none';
+            document.getElementById('nextBtn').disabled = true;
+            
+            // Reset progress
+            updateProgress();
+        }
+
+        // Initialize progress bar
+        updateProgress();
+    </script>
+</body>
+</html>

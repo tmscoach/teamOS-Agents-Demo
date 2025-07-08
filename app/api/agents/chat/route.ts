@@ -10,6 +10,7 @@ import {
   ContextManager,
   ConversationStore,
 } from '@/src/lib/agents';
+import { createOnboardingAgent } from '@/src/lib/agents/implementations/onboarding-agent';
 import { prisma } from '@/lib/db/prisma';
 
 // Request validation schema
@@ -41,12 +42,15 @@ const contextManager = new ContextManager();
 const conversationStore = new ConversationStore(prisma);
 const router = new AgentRouter({ contextManager });
 
-// TODO: Register actual agents here when implemented
-// For now, we'll add a mock agent registration function
+// Register all available agents
 function registerAgents() {
-  // This will be replaced with actual agent registrations
-  // router.registerAgent(new OnboardingAgent());
-  // router.registerAgent(new ProfileAnalysisAgent());
+  // Register the Onboarding Agent
+  const onboardingAgent = createOnboardingAgent();
+  router.registerAgent(onboardingAgent);
+  
+  // TODO: Register additional agents as they are implemented
+  // router.registerAgent(createAssessmentAgent());
+  // router.registerAgent(createProfileAnalysisAgent());
   // etc.
 }
 
@@ -127,11 +131,12 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Create new conversation
+      // Create new conversation (default to OnboardingAgent)
       const newConversationId = await conversationStore.createConversation(
         teamId,
         isManager ? dbUser.id : dbUser.team?.managerId || dbUser.id,
         {
+          initialAgent: 'OnboardingAgent',
           metadata: {
             ...metadata,
             initiatedBy: dbUser.id,
