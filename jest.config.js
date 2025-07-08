@@ -23,6 +23,12 @@ const customJestConfig = {
     '/node_modules/',
     '^.+\\.module\\.(css|sass|scss)$',
   ],
+  // Memory management
+  maxWorkers: 2,
+  workerIdleMemoryLimit: '512MB',
+  // Clear mocks between tests to prevent memory leaks
+  clearMocks: true,
+  restoreMocks: true,
 }
 
 // createJestConfig is exported this way to ensure that next/jest can load the Next.js config which is async

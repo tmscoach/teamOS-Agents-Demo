@@ -1,4 +1,4 @@
-import { PrismaClient } from '@/lib/generated/prisma';
+import { PrismaClient, Prisma } from '@/lib/generated/prisma';
 import { EmbeddingService } from '../ingestion/embeddings';
 import { SearchResult } from '../types';
 
@@ -29,12 +29,7 @@ export class KnowledgeBaseSearch {
     try {
       const queryEmbedding = await this.embeddingService.generateEmbedding(query);
       
-      let whereClause = '';
-      if (documentTypes.length > 0) {
-        const types = documentTypes.map(t => `'${t}'`).join(',');
-        whereClause = `WHERE d."documentType" IN (${types})`;
-      }
-      
+      // Use Prisma's safe query building to prevent SQL injection
       const results = await this.prisma.$queryRaw<any[]>`
         SELECT 
           dc.content,
@@ -45,7 +40,10 @@ export class KnowledgeBaseSearch {
           1 - (dc.embedding <=> ${queryEmbedding}::vector) as similarity
         FROM "DocumentChunk" dc
         JOIN "Document" d ON d.id = dc."documentId"
-        ${whereClause ? whereClause : ''}
+        ${documentTypes.length > 0 
+          ? Prisma.sql`WHERE d."documentType" = ANY(${documentTypes})` 
+          : Prisma.empty
+        }
         ORDER BY similarity DESC
         LIMIT ${limit}
       `;
