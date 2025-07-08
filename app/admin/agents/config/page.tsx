@@ -204,7 +204,7 @@ export default function AgentConfigPage() {
     }
   };
 
-  const compareVersions = async () => {
+  const performCompareVersions = async () => {
     if (!compareVersions.v1 || !compareVersions.v2 || !selectedAgent) return;
 
     try {
@@ -505,7 +505,7 @@ export default function AgentConfigPage() {
                   ))}
                 </SelectContent>
               </Select>
-              <Button onClick={compareVersions}>Compare</Button>
+              <Button onClick={performCompareVersions}>Compare</Button>
             </div>
 
             {comparison && (
