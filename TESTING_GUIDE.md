@@ -1,115 +1,105 @@
 # OnboardingAgent Testing Guide
 
-## 🚀 Quick Start - Working Test Pages
+## 🚀 Quick Start
 
-### 1. Mock Chat Interface
+### 1. Start the Development Server
+```bash
+npm run dev
+```
+
+### 2. Test Pages Available
+
+#### API Connection Test
+**URL:** http://localhost:3000/api-test
+- Tests database connection (should show 48 documents)
+- Tests OpenAI API key
+- Tests vector database operations
+
+#### TMS Knowledge Base Q&A
+**URL:** http://localhost:3000/tms-qa
+- Ask questions about TMS methodology
+- Uses RAG to search 12,484 document chunks
+- Provides answers with source citations
+
+#### OnboardingAgent Chat
 **URL:** http://localhost:3000/test-chat.html
-- Simple HTML chat that works immediately
-- No authentication required
-- Shows OnboardingAgent conversation flow
-- Displays extracted data in real-time
+- Interactive chat with the OnboardingAgent
+- Extracts team information from natural language
+- Shows real-time data extraction
 
-### 2. Mock Admin Dashboard  
+#### Admin Dashboard (Mock)
 **URL:** http://localhost:3000/admin-test
 - Shows how admins would monitor conversations
-- Displays sample conversation data
-- No authentication required
+- Displays mock conversation data
 
-### 3. Configuration Test
-**URL:** http://localhost:3000/test-config
-- Verifies your environment setup
-- Shows which services are configured
-- Helpful for debugging
+## 🔧 Configuration Requirements
 
-## 🔧 Full System Setup
+### Environment Variables (.env)
+```env
+# Database (Supabase)
+DATABASE_URL="postgresql://postgres.vkgtigmrazhmsvmlsglb:PcShKCqEPCMGsHfp@aws-0-ap-southeast-1.pooler.supabase.com:5432/postgres?sslmode=require"
 
-### Current Status
-Based on your `.env` file, you have:
-- ✅ Clerk authentication keys configured
-- ✅ OpenAI API key configured  
-- ✅ Supabase database URL configured
-- ⚠️ Database connection may need setup
+# OpenAI
+OPENAI_API_KEY="your-openai-api-key"
 
-### To Enable Full System
-
-1. **Initialize Database**
-   ```bash
-   # If connection times out, try direct connection URL
-   npm run db:generate
-   npm run db:push
-   ```
-
-2. **Test Authentication**
-   - Visit http://localhost:3000/sign-in
-   - Create an account or sign in
-   - System should redirect to dashboard
-
-3. **Test Real Agent**
-   Once signed in, the OnboardingAgent will:
-   - Start automatically for new users
-   - Use GPT-4 for responses (not mock)
-   - Query the knowledge base
-   - Save conversation to database
+# Clerk (for authentication - optional for testing)
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY="your-clerk-key"
+CLERK_SECRET_KEY="your-clerk-secret"
+```
 
 ## 📊 What's Implemented
 
-### ✅ Fully Built
-- OnboardingAgent with 8 conversation states
-- Information extraction from natural language
-- Knowledge base integration (47 documents)
-- Admin monitoring dashboard
+### OnboardingAgent Features
+- 8 conversation states for guided onboarding
+- Natural language information extraction
+- Knowledge base integration
 - Quality metrics and guardrails
-- Handoff to AssessmentAgent
+- Handoff to Assessment Agent
 
-### ⚠️ Requires Configuration
-- Clerk sign-in flow (keys are set but may need domain config)
-- Database persistence (Supabase connection)
-- Real AI responses (OpenAI integration)
+### Knowledge Base
+- 47 TMS documents loaded
+- 12,484 searchable chunks
+- Keyword-based search (vector similarity requires pgvector)
+- RAG system for context-aware answers
+
+## 🧪 Test Scenarios
+
+### OnboardingAgent Test Flow
+1. Visit http://localhost:3000/test-chat.html
+2. Try these inputs:
+   - "Hi, I'm Sarah Johnson"
+   - "I manage a team of 15 people"
+   - "Our main challenge is poor communication"
+   - Watch the extracted data panel update
+
+### TMS Q&A Test Questions
+1. Visit http://localhost:3000/tms-qa
+2. Try these questions:
+   - "What is an outer wheel creator innovator?"
+   - "How do you identify dysfunction in a team using TMS tools?"
+   - "Explain the Team Signals methodology"
+   - "What are the key components of the TMP assessment?"
 
 ## 🐛 Troubleshooting
 
-### Clerk Sign-In Page is Blank
-- Check browser console for errors
-- Verify keys match your Clerk dashboard
-- Try clearing browser cache
-- Ensure you're using the correct Clerk instance
+### Database Connection Issues
+- Ensure Supabase is accessible
+- Check if using correct pooler URL (port 5432, not 6543)
+- Verify SSL mode is enabled
 
-### Database Connection Fails
-- Supabase pooler may timeout
-- Try using direct connection string
-- Check Supabase dashboard for connection limits
+### OpenAI API Issues
+- Verify API key is valid
+- Check for rate limits
+- Ensure GPT-4 access is enabled
 
-### Mock Pages Work, Real Pages Don't
-- This is expected without full setup
-- Mock pages demonstrate the UI/UX
-- Real pages need all services configured
+### No Search Results
+- Database contains data but keyword search may miss some queries
+- Try broader search terms
+- Vector similarity search would improve results (requires pgvector)
 
-## 📝 Test Scenarios
+## 📝 Notes
 
-Use these in the chat interface:
-
-1. **Introduction**
-   - "Hi, I'm Sarah Johnson"
-   - Agent extracts: name
-
-2. **Team Context**  
-   - "I manage a team of 15 people"
-   - Agent extracts: team_size
-
-3. **Challenge**
-   - "Our main challenge is poor communication"
-   - Agent extracts: primary_challenge
-
-4. **Continue conversation to see:**
-   - State transitions
-   - Data extraction
-   - Progress tracking
-
-## 🎯 Next Steps
-
-1. Use mock pages to demo functionality
-2. Configure services for production
-3. Test with real users
-4. Monitor via admin dashboard
-
-The implementation is complete and ready for production once services are configured!
+- The system uses keyword search instead of vector similarity
+- Mock data is available for testing without dependencies
+- Authentication (Clerk) is optional for test pages
+- All test pages work without sign-in
