@@ -1,35 +1,29 @@
 #!/usr/bin/env node
 
-import { createOnboardingAgent } from '../src/lib/agents/implementations/knowledge-enabled-agent';
 import 'dotenv/config';
 
 
-async function testAgentWithKnowledgeBase() {
-  console.log('🤖 Testing Agent with Knowledge Base\n');
+async function testKnowledgeBase() {
+  console.log('🤖 Testing Knowledge Base Setup\n');
   
-  // Create an onboarding agent with KB access
-  const agent = createOnboardingAgent();
-  
-  console.log('Agent tools available:');
-  agent.tools.forEach(tool => {
-    console.log(`- ${tool.name}: ${tool.description}`);
-  });
-  
-  // Test queries (these will fail until embeddings are added)
+  // Test queries (these will be used once knowledge base is complete)
   const testQueries = [
     'What is TMP methodology?',
     'How do I assess team maturity?',
-    'What are the key components of QO2?'
+    'What are the key components of QO2?',
+    'What intervention strategies are recommended for low-performing teams?',
+    'How do I calculate team maturity scores?'
   ];
   
-  console.log('\n📝 Test queries ready for when KB is complete:');
+  console.log('📝 Test queries ready for when KB is complete:');
   testQueries.forEach(q => console.log(`- ${q}`));
   
-  console.log('\n✅ Agent framework is ready!');
-  console.log('Once ingestion completes, we need to:');
-  console.log('1. Add embeddings to chunks');
-  console.log('2. Test the search functionality');
-  console.log('3. Verify agent responses use KB context');
+  console.log('\n✅ Knowledge base tables are set up!');
+  console.log('\n📋 Next steps:');
+  console.log('1. Complete document ingestion');
+  console.log('2. Add embeddings to chunks');
+  console.log('3. Test vector similarity search');
+  console.log('4. Integrate with agent framework from PR #38');
 }
 
-testAgentWithKnowledgeBase().catch(console.error);
+testKnowledgeBase().catch(console.error);
