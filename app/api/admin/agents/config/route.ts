@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import { AgentConfigurationService } from '@/lib/services/agent-configuration';
+import { AgentConfigurationService } from '@/src/lib/services/agent-configuration';
 
 export async function GET(req: NextRequest) {
   try {

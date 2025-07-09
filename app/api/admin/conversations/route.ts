@@ -20,14 +20,15 @@ export async function GET(req: NextRequest) {
 
     // Parse and validate query parameters
     const searchParams = req.nextUrl.searchParams;
-    const filters = {
-      status: searchParams.get('status'),
-      agentName: searchParams.get('agentName'),
-      dateFrom: searchParams.get('dateFrom'),
-      dateTo: searchParams.get('dateTo'),
-      managerId: searchParams.get('managerId'),
-      teamId: searchParams.get('teamId'),
-    };
+    const filters: any = {};
+    
+    // Only add filters that are actually provided
+    if (searchParams.get('status')) filters.status = searchParams.get('status');
+    if (searchParams.get('agentName')) filters.agentName = searchParams.get('agentName');
+    if (searchParams.get('dateFrom')) filters.dateFrom = searchParams.get('dateFrom');
+    if (searchParams.get('dateTo')) filters.dateTo = searchParams.get('dateTo');
+    if (searchParams.get('managerId')) filters.managerId = searchParams.get('managerId');
+    if (searchParams.get('teamId')) filters.teamId = searchParams.get('teamId');
 
     const validation = validateRequest(filters, adminFilterSchema);
     if (!validation.success) {
@@ -65,7 +66,9 @@ export async function GET(req: NextRequest) {
     }
 
     // Fetch conversations with aggregated data
-    const conversations = await prisma.conversation.findMany({
+    let conversations;
+    try {
+      conversations = await prisma.conversation.findMany({
       where,
       include: {
         messages: {
@@ -79,7 +82,14 @@ export async function GET(req: NextRequest) {
         updatedAt: 'desc'
       },
       take: 100 // Limit results
-    });
+      });
+    } catch (dbError) {
+      console.error('Database error fetching conversations:', dbError);
+      // Return empty array if database is not available
+      return NextResponse.json({
+        conversations: []
+      });
+    }
 
     // Fetch teams and managers separately
     const teamIds = [...new Set(conversations.map(c => c.teamId))];
