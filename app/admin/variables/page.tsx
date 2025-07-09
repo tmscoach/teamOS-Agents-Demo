@@ -46,10 +46,10 @@ interface VariableExtraction {
 }
 
 interface ExtractionStats {
-  totalAttempts: number;
+  totalExtractions: number;
   successfulExtractions: number;
-  overallSuccessRate: number;
-  byField: Array<{
+  successRate: number;
+  fields: Array<{
     fieldName: string;
     attempts: number;
     successful: number;
@@ -369,7 +369,7 @@ export default function VariablesPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {stats?.byField.map((field) => (
+                  {stats?.fields?.map((field) => (
                     <TableRow key={field.fieldName}>
                       <TableCell className="font-medium">{field.fieldName}</TableCell>
                       <TableCell>{field.attempts}</TableCell>
@@ -471,7 +471,7 @@ export default function VariablesPage() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="">All Fields</SelectItem>
-                    {stats?.byField.map((field) => (
+                    {stats?.fields?.map((field) => (
                       <SelectItem key={field.fieldName} value={field.fieldName}>
                         {field.fieldName}
                       </SelectItem>

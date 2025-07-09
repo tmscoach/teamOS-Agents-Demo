@@ -1,7 +1,6 @@
-import { PrismaClient, GuardrailCheck } from '@/lib/generated/prisma';
+import { GuardrailCheck } from '@/lib/generated/prisma';
 import { GuardrailResult } from '@/lib/agents/types';
-
-const prisma = new PrismaClient();
+import prisma from '@/lib/db';
 
 export interface GuardrailCheckInput {
   conversationId: string;

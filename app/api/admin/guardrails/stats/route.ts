@@ -29,8 +29,29 @@ export async function GET(req: NextRequest) {
     const stats = await GuardrailTrackingService.getGuardrailStats(filters);
     
     return NextResponse.json(stats);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching guardrail stats:', error);
+    
+    // Handle missing database table error
+    if (error.code === 'P2021' && error.message?.includes('table `public.GuardrailCheck` does not exist')) {
+      // Return empty data structure for recent violations request
+      if (req.nextUrl.searchParams.get('recent') === 'true') {
+        return NextResponse.json([]);
+      }
+      
+      // Return empty stats structure
+      return NextResponse.json({
+        totalChecks: 0,
+        failedChecks: 0,
+        passRate: 100,
+        severityBreakdown: {},
+        violationsByType: [],
+        violationsByAgent: [],
+        warning: 'Guardrail check table not initialized. Please run database migrations.',
+        instructions: 'Run: npx prisma migrate dev'
+      });
+    }
+    
     return NextResponse.json(
       { error: 'Failed to fetch guardrail statistics' },
       { status: 500 }

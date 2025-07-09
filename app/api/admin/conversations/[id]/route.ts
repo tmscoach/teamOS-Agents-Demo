@@ -4,7 +4,7 @@ import { prisma } from '@/lib/db/prisma';
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Authenticate user
@@ -19,7 +19,7 @@ export async function GET(
     // TODO: Add proper admin role check
     // For now, we'll allow all authenticated users
 
-    const conversationId = params.id;
+    const { id: conversationId } = await params;
 
     // Fetch conversation with all related data
     const conversation = await prisma.conversation.findUnique({

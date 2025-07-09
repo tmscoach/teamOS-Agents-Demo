@@ -1,6 +1,5 @@
-import { PrismaClient, AgentConfiguration } from '@/lib/generated/prisma';
-
-const prisma = new PrismaClient();
+import { AgentConfiguration } from '@/lib/generated/prisma';
+import prisma from '@/lib/db';
 
 export interface AgentConfigInput {
   agentName: string;

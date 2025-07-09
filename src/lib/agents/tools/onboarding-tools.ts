@@ -104,7 +104,10 @@ export function createOnboardingTools(): AgentTool[] {
           },
           requiredFields: {
             type: 'array',
-            description: 'List of required fields'
+            description: 'List of required fields',
+            items: {
+              type: 'string'
+            }
           }
         },
         required: ['capturedFields', 'requiredFields']
@@ -144,7 +147,10 @@ export function createOnboardingTools(): AgentTool[] {
         properties: {
           messageHistory: {
             type: 'array',
-            description: 'Conversation message history'
+            description: 'Conversation message history',
+            items: {
+              type: 'object'
+            }
           },
           capturedFields: {
             type: 'object',

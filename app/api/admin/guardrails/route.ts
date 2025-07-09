@@ -34,8 +34,19 @@ export async function GET(req: NextRequest) {
     const results = await GuardrailTrackingService.searchGuardrailChecks(params);
     
     return NextResponse.json(results);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error fetching guardrails:', error);
+    
+    // Handle missing database table error
+    if (error.code === 'P2021' && error.message?.includes('table `public.GuardrailCheck` does not exist')) {
+      return NextResponse.json({
+        results: [],
+        total: 0,
+        warning: 'Guardrail check table not initialized. Please run database migrations.',
+        instructions: 'Run: npx prisma migrate dev'
+      });
+    }
+    
     return NextResponse.json(
       { error: 'Failed to fetch guardrails' },
       { status: 500 }
