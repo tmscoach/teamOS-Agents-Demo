@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
       case 'problematic-fields': {
         const threshold = searchParams.get('threshold') ? parseInt(searchParams.get('threshold')!) : 50;
         const problematicFields = await VariableExtractionService.getProblematicFields(threshold);
-        return NextResponse.json(problematicFields);
+        return NextResponse.json(problematicFields || []);
       }
 
       case 'trends': {
@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
           days: searchParams.get('days') ? parseInt(searchParams.get('days')!) : 7,
         };
         const trends = await VariableExtractionService.getExtractionTrends(params);
-        return NextResponse.json(trends);
+        return NextResponse.json(trends || []);
       }
 
       case 'confidence-distribution': {
@@ -67,6 +67,21 @@ export async function GET(req: NextRequest) {
   } catch (error: any) {
     console.error('Error fetching variable extraction stats:', error);
     
+    // Handle database connection error
+    if (error.code === 'P1001') {
+      return NextResponse.json({
+        totalExtractions: 0,
+        successfulExtractions: 0,
+        successRate: 0,
+        fieldsBySuccessRate: [],
+        fields: [],
+        trends: [],
+        byAgent: [],
+        warning: 'Database connection error. Please check your database connection.',
+        error: error.message
+      });
+    }
+    
     // Handle missing database table error
     if (error.code === 'P2021' && error.message?.includes('table `public.VariableExtraction` does not exist')) {
       return NextResponse.json({
@@ -76,6 +91,7 @@ export async function GET(req: NextRequest) {
         fieldsBySuccessRate: [],
         fields: [],
         trends: [],
+        byAgent: [],
         warning: 'Variable extraction table not initialized. Please run database migrations.',
         instructions: 'Run: npx prisma migrate dev'
       });

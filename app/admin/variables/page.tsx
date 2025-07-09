@@ -183,22 +183,22 @@ export default function VariablesPage() {
               <Database className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.totalAttempts.toLocaleString()}</div>
+              <div className="text-2xl font-bold">{stats.totalExtractions.toLocaleString()}</div>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Success Rate</CardTitle>
-              {stats.overallSuccessRate >= 80 ? (
+              {stats.successRate >= 80 ? (
                 <TrendingUp className="h-4 w-4 text-green-600" />
               ) : (
                 <TrendingDown className="h-4 w-4 text-red-600" />
               )}
             </CardHeader>
             <CardContent>
-              <div className={`text-2xl font-bold ${getSuccessRateColor(stats.overallSuccessRate)}`}>
-                {stats.overallSuccessRate.toFixed(1)}%
+              <div className={`text-2xl font-bold ${getSuccessRateColor(stats.successRate)}`}>
+                {stats.successRate.toFixed(1)}%
               </div>
               <p className="text-xs text-muted-foreground">
                 {stats.successfulExtractions} successful
@@ -212,7 +212,7 @@ export default function VariablesPage() {
               <BarChart3 className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.byField.length}</div>
+              <div className="text-2xl font-bold">{stats.fields.length}</div>
               <p className="text-xs text-muted-foreground">
                 Unique fields
               </p>
@@ -253,7 +253,7 @@ export default function VariablesPage() {
               </CardHeader>
               <CardContent className="h-[300px]">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={stats?.byField.slice(0, 10)}>
+                  <BarChart data={stats?.fields?.slice(0, 10) || []}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="fieldName" angle={-45} textAnchor="end" height={80} />
                     <YAxis />
@@ -275,7 +275,7 @@ export default function VariablesPage() {
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
-                      data={stats?.byAgent}
+                      data={stats?.byAgent || []}
                       cx="50%"
                       cy="50%"
                       labelLine={false}
@@ -284,7 +284,7 @@ export default function VariablesPage() {
                       fill="#8884d8"
                       dataKey="attempts"
                     >
-                      {stats?.byAgent.map((entry, index) => (
+                      {stats?.byAgent?.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                       ))}
                     </Pie>
