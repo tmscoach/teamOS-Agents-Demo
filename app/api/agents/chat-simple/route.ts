@@ -6,7 +6,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { currentUser } from '@clerk/nextjs/server';
 import { AgentRouter, ContextManager, ConversationStore, AgentContext, Message } from '@/src/lib/agents';
-import { createOnboardingAgent } from '@/src/lib/agents/implementations/onboarding-agent';
+import { 
+  createOnboardingAgent,
+  createOrchestratorAgent,
+  createDiscoveryAgent,
+  createAssessmentAgent,
+  createAlignmentAgent,
+  createLearningAgent,
+  createNudgeAgent,
+  createProgressMonitor,
+  createRecognitionAgent
+} from '@/src/lib/agents/implementations';
 import prisma from '@/lib/db';
 
 // Custom context manager that integrates with persistence
@@ -61,9 +71,16 @@ const conversationStore = new ConversationStore(prisma);
 const contextManager = new PersistentContextManager(conversationStore);
 const router = new AgentRouter({ contextManager });
 
-// Register agents
-const onboardingAgent = createOnboardingAgent();
-router.registerAgent(onboardingAgent);
+// Register all agents
+router.registerAgent(createOrchestratorAgent());
+router.registerAgent(createOnboardingAgent());
+router.registerAgent(createDiscoveryAgent());
+router.registerAgent(createAssessmentAgent());
+router.registerAgent(createAlignmentAgent());
+router.registerAgent(createLearningAgent());
+router.registerAgent(createNudgeAgent());
+router.registerAgent(createProgressMonitor());
+router.registerAgent(createRecognitionAgent());
 
 export async function POST(req: NextRequest) {
   try {

@@ -12,7 +12,17 @@ import {
   AgentContext,
   Message,
 } from '@/src/lib/agents';
-import { createOnboardingAgent } from '@/src/lib/agents/implementations/onboarding-agent';
+import { 
+  createOnboardingAgent,
+  createOrchestratorAgent,
+  createDiscoveryAgent,
+  createAssessmentAgent,
+  createAlignmentAgent,
+  createLearningAgent,
+  createNudgeAgent,
+  createProgressMonitor,
+  createRecognitionAgent
+} from '@/src/lib/agents/implementations';
 import { prisma } from '@/lib/db/prisma';
 
 // Request validation schema
@@ -92,14 +102,16 @@ const router = new AgentRouter({ contextManager });
 
 // Register all available agents
 function registerAgents() {
-  // Register the Onboarding Agent
-  const onboardingAgent = createOnboardingAgent();
-  router.registerAgent(onboardingAgent);
-  
-  // TODO: Register additional agents as they are implemented
-  // router.registerAgent(createAssessmentAgent());
-  // router.registerAgent(createProfileAnalysisAgent());
-  // etc.
+  // Register all agents
+  router.registerAgent(createOrchestratorAgent());
+  router.registerAgent(createOnboardingAgent());
+  router.registerAgent(createDiscoveryAgent());
+  router.registerAgent(createAssessmentAgent());
+  router.registerAgent(createAlignmentAgent());
+  router.registerAgent(createLearningAgent());
+  router.registerAgent(createNudgeAgent());
+  router.registerAgent(createProgressMonitor());
+  router.registerAgent(createRecognitionAgent());
 }
 
 // Initialize agents on startup
