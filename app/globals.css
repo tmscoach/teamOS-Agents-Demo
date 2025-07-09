@@ -24,6 +24,35 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 222.2 84% 4.9%;
     --radius: 0.5rem;
+    
+    /* teamOS Brand Colors */
+    --teams-primary: #18181B;
+    --teams-bg: #FFFFFF;
+    --teams-text-primary: #1A1A1A;
+    --teams-text-secondary: #6B7280;
+    --teams-border: #E5E7EB;
+    
+    /* teamOS Accent Colors */
+    --teams-green: #84CC16;
+    --teams-orange: #FB923C;
+    --teams-pink: #EC4899;
+    --teams-purple: #8B5CF6;
+    --teams-blue: #60A5FA;
+    --teams-yellow: #FCD34D;
+    
+    /* teamOS UI Colors */
+    --teams-button-secondary: #F3F4F6;
+    --teams-hover-bg: #F3F4F6;
+    --teams-sidebar-bg: #F9FAFB;
+    
+    /* teamOS Shadows */
+    --teams-shadow-card: 0 1px 3px rgba(0, 0, 0, 0.1);
+    
+    /* teamOS Radius */
+    --teams-radius-sm: 6px;
+    --teams-radius-md: 12px;
+    --teams-radius-lg: 16px;
+    --teams-radius-full: 9999px;
   }
 
   .dark {

@@ -18,10 +18,10 @@ export default async function AdminLayout({
   // In production, check if user has admin role in database
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-teams-bg">
       <AdminSidebar />
-      <main className="flex-1 overflow-y-auto">
-        <div className="p-8">
+      <main className="flex-1 overflow-y-auto bg-teams-bg">
+        <div className="p-teams-xl">
           {children}
         </div>
       </main>

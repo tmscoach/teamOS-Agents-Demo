@@ -3,18 +3,11 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
-import { Badge } from "@/components/ui/badge";
+import { AdminCard, AdminCardContent } from "@/components/admin";
+import { MetricCard } from "@/components/admin/metric-card";
+import { StatusBadge } from "@/components/admin/status-badge";
 import { Input } from "@/components/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Search, MessageSquare, Clock, TrendingUp } from "lucide-react";
+import { Search, MessageSquare, Clock, TrendingUp, Users, User } from "lucide-react";
 import { ConversationState } from "@/src/lib/agents/implementations/onboarding-agent";
 
 interface ConversationListItem {
@@ -82,50 +75,62 @@ export default function ConversationsPage() {
     return matchesSearch && matchesStatus;
   });
 
-  const getStatusBadge = (status: string) => {
-    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-      active: "default",
-      completed: "secondary",
-      abandoned: "destructive"
+  const getStatusDisplay = (status: string) => {
+    const statusMap = {
+      active: { label: 'Active', type: 'success' as const },
+      completed: { label: 'Completed', type: 'info' as const },
+      abandoned: { label: 'Abandoned', type: 'error' as const }
     };
-    return <Badge variant={variants[status] || "outline"}>{status}</Badge>;
+    const config = statusMap[status as keyof typeof statusMap] || { label: status, type: 'neutral' as const };
+    return <StatusBadge status={config.type}>{config.label}</StatusBadge>;
   };
 
-  const getConfidenceBadge = (confidence: string) => {
-    const colors: Record<string, string> = {
-      high: "bg-green-100 text-green-800",
-      medium: "bg-yellow-100 text-yellow-800",
-      low: "bg-red-100 text-red-800"
+  const getConfidenceDisplay = (confidence: string) => {
+    const confidenceMap = {
+      high: { label: 'High', type: 'success' as const },
+      medium: { label: 'Medium', type: 'warning' as const },
+      low: { label: 'Low', type: 'error' as const }
     };
-    return (
-      <span className={`px-2 py-1 rounded-full text-xs font-medium ${colors[confidence]}`}>
-        {confidence}
-      </span>
-    );
+    const config = confidenceMap[confidence as keyof typeof confidenceMap] || { label: confidence, type: 'neutral' as const };
+    return <StatusBadge status={config.type} size="sm">{config.label}</StatusBadge>;
   };
 
   if (loading) {
-    return <div>Loading conversations...</div>;
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teams-primary"></div>
+      </div>
+    );
   }
 
+  const activeCount = conversations.filter(c => c.status === 'active').length;
+  const avgCompletion = Math.round(
+    conversations.reduce((acc, c) => acc + c.completionPercentage, 0) / 
+    conversations.length || 0
+  );
+  const highConfidenceCount = conversations.filter(c => c.managerConfidence === 'high').length;
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-teams-xl">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">Onboarding Conversations</h1>
-        <div className="flex gap-4">
+        <div>
+          <h1 className="text-4xl font-bold text-teams-text-primary">Onboarding Conversations</h1>
+          <p className="text-teams-text-secondary mt-2">Monitor and manage active onboarding sessions</p>
+        </div>
+        <div className="flex gap-teams-md">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-teams-text-secondary h-4 w-4" />
             <Input
               placeholder="Search managers or teams..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 w-64"
+              className="pl-10 w-64 border-teams-ui-border focus:border-teams-primary"
             />
           </div>
           <select
             value={filterStatus}
             onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setFilterStatus(e.target.value)}
-            className="px-4 py-2 border rounded-md"
+            className="px-teams-md py-2 border border-teams-ui-border rounded-teams-sm bg-teams-bg text-teams-text-primary focus:border-teams-primary focus:outline-none focus:ring-2 focus:ring-teams-primary/20"
           >
             <option value="all">All Status</option>
             <option value="active">Active</option>
@@ -135,112 +140,120 @@ export default function ConversationsPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Conversations</CardTitle>
-            <MessageSquare className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{conversations.length}</div>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-teams-lg">
+        <MetricCard
+          title="Total Conversations"
+          value={conversations.length}
+          icon={MessageSquare}
+          color="blue"
+        />
         
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Now</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {conversations.filter(c => c.status === 'active').length}
-            </div>
-          </CardContent>
-        </Card>
+        <MetricCard
+          title="Active Now"
+          value={activeCount}
+          icon={Clock}
+          color="green"
+          subtitle={`${Math.round((activeCount / conversations.length) * 100)}% of total`}
+        />
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Avg Completion</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {Math.round(
-                conversations.reduce((acc, c) => acc + c.completionPercentage, 0) / 
-                conversations.length || 0
-              )}%
-            </div>
-          </CardContent>
-        </Card>
+        <MetricCard
+          title="Avg Completion"
+          value={`${avgCompletion}%`}
+          icon={TrendingUp}
+          color="purple"
+        />
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">High Confidence</CardTitle>
-            <TrendingUp className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              {conversations.filter(c => c.managerConfidence === 'high').length}
-            </div>
-          </CardContent>
-        </Card>
+        <MetricCard
+          title="High Confidence"
+          value={highConfidenceCount}
+          icon={Users}
+          color="orange"
+          subtitle="Managers engaged"
+        />
       </div>
 
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Manager</TableHead>
-                <TableHead>Team</TableHead>
-                <TableHead>State</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Progress</TableHead>
-                <TableHead>Confidence</TableHead>
-                <TableHead>Messages</TableHead>
-                <TableHead>Last Activity</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredConversations.map((conversation) => (
-                <TableRow key={conversation.id}>
-                  <TableCell>
+      <AdminCard className="overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-teams-ui-sidebar-bg border-b border-teams-ui-border">
+              <tr>
+                <th className="px-teams-md py-teams-sm text-left text-sm font-semibold text-teams-text-primary">Manager</th>
+                <th className="px-teams-md py-teams-sm text-left text-sm font-semibold text-teams-text-primary">Team</th>
+                <th className="px-teams-md py-teams-sm text-left text-sm font-semibold text-teams-text-primary">State</th>
+                <th className="px-teams-md py-teams-sm text-left text-sm font-semibold text-teams-text-primary">Status</th>
+                <th className="px-teams-md py-teams-sm text-left text-sm font-semibold text-teams-text-primary">Progress</th>
+                <th className="px-teams-md py-teams-sm text-left text-sm font-semibold text-teams-text-primary">Confidence</th>
+                <th className="px-teams-md py-teams-sm text-left text-sm font-semibold text-teams-text-primary">Messages</th>
+                <th className="px-teams-md py-teams-sm text-left text-sm font-semibold text-teams-text-primary">Last Activity</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredConversations.map((conversation, index) => (
+                <tr key={conversation.id} className={`border-b border-teams-ui-border hover:bg-teams-ui-hover-bg transition-colors ${
+                  index % 2 === 0 ? 'bg-teams-bg' : 'bg-teams-ui-sidebar-bg/30'
+                }`}>
+                  <td className="px-teams-md py-teams-md">
                     <Link
                       href={`/admin/conversations/${conversation.id}`}
-                      className="font-medium hover:underline"
+                      className="flex items-center gap-teams-sm group"
                     >
-                      {conversation.managerName}
+                      <div className="w-8 h-8 rounded-full bg-teams-accent-blue/10 flex items-center justify-center">
+                        <User className="h-4 w-4 text-teams-accent-blue" />
+                      </div>
+                      <span className="font-medium text-teams-text-primary group-hover:text-teams-primary transition-colors">
+                        {conversation.managerName}
+                      </span>
                     </Link>
-                  </TableCell>
-                  <TableCell>{conversation.teamName}</TableCell>
-                  <TableCell className="text-sm text-gray-600">
+                  </td>
+                  <td className="px-teams-md py-teams-md text-teams-text-secondary">
+                    {conversation.teamName}
+                  </td>
+                  <td className="px-teams-md py-teams-md text-sm text-teams-text-secondary capitalize">
                     {conversation.state.replace(/_/g, ' ')}
-                  </TableCell>
-                  <TableCell>{getStatusBadge(conversation.status)}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <div className="w-24 bg-gray-200 rounded-full h-2">
+                  </td>
+                  <td className="px-teams-md py-teams-md">
+                    {getStatusDisplay(conversation.status)}
+                  </td>
+                  <td className="px-teams-md py-teams-md">
+                    <div className="flex items-center gap-teams-sm">
+                      <div className="w-24 bg-teams-ui-hover-bg rounded-full h-2 overflow-hidden">
                         <div
-                          className="bg-blue-600 h-2 rounded-full"
-                          style={{ width: `${conversation.completionPercentage}%` }}
+                          className="h-2 rounded-full transition-all duration-300"
+                          style={{ 
+                            width: `${conversation.completionPercentage}%`,
+                            backgroundColor: conversation.completionPercentage > 75 ? '#84CC16' : 
+                                           conversation.completionPercentage > 50 ? '#60A5FA' : '#FB923C'
+                          }}
                         />
                       </div>
-                      <span className="text-sm text-gray-600">
+                      <span className="text-sm text-teams-text-secondary font-medium">
                         {conversation.completionPercentage}%
                       </span>
                     </div>
-                  </TableCell>
-                  <TableCell>{getConfidenceBadge(conversation.managerConfidence)}</TableCell>
-                  <TableCell>{conversation.messageCount}</TableCell>
-                  <TableCell className="text-sm text-gray-600">
+                  </td>
+                  <td className="px-teams-md py-teams-md">
+                    {getConfidenceDisplay(conversation.managerConfidence)}
+                  </td>
+                  <td className="px-teams-md py-teams-md">
+                    <span className="inline-flex items-center justify-center w-8 h-8 rounded-teams-sm bg-teams-ui-hover-bg text-sm font-medium text-teams-text-primary">
+                      {conversation.messageCount}
+                    </span>
+                  </td>
+                  <td className="px-teams-md py-teams-md text-sm text-teams-text-secondary">
                     {formatDistanceToNow(new Date(conversation.lastMessageTime), { addSuffix: true })}
-                  </TableCell>
-                </TableRow>
+                  </td>
+                </tr>
               ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+            </tbody>
+          </table>
+          {filteredConversations.length === 0 && (
+            <div className="text-center py-teams-2xl">
+              <MessageSquare className="h-12 w-12 text-teams-text-secondary/30 mx-auto mb-teams-md" />
+              <p className="text-teams-text-secondary">No conversations found</p>
+            </div>
+          )}
+        </div>
+      </AdminCard>
     </div>
   );
 }

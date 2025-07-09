@@ -27,9 +27,9 @@ export function AdminSidebar() {
   const pathname = usePathname();
 
   return (
-    <div className="flex h-full w-64 flex-col bg-gray-900">
-      <div className="flex h-16 items-center px-6">
-        <h2 className="text-xl font-semibold text-white">TMS Admin</h2>
+    <div className="flex h-full w-64 flex-col bg-teams-ui-sidebar-bg border-r border-teams-ui-border">
+      <div className="flex h-16 items-center px-6 border-b border-teams-ui-border">
+        <h2 className="text-xl font-semibold text-teams-text-primary">teamOS Admin</h2>
       </div>
       <nav className="flex-1 space-y-1 px-3 py-4">
         {navigation.map((item) => {
@@ -40,13 +40,16 @@ export function AdminSidebar() {
               key={item.name}
               href={item.href}
               className={cn(
-                "flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                "flex items-center gap-3 rounded-teams-sm px-3 py-2 text-sm font-medium transition-all duration-200 ease-in-out",
                 isActive
-                  ? "bg-gray-800 text-white"
-                  : "text-gray-300 hover:bg-gray-800 hover:text-white"
+                  ? "bg-teams-ui-hover-bg text-teams-primary"
+                  : "text-teams-text-secondary hover:bg-teams-ui-hover-bg hover:text-teams-text-primary"
               )}
             >
-              <item.icon className="h-5 w-5" />
+              <item.icon className={cn(
+                "h-5 w-5 transition-colors duration-200",
+                isActive ? "text-teams-primary" : "text-teams-text-secondary"
+              )} />
               {item.name}
             </Link>
           );
