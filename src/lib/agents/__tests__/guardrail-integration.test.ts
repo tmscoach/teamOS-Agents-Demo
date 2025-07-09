@@ -1,17 +1,52 @@
-import { BaseAgent } from '../base';
+import { Agent } from '../base';
 import { GuardrailTrackingService } from '@/src/lib/services/guardrail-tracking';
 import { VariableExtractionService } from '@/src/lib/services/variable-extraction';
-import { AgentContext, GuardrailResult, Guardrail } from '../types';
+import { AgentContext, GuardrailResult, Guardrail, AgentResponse, BaseAgent } from '../types';
 
 // Mock services
 jest.mock('@/src/lib/services/guardrail-tracking');
 jest.mock('@/src/lib/services/variable-extraction');
 
+// Create a concrete test agent implementation
+class TestAgent extends Agent {
+  async processMessage(message: string, context: AgentContext): Promise<AgentResponse> {
+    // Validate input first
+    const validation = await this.validateInput(message, context);
+    
+    // Track guardrail checks
+    for (const event of validation.events) {
+      await GuardrailTrackingService.trackGuardrailCheck({
+        conversationId: context.conversationId,
+        agentName: this.name,
+        guardrailType: event.guardrailName,
+        input: message,
+        result: event.result,
+      });
+    }
+    
+    if (!validation.passed) {
+      throw new Error(validation.failureReason);
+    }
+    
+    return {
+      message: 'Test response',
+      events: validation.events,
+      handoff: null,
+      toolCalls: [],
+    };
+  }
+  
+  // Override process method to match BaseAgent interface
+  async process(input: string, context: AgentContext): Promise<AgentResponse> {
+    return this.processMessage(input, context);
+  }
+}
+
 describe('Guardrail and Variable Extraction Integration', () => {
   const mockGuardrailService = GuardrailTrackingService as jest.Mocked<typeof GuardrailTrackingService>;
   const mockVariableService = VariableExtractionService as jest.Mocked<typeof VariableExtractionService>;
 
-  let testAgent: BaseAgent;
+  let testAgent: TestAgent;
   let testContext: AgentContext;
 
   beforeEach(() => {
@@ -50,7 +85,7 @@ describe('Guardrail and Variable Extraction Integration', () => {
     ];
 
     // Create test agent
-    testAgent = new BaseAgent({
+    testAgent = new TestAgent({
       name: 'TestAgent',
       description: 'Test agent for integration testing',
       handoffDescription: 'Test handoff',

@@ -45,11 +45,23 @@ export async function GET(
       );
     }
 
-    // Fetch team and manager details
-    const [team, manager] = await Promise.all([
-      prisma.team.findUnique({ where: { id: conversation.teamId } }),
-      prisma.user.findUnique({ where: { id: conversation.managerId } })
-    ]);
+    // Fetch team and manager details with retry logic
+    let team, manager;
+    let retries = 3;
+    while (retries > 0) {
+      try {
+        [team, manager] = await Promise.all([
+          prisma.team.findUnique({ where: { id: conversation.teamId } }),
+          prisma.user.findUnique({ where: { id: conversation.managerId } })
+        ]);
+        break;
+      } catch (error) {
+        retries--;
+        if (retries === 0) throw error;
+        // Wait a bit before retrying
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      }
+    }
 
     // Extract metadata from contextData
     const contextData = conversation.contextData as any;

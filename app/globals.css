@@ -24,6 +24,50 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 222.2 84% 4.9%;
     --radius: 0.5rem;
+    
+    /* teamOS Brand Colors - Light Theme */
+    --teams-primary: #111827;
+    --teams-bg: #f9fafb;
+    --teams-surface: #ffffff;
+    --teams-text-primary: #111827;
+    --teams-text-secondary: #6b7280;
+    --teams-brand-yellow: #fbbf24;
+    --teams-success: #10b981;
+    --teams-error: #ef4444;
+    --teams-warning: #fbbf24;
+    --teams-info: #60a5fa;
+    
+    /* teamOS Status Colors */
+    --teams-status-active-bg: #d1fae5;
+    --teams-status-active-text: #065f46;
+    --teams-status-abandoned-bg: #fee2e2;
+    --teams-status-abandoned-text: #991b1b;
+    --teams-status-pending-bg: #fef3c7;
+    --teams-status-pending-text: #92400e;
+    
+    /* teamOS Confidence Colors */
+    --teams-confidence-high-bg: #d1fae5;
+    --teams-confidence-high-text: #065f46;
+    --teams-confidence-medium-bg: #dbeafe;
+    --teams-confidence-medium-text: #1e40af;
+    --teams-confidence-low-bg: #fee2e2;
+    --teams-confidence-low-text: #991b1b;
+    
+    /* teamOS UI Colors */
+    --teams-ui-bg: #f9fafb;
+    --teams-ui-card-bg: #ffffff;
+    --teams-ui-sidebar-bg: #ffffff;
+    --teams-ui-border: #e5e7eb;
+    --teams-ui-hover: #f3f4f6;
+    --teams-ui-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    --teams-ui-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+    
+    /* teamOS Radius */
+    --teams-radius-sm: 4px;
+    --teams-radius-md: 8px;
+    --teams-radius-lg: 12px;
+    --teams-radius-xl: 20px;
+    --teams-radius-full: 9999px;
   }
 
   .dark {
@@ -49,7 +93,63 @@
   }
 }
 
+/* Base styles matching the HTML mockup exactly */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
 body {
-  background-color: hsl(var(--background));
-  color: hsl(var(--foreground));
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  background-color: #f9fafb;
+  color: #111827;
+  line-height: 1.6;
+}
+
+/* teamOS Admin Styles */
+@layer components {
+  .teams-admin-layout {
+    @apply flex h-screen bg-[var(--teams-ui-bg)];
+  }
+  
+  .teams-sidebar {
+    @apply w-[260px] bg-[var(--teams-ui-sidebar-bg)] border-r border-[var(--teams-ui-border)] p-6 flex flex-col;
+  }
+  
+  .teams-main-content {
+    @apply flex-1 overflow-y-auto;
+  }
+  
+  .teams-header {
+    @apply bg-[var(--teams-surface)] border-b border-[var(--teams-ui-border)] px-8 py-4 flex justify-between items-center;
+  }
+  
+  .teams-page-content {
+    @apply p-8;
+  }
+  
+  .teams-card {
+    @apply bg-[var(--teams-ui-card-bg)] rounded-[var(--teams-radius-lg)] p-6 shadow-[var(--teams-ui-shadow)] mb-6;
+  }
+  
+  .teams-metric-card {
+    @apply bg-[var(--teams-ui-card-bg)] rounded-[var(--teams-radius-lg)] p-6 shadow-[var(--teams-ui-shadow)];
+  }
+  
+  .teams-status-badge {
+    @apply inline-flex items-center px-3 py-1 rounded-[var(--teams-radius-xl)] text-[13px] font-medium;
+  }
+  
+  .teams-confidence-badge {
+    @apply inline-flex items-center px-3 py-1 rounded-[var(--teams-radius-xl)] text-[13px] font-medium;
+  }
+  
+  .teams-btn-primary {
+    @apply px-5 py-2.5 rounded-[var(--teams-radius-md)] bg-[var(--teams-primary)] text-white font-medium hover:opacity-90 transition-opacity;
+  }
+  
+  .teams-btn-secondary {
+    @apply px-5 py-2.5 rounded-[var(--teams-radius-md)] bg-[var(--teams-surface)] text-[var(--teams-primary)] border border-[var(--teams-ui-border)] font-medium hover:bg-[var(--teams-ui-hover)] transition-colors;
+  }
 }

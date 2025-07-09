@@ -32,6 +32,26 @@ export async function GET(req: NextRequest) {
   } catch (error: any) {
     console.error('Error fetching guardrail stats:', error);
     
+    // Handle database connection error
+    if (error.code === 'P1001') {
+      // Return empty data structure for recent violations request
+      if (req.nextUrl.searchParams.get('recent') === 'true') {
+        return NextResponse.json([]);
+      }
+      
+      // Return empty stats structure
+      return NextResponse.json({
+        totalChecks: 0,
+        failedChecks: 0,
+        passRate: 100,
+        severityBreakdown: {},
+        violationsByType: [],
+        violationsByAgent: [],
+        warning: 'Database connection error. Please check your database connection.',
+        error: error.message
+      });
+    }
+    
     // Handle missing database table error
     if (error.code === 'P2021' && error.message?.includes('table `public.GuardrailCheck` does not exist')) {
       // Return empty data structure for recent violations request
