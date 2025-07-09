@@ -3,7 +3,8 @@ import prisma from '@/lib/db';
 
 export interface AgentConfigInput {
   agentName: string;
-  prompts: Record<string, string>;
+  systemPrompt?: string;
+  prompts?: Record<string, string>; // Keep for backward compatibility
   flowConfig: Record<string, any>;
   extractionRules: Record<string, any>;
   createdBy: string;
@@ -14,32 +15,42 @@ export class AgentConfigurationService {
    * Create a new agent configuration version
    */
   static async createConfiguration(data: AgentConfigInput): Promise<AgentConfiguration> {
-    // Get the latest version for this agent
-    const latestConfig = await prisma.agentConfiguration.findFirst({
-      where: { agentName: data.agentName },
-      orderBy: { version: 'desc' },
-    });
+    try {
+      // Get the latest version for this agent
+      const latestConfig = await prisma.agentConfiguration.findFirst({
+        where: { agentName: data.agentName },
+        orderBy: { version: 'desc' },
+      });
 
-    const newVersion = (latestConfig?.version || 0) + 1;
+      const newVersion = (latestConfig?.version || 0) + 1;
 
-    // Deactivate all previous versions
-    await prisma.agentConfiguration.updateMany({
-      where: { agentName: data.agentName },
-      data: { active: false },
-    });
+      // Deactivate all previous versions
+      await prisma.agentConfiguration.updateMany({
+        where: { agentName: data.agentName },
+        data: { active: false },
+      });
 
-    // Create new configuration
-    return await prisma.agentConfiguration.create({
-      data: {
-        agentName: data.agentName,
-        version: newVersion,
-        prompts: data.prompts,
-        flowConfig: data.flowConfig,
-        extractionRules: data.extractionRules,
-        active: true,
-        createdBy: data.createdBy,
-      },
-    });
+      // Create new configuration
+      // Handle both new systemPrompt and legacy prompts format
+      const promptData = data.systemPrompt 
+        ? { system: data.systemPrompt } 
+        : (data.prompts || {});
+      
+      return await prisma.agentConfiguration.create({
+        data: {
+          agentName: data.agentName,
+          version: newVersion,
+          prompts: promptData,
+          flowConfig: data.flowConfig,
+          extractionRules: data.extractionRules,
+          active: true,
+          createdBy: data.createdBy,
+        },
+      });
+    } catch (error: any) {
+      // Re-throw the error with the original code for proper handling upstream
+      throw error;
+    }
   }
 
   /**
@@ -89,11 +100,20 @@ export class AgentConfigurationService {
     const currentConfig = await this.getActiveConfiguration(agentName);
     
     if (!currentConfig) {
-      throw new Error(`No active configuration found for agent: ${agentName}`);
+      // If no configuration exists, create the first version
+      return await this.createConfiguration({
+        agentName,
+        systemPrompt: updates.systemPrompt,
+        prompts: updates.prompts,
+        flowConfig: updates.flowConfig || {},
+        extractionRules: updates.extractionRules || {},
+        createdBy: updatedBy,
+      });
     }
 
     return await this.createConfiguration({
       agentName,
+      systemPrompt: updates.systemPrompt,
       prompts: updates.prompts || (currentConfig.prompts as Record<string, string>),
       flowConfig: updates.flowConfig || (currentConfig.flowConfig as Record<string, any>),
       extractionRules: updates.extractionRules || (currentConfig.extractionRules as Record<string, any>),

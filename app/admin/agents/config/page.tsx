@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { EmptyState } from "@/components/admin/empty-state";
-import { AdminCard, AdminCardHeader, AdminCardTitle, AdminCardContent } from "@/components/admin/admin-card";
 import { TabNav } from "@/components/admin/tab-nav";
 import { MetricCard } from "@/components/admin/metric-card";
 import { StatusBadge } from "@/components/admin/status-badge";
@@ -14,7 +13,7 @@ import {
   AdminTableHead, 
   AdminTableCell 
 } from "@/components/admin/admin-table";
-import { Settings, Save, TestTube, GitBranch, RotateCcw, Search, Plus, Edit2 } from "lucide-react";
+import { Settings, Save, TestTube, GitBranch, RotateCcw, Search, Plus, Edit2, Code, FileJson, FlaskConical, History } from "lucide-react";
 import { useAuth } from "@clerk/nextjs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -28,7 +27,7 @@ interface AgentConfig {
   id: string;
   agentName: string;
   version: number;
-  prompts: Record<string, string>;
+  systemPrompt: string;
   flowConfig: Record<string, any>;
   extractionRules: Record<string, any>;
   active: boolean;
@@ -41,8 +40,9 @@ interface AgentSummary {
   agentName: string;
   activeVersion: number;
   totalVersions: number;
-  lastUpdated: string;
-  updatedBy: string;
+  lastUpdated: string | null;
+  updatedBy: string | null;
+  configured?: boolean;
 }
 
 const AGENT_NAMES = [
@@ -58,7 +58,7 @@ const AGENT_NAMES = [
 ];
 
 const TABS = [
-  { id: "prompts", label: "Prompts" },
+  { id: "prompt", label: "System Prompt" },
   { id: "flow", label: "Flow Configuration" },
   { id: "extraction", label: "Extraction Rules" },
   { id: "test", label: "Test Playground" },
@@ -139,15 +139,16 @@ export default function AgentConfigPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           agentName: selectedAgent,
-          prompts: editedConfig.prompts,
+          systemPrompt: editedConfig.systemPrompt,
           flowConfig: editedConfig.flowConfig,
           extractionRules: editedConfig.extractionRules,
         }),
       });
 
       if (res.ok) {
-        toast.success("Configuration saved successfully");
+        toast.success("Configuration saved successfully. New conversations will use the updated configuration.");
         await fetchAgentConfig(selectedAgent);
+        await fetchAgents(); // Refresh agent list to update metrics
       } else {
         toast.error("Failed to save configuration");
       }
@@ -159,49 +160,86 @@ export default function AgentConfigPage() {
     }
   };
 
-  const updatePrompt = (key: string, value: string) => {
-    if (!editedConfig) return;
-    setEditedConfig({
-      ...editedConfig,
-      prompts: {
-        ...editedConfig.prompts,
-        [key]: value,
-      },
-    });
-  };
+  // Migrate old multi-prompt format to single system prompt if needed
+  useEffect(() => {
+    if (currentConfig && currentConfig.prompts && !currentConfig.systemPrompt) {
+      // Convert old format: combine all prompts into system prompt
+      const systemPrompt = currentConfig.prompts.system || 
+        Object.entries(currentConfig.prompts)
+          .map(([key, value]) => `## ${key.replace(/_/g, ' ').toUpperCase()}\n${value}`)
+          .join('\n\n');
+      
+      setCurrentConfig({
+        ...currentConfig,
+        systemPrompt
+      });
+      setEditedConfig({
+        ...currentConfig,
+        systemPrompt
+      });
+    }
+  }, [currentConfig]);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--teams-primary)]"></div>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '400px'
+      }}>
+        <div style={{
+          width: '48px',
+          height: '48px',
+          border: '4px solid #e5e7eb',
+          borderTopColor: '#111827',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite'
+        }}></div>
+        <style jsx>{`
+          @keyframes spin {
+            to { transform: rotate(360deg); }
+          }
+        `}</style>
       </div>
     );
   }
 
-  // Calculate metrics
-  const totalAgents = agents.length;
+  // Calculate metrics based on actual data
+  const totalAgents = AGENT_NAMES.length; // Total possible agents
   const configuredAgents = agents.filter(a => a.totalVersions > 0).length;
   const totalVersions = agents.reduce((sum, a) => sum + a.totalVersions, 0);
   const recentUpdates = agents.filter(a => {
+    if (!a.lastUpdated) return false;
     const updated = new Date(a.lastUpdated);
     const dayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
     return updated > dayAgo;
   }).length;
 
   return (
-    <div className="space-y-8">
+    <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif' }}>
       {/* Page Header */}
-      <div>
-        <h2 className="text-[28px] font-semibold text-[var(--teams-text-primary)]">
+      <div style={{ marginBottom: '32px' }}>
+        <h2 style={{
+          fontSize: '28px',
+          fontWeight: '600',
+          marginBottom: '8px',
+          color: '#111827'
+        }}>
           Agent Configuration
         </h2>
-        <p className="text-[var(--teams-text-secondary)] mt-2">
+        <p style={{ color: '#6b7280' }}>
           Manage agent prompts, flows, and extraction rules
         </p>
       </div>
 
-      {/* Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      {/* Metrics Grid */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+        gap: '24px',
+        marginBottom: '32px'
+      }}>
         <MetricCard
           label="Total Agents"
           value={totalAgents}
@@ -222,62 +260,141 @@ export default function AgentConfigPage() {
         />
         <MetricCard
           label="Current Agent"
-          value={selectedAgent ? selectedAgent.split(' ')[0] : 'None'}
-          change={currentConfig ? `v${currentConfig.version}` : ''}
-          changeType="neutral"
+          value={selectedAgent ? selectedAgent.replace('Agent', '').trim() : 'None'}
+          change={currentConfig ? (currentConfig.version > 0 ? `v${currentConfig.version}` : 'Not configured') : ''}
+          changeType={currentConfig && currentConfig.version > 0 ? "neutral" : "negative"}
         />
       </div>
 
-      {/* Agent Selector */}
-      <div className="teams-card">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4 flex-1">
-            <div className="flex-1 max-w-md">
-              <Label htmlFor="agent-select" className="block text-sm font-medium text-[var(--teams-text-secondary)] mb-2">
-                Select Agent to Configure
-              </Label>
+      {/* Agent Selector Card */}
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '12px',
+        padding: '24px',
+        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+        marginBottom: '24px'
+      }}>
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '16px'
+        }}>
+          <div style={{ flex: 1 }}>
+            <label style={{
+              display: 'block',
+              fontSize: '14px',
+              fontWeight: '500',
+              color: '#6b7280',
+              marginBottom: '8px'
+            }}>
+              Select Agent to Configure
+            </label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
               <select
-                id="agent-select"
                 value={selectedAgent}
                 onChange={(e) => setSelectedAgent(e.target.value)}
-                className="w-full px-4 py-2.5 border border-[var(--teams-ui-border)] rounded-[var(--teams-radius-md)] bg-[var(--teams-surface)] text-[var(--teams-text-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--teams-primary)]/20 focus:border-[var(--teams-primary)] transition-all"
+                style={{
+                  padding: '10px 16px',
+                  borderRadius: '8px',
+                  border: '1px solid #e5e7eb',
+                  backgroundColor: 'white',
+                  color: '#111827',
+                  fontSize: '14px',
+                  minWidth: '250px',
+                  cursor: 'pointer',
+                  outline: 'none'
+                }}
+                onFocus={(e) => e.currentTarget.style.borderColor = '#111827'}
+                onBlur={(e) => e.currentTarget.style.borderColor = '#e5e7eb'}
               >
                 <option value="">Select an agent</option>
-                {AGENT_NAMES.map((agent) => (
-                  <option key={agent} value={agent}>
-                    {agent}
-                  </option>
-                ))}
+                {agents.map((agent) => {
+                  const isConfigured = agent.totalVersions > 0;
+                  return (
+                    <option key={agent.agentName} value={agent.agentName}>
+                      {agent.agentName} {!isConfigured && '(Not Configured)'}
+                    </option>
+                  );
+                })}
               </select>
+              {currentConfig && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  {currentConfig.version > 0 ? (
+                    <>
+                      <StatusBadge status="active" />
+                      <span style={{ fontSize: '14px', color: '#6b7280' }}>
+                        v{currentConfig.version} • Last updated {formatDistanceToNow(new Date(currentConfig.updatedAt), { addSuffix: true })}
+                      </span>
+                    </>
+                  ) : (
+                    <span style={{ fontSize: '14px', color: '#ef4444' }}>
+                      Not configured - using default prompts
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
-            {currentConfig && (
-              <div className="flex items-center gap-3">
-                <StatusBadge status="active" />
-                <span className="text-sm text-[var(--teams-text-secondary)]">
-                  Last updated {formatDistanceToNow(new Date(currentConfig.updatedAt), { addSuffix: true })}
-                </span>
-              </div>
-            )}
           </div>
           
-          {currentConfig && (
-            <div className="flex gap-3">
-              <Button
-                variant="outline"
-                size="default"
-                onClick={() => toast.info("Test functionality coming soon")}
+          {selectedAgent && (
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button
+                onClick={() => {
+                  // Navigate to chat with this agent, forcing a new conversation
+                  window.open('/chat?agent=' + selectedAgent + '&new=true', '_blank');
+                }}
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: '8px',
+                  border: '1px solid #e5e7eb',
+                  backgroundColor: 'white',
+                  color: '#111827',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = '#f9fafb';
+                  e.currentTarget.style.borderColor = '#111827';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'white';
+                  e.currentTarget.style.borderColor = '#e5e7eb';
+                }}
               >
-                <TestTube className="h-4 w-4 mr-2" />
-                Test Config
-              </Button>
-              <Button
+                <TestTube style={{ width: '16px', height: '16px' }} />
+                Test in Chat
+              </button>
+              <button
                 onClick={saveConfiguration}
                 disabled={!editedConfig || saving}
-                size="default"
+                style={{
+                  padding: '10px 20px',
+                  borderRadius: '8px',
+                  border: 'none',
+                  backgroundColor: '#111827',
+                  color: 'white',
+                  fontWeight: '500',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  opacity: (!editedConfig || saving) ? 0.5 : 1,
+                  pointerEvents: (!editedConfig || saving) ? 'none' : 'auto'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#1f2937'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#111827'}
               >
-                <Save className="h-4 w-4 mr-2" />
+                <Save style={{ width: '16px', height: '16px' }} />
                 {saving ? "Saving..." : "Save Changes"}
-              </Button>
+              </button>
             </div>
           )}
         </div>
@@ -285,231 +402,792 @@ export default function AgentConfigPage() {
 
       {/* Main Content */}
       {!selectedAgent ? (
-        <div className="teams-card">
-          <EmptyState
-            icon={Settings}
-            title="Select an agent to view its configuration"
-            description="Choose an agent from the dropdown above to manage its prompts, conversation flows, and variable extraction rules"
-          />
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          padding: '48px',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+          textAlign: 'center'
+        }}>
+          <Settings style={{
+            width: '48px',
+            height: '48px',
+            margin: '0 auto 16px',
+            color: '#9ca3af'
+          }} />
+          <h3 style={{
+            fontSize: '18px',
+            fontWeight: '600',
+            color: '#111827',
+            marginBottom: '8px'
+          }}>
+            Select an agent to view its configuration
+          </h3>
+          <p style={{
+            color: '#6b7280',
+            fontSize: '14px'
+          }}>
+            Choose an agent from the dropdown above to manage its prompts, conversation flows, and variable extraction rules
+          </p>
         </div>
       ) : !currentConfig ? (
-        <div className="teams-card">
-          <div className="flex items-center justify-center h-96">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[var(--teams-primary)]"></div>
-          </div>
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          padding: '48px',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          <div style={{
+            width: '48px',
+            height: '48px',
+            border: '4px solid #e5e7eb',
+            borderTopColor: '#111827',
+            borderRadius: '50%',
+            animation: 'spin 1s linear infinite'
+          }}></div>
+          <style jsx>{`
+            @keyframes spin {
+              to { transform: rotate(360deg); }
+            }
+          `}</style>
         </div>
       ) : (
-        <div className="teams-card">
-          <TabNav 
-            tabs={TABS} 
-            defaultTab={activeTab} 
-            onTabChange={setActiveTab} 
-          />
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          padding: '24px',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+        }}>
+          {/* Tabs */}
+          <div style={{
+            display: 'flex',
+            gap: '32px',
+            borderBottom: '1px solid #e5e7eb',
+            marginBottom: '24px'
+          }}>
+            {TABS.map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                style={{
+                  padding: '12px 0',
+                  color: activeTab === tab.id ? '#111827' : '#6b7280',
+                  cursor: 'pointer',
+                  fontWeight: '500',
+                  fontSize: '14px',
+                  background: 'none',
+                  border: 'none',
+                  borderBottom: `2px solid ${activeTab === tab.id ? '#111827' : 'transparent'}`,
+                  transition: 'all 0.2s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+                onMouseEnter={(e) => {
+                  if (activeTab !== tab.id) {
+                    e.currentTarget.style.color = '#111827';
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (activeTab !== tab.id) {
+                    e.currentTarget.style.color = '#6b7280';
+                  }
+                }}
+              >
+                {tab.id === 'prompts' && <Edit2 style={{ width: '14px', height: '14px' }} />}
+                {tab.id === 'flow' && <GitBranch style={{ width: '14px', height: '14px' }} />}
+                {tab.id === 'extraction' && <Code style={{ width: '14px', height: '14px' }} />}
+                {tab.id === 'test' && <FlaskConical style={{ width: '14px', height: '14px' }} />}
+                {tab.id === 'history' && <History style={{ width: '14px', height: '14px' }} />}
+                {tab.label}
+              </button>
+            ))}
+          </div>
 
-          {/* Prompts Tab */}
-          {activeTab === "prompts" && (
-            <div className="mt-6 space-y-6">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-[var(--teams-text-primary)]">
-                  Agent Prompts
-                </h3>
-                <Badge variant="secondary">
-                  {Object.keys(editedConfig?.prompts || {}).length} prompts
-                </Badge>
+          {/* System Prompt Tab */}
+          {activeTab === "prompt" && (
+            <div>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '24px'
+              }}>
+                <div>
+                  <h3 style={{
+                    fontSize: '18px',
+                    fontWeight: '600',
+                    color: '#111827',
+                    marginBottom: '4px'
+                  }}>
+                    System Prompt
+                  </h3>
+                  <p style={{
+                    fontSize: '14px',
+                    color: '#6b7280'
+                  }}>
+                    Define the agent's complete behavior, approach, and conversation flow in a single prompt
+                  </p>
+                </div>
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  padding: '4px 12px',
+                  borderRadius: '20px',
+                  fontSize: '13px',
+                  fontWeight: '500',
+                  backgroundColor: '#f3f4f6',
+                  color: '#6b7280'
+                }}>
+                  {(editedConfig?.systemPrompt || '').length} characters
+                </span>
               </div>
               
-              <div className="space-y-6">
-                {Object.entries(editedConfig?.prompts || {}).map(([key, value]) => (
-                  <div key={key} className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor={key} className="text-sm font-medium text-[var(--teams-text-primary)]">
-                        {key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' ')} Prompt
-                      </Label>
-                      <span className="text-xs text-[var(--teams-text-secondary)]">
-                        {(value as string).length} characters
-                      </span>
-                    </div>
-                    <Textarea
-                      id={key}
-                      value={value as string}
-                      onChange={(e) => updatePrompt(key, e.target.value)}
-                      rows={6}
-                      className="w-full font-mono text-sm p-3"
-                      placeholder="Enter prompt text..."
-                    />
-                  </div>
-                ))}
+              <div style={{
+                backgroundColor: '#f9fafb',
+                padding: '20px',
+                borderRadius: '8px',
+                border: '1px solid #e5e7eb'
+              }}>
+                <textarea
+                  value={editedConfig?.systemPrompt || ''}
+                  onChange={(e) => setEditedConfig({
+                    ...editedConfig!,
+                    systemPrompt: e.target.value
+                  })}
+                  rows={25}
+                  style={{
+                    width: '100%',
+                    padding: '16px',
+                    borderRadius: '6px',
+                    border: '1px solid #e5e7eb',
+                    backgroundColor: 'white',
+                    color: '#111827',
+                    fontSize: '14px',
+                    fontFamily: 'SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+                    lineHeight: '1.6',
+                    resize: 'vertical',
+                    outline: 'none'
+                  }}
+                  onFocus={(e) => e.currentTarget.style.borderColor = '#111827'}
+                  onBlur={(e) => e.currentTarget.style.borderColor = '#e5e7eb'}
+                  placeholder={`Example:
+
+You are a friendly Team Development Assistant conducting a quick 5-minute intake conversation...
+
+## Your Approach:
+- Be warm, conversational, and efficient
+- Ask one question at a time
+- Keep it light
+
+## Information to Gather:
+1. Manager's name
+2. Organization
+3. Team size
+...
+
+## Conversation Flow:
+**Opening (30 seconds):**
+"Hi! I'm here to learn a bit about your team..."
+
+**Basic Info (1 minute):**
+"First, could you tell me your name..."
+...`}
+                />
               </div>
             </div>
           )}
 
           {/* Flow Configuration Tab */}
           {activeTab === "flow" && (
-            <div className="mt-6">
-              <div className="flex justify-between items-center mb-4">
+            <div>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '24px'
+              }}>
                 <div>
-                  <h3 className="text-lg font-semibold text-[var(--teams-text-primary)]">
-                    Flow Configuration
+                  <h3 style={{
+                    fontSize: '18px',
+                    fontWeight: '600',
+                    color: '#111827',
+                    marginBottom: '4px'
+                  }}>
+                    Conversation Flow Configuration
                   </h3>
-                  <p className="text-sm text-[var(--teams-text-secondary)] mt-1">
-                    Define the conversation flow and state transitions in JSON format
+                  <p style={{
+                    fontSize: '14px',
+                    color: '#6b7280'
+                  }}>
+                    Define conversation states and transitions for the agent's state machine
                   </p>
                 </div>
-                <Button variant="outline" size="sm">
-                  <Plus className="h-4 w-4 mr-2" />
+                <button
+                  onClick={() => toast.info("Visual flow editor coming soon")}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '6px',
+                    border: '1px solid #e5e7eb',
+                    backgroundColor: 'white',
+                    color: '#111827',
+                    fontWeight: '500',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#f9fafb';
+                    e.currentTarget.style.borderColor = '#111827';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'white';
+                    e.currentTarget.style.borderColor = '#e5e7eb';
+                  }}
+                >
+                  <GitBranch style={{ width: '14px', height: '14px' }} />
                   Visual Editor
-                </Button>
+                </button>
               </div>
               
-              <Textarea
-                value={JSON.stringify(editedConfig?.flowConfig || {}, null, 2)}
-                onChange={(e) => {
-                  try {
-                    const parsed = JSON.parse(e.target.value);
-                    setEditedConfig({
-                      ...editedConfig!,
-                      flowConfig: parsed,
-                    });
-                  } catch (error) {
-                    // Invalid JSON, don't update
-                  }
-                }}
-                rows={20}
-                className="w-full font-mono text-sm p-4 bg-[var(--teams-surface-secondary)]"
-                placeholder="Enter JSON configuration..."
-              />
+              {/* Flow Configuration Display */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {/* States Section */}
+                <div style={{
+                  backgroundColor: '#f9fafb',
+                  padding: '16px',
+                  borderRadius: '8px',
+                  border: '1px solid #e5e7eb'
+                }}>
+                  <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#111827', marginBottom: '8px' }}>
+                    Conversation States ({editedConfig?.flowConfig?.states?.length || 0})
+                  </h4>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                    {editedConfig?.flowConfig?.states?.map((state: string) => (
+                      <span key={state} style={{
+                        padding: '4px 12px',
+                        borderRadius: '16px',
+                        backgroundColor: '#dbeafe',
+                        color: '#1e40af',
+                        fontSize: '13px',
+                        fontWeight: '500'
+                      }}>
+                        {state}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Transitions Section */}
+                <div style={{
+                  backgroundColor: '#f9fafb',
+                  padding: '16px',
+                  borderRadius: '8px',
+                  border: '1px solid #e5e7eb'
+                }}>
+                  <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#111827', marginBottom: '8px' }}>
+                    State Transitions
+                  </h4>
+                  <div style={{ fontSize: '13px', color: '#374151' }}>
+                    {Object.entries(editedConfig?.flowConfig?.transitions || {}).map(([from, to]: [string, any]) => (
+                      <div key={from} style={{ marginBottom: '4px' }}>
+                        <span style={{ fontWeight: '500' }}>{from}</span>
+                        {' → '}
+                        <span style={{ color: '#6b7280' }}>
+                          {Array.isArray(to) ? to.join(', ') : to || 'END'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Required Fields Section */}
+                {editedConfig?.flowConfig?.requiredFields && (
+                  <div style={{
+                    backgroundColor: '#f9fafb',
+                    padding: '16px',
+                    borderRadius: '8px',
+                    border: '1px solid #e5e7eb'
+                  }}>
+                    <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#111827', marginBottom: '8px' }}>
+                      Required Fields ({editedConfig.flowConfig.requiredFields.length})
+                    </h4>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                      {editedConfig.flowConfig.requiredFields.map((field: string) => (
+                        <span key={field} style={{
+                          padding: '4px 12px',
+                          borderRadius: '16px',
+                          backgroundColor: '#fef3c7',
+                          color: '#92400e',
+                          fontSize: '13px',
+                          fontWeight: '500'
+                        }}>
+                          {field}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* JSON Editor */}
+                <div style={{
+                  backgroundColor: '#1e293b',
+                  padding: '20px',
+                  borderRadius: '8px',
+                  border: '1px solid #334155'
+                }}>
+                  <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#e2e8f0', marginBottom: '12px' }}>
+                    Raw Configuration (JSON)
+                  </h4>
+                  <textarea
+                    value={JSON.stringify(editedConfig?.flowConfig || {}, null, 2)}
+                    onChange={(e) => {
+                      try {
+                        const parsed = JSON.parse(e.target.value);
+                        setEditedConfig({
+                          ...editedConfig!,
+                          flowConfig: parsed,
+                        });
+                      } catch (error) {
+                        // Invalid JSON, don't update
+                      }
+                    }}
+                    rows={12}
+                    style={{
+                      width: '100%',
+                      padding: '16px',
+                      backgroundColor: '#0f172a',
+                      color: '#e2e8f0',
+                      border: '1px solid #334155',
+                      borderRadius: '6px',
+                      fontSize: '13px',
+                      fontFamily: 'SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+                      lineHeight: '1.5',
+                      resize: 'vertical',
+                      outline: 'none'
+                    }}
+                    onFocus={(e) => e.currentTarget.style.borderColor = '#64748b'}
+                    onBlur={(e) => e.currentTarget.style.borderColor = '#334155'}
+                    placeholder="Enter JSON configuration..."
+                  />
+                </div>
+              </div>
             </div>
           )}
 
           {/* Extraction Rules Tab */}
           {activeTab === "extraction" && (
-            <div className="mt-6">
-              <div className="flex justify-between items-center mb-4">
+            <div>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '24px'
+              }}>
                 <div>
-                  <h3 className="text-lg font-semibold text-[var(--teams-text-primary)]">
+                  <h3 style={{
+                    fontSize: '18px',
+                    fontWeight: '600',
+                    color: '#111827',
+                    marginBottom: '4px'
+                  }}>
                     Variable Extraction Rules
                   </h3>
-                  <p className="text-sm text-[var(--teams-text-secondary)] mt-1">
-                    Configure rules for extracting variables from conversations
+                  <p style={{
+                    fontSize: '14px',
+                    color: '#6b7280'
+                  }}>
+                    Define patterns and rules for extracting information from conversations
                   </p>
                 </div>
-                <Button variant="outline" size="sm">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Rule
-                </Button>
+                <button
+                  onClick={() => toast.info("Visual rule builder coming soon")}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '6px',
+                    border: '1px solid #e5e7eb',
+                    backgroundColor: 'white',
+                    color: '#111827',
+                    fontWeight: '500',
+                    cursor: 'pointer',
+                    fontSize: '13px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.backgroundColor = '#f9fafb';
+                    e.currentTarget.style.borderColor = '#111827';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.backgroundColor = 'white';
+                    e.currentTarget.style.borderColor = '#e5e7eb';
+                  }}
+                >
+                  <Plus style={{ width: '14px', height: '14px' }} />
+                  Rule Builder
+                </button>
               </div>
               
-              <Textarea
-                value={JSON.stringify(editedConfig?.extractionRules || {}, null, 2)}
-                onChange={(e) => {
-                  try {
-                    const parsed = JSON.parse(e.target.value);
-                    setEditedConfig({
-                      ...editedConfig!,
-                      extractionRules: parsed,
-                    });
-                  } catch (error) {
-                    // Invalid JSON, don't update
-                  }
-                }}
-                rows={20}
-                className="w-full font-mono text-sm p-4 bg-[var(--teams-surface-secondary)]"
-                placeholder="Enter extraction rules..."
-              />
+              {/* Extraction Rules Display */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {/* Rules List */}
+                {Object.entries(editedConfig?.extractionRules || {}).map(([fieldName, rule]: [string, any]) => (
+                  <div key={fieldName} style={{
+                    backgroundColor: '#f9fafb',
+                    padding: '16px',
+                    borderRadius: '8px',
+                    border: '1px solid #e5e7eb'
+                  }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '8px' }}>
+                      <div>
+                        <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#111827', marginBottom: '4px' }}>
+                          {fieldName}
+                        </h4>
+                        <p style={{ fontSize: '12px', color: '#6b7280' }}>
+                          {rule.description || 'No description'}
+                        </p>
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <span style={{
+                          padding: '2px 8px',
+                          borderRadius: '12px',
+                          backgroundColor: '#dbeafe',
+                          color: '#1e40af',
+                          fontSize: '11px',
+                          fontWeight: '500'
+                        }}>
+                          {rule.type}
+                        </span>
+                        {rule.required && (
+                          <span style={{
+                            padding: '2px 8px',
+                            borderRadius: '12px',
+                            backgroundColor: '#fee2e2',
+                            color: '#991b1b',
+                            fontSize: '11px',
+                            fontWeight: '500'
+                          }}>
+                            required
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {(rule.pattern || rule.patterns) && (
+                      <div style={{
+                        marginTop: '8px',
+                        padding: '8px',
+                        backgroundColor: '#1e293b',
+                        borderRadius: '4px',
+                        fontFamily: 'monospace',
+                        fontSize: '12px',
+                        color: '#e2e8f0',
+                        overflowX: 'auto'
+                      }}>
+                        {rule.pattern ? (
+                          <div>{rule.pattern}</div>
+                        ) : (
+                          rule.patterns.map((pattern: string, idx: number) => (
+                            <div key={idx}>{pattern}</div>
+                          ))
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+
+                {/* JSON Editor */}
+                <div style={{
+                  backgroundColor: '#1e293b',
+                  padding: '20px',
+                  borderRadius: '8px',
+                  border: '1px solid #334155'
+                }}>
+                  <h4 style={{ fontSize: '14px', fontWeight: '600', color: '#e2e8f0', marginBottom: '12px' }}>
+                    Raw Extraction Rules (JSON)
+                  </h4>
+                  <textarea
+                    value={JSON.stringify(editedConfig?.extractionRules || {}, null, 2)}
+                    onChange={(e) => {
+                      try {
+                        const parsed = JSON.parse(e.target.value);
+                        setEditedConfig({
+                          ...editedConfig!,
+                          extractionRules: parsed,
+                        });
+                      } catch (error) {
+                        // Invalid JSON, don't update
+                      }
+                    }}
+                    rows={12}
+                    style={{
+                      width: '100%',
+                      padding: '16px',
+                      backgroundColor: '#0f172a',
+                      color: '#e2e8f0',
+                      border: '1px solid #334155',
+                      borderRadius: '6px',
+                      fontSize: '13px',
+                      fontFamily: 'SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+                      lineHeight: '1.5',
+                      resize: 'vertical',
+                      outline: 'none'
+                    }}
+                    onFocus={(e) => e.currentTarget.style.borderColor = '#64748b'}
+                    onBlur={(e) => e.currentTarget.style.borderColor = '#334155'}
+                    placeholder="Enter extraction rules..."
+                  />
+                </div>
+              </div>
             </div>
           )}
 
           {/* Test Tab */}
           {activeTab === "test" && (
-            <div className="mt-6">
-              <EmptyState
-                icon={TestTube}
-                title="Test Playground Coming Soon"
-                description="You'll be able to test your agent configurations with simulated conversations"
-              />
+            <div style={{
+              textAlign: 'center',
+              padding: '48px',
+              color: '#6b7280'
+            }}>
+              <FlaskConical style={{
+                width: '48px',
+                height: '48px',
+                margin: '0 auto 16px',
+                opacity: 0.3
+              }} />
+              <h4 style={{
+                fontSize: '16px',
+                fontWeight: '600',
+                color: '#111827',
+                marginBottom: '8px'
+              }}>
+                Test Playground Coming Soon
+              </h4>
+              <p style={{ fontSize: '14px' }}>
+                You'll be able to test your agent configurations with simulated conversations
+              </p>
             </div>
           )}
 
           {/* Version History Tab */}
           {activeTab === "history" && (
-            <div className="mt-6">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="text-lg font-semibold text-[var(--teams-text-primary)]">
+            <div>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '24px'
+              }}>
+                <h3 style={{
+                  fontSize: '18px',
+                  fontWeight: '600',
+                  color: '#111827'
+                }}>
                   Version History
                 </h3>
-                <div className="flex items-center gap-4">
-                  <Input
+                <div style={{ position: 'relative' }}>
+                  <Search style={{
+                    position: 'absolute',
+                    left: '12px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    color: '#6b7280',
+                    width: '16px',
+                    height: '16px'
+                  }} />
+                  <input
                     type="text"
                     placeholder="Search versions..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-64"
-                    icon={<Search className="h-4 w-4" />}
+                    style={{
+                      paddingLeft: '40px',
+                      paddingRight: '16px',
+                      paddingTop: '8px',
+                      paddingBottom: '8px',
+                      width: '250px',
+                      border: '1px solid #e5e7eb',
+                      borderRadius: '8px',
+                      backgroundColor: 'white',
+                      color: '#111827',
+                      fontSize: '14px',
+                      outline: 'none'
+                    }}
+                    onFocus={(e) => e.currentTarget.style.borderColor = '#111827'}
+                    onBlur={(e) => e.currentTarget.style.borderColor = '#e5e7eb'}
                   />
                 </div>
               </div>
 
               {configHistory.length === 0 ? (
-                <EmptyState
-                  icon={GitBranch}
-                  title="No version history yet"
-                  description="Version history will appear here after you save changes"
-                />
+                <div style={{
+                  textAlign: 'center',
+                  padding: '48px',
+                  backgroundColor: '#f9fafb',
+                  borderRadius: '8px',
+                  border: '1px solid #e5e7eb'
+                }}>
+                  <GitBranch style={{
+                    width: '48px',
+                    height: '48px',
+                    margin: '0 auto 16px',
+                    color: '#9ca3af'
+                  }} />
+                  <h4 style={{
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    color: '#111827',
+                    marginBottom: '8px'
+                  }}>
+                    No version history yet
+                  </h4>
+                  <p style={{ fontSize: '14px', color: '#6b7280' }}>
+                    Version history will appear here after you save changes
+                  </p>
+                </div>
               ) : (
-                <AdminTable>
-                  <AdminTableHeader>
-                    <AdminTableHead>Version</AdminTableHead>
-                    <AdminTableHead>Status</AdminTableHead>
-                    <AdminTableHead>Created</AdminTableHead>
-                    <AdminTableHead>Author</AdminTableHead>
-                    <AdminTableHead>Actions</AdminTableHead>
-                  </AdminTableHeader>
-                  <AdminTableBody>
-                    {configHistory
-                      .filter(config => 
-                        searchQuery === '' || 
-                        config.createdBy.toLowerCase().includes(searchQuery.toLowerCase())
-                      )
-                      .map((config) => (
-                        <AdminTableRow key={config.id}>
-                          <AdminTableCell className="font-medium">
-                            v{config.version}
-                          </AdminTableCell>
-                          <AdminTableCell>
-                            <StatusBadge 
-                              status={config.active ? "active" : "inactive"} 
-                            />
-                          </AdminTableCell>
-                          <AdminTableCell>
-                            {format(new Date(config.createdAt), "MMM d, yyyy HH:mm")}
-                          </AdminTableCell>
-                          <AdminTableCell>
-                            {config.createdBy}
-                          </AdminTableCell>
-                          <AdminTableCell>
-                            <div className="flex gap-2">
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => toast.info("View diff coming soon")}
-                              >
-                                <GitBranch className="h-4 w-4" />
-                              </Button>
-                              {!config.active && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => toast.info("Rollback functionality coming soon")}
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{
+                    width: '100%',
+                    borderCollapse: 'collapse'
+                  }}>
+                    <thead>
+                      <tr>
+                        <th style={{
+                          textAlign: 'left',
+                          padding: '12px',
+                          fontWeight: '500',
+                          color: '#6b7280',
+                          borderBottom: '1px solid #e5e7eb',
+                          fontSize: '14px'
+                        }}>Version</th>
+                        <th style={{
+                          textAlign: 'left',
+                          padding: '12px',
+                          fontWeight: '500',
+                          color: '#6b7280',
+                          borderBottom: '1px solid #e5e7eb',
+                          fontSize: '14px'
+                        }}>Status</th>
+                        <th style={{
+                          textAlign: 'left',
+                          padding: '12px',
+                          fontWeight: '500',
+                          color: '#6b7280',
+                          borderBottom: '1px solid #e5e7eb',
+                          fontSize: '14px'
+                        }}>Created</th>
+                        <th style={{
+                          textAlign: 'left',
+                          padding: '12px',
+                          fontWeight: '500',
+                          color: '#6b7280',
+                          borderBottom: '1px solid #e5e7eb',
+                          fontSize: '14px'
+                        }}>Author</th>
+                        <th style={{
+                          textAlign: 'left',
+                          padding: '12px',
+                          fontWeight: '500',
+                          color: '#6b7280',
+                          borderBottom: '1px solid #e5e7eb',
+                          fontSize: '14px'
+                        }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {configHistory
+                        .filter(config => 
+                          searchQuery === '' || 
+                          config.createdBy.toLowerCase().includes(searchQuery.toLowerCase())
+                        )
+                        .map((config) => (
+                          <tr
+                            key={config.id}
+                            style={{
+                              borderBottom: '1px solid #f3f4f6',
+                              transition: 'background-color 0.2s'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f9fafb'}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                          >
+                            <td style={{ padding: '16px 12px', fontWeight: '500' }}>
+                              v{config.version}
+                            </td>
+                            <td style={{ padding: '16px 12px' }}>
+                              <StatusBadge 
+                                status={config.active ? "active" : "inactive"} 
+                              />
+                            </td>
+                            <td style={{ padding: '16px 12px', color: '#6b7280' }}>
+                              {format(new Date(config.createdAt), "MMM d, yyyy HH:mm")}
+                            </td>
+                            <td style={{ padding: '16px 12px' }}>
+                              {config.createdBy}
+                            </td>
+                            <td style={{ padding: '16px 12px' }}>
+                              <div style={{ display: 'flex', gap: '8px' }}>
+                                <button
+                                  onClick={() => toast.info("View diff coming soon")}
+                                  style={{
+                                    padding: '6px',
+                                    borderRadius: '4px',
+                                    border: 'none',
+                                    backgroundColor: 'transparent',
+                                    color: '#6b7280',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s'
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.backgroundColor = '#f3f4f6';
+                                    e.currentTarget.style.color = '#111827';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                    e.currentTarget.style.color = '#6b7280';
+                                  }}
                                 >
-                                  <RotateCcw className="h-4 w-4" />
-                                </Button>
-                              )}
-                            </div>
-                          </AdminTableCell>
-                        </AdminTableRow>
-                      ))}
-                  </AdminTableBody>
-                </AdminTable>
+                                  <GitBranch style={{ width: '16px', height: '16px' }} />
+                                </button>
+                                {!config.active && (
+                                  <button
+                                    onClick={() => toast.info("Rollback functionality coming soon")}
+                                    style={{
+                                      padding: '6px',
+                                      borderRadius: '4px',
+                                      border: 'none',
+                                      backgroundColor: 'transparent',
+                                      color: '#6b7280',
+                                      cursor: 'pointer',
+                                      transition: 'all 0.2s'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                      e.currentTarget.style.backgroundColor = '#f3f4f6';
+                                      e.currentTarget.style.color = '#111827';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                      e.currentTarget.style.backgroundColor = 'transparent';
+                                      e.currentTarget.style.color = '#6b7280';
+                                    }}
+                                  >
+                                    <RotateCcw style={{ width: '16px', height: '16px' }} />
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </div>
           )}

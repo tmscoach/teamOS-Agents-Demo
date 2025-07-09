@@ -5,6 +5,7 @@ import { OnboardingGuardrails } from '../guardrails/onboarding-guardrails';
 import { OnboardingStateMachine } from './onboarding-state-machine';
 import { OnboardingQualityCalculator, QualityMetrics } from './onboarding-quality-metrics';
 import { ConversationState } from '../types/conversation-state';
+import { AgentConfigLoader } from '../config/agent-config-loader';
 
 // Re-export for backward compatibility
 export { ConversationState };
@@ -30,6 +31,7 @@ export interface OnboardingMetadata {
 export class OnboardingAgent extends KnowledgeEnabledAgent {
   private stateMachine: OnboardingStateMachine;
   private qualityCalculator: OnboardingQualityCalculator;
+  private configuredPrompts: Record<string, string> | null = null;
   
   private static readonly REQUIRED_FIELDS = [
     "team_size",
@@ -110,6 +112,12 @@ export class OnboardingAgent extends KnowledgeEnabledAgent {
       description: 'Guides managers through initial TMS platform setup with personalized onboarding',
       handoffDescription: 'Start your TMS journey with a personalized onboarding conversation',
       instructions: (context: AgentContext) => {
+        // Use the configured system prompt if available
+        if (this.configuredPrompts && this.configuredPrompts.system) {
+          return this.configuredPrompts.system;
+        }
+        
+        // Fallback to default structured prompt
         const metadata = context.metadata as OnboardingMetadata;
         const state = metadata?.state || ConversationState.GREETING;
         const baseInstructions = OnboardingAgent.STATE_INSTRUCTIONS[state];
@@ -143,9 +151,46 @@ Required fields to capture: ${OnboardingAgent.REQUIRED_FIELDS.join(', ')}`;
     
     this.stateMachine = new OnboardingStateMachine();
     this.qualityCalculator = new OnboardingQualityCalculator();
+    
+    // Load configuration on initialization
+    this.loadConfiguration().catch(err => {
+      console.error('Failed to load initial configuration:', err);
+    });
+  }
+  
+  private async loadConfiguration() {
+    try {
+      const config = await AgentConfigLoader.loadConfiguration('OnboardingAgent');
+      if (config && config.prompts) {
+        this.configuredPrompts = config.prompts;
+        console.log('Loaded OnboardingAgent configuration version:', config.version);
+      }
+    } catch (error) {
+      console.error('Failed to load OnboardingAgent configuration:', error);
+      // Continue with default prompts
+    }
+  }
+  
+  private mapStateToPromptKey(state: ConversationState): string {
+    const mapping: Record<ConversationState, string> = {
+      [ConversationState.GREETING]: 'greeting',
+      [ConversationState.CONTEXT_DISCOVERY]: 'context_discovery',
+      [ConversationState.CHALLENGE_EXPLORATION]: 'challenge_exploration',
+      [ConversationState.TMS_EXPLANATION]: 'tms_explanation',
+      [ConversationState.GOAL_SETTING]: 'goal_setting',
+      [ConversationState.RESOURCE_CONFIRMATION]: 'resource_confirmation',
+      [ConversationState.STAKEHOLDER_MAPPING]: 'stakeholder_mapping',
+      [ConversationState.RECAP_AND_HANDOFF]: 'recap_and_handoff'
+    };
+    return mapping[state] || 'default';
   }
 
   async processMessage(message: string, context: AgentContext): Promise<AgentResponse> {
+    // Ensure configuration is loaded
+    if (!this.configuredPrompts) {
+      await this.loadConfiguration();
+    }
+    
     // Initialize metadata if not present
     if (!context.metadata.onboarding) {
       context.metadata.onboarding = this.initializeMetadata();

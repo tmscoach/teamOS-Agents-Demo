@@ -57,62 +57,97 @@ export async function GET(req: NextRequest) {
       
       // If no config found, return a default configuration
       if (!activeConfig) {
-        const defaultConfig = {
+        // Import default configuration
+        const { SIMPLIFIED_AGENT_CONFIGS } = await import('@/src/lib/agents/config/simplified-agent-configs');
+        const defaultConfig = SIMPLIFIED_AGENT_CONFIGS[agentName];
+        
+        if (!defaultConfig) {
+          // Fallback for unknown agents
+          const configResponse = {
+            id: `default-${agentName}`,
+            agentName: agentName,
+            version: 0,
+            systemPrompt: `You are the ${agentName} for teamOS. Your role is to assist with team transformation.`,
+            flowConfig: { states: [], transitions: [] },
+            extractionRules: {},
+            active: false,
+            createdBy: 'system',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+          return NextResponse.json(configResponse);
+        }
+        
+        const configResponse = {
           id: `default-${agentName}`,
           agentName: agentName,
-          version: 1,
-          prompts: {
-            system: `You are the ${agentName}.`,
-            user: 'Default user prompt template'
-          },
-          flowConfig: {
-            states: [],
-            transitions: []
-          },
-          extractionRules: {},
-          active: true,
+          version: 0, // Version 0 indicates unconfigured
+          systemPrompt: defaultConfig.systemPrompt,
+          flowConfig: defaultConfig.flowConfig,
+          extractionRules: defaultConfig.extractionRules,
+          active: false,
           createdBy: 'system',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString()
         };
-        return NextResponse.json(defaultConfig);
+        return NextResponse.json(configResponse);
       }
       
-      return NextResponse.json(activeConfig);
+      // Convert legacy multi-prompt format to single system prompt
+      let systemPrompt = '';
+      if (activeConfig.prompts && typeof activeConfig.prompts === 'object') {
+        const prompts = activeConfig.prompts as Record<string, any>;
+        systemPrompt = prompts.system || 
+          Object.entries(prompts)
+            .map(([key, value]) => `## ${key.replace(/_/g, ' ').toUpperCase()}\n${value}`)
+            .join('\n\n');
+      }
+      
+      return NextResponse.json({
+        ...activeConfig,
+        systemPrompt
+      });
     }
 
     // Get all agent configurations
     const allConfigs = await AgentConfigurationService.getAllAgentConfigurations();
     
-    // If no configs found, return default agents
-    if (!allConfigs || allConfigs.length === 0) {
-      const defaultAgents = [
-        {
-          agentName: 'OnboardingAgent',
-          activeVersion: 1,
-          totalVersions: 1,
-          lastUpdated: new Date().toISOString(),
-          updatedBy: 'system'
-        },
-        {
-          agentName: 'AssessmentAgent',
-          activeVersion: 1,
-          totalVersions: 1,
-          lastUpdated: new Date().toISOString(),
-          updatedBy: 'system'
-        },
-        {
-          agentName: 'AnalysisAgent',
-          activeVersion: 1,
-          totalVersions: 1,
-          lastUpdated: new Date().toISOString(),
-          updatedBy: 'system'
-        }
-      ];
-      return NextResponse.json(defaultAgents);
-    }
+    // Define all available agents
+    const ALL_AGENTS = [
+      'OrchestratorAgent',
+      'OnboardingAgent',
+      'DiscoveryAgent',
+      'AssessmentAgent',
+      'AlignmentAgent',
+      'LearningAgent',
+      'NudgeAgent',
+      'ProgressMonitor',
+      'RecognitionAgent'
+    ];
     
-    return NextResponse.json(allConfigs);
+    // Create a map of configured agents
+    const configuredAgentsMap = new Map(
+      allConfigs.map(config => [config.agentName, config])
+    );
+    
+    // Return all agents with their configuration status
+    const agentStatuses = ALL_AGENTS.map(agentName => {
+      const config = configuredAgentsMap.get(agentName);
+      if (config) {
+        return config;
+      }
+      // Return unconfigured agent
+      return {
+        agentName,
+        activeVersion: 0,
+        totalVersions: 0,
+        lastUpdated: null,
+        updatedBy: null,
+        configured: false
+      };
+    });
+    
+    return NextResponse.json(agentStatuses);
   } catch (error: any) {
     console.error('Error fetching agent configurations:', error);
     
@@ -250,7 +285,8 @@ export async function PUT(req: NextRequest) {
 
     // Default update action
     const updates = {
-      prompts: body.prompts,
+      systemPrompt: body.systemPrompt,
+      prompts: body.prompts, // Keep for backward compatibility
       flowConfig: body.flowConfig,
       extractionRules: body.extractionRules,
     };
@@ -261,9 +297,25 @@ export async function PUT(req: NextRequest) {
       userId
     );
 
+    // Clear the cache for this agent so new conversations use the updated config
+    const { AgentConfigLoader } = await import('@/src/lib/agents/config/agent-config-loader');
+    AgentConfigLoader.clearCache(body.agentName);
+
     return NextResponse.json(config);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error updating agent configuration:', error);
+    
+    // Handle missing database table error
+    if (error.code === 'P2021' && error.message?.includes('table `public.AgentConfiguration` does not exist')) {
+      return NextResponse.json(
+        { 
+          error: 'Agent configuration table not initialized. Please run database migrations.',
+          instructions: 'Run: npx prisma migrate dev'
+        },
+        { status: 503 }
+      );
+    }
+    
     return NextResponse.json(
       { error: 'Failed to update agent configuration' },
       { status: 500 }
