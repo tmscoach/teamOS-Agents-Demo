@@ -94,9 +94,35 @@ export default function AgentConfigPage() {
       const res = await fetch("/api/admin/agents/config");
       if (res.ok) {
         const data = await res.json();
-        setAgents(data);
-        if (data.length > 0) {
-          setSelectedAgent(data[0].agentName);
+        
+        // Handle both array response and object response with agents array
+        const agentsList = Array.isArray(data) ? data : (data.agents || []);
+        
+        // If we got a warning message, display it
+        if (data.warning) {
+          toast.warning(data.warning);
+        }
+        
+        // If no agents from DB, show default list
+        if (agentsList.length === 0) {
+          const defaultAgents: AgentSummary[] = [
+            { agentName: 'OnboardingAgent', activeVersion: 1, totalVersions: 1, lastUpdated: new Date().toISOString(), updatedBy: 'system' },
+            { agentName: 'OrchestratorAgent', activeVersion: 1, totalVersions: 1, lastUpdated: new Date().toISOString(), updatedBy: 'system' },
+            { agentName: 'DiscoveryAgent', activeVersion: 1, totalVersions: 1, lastUpdated: new Date().toISOString(), updatedBy: 'system' },
+            { agentName: 'AssessmentAgent', activeVersion: 1, totalVersions: 1, lastUpdated: new Date().toISOString(), updatedBy: 'system' },
+            { agentName: 'AlignmentAgent', activeVersion: 1, totalVersions: 1, lastUpdated: new Date().toISOString(), updatedBy: 'system' },
+            { agentName: 'LearningAgent', activeVersion: 1, totalVersions: 1, lastUpdated: new Date().toISOString(), updatedBy: 'system' },
+            { agentName: 'NudgeAgent', activeVersion: 1, totalVersions: 1, lastUpdated: new Date().toISOString(), updatedBy: 'system' },
+            { agentName: 'ProgressMonitor', activeVersion: 1, totalVersions: 1, lastUpdated: new Date().toISOString(), updatedBy: 'system' },
+            { agentName: 'RecognitionAgent', activeVersion: 1, totalVersions: 1, lastUpdated: new Date().toISOString(), updatedBy: 'system' },
+          ];
+          setAgents(defaultAgents);
+          setSelectedAgent(defaultAgents[0].agentName);
+        } else {
+          setAgents(agentsList);
+          if (agentsList.length > 0) {
+            setSelectedAgent(agentsList[0].agentName);
+          }
         }
       }
     } catch (error) {
@@ -116,8 +142,41 @@ export default function AgentConfigPage() {
 
       if (configRes.ok) {
         const configData = await configRes.json();
-        setCurrentConfig(configData);
-        setEditedConfig(configData);
+        
+        // If no config exists, create a default one
+        if (!configData || (configData.error && configData.error.includes('not found'))) {
+          const defaultConfig: AgentConfig = {
+            id: `default-${agentName}`,
+            agentName: agentName,
+            version: 1,
+            prompts: {
+              system: `You are the ${agentName}. Configure your prompts here.`,
+              greeting: 'Hello! How can I help you today?'
+            },
+            flowConfig: {
+              states: [
+                { id: 'start', name: 'start', description: 'Initial state' },
+                { id: 'end', name: 'end', description: 'End state' }
+              ],
+              transitions: [
+                { id: 't1', from: 'start', to: 'end', condition: 'true' }
+              ],
+              initialState: 'start'
+            },
+            extractionRules: {
+              fields: []
+            },
+            active: true,
+            createdBy: 'system',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+          setCurrentConfig(defaultConfig);
+          setEditedConfig(defaultConfig);
+        } else {
+          setCurrentConfig(configData);
+          setEditedConfig(configData);
+        }
       }
 
       if (historyRes.ok) {
