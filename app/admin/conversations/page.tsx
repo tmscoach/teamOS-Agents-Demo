@@ -59,16 +59,22 @@ export default function ConversationsPage() {
   const fetchConversations = async () => {
     try {
       const response = await fetch('/api/admin/conversations');
+      if (!response.ok) {
+        console.error('Failed to fetch conversations:', response.status);
+        setConversations([]);
+        return;
+      }
       const data = await response.json();
-      setConversations(data.conversations);
+      setConversations(data.conversations || []);
     } catch (error) {
       console.error('Failed to fetch conversations:', error);
+      setConversations([]);
     } finally {
       setLoading(false);
     }
   };
 
-  const filteredConversations = conversations.filter(conv => {
+  const filteredConversations = (conversations || []).filter(conv => {
     const matchesSearch = 
       conv.managerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
       conv.teamName.toLowerCase().includes(searchQuery.toLowerCase());
