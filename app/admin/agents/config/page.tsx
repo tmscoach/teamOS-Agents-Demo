@@ -10,10 +10,26 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Cog, History, Copy, RotateCcw, Save, TestTube, GitBranch, AlertCircle } from "lucide-react";
+import { RotateCcw, Save, TestTube, GitBranch, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { useAuth } from "@clerk/nextjs";
+import dynamic from "next/dynamic";
+
+const FlowEditor = dynamic(
+  () => import("@/components/admin/agent-config/flow-editor"),
+  { ssr: false }
+);
+
+const ExtractionEditor = dynamic(
+  () => import("@/components/admin/agent-config/extraction-editor"),
+  { ssr: false }
+);
+
+const TestPlayground = dynamic(
+  () => import("@/components/admin/agent-config/test-playground"),
+  { ssr: false }
+);
 
 interface AgentConfig {
   id: string;
@@ -313,6 +329,7 @@ export default function AgentConfigPage() {
             <TabsTrigger value="prompts">Prompts</TabsTrigger>
             <TabsTrigger value="flow">Flow Configuration</TabsTrigger>
             <TabsTrigger value="extraction">Extraction Rules</TabsTrigger>
+            <TabsTrigger value="test">Test</TabsTrigger>
             <TabsTrigger value="history">Version History</TabsTrigger>
           </TabsList>
 
@@ -350,21 +367,15 @@ export default function AgentConfigPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Textarea
-                  value={JSON.stringify(editedConfig.flowConfig, null, 2)}
-                  onChange={(e) => {
-                    try {
-                      const parsed = JSON.parse(e.target.value);
-                      setEditedConfig({
-                        ...editedConfig,
-                        flowConfig: parsed,
-                      });
-                    } catch (error) {
-                      // Invalid JSON, don't update
-                    }
+                <FlowEditor
+                  flowConfig={editedConfig.flowConfig || { states: [], transitions: [], initialState: '' }}
+                  onChange={(newConfig) => {
+                    setEditedConfig({
+                      ...editedConfig,
+                      flowConfig: newConfig,
+                    });
                   }}
-                  rows={20}
-                  className="font-mono text-sm"
+                  agentName={selectedAgent}
                 />
               </CardContent>
             </Card>
@@ -379,24 +390,25 @@ export default function AgentConfigPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Textarea
-                  value={JSON.stringify(editedConfig.extractionRules, null, 2)}
-                  onChange={(e) => {
-                    try {
-                      const parsed = JSON.parse(e.target.value);
-                      setEditedConfig({
-                        ...editedConfig,
-                        extractionRules: parsed,
-                      });
-                    } catch (error) {
-                      // Invalid JSON, don't update
-                    }
+                <ExtractionEditor
+                  extractionRules={editedConfig.extractionRules || { fields: [] }}
+                  onChange={(newRules) => {
+                    setEditedConfig({
+                      ...editedConfig,
+                      extractionRules: newRules,
+                    });
                   }}
-                  rows={20}
-                  className="font-mono text-sm"
+                  availableStates={editedConfig.flowConfig?.states?.map((s: any) => s.name) || []}
                 />
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="test" className="space-y-4">
+            <TestPlayground
+              agentName={selectedAgent}
+              config={editedConfig}
+            />
           </TabsContent>
 
           <TabsContent value="history" className="space-y-4">

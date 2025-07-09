@@ -6,7 +6,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { currentUser } from '@clerk/nextjs/server';
 import { AgentRouter, ContextManager, ConversationStore } from '@/src/lib/agents';
-import { createOnboardingAgent } from '@/src/lib/agents/implementations/onboarding-agent';
+import {
+  createOnboardingAgent,
+  createOrchestratorAgent,
+  createDiscoveryAgent,
+  createAssessmentAgent,
+  createAlignmentAgent,
+  createLearningAgent,
+  createNudgeAgent,
+  createProgressMonitor,
+  createRecognitionAgent,
+} from '@/src/lib/agents/implementations';
 import prisma from '@/lib/db';
 
 // Initialize services
@@ -14,9 +24,16 @@ const contextManager = new ContextManager();
 const conversationStore = new ConversationStore(prisma);
 const router = new AgentRouter({ contextManager });
 
-// Register agents
-const onboardingAgent = createOnboardingAgent();
-router.registerAgent(onboardingAgent);
+// Register all agents
+router.registerAgent(createOnboardingAgent());
+router.registerAgent(createOrchestratorAgent());
+router.registerAgent(createDiscoveryAgent());
+router.registerAgent(createAssessmentAgent());
+router.registerAgent(createAlignmentAgent());
+router.registerAgent(createLearningAgent());
+router.registerAgent(createNudgeAgent());
+router.registerAgent(createProgressMonitor());
+router.registerAgent(createRecognitionAgent());
 
 export async function POST(req: NextRequest) {
   try {
