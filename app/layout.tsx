@@ -8,6 +8,12 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'TeamOS Agents Demo',
   description: 'TMS (Team Management Systems) transformation platform',
+  icons: {
+    icon: [
+      { url: '/favicon.svg', type: 'image/svg+xml' },
+      { url: '/favicon.ico', sizes: 'any' }
+    ],
+  },
 }
 
 export default function RootLayout({

@@ -1,8 +1,8 @@
 import { cn } from "@/lib/utils";
 
 interface StatusBadgeProps {
-  status: "success" | "warning" | "error" | "info" | "neutral";
-  children: React.ReactNode;
+  status: "success" | "warning" | "error" | "info" | "neutral" | "active" | "pending" | "abandoned";
+  children?: React.ReactNode;
   size?: "sm" | "md";
   className?: string;
 }
@@ -14,28 +14,39 @@ export function StatusBadge({
   className
 }: StatusBadgeProps) {
   const statusClasses = {
-    success: "bg-teams-accent-green/10 text-teams-accent-green border-teams-accent-green/20",
-    warning: "bg-teams-accent-orange/10 text-teams-accent-orange border-teams-accent-orange/20",
-    error: "bg-teams-accent-pink/10 text-teams-accent-pink border-teams-accent-pink/20",
-    info: "bg-teams-accent-blue/10 text-teams-accent-blue border-teams-accent-blue/20",
-    neutral: "bg-teams-ui-hover-bg text-teams-text-secondary border-teams-ui-border"
+    success: "bg-[#dcfce7] text-[#14532d]",
+    warning: "bg-[#fef3c7] text-[#78350f]",
+    error: "bg-[#fee2e2] text-[#7f1d1d]",
+    info: "bg-[#dbeafe] text-[#1e3a8a]",
+    neutral: "bg-[#f3f4f6] text-[#6b7280]",
+    active: "bg-[#dcfce7] text-[#14532d]",
+    pending: "bg-[#fef3c7] text-[#78350f]",
+    abandoned: "bg-[#fee2e2] text-[#7f1d1d]"
+  };
+
+  const statusLabels = {
+    active: "Active",
+    pending: "Pending",
+    abandoned: "Abandoned"
   };
 
   const sizeClasses = {
     sm: "px-2 py-1 text-xs",
-    md: "px-3 py-1.5 text-sm"
+    md: "px-3 py-1 text-[13px]"
   };
+
+  const displayText = children || statusLabels[status as keyof typeof statusLabels] || status;
 
   return (
     <span
       className={cn(
-        "inline-flex items-center font-medium rounded-teams-full border",
+        "inline-flex items-center font-medium rounded-full",
         statusClasses[status],
         sizeClasses[size],
         className
       )}
     >
-      {children}
+      {displayText}
     </span>
   );
 }

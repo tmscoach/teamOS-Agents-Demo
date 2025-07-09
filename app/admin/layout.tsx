@@ -1,8 +1,8 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
-import { AdminSidebar } from "@/components/admin/sidebar";
+import { AdminLayout } from "@/components/admin/admin-layout";
 
-export default async function AdminLayout({
+export default async function AdminLayoutWrapper({
   children,
 }: {
   children: React.ReactNode;
@@ -18,13 +18,8 @@ export default async function AdminLayout({
   // In production, check if user has admin role in database
 
   return (
-    <div className="flex h-screen bg-teams-bg">
-      <AdminSidebar />
-      <main className="flex-1 overflow-y-auto bg-teams-bg">
-        <div className="p-teams-xl">
-          {children}
-        </div>
-      </main>
-    </div>
+    <AdminLayout>
+      {children}
+    </AdminLayout>
   );
 }

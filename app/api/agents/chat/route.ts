@@ -9,6 +9,8 @@ import {
   AgentRouter,
   ContextManager,
   ConversationStore,
+  AgentContext,
+  Message,
 } from '@/src/lib/agents';
 import { createOnboardingAgent } from '@/src/lib/agents/implementations/onboarding-agent';
 import { prisma } from '@/lib/db/prisma';
@@ -37,9 +39,55 @@ interface ChatResponse {
   }>;
 }
 
-// Initialize services
-const contextManager = new ContextManager();
+// Initialize services - using a custom context manager that integrates with persistence
+class PersistentContextManager extends ContextManager {
+  private conversationStore: ConversationStore;
+
+  constructor(conversationStore: ConversationStore) {
+    super();
+    this.conversationStore = conversationStore;
+  }
+
+  async getContext(conversationId: string): Promise<AgentContext | null> {
+    // First check in-memory cache
+    let context = await super.getContext(conversationId);
+    
+    if (!context) {
+      // Load from database
+      const conversationData = await this.conversationStore.loadConversation(conversationId);
+      if (conversationData) {
+        context = conversationData.context;
+        // Set in memory for future use
+        await this.setContext(conversationId, context);
+      }
+    }
+    
+    return context;
+  }
+
+  async addMessage(conversationId: string, message: Message): Promise<void> {
+    console.log(`[PersistentContextManager] Adding message to conversation ${conversationId}:`, {
+      role: message.role,
+      content: message.content.substring(0, 50) + '...',
+      agent: message.agent
+    });
+    
+    // Add to in-memory context
+    await super.addMessage(conversationId, message);
+    
+    // Also save to database immediately
+    try {
+      await this.conversationStore.addMessage(conversationId, message);
+      console.log(`[PersistentContextManager] Successfully saved message to database`);
+    } catch (error) {
+      console.error(`[PersistentContextManager] Failed to save message:`, error);
+      throw error;
+    }
+  }
+}
+
 const conversationStore = new ConversationStore(prisma);
+const contextManager = new PersistentContextManager(conversationStore);
 const router = new AgentRouter({ contextManager });
 
 // Register all available agents
@@ -160,13 +208,17 @@ export async function POST(req: NextRequest) {
       message
     );
 
-    // Save conversation state
-    await conversationStore.saveConversation(
-      context.conversationId,
-      response.context,
-      response.context.messageHistory,
-      response.events
-    );
+    // Save events to database (messages are already saved by PersistentContextManager)
+    for (const event of response.events) {
+      await conversationStore.addEvent(context.conversationId, event);
+    }
+
+    // Update conversation metadata
+    await conversationStore.updateContext(context.conversationId, {
+      currentAgent: response.context.currentAgent,
+      transformationPhase: response.context.transformationPhase,
+      metadata: response.context.metadata,
+    });
 
     // Format response
     const chatResponse: ChatResponse = {
