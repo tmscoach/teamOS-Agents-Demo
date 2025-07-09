@@ -1,12 +1,9 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useParams } from "next/navigation";
-import { format } from "date-fns";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { useParams, useRouter } from "next/navigation";
+import { format, formatDistanceToNow } from "date-fns";
+import Link from "next/link";
 import {
   User,
   Bot,
@@ -16,6 +13,8 @@ import {
   Database,
   ArrowRight,
   Activity,
+  ArrowLeft,
+  MessageSquare,
 } from "lucide-react";
 
 interface Message {
@@ -34,7 +33,7 @@ interface ConversationDetail {
   teamName: string;
   currentAgent: string;
   messages: Message[];
-  metadata: {
+  metadata?: {
     onboarding?: {
       state: string;
       startTime: Date;
@@ -58,31 +57,22 @@ interface ConversationDetail {
     type: string;
     timestamp: Date;
     agent: string;
+    content?: any;
     data?: any;
   }>;
 }
 
 export default function ConversationDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const conversationId = params.id as string;
   const [conversation, setConversation] = useState<ConversationDetail | null>(null);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'captured' | 'required'>('captured');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchConversation();
-    
-    // Set up WebSocket for real-time updates
-    const ws = new WebSocket(process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3001');
-    
-    ws.onmessage = (event) => {
-      const data = JSON.parse(event.data);
-      if (data.type === 'conversation_update' && data.conversationId === conversationId) {
-        fetchConversation();
-      }
-    };
-
-    return () => ws.close();
   }, [conversationId]);
 
   useEffect(() => {
@@ -92,7 +82,15 @@ export default function ConversationDetailPage() {
   const fetchConversation = async () => {
     try {
       const response = await fetch(`/api/admin/conversations/${conversationId}`);
+      if (!response.ok) {
+        console.error('Failed to fetch conversation:', response.status);
+        const errorData = await response.text();
+        console.error('Error response:', errorData);
+        return;
+      }
       const data = await response.json();
+      console.log('Fetched conversation data:', data);
+      console.log('Messages:', data.messages);
       setConversation(data);
     } catch (error) {
       console.error('Failed to fetch conversation:', error);
@@ -106,219 +104,601 @@ export default function ConversationDetailPage() {
   };
 
   if (loading) {
-    return <div>Loading conversation...</div>;
+    return (
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '400px'
+      }}>
+        <div style={{
+          width: '48px',
+          height: '48px',
+          border: '4px solid #e5e7eb',
+          borderTopColor: '#111827',
+          borderRadius: '50%',
+          animation: 'spin 1s linear infinite'
+        }}></div>
+        <style jsx>{`
+          @keyframes spin {
+            to { transform: rotate(360deg); }
+          }
+        `}</style>
+      </div>
+    );
   }
 
   if (!conversation) {
-    return <div>Conversation not found</div>;
+    return (
+      <div style={{
+        textAlign: 'center',
+        padding: '48px',
+        color: '#6b7280'
+      }}>
+        <AlertCircle style={{
+          width: '48px',
+          height: '48px',
+          margin: '0 auto 16px',
+          opacity: 0.3
+        }} />
+        <p style={{ marginBottom: '8px', fontWeight: '500' }}>Conversation not found</p>
+        <Link 
+          href="/admin/conversations"
+          style={{
+            color: '#111827',
+            textDecoration: 'none',
+            fontSize: '14px',
+            fontWeight: '500'
+          }}
+          onMouseEnter={(e) => e.currentTarget.style.textDecoration = 'underline'}
+          onMouseLeave={(e) => e.currentTarget.style.textDecoration = 'none'}
+        >
+          ← Back to conversations
+        </Link>
+      </div>
+    );
   }
 
-  const onboardingData = conversation.metadata.onboarding;
+  const onboardingData = conversation.metadata?.onboarding;
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-start">
+    <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif' }}>
+      {/* Header */}
+      <div style={{
+        marginBottom: '32px',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'flex-start'
+      }}>
         <div>
-          <h1 className="text-3xl font-bold">{conversation.managerName}</h1>
-          <p className="text-gray-600">Team: {conversation.teamName}</p>
+          <button
+            onClick={() => router.push('/admin/conversations')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '8px 16px',
+              marginBottom: '16px',
+              border: '1px solid #e5e7eb',
+              borderRadius: '8px',
+              backgroundColor: 'white',
+              color: '#6b7280',
+              fontSize: '14px',
+              fontWeight: '500',
+              cursor: 'pointer',
+              transition: 'all 0.2s'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = '#111827';
+              e.currentTarget.style.color = '#111827';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = '#e5e7eb';
+              e.currentTarget.style.color = '#6b7280';
+            }}
+          >
+            <ArrowLeft style={{ width: '16px', height: '16px' }} />
+            Back to Conversations
+          </button>
+          <h1 style={{
+            fontSize: '32px',
+            fontWeight: '600',
+            color: '#111827',
+            marginBottom: '8px'
+          }}>{conversation.managerName}</h1>
+          <p style={{ color: '#6b7280' }}>Team: {conversation.teamName}</p>
         </div>
-        <div className="flex gap-2">
-          <Badge variant="outline">
-            {onboardingData?.state.replace(/_/g, ' ')}
-          </Badge>
-          <Badge variant={onboardingData?.qualityMetrics.managerConfidence === 'high' ? 'default' : 'secondary'}>
-            {onboardingData?.qualityMetrics.managerConfidence} confidence
-          </Badge>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          {onboardingData && (
+            <>
+              <span style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                padding: '6px 16px',
+                borderRadius: '20px',
+                fontSize: '14px',
+                fontWeight: '500',
+                border: '1px solid #e5e7eb',
+                backgroundColor: 'white',
+                color: '#6b7280',
+                textTransform: 'capitalize'
+              }}>
+                {onboardingData.state.replace(/_/g, ' ').toLowerCase()}
+              </span>
+              <span style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                padding: '6px 16px',
+                borderRadius: '20px',
+                fontSize: '14px',
+                fontWeight: '500',
+                backgroundColor: 
+                  onboardingData.qualityMetrics.managerConfidence === 'high' ? '#d1fae5' :
+                  onboardingData.qualityMetrics.managerConfidence === 'medium' ? '#dbeafe' :
+                  '#fee2e2',
+                color: 
+                  onboardingData.qualityMetrics.managerConfidence === 'high' ? '#065f46' :
+                  onboardingData.qualityMetrics.managerConfidence === 'medium' ? '#1e40af' :
+                  '#991b1b'
+              }}>
+                {onboardingData.qualityMetrics.managerConfidence} confidence
+              </span>
+            </>
+          )}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Conversation</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ScrollArea className="h-[600px] pr-4">
-                <div className="space-y-4">
-                  {conversation.messages.map((message) => (
-                    <div
-                      key={message.id}
-                      className={`flex gap-3 ${
-                        message.role === 'user' ? 'justify-end' : 'justify-start'
-                      }`}
-                    >
-                      <div
-                        className={`flex gap-3 max-w-[80%] ${
-                          message.role === 'user' ? 'flex-row-reverse' : 'flex-row'
-                        }`}
-                      >
-                        <div className="flex-shrink-0">
-                          {message.role === 'user' ? (
-                            <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                              <User className="w-4 h-4 text-white" />
-                            </div>
-                          ) : (
-                            <div className="w-8 h-8 bg-gray-500 rounded-full flex items-center justify-center">
-                              <Bot className="w-4 h-4 text-white" />
-                            </div>
-                          )}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 400px',
+        gap: '24px'
+      }}>
+        {/* Conversation Panel */}
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+          overflow: 'hidden'
+        }}>
+          <div style={{
+            padding: '24px',
+            borderBottom: '1px solid #e5e7eb'
+          }}>
+            <h2 style={{
+              fontSize: '18px',
+              fontWeight: '600',
+              color: '#111827'
+            }}>Conversation</h2>
+          </div>
+          <div style={{
+            height: '600px',
+            overflowY: 'auto',
+            padding: '24px'
+          }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {conversation.messages && conversation.messages.length > 0 ? (
+                conversation.messages.map((message) => (
+                  <div
+                    key={message.id}
+                    style={{
+                      display: 'flex',
+                      justifyContent: message.role === 'user' ? 'flex-end' : 'flex-start'
+                    }}
+                  >
+                    <div style={{
+                      display: 'flex',
+                      gap: '12px',
+                      maxWidth: '80%',
+                      flexDirection: message.role === 'user' ? 'row-reverse' : 'row'
+                    }}>
+                      <div style={{
+                        width: '32px',
+                        height: '32px',
+                        borderRadius: '50%',
+                        backgroundColor: message.role === 'user' ? '#3b82f6' : '#6b7280',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0
+                      }}>
+                        {message.role === 'user' ? (
+                          <User style={{ width: '16px', height: '16px', color: 'white' }} />
+                        ) : (
+                          <Bot style={{ width: '16px', height: '16px', color: 'white' }} />
+                        )}
+                      </div>
+                      <div>
+                        <div style={{
+                          borderRadius: '12px',
+                          padding: '12px 16px',
+                          backgroundColor: message.role === 'user' ? '#3b82f6' : '#f3f4f6',
+                          color: message.role === 'user' ? 'white' : '#111827'
+                        }}>
+                          <p style={{ fontSize: '14px', lineHeight: '1.5' }}>{message.content}</p>
                         </div>
-                        <div
-                          className={`rounded-lg px-4 py-2 ${
-                            message.role === 'user'
-                              ? 'bg-blue-500 text-white'
-                              : 'bg-gray-100 text-gray-900'
-                          }`}
-                        >
-                          <p className="text-sm">{message.content}</p>
-                          <p
-                            className={`text-xs mt-1 ${
-                              message.role === 'user'
-                                ? 'text-blue-100'
-                                : 'text-gray-500'
-                            }`}
-                          >
-                            {format(new Date(message.timestamp), 'HH:mm:ss')}
-                          </p>
-                        </div>
+                        <p style={{
+                          fontSize: '12px',
+                          color: '#6b7280',
+                          marginTop: '4px',
+                          textAlign: message.role === 'user' ? 'right' : 'left'
+                        }}>
+                          {format(new Date(message.timestamp), 'HH:mm:ss')}
+                        </p>
                       </div>
                     </div>
-                  ))}
-                  <div ref={messagesEndRef} />
+                  </div>
+                ))
+              ) : (
+                <div style={{
+                  textAlign: 'center',
+                  padding: '48px',
+                  color: '#6b7280'
+                }}>
+                  <MessageSquare style={{
+                    width: '48px',
+                    height: '48px',
+                    margin: '0 auto 16px',
+                    opacity: 0.3
+                  }} />
+                  <p>No messages in this conversation yet</p>
                 </div>
-              </ScrollArea>
-            </CardContent>
-          </Card>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+          </div>
         </div>
 
-        <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Captured Variables</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Tabs defaultValue="captured">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="captured">Captured</TabsTrigger>
-                  <TabsTrigger value="required">Required</TabsTrigger>
-                </TabsList>
-                <TabsContent value="captured" className="space-y-2">
-                  {Object.entries(onboardingData?.capturedFields || {}).map(([key, value]) => (
-                    <div key={key} className="flex justify-between py-2 border-b">
-                      <span className="text-sm font-medium">{key}:</span>
-                      <span className="text-sm text-gray-600">{String(value)}</span>
-                    </div>
-                  ))}
-                </TabsContent>
-                <TabsContent value="required" className="space-y-2">
-                  {Object.entries(onboardingData?.requiredFieldsStatus || {}).map(([field, captured]) => (
-                    <div key={field} className="flex items-center justify-between py-2">
-                      <span className="text-sm">{field}</span>
-                      {captured ? (
-                        <CheckCircle className="w-4 h-4 text-green-500" />
+        {/* Right Panel */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          {/* Captured Variables */}
+          {onboardingData && (
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+            }}>
+              <div style={{
+                padding: '24px',
+                borderBottom: '1px solid #e5e7eb'
+              }}>
+                <h3 style={{
+                  fontSize: '18px',
+                  fontWeight: '600',
+                  color: '#111827'
+                }}>Captured Variables</h3>
+              </div>
+              <div style={{ padding: '24px' }}>
+                {/* Tabs */}
+                <div style={{
+                  display: 'flex',
+                  gap: '24px',
+                  borderBottom: '1px solid #e5e7eb',
+                  marginBottom: '24px'
+                }}>
+                  <button
+                    onClick={() => setActiveTab('captured')}
+                    style={{
+                      padding: '12px 0',
+                      color: activeTab === 'captured' ? '#111827' : '#6b7280',
+                      cursor: 'pointer',
+                      fontWeight: '500',
+                      fontSize: '14px',
+                      background: 'none',
+                      borderTop: 'none',
+                      borderLeft: 'none',
+                      borderRight: 'none',
+                      borderBottom: `2px solid ${activeTab === 'captured' ? '#111827' : 'transparent'}`,
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    Captured
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('required')}
+                    style={{
+                      padding: '12px 0',
+                      color: activeTab === 'required' ? '#111827' : '#6b7280',
+                      cursor: 'pointer',
+                      fontWeight: '500',
+                      fontSize: '14px',
+                      background: 'none',
+                      borderTop: 'none',
+                      borderLeft: 'none',
+                      borderRight: 'none',
+                      borderBottom: `2px solid ${activeTab === 'required' ? '#111827' : 'transparent'}`,
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    Required
+                  </button>
+                </div>
+
+                {/* Tab Content */}
+                <div>
+                  {activeTab === 'captured' ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {Object.entries(onboardingData.capturedFields || {}).length > 0 ? (
+                        Object.entries(onboardingData.capturedFields).map(([key, value]) => (
+                          <div key={key} style={{
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            paddingBottom: '12px',
+                            borderBottom: '1px solid #f3f4f6'
+                          }}>
+                            <span style={{ fontSize: '14px', fontWeight: '500', color: '#111827' }}>
+                              {key}:
+                            </span>
+                            <span style={{ fontSize: '14px', color: '#6b7280' }}>
+                              {String(value)}
+                            </span>
+                          </div>
+                        ))
                       ) : (
-                        <AlertCircle className="w-4 h-4 text-gray-300" />
+                        <p style={{ fontSize: '14px', color: '#6b7280' }}>No variables captured yet</p>
                       )}
                     </div>
-                  ))}
-                </TabsContent>
-              </Tabs>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Quality Metrics</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <div className="flex justify-between mb-1">
-                  <span className="text-sm font-medium">Completion</span>
-                  <span className="text-sm text-gray-600">
-                    {onboardingData?.qualityMetrics.completionPercentage}%
-                  </span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div
-                    className="bg-blue-600 h-2 rounded-full"
-                    style={{
-                      width: `${onboardingData?.qualityMetrics.completionPercentage}%`,
-                    }}
-                  />
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {Object.entries(onboardingData.requiredFieldsStatus || {}).length > 0 ? (
+                        Object.entries(onboardingData.requiredFieldsStatus).map(([field, captured]) => (
+                          <div key={field} style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '8px 0'
+                          }}>
+                            <span style={{ fontSize: '14px', color: '#111827' }}>{field}</span>
+                            {captured ? (
+                              <CheckCircle style={{ width: '16px', height: '16px', color: '#10b981' }} />
+                            ) : (
+                              <AlertCircle style={{ width: '16px', height: '16px', color: '#e5e7eb' }} />
+                            )}
+                          </div>
+                        ))
+                      ) : (
+                        <p style={{ fontSize: '14px', color: '#6b7280' }}>No required fields defined</p>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
+            </div>
+          )}
 
-              <div>
-                <div className="flex justify-between mb-1">
-                  <span className="text-sm font-medium">Rapport Score</span>
-                  <span className="text-sm text-gray-600">
-                    {onboardingData?.qualityMetrics.rapportScore}/100
-                  </span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
-                  <div
-                    className="bg-green-600 h-2 rounded-full"
-                    style={{
-                      width: `${onboardingData?.qualityMetrics.rapportScore}%`,
-                    }}
-                  />
-                </div>
+          {/* Quality Metrics */}
+          {onboardingData && (
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+            }}>
+              <div style={{
+                padding: '24px',
+                borderBottom: '1px solid #e5e7eb'
+              }}>
+                <h3 style={{
+                  fontSize: '18px',
+                  fontWeight: '600',
+                  color: '#111827'
+                }}>Quality Metrics</h3>
               </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>State Transitions</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {onboardingData?.stateTransitions.map((transition, index) => (
-                  <div key={index} className="flex items-center gap-2 text-sm">
-                    <Clock className="w-4 h-4 text-gray-400" />
-                    <span className="text-gray-600">
-                      {format(new Date(transition.timestamp), 'HH:mm:ss')}
+              <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                <div>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    marginBottom: '8px'
+                  }}>
+                    <span style={{ fontSize: '14px', fontWeight: '500', color: '#111827' }}>
+                      Completion
                     </span>
-                    <ArrowRight className="w-4 h-4 text-gray-400" />
-                    <span className="font-medium">
-                      {transition.to.replace(/_/g, ' ')}
+                    <span style={{ fontSize: '14px', color: '#6b7280' }}>
+                      {onboardingData.qualityMetrics.completionPercentage}%
                     </span>
                   </div>
-                ))}
+                  <div style={{
+                    width: '100%',
+                    height: '8px',
+                    backgroundColor: '#e5e7eb',
+                    borderRadius: '4px',
+                    overflow: 'hidden'
+                  }}>
+                    <div style={{
+                      width: `${onboardingData.qualityMetrics.completionPercentage}%`,
+                      height: '100%',
+                      backgroundColor: '#3b82f6',
+                      borderRadius: '4px',
+                      transition: 'width 0.3s ease'
+                    }} />
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    marginBottom: '8px'
+                  }}>
+                    <span style={{ fontSize: '14px', fontWeight: '500', color: '#111827' }}>
+                      Rapport Score
+                    </span>
+                    <span style={{ fontSize: '14px', color: '#6b7280' }}>
+                      {onboardingData.qualityMetrics.rapportScore}/100
+                    </span>
+                  </div>
+                  <div style={{
+                    width: '100%',
+                    height: '8px',
+                    backgroundColor: '#e5e7eb',
+                    borderRadius: '4px',
+                    overflow: 'hidden'
+                  }}>
+                    <div style={{
+                      width: `${onboardingData.qualityMetrics.rapportScore}%`,
+                      height: '100%',
+                      backgroundColor: '#10b981',
+                      borderRadius: '4px',
+                      transition: 'width 0.3s ease'
+                    }} />
+                  </div>
+                </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          )}
+
+          {/* State Transitions */}
+          {onboardingData && onboardingData.stateTransitions && onboardingData.stateTransitions.length > 0 && (
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+            }}>
+              <div style={{
+                padding: '24px',
+                borderBottom: '1px solid #e5e7eb'
+              }}>
+                <h3 style={{
+                  fontSize: '18px',
+                  fontWeight: '600',
+                  color: '#111827'
+                }}>State Transitions</h3>
+              </div>
+              <div style={{ padding: '24px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {onboardingData.stateTransitions.map((transition, index) => (
+                    <div key={index} style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '8px',
+                      fontSize: '14px'
+                    }}>
+                      <Clock style={{ width: '16px', height: '16px', color: '#6b7280' }} />
+                      <span style={{ color: '#6b7280' }}>
+                        {format(new Date(transition.timestamp), 'HH:mm:ss')}
+                      </span>
+                      <ArrowRight style={{ width: '16px', height: '16px', color: '#6b7280' }} />
+                      <span style={{ fontWeight: '500', color: '#111827', textTransform: 'capitalize' }}>
+                        {transition.to.replace(/_/g, ' ').toLowerCase()}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Event Timeline</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ScrollArea className="h-[200px]">
-            <div className="space-y-2">
-              {conversation.events.map((event) => (
-                <div key={event.id} className="flex items-start gap-3 text-sm">
-                  <Activity className="w-4 h-4 text-gray-400 mt-0.5" />
-                  <div className="flex-1">
-                    <span className="font-medium">{event.type}</span>
-                    <span className="text-gray-600 ml-2">
-                      {format(new Date(event.timestamp), 'HH:mm:ss')}
-                    </span>
-                    {event.data && (
-                      <pre className="text-xs text-gray-500 mt-1">
-                        {JSON.stringify(event.data, null, 2)}
-                      </pre>
-                    )}
+      {/* Event Timeline */}
+      {conversation.events && conversation.events.length > 0 && (
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '12px',
+          boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+          marginTop: '24px'
+        }}>
+          <div style={{
+            padding: '24px',
+            borderBottom: '1px solid #e5e7eb'
+          }}>
+            <h3 style={{
+              fontSize: '18px',
+              fontWeight: '600',
+              color: '#111827'
+            }}>Event Timeline</h3>
+          </div>
+          <div style={{ 
+            padding: '24px',
+            maxHeight: '300px',
+            overflowY: 'auto'
+          }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {conversation.events.map((event) => {
+                // Parse the event content to get more details
+                let eventDetails = null;
+                try {
+                  eventDetails = typeof event.content === 'string' ? JSON.parse(event.content) : event.content;
+                } catch (e) {
+                  // If parsing fails, use the raw content
+                }
+
+                // Determine event icon and color based on type
+                const getEventStyle = (type: string) => {
+                  switch (type) {
+                    case 'guardrail':
+                      return { color: '#f59e0b', icon: AlertCircle };
+                    case 'handoff':
+                      return { color: '#3b82f6', icon: ArrowRight };
+                    case 'tool_call':
+                      return { color: '#10b981', icon: Database };
+                    default:
+                      return { color: '#6b7280', icon: Activity };
+                  }
+                };
+
+                const eventStyle = getEventStyle(event.type);
+                const EventIcon = eventStyle.icon;
+
+                // Format event message based on type
+                const getEventMessage = () => {
+                  if (event.type === 'guardrail' && eventDetails) {
+                    const passed = eventDetails.result?.passed;
+                    const guardrailName = eventDetails.guardrailName || 'Unknown';
+                    return (
+                      <span>
+                        Guardrail <strong>{guardrailName}</strong>: {' '}
+                        <span style={{ color: passed ? '#10b981' : '#ef4444' }}>
+                          {passed ? 'PASSED' : 'FAILED'}
+                        </span>
+                      </span>
+                    );
+                  }
+                  return <span>{event.type} by {event.agent || 'System'}</span>;
+                };
+
+                return (
+                  <div key={event.id} style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '12px'
+                  }}>
+                    <EventIcon style={{ 
+                      width: '16px', 
+                      height: '16px', 
+                      color: eventStyle.color,
+                      marginTop: '2px',
+                      flexShrink: 0
+                    }} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: '8px',
+                        fontSize: '14px'
+                      }}>
+                        {getEventMessage()}
+                        <span style={{ fontSize: '12px', color: '#6b7280', marginLeft: 'auto' }}>
+                          {format(new Date(event.timestamp), 'HH:mm:ss')}
+                        </span>
+                      </div>
+                      {eventDetails?.result?.reason && event.type === 'guardrail' && (
+                        <p style={{
+                          fontSize: '12px',
+                          color: '#6b7280',
+                          marginTop: '4px',
+                          marginLeft: '28px'
+                        }}>
+                          {eventDetails.result.reason}
+                        </p>
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
-          </ScrollArea>
-        </CardContent>
-      </Card>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
