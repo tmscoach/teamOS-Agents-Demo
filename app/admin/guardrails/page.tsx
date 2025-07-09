@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { AdminCard, AdminCardContent, AdminCardHeader, AdminCardTitle } from "@/components/admin";
+import { StatusBadge, SeverityBadge } from "@/components/admin";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -99,18 +99,6 @@ export default function GuardrailsPage() {
     }
   };
 
-  const getSeverityColor = (severity: string | null) => {
-    switch (severity) {
-      case "high":
-        return "bg-red-500";
-      case "medium":
-        return "bg-orange-500";
-      case "low":
-        return "bg-yellow-500";
-      default:
-        return "bg-gray-500";
-    }
-  };
 
   const formatTimestamp = (timestamp: string) => {
     return format(new Date(timestamp), "MMM d, yyyy HH:mm:ss");
@@ -119,125 +107,135 @@ export default function GuardrailsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-96">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teams-primary"></div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-teams-lg">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Guardrail Monitoring</h1>
-        <p className="text-muted-foreground">Monitor and analyze guardrail violations across all agents</p>
+        <h1 className="text-4xl font-bold text-teams-text-primary">Guardrail Monitoring</h1>
+        <p className="text-teams-text-secondary mt-teams-xs">Monitor and analyze guardrail violations across all agents</p>
       </div>
 
       {/* Stats Overview */}
       {stats && (
-        <div className="grid gap-4 md:grid-cols-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Total Checks</CardTitle>
-              <Shield className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.totalChecks.toLocaleString()}</div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Pass Rate</CardTitle>
-              {stats.passRate >= 90 ? (
-                <TrendingUp className="h-4 w-4 text-green-600" />
-              ) : (
-                <TrendingDown className="h-4 w-4 text-red-600" />
-              )}
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.passRate.toFixed(1)}%</div>
-              <p className="text-xs text-muted-foreground">
-                {stats.totalChecks - stats.failedChecks} passed
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Violations</CardTitle>
-              <AlertTriangle className="h-4 w-4 text-orange-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.failedChecks.toLocaleString()}</div>
-              <div className="flex gap-2 mt-2">
-                {Object.entries(stats.severityBreakdown).map(([severity, count]) => (
-                  <Badge key={severity} variant="secondary" className={getSeverityColor(severity)}>
-                    {severity}: {count}
-                  </Badge>
-                ))}
+        <div className="grid gap-teams-md md:grid-cols-4">
+          <AdminCard padding="sm">
+            <div className="flex flex-row items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-teams-text-secondary">Total Checks</p>
+                <div className="text-2xl font-bold text-teams-text-primary mt-teams-xs">{stats.totalChecks.toLocaleString()}</div>
               </div>
-            </CardContent>
-          </Card>
+              <Shield className="h-4 w-4 text-teams-text-secondary" />
+            </div>
+          </AdminCard>
 
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Agents</CardTitle>
-              <Shield className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stats.violationsByAgent.length}</div>
-              <p className="text-xs text-muted-foreground">
-                Agents with violations
-              </p>
-            </CardContent>
-          </Card>
+          <AdminCard padding="sm">
+            <div className="flex flex-row items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-teams-text-secondary">Pass Rate</p>
+                <div className="text-2xl font-bold text-teams-text-primary mt-teams-xs">{stats.passRate.toFixed(1)}%</div>
+                <p className="text-xs text-teams-text-tertiary mt-teams-xs">
+                  {stats.totalChecks - stats.failedChecks} passed
+                </p>
+              </div>
+              {stats.passRate >= 90 ? (
+                <TrendingUp className="h-4 w-4 text-teams-accent-green" />
+              ) : (
+                <TrendingDown className="h-4 w-4 text-teams-accent-pink" />
+              )}
+            </div>
+          </AdminCard>
+
+          <AdminCard padding="sm">
+            <div className="flex flex-row items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-teams-text-secondary">Violations</p>
+                <div className="text-2xl font-bold text-teams-text-primary mt-teams-xs">{stats.failedChecks.toLocaleString()}</div>
+                <div className="flex gap-teams-xs mt-teams-sm">
+                  {Object.entries(stats.severityBreakdown).map(([severity, count]) => (
+                    severity ? (
+                      <SeverityBadge key={severity} severity={severity as "high" | "medium" | "low"} />
+                    ) : (
+                      <StatusBadge key="unknown" status="neutral" size="sm">
+                        unknown: {count}
+                      </StatusBadge>
+                    )
+                  ))}
+                </div>
+              </div>
+              <AlertTriangle className="h-4 w-4 text-teams-accent-orange" />
+            </div>
+          </AdminCard>
+
+          <AdminCard padding="sm">
+            <div className="flex flex-row items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-teams-text-secondary">Active Agents</p>
+                <div className="text-2xl font-bold text-teams-text-primary mt-teams-xs">{stats.violationsByAgent.length}</div>
+                <p className="text-xs text-teams-text-tertiary mt-teams-xs">
+                  Agents with violations
+                </p>
+              </div>
+              <Shield className="h-4 w-4 text-teams-text-secondary" />
+            </div>
+          </AdminCard>
         </div>
       )}
 
-      <Tabs defaultValue="violations" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="violations">Recent Violations</TabsTrigger>
-          <TabsTrigger value="search">Search & Filter</TabsTrigger>
-          <TabsTrigger value="analysis">Analysis</TabsTrigger>
+      <Tabs defaultValue="violations" className="space-y-teams-md">
+        <TabsList className="bg-teams-ui-bg border border-teams-ui-border">
+          <TabsTrigger value="violations" className="data-[state=active]:bg-teams-bg data-[state=active]:text-teams-text-primary">Recent Violations</TabsTrigger>
+          <TabsTrigger value="search" className="data-[state=active]:bg-teams-bg data-[state=active]:text-teams-text-primary">Search & Filter</TabsTrigger>
+          <TabsTrigger value="analysis" className="data-[state=active]:bg-teams-bg data-[state=active]:text-teams-text-primary">Analysis</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="violations" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Recent Guardrail Violations</CardTitle>
-              <CardDescription>
+        <TabsContent value="violations" className="space-y-teams-md">
+          <AdminCard>
+            <AdminCardHeader>
+              <AdminCardTitle>Recent Guardrail Violations</AdminCardTitle>
+              <p className="text-sm text-teams-text-secondary mt-teams-xs">
                 Latest 10 guardrail violations across all agents
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
+              </p>
+            </AdminCardHeader>
+            <AdminCardContent className="p-0">
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead>Timestamp</TableHead>
-                    <TableHead>Agent</TableHead>
-                    <TableHead>Guardrail</TableHead>
-                    <TableHead>Severity</TableHead>
-                    <TableHead>Input</TableHead>
-                    <TableHead>Reasoning</TableHead>
-                    <TableHead>Action</TableHead>
+                  <TableRow className="border-teams-ui-border">
+                    <TableHead className="text-teams-text-secondary">Timestamp</TableHead>
+                    <TableHead className="text-teams-text-secondary">Agent</TableHead>
+                    <TableHead className="text-teams-text-secondary">Guardrail</TableHead>
+                    <TableHead className="text-teams-text-secondary">Severity</TableHead>
+                    <TableHead className="text-teams-text-secondary">Input</TableHead>
+                    <TableHead className="text-teams-text-secondary">Reasoning</TableHead>
+                    <TableHead className="text-teams-text-secondary">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {recentViolations.map((violation) => (
-                    <TableRow key={violation.id}>
-                      <TableCell className="text-sm">{formatTimestamp(violation.timestamp)}</TableCell>
-                      <TableCell className="font-medium">{violation.agentName}</TableCell>
-                      <TableCell>{violation.guardrailType}</TableCell>
+                  {recentViolations.map((violation, index) => (
+                    <TableRow 
+                      key={violation.id} 
+                      className={`border-teams-ui-border ${index % 2 === 0 ? 'bg-teams-bg' : 'bg-teams-ui-bg'}`}
+                    >
+                      <TableCell className="text-sm text-teams-text-secondary">{formatTimestamp(violation.timestamp)}</TableCell>
+                      <TableCell className="font-medium text-teams-text-primary">{violation.agentName}</TableCell>
+                      <TableCell className="text-teams-text-secondary">{violation.guardrailType}</TableCell>
                       <TableCell>
-                        <Badge className={getSeverityColor(violation.severity)}>
-                          {violation.severity || "low"}
-                        </Badge>
+                        {violation.severity ? (
+                          <SeverityBadge severity={violation.severity as "high" | "medium" | "low"} />
+                        ) : (
+                          <StatusBadge status="neutral" size="sm">low</StatusBadge>
+                        )}
                       </TableCell>
-                      <TableCell className="max-w-xs truncate">{violation.input}</TableCell>
-                      <TableCell className="max-w-xs truncate">{violation.reasoning}</TableCell>
+                      <TableCell className="max-w-xs truncate text-teams-text-secondary">{violation.input}</TableCell>
+                      <TableCell className="max-w-xs truncate text-teams-text-secondary">{violation.reasoning}</TableCell>
                       <TableCell>
                         <Button
                           variant="ghost"
                           size="sm"
+                          className="text-teams-primary hover:text-teams-primary-dark hover:bg-teams-ui-hover-bg"
                           onClick={() => router.push(`/admin/conversations/${violation.conversationId}`)}
                         >
                           View
@@ -247,33 +245,34 @@ export default function GuardrailsPage() {
                   ))}
                 </TableBody>
               </Table>
-            </CardContent>
-          </Card>
+            </AdminCardContent>
+          </AdminCard>
         </TabsContent>
 
-        <TabsContent value="search" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Search Guardrail Violations</CardTitle>
-              <CardDescription>
+        <TabsContent value="search" className="space-y-teams-md">
+          <AdminCard>
+            <AdminCardHeader>
+              <AdminCardTitle>Search Guardrail Violations</AdminCardTitle>
+              <p className="text-sm text-teams-text-secondary mt-teams-xs">
                 Search and filter through all guardrail check history
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex gap-4">
+              </p>
+            </AdminCardHeader>
+            <AdminCardContent className="space-y-teams-md">
+              <div className="flex gap-teams-sm">
                 <div className="flex-1">
                   <Input
                     placeholder="Search by input or reasoning..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && searchGuardrails()}
+                    className="border-teams-ui-border focus:border-teams-primary bg-teams-bg"
                   />
                 </div>
                 <Select value={filterAgent} onValueChange={setFilterAgent}>
-                  <SelectTrigger className="w-[180px]">
+                  <SelectTrigger className="w-[180px] border-teams-ui-border focus:border-teams-primary bg-teams-bg">
                     <SelectValue placeholder="All Agents" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-teams-bg border-teams-ui-border">
                     <SelectItem value="">All Agents</SelectItem>
                     <SelectItem value="OnboardingAgent">Onboarding Agent</SelectItem>
                     <SelectItem value="AssessmentAgent">Assessment Agent</SelectItem>
@@ -281,114 +280,125 @@ export default function GuardrailsPage() {
                   </SelectContent>
                 </Select>
                 <Select value={filterSeverity} onValueChange={setFilterSeverity}>
-                  <SelectTrigger className="w-[140px]">
+                  <SelectTrigger className="w-[140px] border-teams-ui-border focus:border-teams-primary bg-teams-bg">
                     <SelectValue placeholder="All Severities" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="bg-teams-bg border-teams-ui-border">
                     <SelectItem value="">All Severities</SelectItem>
                     <SelectItem value="high">High</SelectItem>
                     <SelectItem value="medium">Medium</SelectItem>
                     <SelectItem value="low">Low</SelectItem>
                   </SelectContent>
                 </Select>
-                <Button onClick={searchGuardrails}>
+                <Button 
+                  onClick={searchGuardrails}
+                  className="bg-teams-primary hover:bg-teams-primary-dark text-white"
+                >
                   <Search className="h-4 w-4 mr-2" />
                   Search
                 </Button>
               </div>
 
               {searchResults && (
-                <div className="space-y-4">
-                  <p className="text-sm text-muted-foreground">
+                <div className="space-y-teams-md">
+                  <p className="text-sm text-teams-text-secondary">
                     Found {searchResults.total} violations
                   </p>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Timestamp</TableHead>
-                        <TableHead>Agent</TableHead>
-                        <TableHead>Guardrail</TableHead>
-                        <TableHead>Severity</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Details</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {searchResults.results.map((result) => (
-                        <TableRow key={result.id}>
-                          <TableCell>{formatTimestamp(result.timestamp)}</TableCell>
-                          <TableCell>{result.agentName}</TableCell>
-                          <TableCell>{result.guardrailType}</TableCell>
-                          <TableCell>
-                            <Badge className={getSeverityColor(result.severity)}>
-                              {result.severity || "low"}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            {result.passed ? (
-                              <CheckCircle className="h-4 w-4 text-green-600" />
-                            ) : (
-                              <XCircle className="h-4 w-4 text-red-600" />
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => router.push(`/admin/conversations/${result.conversationId}`)}
-                            >
-                              View
-                            </Button>
-                          </TableCell>
+                  <div className="-mx-teams-lg">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="border-teams-ui-border">
+                          <TableHead className="text-teams-text-secondary">Timestamp</TableHead>
+                          <TableHead className="text-teams-text-secondary">Agent</TableHead>
+                          <TableHead className="text-teams-text-secondary">Guardrail</TableHead>
+                          <TableHead className="text-teams-text-secondary">Severity</TableHead>
+                          <TableHead className="text-teams-text-secondary">Status</TableHead>
+                          <TableHead className="text-teams-text-secondary">Details</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {searchResults.results.map((result, index) => (
+                          <TableRow 
+                            key={result.id}
+                            className={`border-teams-ui-border ${index % 2 === 0 ? 'bg-teams-bg' : 'bg-teams-ui-bg'}`}
+                          >
+                            <TableCell className="text-teams-text-secondary">{formatTimestamp(result.timestamp)}</TableCell>
+                            <TableCell className="text-teams-text-primary">{result.agentName}</TableCell>
+                            <TableCell className="text-teams-text-secondary">{result.guardrailType}</TableCell>
+                            <TableCell>
+                              {result.severity ? (
+                                <SeverityBadge severity={result.severity as "high" | "medium" | "low"} />
+                              ) : (
+                                <StatusBadge status="neutral" size="sm">low</StatusBadge>
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              {result.passed ? (
+                                <CheckCircle className="h-4 w-4 text-teams-accent-green" />
+                              ) : (
+                                <XCircle className="h-4 w-4 text-teams-accent-pink" />
+                              )}
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-teams-primary hover:text-teams-primary-dark hover:bg-teams-ui-hover-bg"
+                                onClick={() => router.push(`/admin/conversations/${result.conversationId}`)}
+                              >
+                                View
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </div>
               )}
-            </CardContent>
-          </Card>
+            </AdminCardContent>
+          </AdminCard>
         </TabsContent>
 
-        <TabsContent value="analysis" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Violations by Type</CardTitle>
-                <CardDescription>
+        <TabsContent value="analysis" className="space-y-teams-md">
+          <div className="grid gap-teams-md md:grid-cols-2">
+            <AdminCard>
+              <AdminCardHeader>
+                <AdminCardTitle>Violations by Type</AdminCardTitle>
+                <p className="text-sm text-teams-text-secondary mt-teams-xs">
                   Distribution of guardrail violations by type
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
+                </p>
+              </AdminCardHeader>
+              <AdminCardContent>
+                <div className="space-y-teams-sm">
                   {stats?.violationsByType.map((item) => (
-                    <div key={item.type} className="flex items-center justify-between">
-                      <span className="text-sm font-medium">{item.type}</span>
-                      <Badge variant="secondary">{item.count}</Badge>
+                    <div key={item.type} className="flex items-center justify-between py-teams-xs">
+                      <span className="text-sm font-medium text-teams-text-primary">{item.type}</span>
+                      <StatusBadge status="neutral" size="sm">{item.count}</StatusBadge>
                     </div>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
+              </AdminCardContent>
+            </AdminCard>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Violations by Agent</CardTitle>
-                <CardDescription>
+            <AdminCard>
+              <AdminCardHeader>
+                <AdminCardTitle>Violations by Agent</AdminCardTitle>
+                <p className="text-sm text-teams-text-secondary mt-teams-xs">
                   Agent-wise distribution of violations
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
+                </p>
+              </AdminCardHeader>
+              <AdminCardContent>
+                <div className="space-y-teams-sm">
                   {stats?.violationsByAgent.map((item) => (
-                    <div key={item.agent} className="flex items-center justify-between">
-                      <span className="text-sm font-medium">{item.agent}</span>
-                      <Badge variant="secondary">{item.count}</Badge>
+                    <div key={item.agent} className="flex items-center justify-between py-teams-xs">
+                      <span className="text-sm font-medium text-teams-text-primary">{item.agent}</span>
+                      <StatusBadge status="neutral" size="sm">{item.count}</StatusBadge>
                     </div>
                   ))}
                 </div>
-              </CardContent>
-            </Card>
+              </AdminCardContent>
+            </AdminCard>
           </div>
         </TabsContent>
       </Tabs>
