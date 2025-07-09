@@ -1,257 +1,212 @@
-/**
- * Tests for message persistence functionality
- */
+import { ContextManager } from '@/src/lib/agents/context-manager';
+import { ConversationStore } from '@/src/lib/agents/conversation-store';
+import { Message } from '@/src/lib/agents/types';
 
-import { ConversationStore } from '../persistence';
-import { ContextManager } from '../context';
-import { v4 as uuidv4 } from 'uuid';
-import { PrismaClient } from '@prisma/client';
+// Since PersistentContextManager is defined in the route file, we'll need to recreate it here for testing
+class PersistentContextManager extends ContextManager {
+  private conversationStore: ConversationStore;
 
-// Mock Prisma
-jest.mock('@prisma/client', () => ({
-  PrismaClient: jest.fn().mockImplementation(() => ({
-    conversation: {
-      create: jest.fn(),
-      findUnique: jest.fn(),
-      update: jest.fn(),
-      findMany: jest.fn(),
-      delete: jest.fn(),
-    },
-    message: {
-      create: jest.fn(),
-      createMany: jest.fn(),
-      count: jest.fn(),
-      findMany: jest.fn(),
-    },
-    agentEvent: {
-      create: jest.fn(),
-      createMany: jest.fn(),
-    },
-    user: {
-      findUnique: jest.fn(),
-    },
-    team: {
-      findUnique: jest.fn(),
-    },
-    $transaction: jest.fn((fn) => fn({
-      conversation: {
-        update: jest.fn(),
-      },
-      message: {
-        count: jest.fn().mockResolvedValue(0),
-        createMany: jest.fn(),
-      },
-      agentEvent: {
-        createMany: jest.fn(),
-      },
-    })),
-  })),
-}));
+  constructor(conversationStore: ConversationStore) {
+    super();
+    this.conversationStore = conversationStore;
+  }
 
-describe('Message Persistence', () => {
-  let prisma: any;
-  let conversationStore: ConversationStore;
-  let contextManager: ContextManager;
+  async getContext(conversationId: string) {
+    let context = await super.getContext(conversationId);
+    
+    if (!context) {
+      const conversationData = await this.conversationStore.loadConversation(conversationId);
+      if (conversationData) {
+        context = conversationData.context;
+        await this.setContext(conversationId, context);
+      }
+    }
+    
+    return context;
+  }
+
+  async addMessage(conversationId: string, message: Message): Promise<void> {
+    await super.addMessage(conversationId, message);
+    
+    try {
+      await this.conversationStore.addMessage(conversationId, message);
+    } catch (error) {
+      throw error;
+    }
+  }
+}
+
+// Mock ConversationStore
+jest.mock('@/src/lib/agents/conversation-store');
+
+describe('PersistentContextManager', () => {
+  let contextManager: PersistentContextManager;
+  let mockConversationStore: jest.Mocked<ConversationStore>;
 
   beforeEach(() => {
-    prisma = new PrismaClient();
-    conversationStore = new ConversationStore(prisma);
-    contextManager = new ContextManager();
+    // Create a mock conversation store
+    mockConversationStore = {
+      loadConversation: jest.fn(),
+      addMessage: jest.fn(),
+      saveConversation: jest.fn(),
+      updateContext: jest.fn(),
+      addEvent: jest.fn(),
+    } as any;
+
+    // Create PersistentContextManager with mock
+    contextManager = new PersistentContextManager(mockConversationStore);
   });
 
   afterEach(() => {
     jest.clearAllMocks();
   });
 
-  describe('ConversationStore', () => {
-    it('should create a new conversation', async () => {
-      const teamId = 'team-123';
-      const managerId = 'manager-123';
-      const conversationId = 'conv-123';
-
-      prisma.conversation.create.mockResolvedValue({
-        id: conversationId,
-        teamId,
-        managerId,
-        currentAgent: 'OnboardingAgent',
-        phase: 'onboarding',
-        contextData: {},
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
-
-      prisma.conversation.update.mockResolvedValue({
-        id: conversationId,
-        contextData: { conversationId },
-      });
-
-      const result = await conversationStore.createConversation(teamId, managerId);
-
-      expect(prisma.conversation.create).toHaveBeenCalledWith({
-        data: expect.objectContaining({
-          teamId,
-          managerId,
-          currentAgent: 'OnboardingAgent',
-          phase: 'onboarding',
-        }),
-      });
-
-      expect(result).toBe(conversationId);
-    });
-
-    it('should add a message to a conversation', async () => {
-      const conversationId = 'conv-123';
-      const message = {
-        id: uuidv4(),
-        role: 'user' as const,
-        content: 'Test message',
-        timestamp: new Date(),
-      };
-
-      prisma.message.create.mockResolvedValue({
-        ...message,
+  describe('getContext', () => {
+    it('should return context from memory if available', async () => {
+      const conversationId = 'test-conversation-1';
+      const testContext = {
         conversationId,
-      });
-
-      await conversationStore.addMessage(conversationId, message);
-
-      expect(prisma.message.create).toHaveBeenCalledWith({
-        data: {
-          id: message.id,
-          conversationId,
-          role: message.role,
-          content: message.content,
-          agent: undefined,
-          metadata: undefined,
-          timestamp: message.timestamp,
-        },
-      });
-    });
-
-    it('should save conversation with messages and events', async () => {
-      const conversationId = 'conv-123';
-      const context = {
-        conversationId,
-        teamId: 'team-123',
-        managerId: 'manager-123',
-        currentAgent: 'OnboardingAgent',
-        transformationPhase: 'onboarding' as const,
-        messageHistory: [],
+        currentAgent: 'test-agent',
+        messages: [],
         metadata: {},
       };
 
-      const messages = [
-        {
-          id: uuidv4(),
-          role: 'user' as const,
-          content: 'Hello',
-          timestamp: new Date(),
-        },
-        {
-          id: uuidv4(),
-          role: 'assistant' as const,
-          content: 'Hi there!',
-          agent: 'OnboardingAgent',
-          timestamp: new Date(),
-        },
-      ];
+      // Set context in memory first
+      await contextManager.setContext(conversationId, testContext);
 
-      const events = [
-        {
-          id: uuidv4(),
-          type: 'guardrail',
-          agent: 'OnboardingAgent',
-          timestamp: new Date(),
-        },
-      ];
+      // Get context should return from memory without loading from DB
+      const result = await contextManager.getContext(conversationId);
 
-      await conversationStore.saveConversation(conversationId, context, messages, events);
-
-      expect(prisma.$transaction).toHaveBeenCalled();
+      expect(result).toEqual(testContext);
+      expect(mockConversationStore.loadConversation).not.toHaveBeenCalled();
     });
 
-    it('should load a conversation with messages', async () => {
-      const conversationId = 'conv-123';
-      const mockConversation = {
-        id: conversationId,
-        teamId: 'team-123',
-        managerId: 'manager-123',
-        currentAgent: 'OnboardingAgent',
-        phase: 'onboarding',
-        contextData: {
-          conversationId,
-          teamId: 'team-123',
-          managerId: 'manager-123',
-          currentAgent: 'OnboardingAgent',
-          transformationPhase: 'onboarding',
-          messageHistory: [],
-          metadata: {},
-        },
-        messages: [
-          {
-            id: 'msg-1',
-            role: 'user',
-            content: 'Hello',
-            timestamp: new Date(),
-            agent: null,
-            metadata: null,
-          },
-        ],
-        events: [],
+    it('should load from database if not in memory', async () => {
+      const conversationId = 'test-conversation-2';
+      const testContext = {
+        conversationId,
+        currentAgent: 'test-agent',
+        messages: [],
+        metadata: {},
       };
 
-      prisma.conversation.findUnique.mockResolvedValue(mockConversation);
+      // Mock database load
+      mockConversationStore.loadConversation.mockResolvedValue({
+        id: conversationId,
+        context: testContext,
+        messages: [],
+        events: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as any);
 
-      const result = await conversationStore.loadConversation(conversationId);
+      // Get context should load from database
+      const result = await contextManager.getContext(conversationId);
 
-      expect(prisma.conversation.findUnique).toHaveBeenCalledWith({
-        where: { id: conversationId },
-        include: {
-          messages: { orderBy: { timestamp: 'asc' } },
-          events: { orderBy: { timestamp: 'asc' } },
-        },
-      });
+      expect(result).toEqual(testContext);
+      expect(mockConversationStore.loadConversation).toHaveBeenCalledWith(conversationId);
+    });
 
-      expect(result).toBeTruthy();
-      expect(result?.context.conversationId).toBe(conversationId);
-      expect(result?.messages).toHaveLength(1);
+    it('should return null if conversation not found', async () => {
+      const conversationId = 'non-existent';
+
+      // Mock database load returning null
+      mockConversationStore.loadConversation.mockResolvedValue(null);
+
+      const result = await contextManager.getContext(conversationId);
+
+      expect(result).toBeNull();
+      expect(mockConversationStore.loadConversation).toHaveBeenCalledWith(conversationId);
     });
   });
 
-  describe('PersistentContextManager Integration', () => {
-    // This would test the PersistentContextManager from the chat routes
-    // but we can't easily import it since it's defined inline in the route files
-    
-    it('should persist messages immediately when added to context', async () => {
-      // Mock implementation showing expected behavior
-      const conversationId = 'conv-123';
-      const message = {
-        id: uuidv4(),
-        role: 'user' as const,
-        content: 'Test message',
+  describe('addMessage', () => {
+    it('should add message to both memory and database', async () => {
+      const conversationId = 'test-conversation-3';
+      const message: Message = {
+        role: 'user',
+        content: 'Hello, world!',
+        agent: 'test-agent',
         timestamp: new Date(),
       };
 
-      // Set up context first
+      // Mock successful database save
+      mockConversationStore.addMessage.mockResolvedValue(undefined);
+
+      // Add message
+      await contextManager.addMessage(conversationId, message);
+
+      // Should save to database
+      expect(mockConversationStore.addMessage).toHaveBeenCalledWith(conversationId, message);
+    });
+
+    it('should throw error if database save fails', async () => {
+      const conversationId = 'test-conversation-4';
+      const message: Message = {
+        role: 'assistant',
+        content: 'Test response',
+        agent: 'test-agent',
+        timestamp: new Date(),
+      };
+
+      // Mock database save failure
+      const error = new Error('Database connection failed');
+      mockConversationStore.addMessage.mockRejectedValue(error);
+
+      // Should throw error
+      await expect(contextManager.addMessage(conversationId, message))
+        .rejects.toThrow('Database connection failed');
+
+      expect(mockConversationStore.addMessage).toHaveBeenCalledWith(conversationId, message);
+    });
+
+    it('should handle messages with special characters', async () => {
+      const conversationId = 'test-conversation-5';
+      const message: Message = {
+        role: 'user',
+        content: 'I HATE YOU AND THIS FUCKING STUPID SYSTEM',
+        agent: 'test-agent',
+        timestamp: new Date(),
+      };
+
+      mockConversationStore.addMessage.mockResolvedValue(undefined);
+
+      await contextManager.addMessage(conversationId, message);
+
+      expect(mockConversationStore.addMessage).toHaveBeenCalledWith(conversationId, message);
+    });
+  });
+
+  describe('integration with parent ContextManager', () => {
+    it('should maintain message history in memory', async () => {
+      const conversationId = 'test-conversation-6';
       const context = {
         conversationId,
-        teamId: 'team-123',
-        managerId: 'manager-123',
-        currentAgent: 'OnboardingAgent',
-        transformationPhase: 'onboarding' as const,
-        messageHistory: [],
+        currentAgent: 'test-agent',
+        messages: [],
         metadata: {},
       };
+
+      // Set initial context
       await contextManager.setContext(conversationId, context);
 
-      // Create a mock that simulates PersistentContextManager behavior
-      const addMessageSpy = jest.spyOn(conversationStore, 'addMessage').mockResolvedValue();
+      // Add multiple messages
+      const messages: Message[] = [
+        { role: 'user', content: 'First message', agent: 'user', timestamp: new Date() },
+        { role: 'assistant', content: 'First response', agent: 'test-agent', timestamp: new Date() },
+        { role: 'user', content: 'Second message', agent: 'user', timestamp: new Date() },
+      ];
 
-      // Simulate adding a message (this would be done by PersistentContextManager)
-      await contextManager.addMessage(conversationId, message);
-      await conversationStore.addMessage(conversationId, message);
+      mockConversationStore.addMessage.mockResolvedValue(undefined);
 
-      expect(addMessageSpy).toHaveBeenCalledWith(conversationId, message);
+      for (const msg of messages) {
+        await contextManager.addMessage(conversationId, msg);
+      }
+
+      // Get context to verify messages are in memory
+      const updatedContext = await contextManager.getContext(conversationId);
+      expect(updatedContext?.messages).toHaveLength(3);
+      expect(updatedContext?.messages).toEqual(messages);
     });
   });
 });

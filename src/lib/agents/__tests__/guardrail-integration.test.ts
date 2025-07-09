@@ -1,17 +1,35 @@
-import { BaseAgent } from '../base';
+import { Agent } from '../base';
 import { GuardrailTrackingService } from '@/src/lib/services/guardrail-tracking';
 import { VariableExtractionService } from '@/src/lib/services/variable-extraction';
-import { AgentContext, GuardrailResult, Guardrail } from '../types';
+import { AgentContext, GuardrailResult, Guardrail, VariableExtraction } from '../types';
 
 // Mock services
 jest.mock('@/src/lib/services/guardrail-tracking');
 jest.mock('@/src/lib/services/variable-extraction');
 
+// Create a concrete test agent class
+class TestAgent extends Agent {
+  async processRequest(message: string, context: AgentContext): Promise<{
+    response: string;
+    context: AgentContext;
+    handoff?: { targetAgent: string; reason: string };
+    toolCalls?: any[];
+    variableExtractions?: VariableExtraction[];
+  }> {
+    // Simple echo response for testing
+    return {
+      response: `Test response: ${message}`,
+      context,
+      variableExtractions: [],
+    };
+  }
+}
+
 describe('Guardrail and Variable Extraction Integration', () => {
   const mockGuardrailService = GuardrailTrackingService as jest.Mocked<typeof GuardrailTrackingService>;
   const mockVariableService = VariableExtractionService as jest.Mocked<typeof VariableExtractionService>;
 
-  let testAgent: BaseAgent;
+  let testAgent: TestAgent;
   let testContext: AgentContext;
 
   beforeEach(() => {
@@ -50,7 +68,7 @@ describe('Guardrail and Variable Extraction Integration', () => {
     ];
 
     // Create test agent
-    testAgent = new BaseAgent({
+    testAgent = new TestAgent({
       name: 'TestAgent',
       description: 'Test agent for integration testing',
       handoffDescription: 'Test handoff',
@@ -107,7 +125,7 @@ describe('Guardrail and Variable Extraction Integration', () => {
       const input = 'This is a valid message that passes all checks';
       
       // Process message through agent
-      const response = await testAgent.process(input, testContext);
+      const response = await testAgent.processMessage(input, testContext);
 
       // Verify guardrail tracking was called for each guardrail
       expect(mockGuardrailService.trackGuardrailCheck).toHaveBeenCalledTimes(2);
