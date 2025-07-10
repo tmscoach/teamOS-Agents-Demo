@@ -9,16 +9,27 @@ export default async function DashboardPage() {
   }
 
   // Get user with journey info
-  const user = await getCurrentUserWithJourney()
+  const user = await getCurrentUserWithJourney().catch((error) => {
+    console.error('Database connection error:', error)
+    return null
+  })
   
   // Check if user needs onboarding
-  if (user && user.journeyStatus === 'ONBOARDING' && user.role === 'TEAM_MANAGER') {
+  // Note: The NEXT_REDIRECT error in dev console is expected behavior - it's how Next.js handles redirects
+  if (user && user.journeyStatus === 'ONBOARDING' && user.role === 'MANAGER') {
     redirect('/onboarding')
   }
 
   return (
     <div>
-      <h2 className="text-3xl font-bold mb-6">Welcome, {clerkUser?.firstName || 'User'}!</h2>
+        <h2 className="text-3xl font-bold mb-6">Welcome, {clerkUser?.firstName || 'User'}!</h2>
+      
+      {!user && (
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-6">
+          <p className="text-yellow-800">Unable to load user data. Some features may be limited.</p>
+        </div>
+      )}
+      
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <div className="border rounded-lg p-6">
           <h3 className="text-xl font-semibold mb-2">Team Overview</h3>
@@ -33,6 +44,12 @@ export default async function DashboardPage() {
           <p className="text-gray-600">Monitor team transformation progress</p>
         </div>
       </div>
+      
+      {user && (
+        <div className="mt-8 text-sm text-gray-500">
+          <p>Email: {user.email} | Role: {user.role} | Status: {user.journeyStatus}</p>
+        </div>
+      )}
     </div>
   )
 }

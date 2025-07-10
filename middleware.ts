@@ -20,6 +20,9 @@ const isPublicRoute = createRouteMatcher([
   '/sign-up(.*)',
   '/sso-callback(.*)',
   '/api/webhooks(.*)',
+  '/api/test-db',  // Temporary test endpoint
+  '/test-tailwind',  // Test page
+  '/api/dev(.*)',  // Development endpoints
 ])
 
 export default clerkMiddleware(async (auth, req) => {
@@ -30,20 +33,19 @@ export default clerkMiddleware(async (auth, req) => {
     return NextResponse.next()
   }
 
-  // Protect all protected routes
-  if (isProtectedRoute(req)) {
-    if (!userId) {
-      return redirectToSignIn()
-    }
+  // Check authentication for ALL non-public routes
+  if (!userId) {
+    return redirectToSignIn()
   }
 
-  // For admin routes, we'll check permissions in the route handlers
-  // since we can't access Prisma in middleware
-  if (isAdminRoute(req)) {
-    if (!userId) {
-      return redirectToSignIn()
-    }
-    // Admin role check will be done in the route handler
+  // Additional checks for specific protected routes
+  if (isProtectedRoute(req) && !userId) {
+    return redirectToSignIn()
+  }
+
+  // Admin routes require authentication (role check in route handlers)
+  if (isAdminRoute(req) && !userId) {
+    return redirectToSignIn()
   }
 
   return NextResponse.next()

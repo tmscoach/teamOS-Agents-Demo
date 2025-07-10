@@ -3,8 +3,9 @@
 import React, { useEffect, useState } from "react"
 import { useSignUp } from "@clerk/nextjs"
 import { useRouter } from "next/navigation"
-import { TeamOSLogo } from "@/components/ui/teamos-logo"
-import { Button } from "@/components/ui/button"
+import { BlocksDashboard } from "@/components/blocks/blocks-dashboard"
+import { Button } from "@/components/ui/anima-button"
+import { CardHeader } from "@/components/ui/card-header"
 import { Separator } from "@/components/ui/separator"
 import Image from "next/image"
 import Link from "next/link"
@@ -12,6 +13,7 @@ import Link from "next/link"
 export default function SignUpPage() {
   const [mounted, setMounted] = useState(false)
   const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const { isLoaded, signUp, setActive } = useSignUp()
   const router = useRouter()
@@ -30,18 +32,30 @@ export default function SignUpPage() {
 
     setIsLoading(true)
     try {
-      await signUp.create({
+      // Try to create the sign-up with password to potentially bypass CAPTCHA
+      const result = await signUp.create({
         emailAddress: email,
+        password: password,
       })
 
-      // Send the email verification
-      await signUp.prepareEmailAddressVerification({ strategy: "email_link" })
-      
-      // Redirect to verification page
-      router.push("/sign-up/verify-email?email=" + encodeURIComponent(email))
+      if (result.status === "complete") {
+        await setActive({ session: result.createdSessionId })
+        router.push("/onboarding")
+      } else if (result.status === "missing_requirements") {
+        // Send verification email if needed
+        await signUp.prepareEmailAddressVerification({ strategy: "email_link" })
+        router.push("/sign-up/verify-email?email=" + encodeURIComponent(email))
+      }
     } catch (err: any) {
       console.error("Error signing up with email:", err)
-      alert(err.errors?.[0]?.message || "Error signing up. Please try again.")
+      
+      // Check if it's a CAPTCHA error
+      if (err.errors?.[0]?.message?.includes("CAPTCHA")) {
+        // Suggest using OAuth as a workaround
+        alert("CAPTCHA verification failed. Please try signing up with Google or Microsoft instead, or try a different browser.")
+      } else {
+        alert(err.errors?.[0]?.message || "Error signing up. Please try again.")
+      }
     } finally {
       setIsLoading(false)
     }
@@ -65,20 +79,29 @@ export default function SignUpPage() {
   return (
     <div
       className="flex flex-col-reverse lg:flex-row w-full min-h-screen items-start relative overflow-hidden"
+      data-shadcn-ui-mode="light-zinc"
     >
       {/* Left Column - Dark Section (appears second on mobile) */}
-      <div className="flex flex-col min-h-[400px] h-[50vh] lg:min-h-[600px] lg:h-screen items-start relative w-full lg:w-1/2 shadow-[0px_1px_2px_#0000000d] overflow-hidden bg-gradient-to-br from-purple-900 to-purple-700">
-        {/* Background Pattern */}
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute inset-0" style={{
-            backgroundImage: `repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(255,255,255,.1) 35px, rgba(255,255,255,.1) 70px)`,
-          }} />
+      <div className="flex flex-col min-h-[400px] h-[50vh] lg:min-h-[600px] lg:h-screen items-start relative w-full lg:w-1/2 shadow-[0px_1px_2px_#0000000d] overflow-hidden">
+        {/* Background Image */}
+        <div className="absolute inset-0 z-0">
+          <Image
+            src="/images/marcus-chen.png"
+            alt="Marcus Chen"
+            fill
+            className="object-cover object-center"
+            priority
+          />
+          {/* Gradient Overlay */}
+          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.3)_0%,rgba(0,0,0,0.9)_100%)]" />
         </div>
         
         {/* Content */}
         <div className="relative z-10 flex flex-col h-full w-full">
           <div className="flex flex-col items-start gap-1.5 p-6 lg:p-9 relative self-stretch w-full">
-            <TeamOSLogo className="text-white" />
+            <div className="inline-flex items-center gap-3 relative">
+              <BlocksDashboard className="scale-75 lg:scale-100 origin-left" />
+            </div>
           </div>
 
           {/* Spacer to push content to bottom */}
@@ -86,13 +109,13 @@ export default function SignUpPage() {
 
           <div className="flex flex-col items-start justify-end gap-4 p-6 lg:p-8 relative self-stretch w-full">
             <div className="inline-flex flex-col items-start gap-2 relative max-w-md">
-              <p className="relative font-normal text-white text-sm lg:text-base tracking-[0] leading-6 lg:leading-7">
-                "TeamOS transformed how I manage my team. The AI-powered insights
-                helped me understand my team's dynamics and unlock their full potential."
+              <p className="relative [font-family:'Inter-Regular',Helvetica] font-normal text-white text-sm lg:text-base tracking-[0] leading-6 lg:leading-7">
+                "TeamOS helped us build a world-class team culture. The platform's
+                insights gave us the clarity we needed to grow from startup to scale-up."
               </p>
 
-              <p className="relative w-fit font-bold text-white text-xs lg:text-sm tracking-[0] leading-6 lg:leading-7">
-                Sarah Johnson, Product Manager, TechCorp
+              <p className="relative w-fit [font-family:'Inter-Bold',Helvetica] font-bold text-white text-xs lg:text-sm tracking-[0] leading-6 lg:leading-7">
+                Marcus Chen, CEO, InnovateTech
               </p>
             </div>
           </div>
@@ -134,6 +157,22 @@ export default function SignUpPage() {
                   </div>
                 </div>
 
+                <div className="flex flex-col items-start gap-1.5 relative self-stretch w-full flex-[0_0_auto]">
+                  <div className="flex h-9 items-center gap-2 relative self-stretch w-full">
+                    <div className="flex flex-col items-start gap-1.5 relative flex-1 grow">
+                      <input
+                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                        placeholder="Password"
+                        type="password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        required
+                        disabled={isLoading}
+                      />
+                    </div>
+                  </div>
+                </div>
+
                 <Button
                   className="w-full"
                   type="submit"
@@ -141,6 +180,9 @@ export default function SignUpPage() {
                 >
                   {isLoading ? "Creating account..." : "Sign Up with Email"}
                 </Button>
+                
+                {/* Clerk CAPTCHA container */}
+                <div id="clerk-captcha" style={{ minHeight: "65px" }}></div>
               </div>
 
               <div className="items-center gap-3 flex relative self-stretch w-full flex-[0_0_auto]">

@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
+import { UserButton } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -106,10 +107,15 @@ export default function ChatPage() {
     <div className="container mx-auto p-4 max-w-4xl">
       <Card className="h-[80vh] flex flex-col">
         <CardHeader>
-          <CardTitle>Chat with teamOS Assistant</CardTitle>
-          <p className="text-sm text-muted-foreground">
-            Start a conversation to begin your team transformation journey
-          </p>
+          <div className="flex justify-between items-start">
+            <div>
+              <CardTitle>Chat with teamOS Assistant</CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Start a conversation to begin your team transformation journey
+              </p>
+            </div>
+            <UserButton afterSignOutUrl="/sign-in" />
+          </div>
         </CardHeader>
         <CardContent className="flex-1 flex flex-col p-0">
           <ScrollArea className="flex-1 p-6">

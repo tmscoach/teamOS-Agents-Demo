@@ -69,7 +69,7 @@ export async function POST(req: Request) {
           email,
           name: `${first_name || ''} ${last_name || ''}`.trim() || email,
           imageUrl: image_url || null,
-          role: isAdmin ? 'ADMIN' : 'TEAM_MANAGER',
+          role: isAdmin ? 'ADMIN' : 'MANAGER',
           journeyStatus: isAdmin ? 'ACTIVE' : 'ONBOARDING',
           completedSteps: [],
         },

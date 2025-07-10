@@ -1,6 +1,6 @@
 import { currentUser } from '@clerk/nextjs/server'
 import { prisma } from '@/lib/prisma'
-import { UserRole } from '@prisma/client'
+import { UserRole } from '@/lib/generated/prisma'
 
 export async function getUserRole(): Promise<UserRole | null> {
   const clerkUser = await currentUser()
@@ -21,7 +21,7 @@ export async function isAdmin(): Promise<boolean> {
 
 export async function isTeamManager(): Promise<boolean> {
   const role = await getUserRole()
-  return role === 'TEAM_MANAGER'
+  return role === 'MANAGER'
 }
 
 export async function isTeamMember(): Promise<boolean> {

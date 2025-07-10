@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
+import { UserButton } from '@clerk/nextjs'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
@@ -83,11 +84,15 @@ export default function OnboardingPage() {
 
   return (
     <div className="container mx-auto py-8 px-4 max-w-4xl">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">Welcome to TeamOS, {user?.firstName || 'Team Manager'}!</h1>
-        <p className="text-muted-foreground">
-          Let's get you started on your team transformation journey.
-        </p>
+      {/* Header with UserButton */}
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h1 className="text-3xl font-bold mb-2">Welcome to TeamOS, {user?.firstName || 'Team Manager'}!</h1>
+          <p className="text-muted-foreground">
+            Let's get you started on your team transformation journey.
+          </p>
+        </div>
+        <UserButton afterSignOutUrl="/sign-in" />
       </div>
 
       <Card className="mb-8">
@@ -107,18 +112,24 @@ export default function OnboardingPage() {
                   key={step.id}
                   className={`flex items-center gap-3 p-4 rounded-lg border transition-colors ${
                     isCompleted
-                      ? 'bg-green-50 border-green-200 dark:bg-green-950 dark:border-green-800'
+                      ? 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800'
                       : isCurrent
-                      ? 'bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-800'
-                      : 'bg-gray-50 border-gray-200 dark:bg-gray-900 dark:border-gray-800'
+                      ? 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800'
+                      : 'bg-gray-50 border-gray-200 dark:bg-gray-800/30 dark:border-gray-700'
                   }`}
                 >
                   {isCompleted ? (
                     <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
                   ) : (
-                    <Circle className="h-5 w-5 text-gray-400" />
+                    <Circle className="h-5 w-5 text-gray-400 dark:text-gray-500" />
                   )}
-                  <span className={`font-medium ${isCompleted ? 'text-green-700 dark:text-green-300' : ''}`}>
+                  <span className={`font-medium ${
+                    isCompleted 
+                      ? 'text-green-700 dark:text-green-300' 
+                      : isCurrent
+                      ? 'text-blue-700 dark:text-blue-300'
+                      : 'text-gray-900 dark:text-gray-100'
+                  }`}>
                     {step.name}
                   </span>
                   {isCurrent && (

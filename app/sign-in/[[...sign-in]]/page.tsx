@@ -118,9 +118,7 @@ export default function SignInPage() {
       {/* Right Column - Light Section (appears first on mobile) */}
       <div className="flex flex-col min-h-[400px] h-[50vh] lg:min-h-[600px] lg:h-screen items-start relative w-full lg:w-1/2 bg-white lg:bg-[color:var(--shadcn-ui-card)] shadow-[0px_1px_2px_#0000000d] overflow-y-auto">
         <div className="items-end gap-1.5 p-6 lg:p-9 pb-0 flex flex-col relative self-stretch w-full">
-          <Link href="/sign-up">
-            <Button size="sm" state="hover" text="Sign Up" type="ghost" />
-          </Link>
+          {/* Sign Up link temporarily disabled */}
         </div>
 
         <div className="items-center justify-center gap-4 px-6 lg:px-16 pt-4 pb-6 flex-1 grow flex flex-col relative self-stretch w-full">
