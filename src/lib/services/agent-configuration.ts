@@ -342,8 +342,14 @@ export class AgentConfigurationService {
       }
       
       // Handle connection errors
+      // P1001: Can't reach database server (common with Supabase pooler connections)
+      // P1002: Database server was reached but timed out
       if (error?.code === 'P1001' || error?.code === 'P1002') {
-        console.error('Database connection error in getAllAgentConfigurations');
+        console.error('Database connection error in getAllAgentConfigurations:', {
+          code: error.code,
+          message: error.message,
+          hint: 'This often occurs with Supabase pooler connections. Consider using direct connection for production.'
+        });
         return [];
       }
       
