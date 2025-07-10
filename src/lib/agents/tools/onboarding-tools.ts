@@ -37,13 +37,27 @@ export function createOnboardingTools(): AgentTool[] {
 
         // Extract manager name
         const namePatterns = [
-          /(?:I'm|I am|My name is|Call me)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i,
-          /^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\s+here/i
+          /(?:I'm|I am|My name is|Call me)\s+([A-Z][a-z]+)/i,
+          /^([A-Z][a-z]+)\s+here/i,
+          /^([A-Z][a-z]+)\s+(?:and|,)/i  // Handle "I'm Rowan and..."
         ];
         for (const pattern of namePatterns) {
           const match = message.match(pattern);
           if (match) {
             extracted.name = match[1];
+            break;
+          }
+        }
+        
+        // Extract organization/company
+        const orgPatterns = [
+          /(?:work (?:at|for)|from|with|represent)\s+([A-Za-z0-9\s&,.-]+?)(?:\.|,|$)/i,
+          /(?:company|organization|org)\s+(?:is|called)?\s*([A-Za-z0-9\s&,.-]+?)(?:\.|,|$)/i
+        ];
+        for (const pattern of orgPatterns) {
+          const match = message.match(pattern);
+          if (match) {
+            extracted.organization = match[1].trim();
             break;
           }
         }

@@ -7,6 +7,7 @@ export interface AgentConfigInput {
   prompts?: Record<string, string>; // Keep for backward compatibility
   flowConfig: Record<string, any>;
   extractionRules: Record<string, any>;
+  guardrailConfig?: Record<string, any>;
   createdBy: string;
 }
 
@@ -36,17 +37,37 @@ export class AgentConfigurationService {
         ? { system: data.systemPrompt } 
         : (data.prompts || {});
       
-      return await prisma.agentConfiguration.create({
-        data: {
-          agentName: data.agentName,
-          version: newVersion,
-          prompts: promptData,
-          flowConfig: data.flowConfig,
-          extractionRules: data.extractionRules,
-          active: true,
-          createdBy: data.createdBy,
-        },
-      });
+      try {
+        return await prisma.agentConfiguration.create({
+          data: {
+            agentName: data.agentName,
+            version: newVersion,
+            prompts: promptData,
+            flowConfig: data.flowConfig,
+            extractionRules: data.extractionRules,
+            guardrailConfig: data.guardrailConfig || {},
+            active: true,
+            createdBy: data.createdBy,
+          },
+        });
+      } catch (error: any) {
+        // If guardrailConfig column doesn't exist, try without it
+        if (error.code === 'P2022' && error.message?.includes('guardrailConfig')) {
+          console.warn('guardrailConfig column missing, creating without it');
+          return await prisma.agentConfiguration.create({
+            data: {
+              agentName: data.agentName,
+              version: newVersion,
+              prompts: promptData,
+              flowConfig: data.flowConfig,
+              extractionRules: data.extractionRules,
+              active: true,
+              createdBy: data.createdBy,
+            },
+          });
+        }
+        throw error;
+      }
     } catch (error: any) {
       // Re-throw the error with the original code for proper handling upstream
       throw error;
@@ -57,12 +78,42 @@ export class AgentConfigurationService {
    * Get active configuration for an agent
    */
   static async getActiveConfiguration(agentName: string): Promise<AgentConfiguration | null> {
-    return await prisma.agentConfiguration.findFirst({
-      where: {
-        agentName,
-        active: true,
-      },
-    });
+    try {
+      const config = await prisma.agentConfiguration.findFirst({
+        where: {
+          agentName,
+          active: true,
+        },
+      });
+      
+      // Add guardrailConfig if it doesn't exist
+      if (config && !('guardrailConfig' in config)) {
+        (config as any).guardrailConfig = {};
+      }
+      
+      return config;
+    } catch (error: any) {
+      // Handle missing column error
+      if (error.code === 'P2022' && error.message?.includes('guardrailConfig')) {
+        console.warn('guardrailConfig column missing, using fallback query');
+        
+        // Query without guardrailConfig
+        const result = await prisma.$queryRaw<AgentConfiguration[]>`
+          SELECT id, "agentName", version, prompts, "flowConfig", "extractionRules", active, "createdBy", "createdAt", "updatedAt"
+          FROM "AgentConfiguration"
+          WHERE "agentName" = ${agentName} AND active = true
+          LIMIT 1
+        `;
+        
+        if (result.length > 0) {
+          const config = result[0];
+          (config as any).guardrailConfig = {};
+          return config;
+        }
+      }
+      
+      throw error;
+    }
   }
 
   /**
@@ -107,6 +158,7 @@ export class AgentConfigurationService {
         prompts: updates.prompts,
         flowConfig: updates.flowConfig || {},
         extractionRules: updates.extractionRules || {},
+        guardrailConfig: updates.guardrailConfig || {},
         createdBy: updatedBy,
       });
     }
@@ -117,6 +169,7 @@ export class AgentConfigurationService {
       prompts: updates.prompts || (currentConfig.prompts as Record<string, string>),
       flowConfig: updates.flowConfig || (currentConfig.flowConfig as Record<string, any>),
       extractionRules: updates.extractionRules || (currentConfig.extractionRules as Record<string, any>),
+      guardrailConfig: updates.guardrailConfig || (currentConfig.guardrailConfig as Record<string, any>) || {},
       createdBy: updatedBy,
     });
   }
@@ -182,6 +235,10 @@ export class AgentConfigurationService {
         extractionRules: this.diffObjects(
           config1.extractionRules as Record<string, any>,
           config2.extractionRules as Record<string, any>
+        ),
+        guardrailConfig: this.diffObjects(
+          (config1.guardrailConfig || {}) as Record<string, any>,
+          (config2.guardrailConfig || {}) as Record<string, any>
         ),
       },
     };
@@ -255,6 +312,7 @@ export class AgentConfigurationService {
       prompts: sourceConfig.prompts as Record<string, string>,
       flowConfig: sourceConfig.flowConfig as Record<string, any>,
       extractionRules: sourceConfig.extractionRules as Record<string, any>,
+      guardrailConfig: (sourceConfig.guardrailConfig || {}) as Record<string, any>,
       createdBy,
     });
   }

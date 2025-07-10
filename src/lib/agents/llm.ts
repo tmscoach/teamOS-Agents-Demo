@@ -41,7 +41,7 @@ export class LLMProvider {
       baseURL: config.baseURL,
     });
 
-    this.defaultModel = config.model || 'gpt-4-turbo-preview';
+    this.defaultModel = config.model || 'gpt-4o-mini';  // Updated to a valid model
     this.defaultTemperature = config.temperature ?? 0.7;
     this.defaultMaxTokens = config.maxTokens ?? 2048;
   }

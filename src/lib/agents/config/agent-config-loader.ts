@@ -3,9 +3,11 @@ import { AgentConfiguration } from '@/lib/generated/prisma';
 import { DEFAULT_AGENT_CONFIGS, AgentDefaultConfig } from './default-agent-configs';
 
 export interface LoadedAgentConfig {
-  prompts: Record<string, string>;
+  systemPrompt: string;
+  prompts?: Record<string, string>; // Keep for backward compatibility
   flowConfig: Record<string, any>;
   extractionRules: Record<string, any>;
+  guardrailConfig?: Record<string, any>;
   version: number;
 }
 
@@ -32,10 +34,25 @@ export class AgentConfigLoader {
       const config = await AgentConfigurationService.getActiveConfiguration(agentName);
       
       if (config) {
+        // Handle both new format (systemPrompt) and old format (prompts)
+        let systemPrompt = '';
+        
+        // Check if config has systemPrompt directly
+        if ('systemPrompt' in config && config.systemPrompt) {
+          systemPrompt = config.systemPrompt as string;
+        } 
+        // Fall back to prompts.system if available
+        else if (config.prompts && typeof config.prompts === 'object') {
+          const prompts = config.prompts as Record<string, string>;
+          systemPrompt = prompts.system || '';
+        }
+        
         const loadedConfig: LoadedAgentConfig = {
-          prompts: config.prompts as Record<string, string>,
+          systemPrompt,
+          prompts: config.prompts as Record<string, string> | undefined,
           flowConfig: config.flowConfig as Record<string, any>,
           extractionRules: config.extractionRules as Record<string, any>,
+          guardrailConfig: config.guardrailConfig as Record<string, any> | undefined,
           version: config.version
         };
 
@@ -67,7 +84,20 @@ export class AgentConfigLoader {
   }
 
   /**
-   * Get default prompts for an agent (fallback when no config exists)
+   * Get default system prompt for an agent (fallback when no config exists)
+   */
+  static getDefaultSystemPrompt(agentName: string): string {
+    const config = DEFAULT_AGENT_CONFIGS[agentName];
+    if (config && config.prompts?.system) {
+      return config.prompts.system;
+    }
+
+    // Fallback for unknown agents
+    return `You are the ${agentName} for the TMS transformation platform.`;
+  }
+  
+  /**
+   * Get default prompts for an agent (legacy support)
    */
   static getDefaultPrompts(agentName: string): Record<string, string> {
     const config = DEFAULT_AGENT_CONFIGS[agentName];

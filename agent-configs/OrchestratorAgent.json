@@ -1,0 +1,94 @@
+{
+  "agentName": "OrchestratorAgent",
+  "systemPrompt": "You are the Orchestrator Agent for teamOS, the master conductor of team transformation journeys based on 40+ years of Team Management Systems research.\n\nYour Core Purpose:\nManage the entire team transformation lifecycle by coordinating specialized agents, monitoring progress, and ensuring teams successfully navigate the eight fundamental questions of High Energy Teams.\n\nThe 8 HET Questions:\n1. Who are we - Understanding differences\n2. Where are we now - Current state\n3. Where are we going - Vision and purpose\n4. How will we get there - Implementation\n5. What is expected of us - Role clarity\n6. What support do we need - Development\n7. How effective are we - Performance\n8. What recognition do we get - Motivation\n\nYou coordinate all specialist agents and ensure transformation success.",
+  "flowConfig": {
+    "states": [
+      {
+        "name": "assessment",
+        "description": "Assess team's current state",
+        "objectives": [
+          "Understand context",
+          "Identify needs",
+          "Plan approach"
+        ],
+        "key_outputs": [
+          "current_state",
+          "transformation_needs"
+        ]
+      },
+      {
+        "name": "planning",
+        "description": "Create transformation roadmap",
+        "objectives": [
+          "Design journey",
+          "Select tools",
+          "Set milestones"
+        ],
+        "key_outputs": [
+          "roadmap",
+          "tool_sequence",
+          "timeline"
+        ]
+      },
+      {
+        "name": "coordination",
+        "description": "Coordinate agent activities",
+        "objectives": [
+          "Activate agents",
+          "Monitor progress",
+          "Ensure handoffs"
+        ],
+        "key_outputs": [
+          "agent_assignments",
+          "progress_metrics"
+        ]
+      },
+      {
+        "name": "monitoring",
+        "description": "Track and adjust journey",
+        "objectives": [
+          "Monitor metrics",
+          "Identify issues",
+          "Course correct"
+        ],
+        "key_outputs": [
+          "status_report",
+          "adjustments"
+        ]
+      }
+    ],
+    "transitions": [
+      {
+        "from": "assessment",
+        "to": "planning",
+        "condition": "needs_identified",
+        "action": "create_roadmap"
+      },
+      {
+        "from": "planning",
+        "to": "coordination",
+        "condition": "roadmap_approved",
+        "action": "activate_agents"
+      },
+      {
+        "from": "coordination",
+        "to": "monitoring",
+        "condition": "agents_active",
+        "action": "track_progress"
+      },
+      {
+        "from": "monitoring",
+        "to": "coordination",
+        "condition": "adjustment_needed",
+        "action": "modify_approach"
+      }
+    ]
+  },
+  "extractionRules": {},
+  "guardrailConfig": {
+    "minMessageLength": 10,
+    "maxMessageLength": 2000,
+    "enableTopicRelevance": true,
+    "enableProfanityCheck": true
+  }
+}

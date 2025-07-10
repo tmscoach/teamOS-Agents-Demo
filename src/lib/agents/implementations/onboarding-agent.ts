@@ -115,12 +115,7 @@ export class OnboardingAgent extends KnowledgeEnabledAgent {
       description: 'Guides managers through initial TMS platform setup with personalized onboarding',
       handoffDescription: 'Start your TMS journey with a personalized onboarding conversation',
       instructions: (context: AgentContext) => {
-        // Use the configured system prompt if available
-        if (this.configuredPrompts && this.configuredPrompts.system) {
-          return this.configuredPrompts.system;
-        }
-        
-        // Fallback to default structured prompt
+        // This is now used as a fallback - the loaded configuration's systemPrompt takes precedence
         const metadata = context.metadata as OnboardingMetadata;
         const state = metadata?.state || ConversationState.GREETING;
         const baseInstructions = OnboardingAgent.STATE_INSTRUCTIONS[state];
@@ -166,7 +161,7 @@ Required fields to capture: ${OnboardingAgent.REQUIRED_FIELDS.join(', ')}`;
     });
   }
   
-  private async loadConfiguration() {
+  protected async loadConfiguration() {
     try {
       const config = await AgentConfigLoader.loadConfiguration('OnboardingAgent');
       if (config && config.prompts) {
@@ -352,12 +347,24 @@ Required fields to capture: ${OnboardingAgent.REQUIRED_FIELDS.join(', ')}`;
     // Map captured fields to conversation data format
     const conversationData = this.mapToConversationData(metadata.capturedFields);
     
+    // Check if we should force progression based on missing fields
+    const missingFields = this.getMissingRequiredFields(metadata.capturedFields);
+    if (missingFields.length > 0 && metadata.state === ConversationState.GREETING) {
+      // Force move to basic info collection
+      this.stateMachine.setState(ConversationState.CONTEXT_DISCOVERY);
+      return ConversationState.CONTEXT_DISCOVERY;
+    }
+    
     // Attempt state transition
     if (this.stateMachine.attemptTransition(conversationData)) {
       return this.stateMachine.getState();
     }
     
     return metadata.state;
+  }
+  
+  private getMissingRequiredFields(capturedFields: Record<string, any>): string[] {
+    return OnboardingAgent.REQUIRED_FIELDS.filter(field => !capturedFields[field]);
   }
   
   private mapToConversationData(capturedFields: Record<string, any>): any {
