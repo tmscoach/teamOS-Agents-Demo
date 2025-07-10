@@ -3,7 +3,7 @@
  */
 
 import { StateGraph } from './StateGraph';
-import { BaseAgent } from '../base-agent';
+import { Agent } from '../base';
 import { AgentContext, AgentResponse, Message } from '../types';
 import {
   FlowConfiguration,
@@ -15,13 +15,13 @@ import {
 import { prisma } from '@/lib/prisma';
 
 export class ConfigurableFlowEngine {
-  private agent: BaseAgent;
+  private agent: Agent;
   private flowConfig?: FlowConfiguration;
   private stateGraph?: StateGraph;
-  private agentMap: Map<string, BaseAgent>;
+  private agentMap: Map<string, Agent>;
   private metrics: Map<string, any>;
   
-  constructor(agent: BaseAgent, agentMap?: Map<string, BaseAgent>) {
+  constructor(agent: Agent, agentMap?: Map<string, Agent>) {
     this.agent = agent;
     this.agentMap = agentMap || new Map([['default', agent]]);
     this.metrics = new Map();
@@ -68,7 +68,7 @@ export class ConfigurableFlowEngine {
   ): Promise<AgentResponse> {
     if (!this.flowConfig) {
       // Fall back to direct agent processing if no flow configured
-      return this.agent.processMessage(message, context);
+      return this.agent.processMessage(message.content, context);
     }
     
     // Initialize state graph if needed
@@ -95,7 +95,7 @@ export class ConfigurableFlowEngine {
       console.error('Error in flow execution:', error);
       
       // Fall back to direct agent processing
-      return this.agent.processMessage(message, context);
+      return this.agent.processMessage(message.content, context);
     }
   }
   
@@ -210,7 +210,7 @@ export class ConfigurableFlowEngine {
       return null;
     }
     
-    return dbConfig.config as FlowConfiguration;
+    return dbConfig.config as unknown as FlowConfiguration;
   }
   
   /**

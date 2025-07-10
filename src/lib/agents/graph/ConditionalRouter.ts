@@ -110,7 +110,7 @@ export class ConditionalRouter {
       current = current[f];
     }
     
-    return current !== null && current !== undefined && current !== '';
+    return current !== null && current !== undefined && (typeof current === 'string' ? current !== '' : true);
   }
   
   private checkDataEquals(field: string, value: any, data: Record<string, any>): boolean {

@@ -2,16 +2,16 @@
  * GraphNode: Wrapper for agents as nodes in the flow graph
  */
 
-import { BaseAgent } from '../base-agent';
+import { Agent } from '../base';
 import { AgentContext, AgentResponse, Message } from '../types';
 import { FlowState, GraphExecutionContext } from './types';
 
 export class GraphNode {
-  private agent: BaseAgent;
+  private agent: Agent;
   private state: FlowState;
   private startTime?: Date;
   
-  constructor(agent: BaseAgent, state: FlowState) {
+  constructor(agent: Agent, state: FlowState) {
     this.agent = agent;
     this.state = state;
   }
@@ -38,50 +38,37 @@ export class GraphNode {
   ): Promise<AgentResponse> {
     this.startTime = new Date();
     
-    // Apply state-specific system prompt if available
-    const originalPrompt = this.agent.getSystemPrompt();
-    if (this.state.systemPromptOverride) {
-      this.agent.setSystemPrompt(this.state.systemPromptOverride);
-    }
-    
-    try {
-      // Add state context to the execution
-      const enhancedContext: GraphExecutionContext = {
-        ...context,
-        currentState: this.state.id,
-        stateConfig: this.state,
-        metadata: {
-          ...context.metadata,
-          graphState: this.state.id,
-          requiredData: this.state.dataRequirements.required,
-          availableTools: this.state.availableTools
-        }
-      };
-      
-      // Execute agent with enhanced context
-      const response = await this.agent.processMessage(message, enhancedContext);
-      
-      // Extract data based on state requirements
-      const extractedData = await this.extractRequiredData(response, context.collectedData);
-      
-      // Update collected data in context
-      Object.assign(context.collectedData, extractedData);
-      
-      return {
-        ...response,
-        metadata: {
-          ...response.metadata,
-          stateId: this.state.id,
-          extractedData,
-          duration: Date.now() - this.startTime.getTime()
-        }
-      };
-    } finally {
-      // Restore original prompt
-      if (this.state.systemPromptOverride) {
-        this.agent.setSystemPrompt(originalPrompt);
+    // Add state context to the execution
+    const enhancedContext: GraphExecutionContext = {
+      ...context,
+      currentState: this.state.id,
+      stateConfig: this.state,
+      metadata: {
+        ...context.metadata,
+        graphState: this.state.id,
+        requiredData: this.state.dataRequirements.required,
+        availableTools: this.state.availableTools
       }
-    }
+    };
+    
+    // Execute agent with enhanced context
+    const response = await this.agent.processMessage(message.content, enhancedContext);
+    
+    // Extract data based on state requirements
+    const extractedData = await this.extractRequiredData(response, context.collectedData);
+    
+    // Update collected data in context
+    Object.assign(context.collectedData, extractedData);
+    
+    return {
+      ...response,
+      metadata: {
+        ...response.metadata,
+        stateId: this.state.id,
+        extractedData,
+        duration: Date.now() - this.startTime.getTime()
+      }
+    };
   }
   
   async checkExitConditions(context: GraphExecutionContext): Promise<boolean> {
@@ -130,7 +117,7 @@ export class GraphNode {
   
   private checkUserIntent(context: GraphExecutionContext): boolean {
     // Check metadata or last message for intent signals
-    const lastMessage = context.messages?.[context.messages.length - 1];
+    const lastMessage = context.messageHistory?.[context.messageHistory.length - 1];
     if (!lastMessage) return false;
     
     const intentPatterns = [
@@ -186,7 +173,7 @@ export class GraphNode {
       for (const [field, rule] of Object.entries(rules)) {
         if (this.state.dataRequirements.required.includes(field) ||
             this.state.dataRequirements.optional.includes(field)) {
-          const value = this.extractField(response.content, rule as any);
+          const value = this.extractField(response.message || '', rule as any);
           if (value !== undefined) {
             extracted[field] = value;
           }

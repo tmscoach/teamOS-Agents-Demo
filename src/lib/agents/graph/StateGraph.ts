@@ -16,7 +16,7 @@ import {
   FlowExecutionOptions,
   FlowValidationResult
 } from './types';
-import { BaseAgent } from '../base-agent';
+import { Agent } from '../base';
 import { AgentContext, AgentResponse, Message } from '../types';
 
 export class StateGraph {
@@ -33,7 +33,7 @@ export class StateGraph {
   
   constructor(
     config: FlowConfiguration,
-    agentMap: Map<string, BaseAgent>,
+    agentMap: Map<string, Agent>,
     conversationId?: string
   ) {
     this.config = config;
@@ -223,8 +223,10 @@ export class StateGraph {
     
     // Create composite response
     return {
-      content: this.createParallelResponseContent(results, aggregated),
+      message: this.createParallelResponseContent(results, aggregated),
       toolCalls: [],
+      events: [],
+      context: executor.getCurrentContext(),
       metadata: {
         parallelExecution: true,
         parallelResults: results,
@@ -379,7 +381,7 @@ export class StateGraph {
   /**
    * Initialize nodes from configuration
    */
-  private initializeNodes(agentMap: Map<string, BaseAgent>): void {
+  private initializeNodes(agentMap: Map<string, Agent>): void {
     for (const [stateId, state] of Object.entries(this.config.states)) {
       // Find appropriate agent for this state
       const agentName = this.findAgentForState(state);

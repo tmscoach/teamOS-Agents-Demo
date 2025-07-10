@@ -225,6 +225,7 @@ Required fields to capture: ${OnboardingAgent.REQUIRED_FIELDS.join(', ')}`;
   
   private async processMessageWithFlow(message: string, context: AgentContext): Promise<AgentResponse> {
     const messageObj: Message = {
+      id: `msg-${Date.now()}`,
       role: 'user',
       content: message,
       timestamp: new Date()
