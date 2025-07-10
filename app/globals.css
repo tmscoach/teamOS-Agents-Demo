@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Import Inter font */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
 @layer base {
   :root {
     --background: 0 0% 100%;
@@ -152,4 +155,71 @@ body {
   .teams-btn-secondary {
     @apply px-5 py-2.5 rounded-[var(--teams-radius-md)] bg-[var(--teams-surface)] text-[var(--teams-primary)] border border-[var(--teams-ui-border)] font-medium hover:bg-[var(--teams-ui-hover)] transition-colors;
   }
+}
+
+/* Figma Design System Variables */
+:root {
+  /* Tailwind color primitives */
+  --tailwind-colours-base-white: #ffffff;
+  --tailwind-colours-slate-50: #f8fafc;
+  --tailwind-colours-slate-100: #f1f5f9;
+  --tailwind-colours-slate-200: #e2e8f0;
+  --tailwind-colours-slate-500: #64748b;
+  --tailwind-colours-slate-700: #334155;
+  --tailwind-colours-slate-800: #1e293b;
+  --tailwind-colours-slate-900: #0f172a;
+  --tailwind-colours-slate-950: #020617;
+  --tailwind-colours-zinc-500: #71717a;
+  --tailwind-colours-red-500: #ef4444;
+  
+  /* Rounded primitives */
+  --tailwind-primitives-rounded-rounded: 0.25rem;
+  --tailwind-primitives-rounded-rounded-md: 0.375rem;
+  --tailwind-primitives-rounded-rounded-lg: 0.5rem;
+  
+  /* ShadCN UI Variables for light-zinc theme */
+  --shadcn-ui-accent: #fafafa;
+  --shadcn-ui-accent-foreground: #18181b;
+  --shadcn-ui-background: #ffffff;
+  --shadcn-ui-border: #e4e4e7;
+  --shadcn-ui-card: #ffffff;
+  --shadcn-ui-card-foreground: #09090b;
+  --shadcn-ui-destructive: #ef4444;
+  --shadcn-ui-destructive-foreground: #fafafa;
+  --shadcn-ui-foreground: #09090b;
+  --shadcn-ui-input: #e4e4e7;
+  --shadcn-ui-muted: #fafafa;
+  --shadcn-ui-muted-foreground: #71717a;
+  --shadcn-ui-popover: #ffffff;
+  --shadcn-ui-popover-foreground: #09090b;
+  --shadcn-ui-primary: #18181b;
+  --shadcn-ui-primary-foreground: #fafafa;
+  --shadcn-ui-radius: 0.5rem;
+  --shadcn-ui-radius-md: 0.375rem;
+  --shadcn-ui-radius-sm: 0.25rem;
+  --shadcn-ui-ring: #71717a;
+  --shadcn-ui-secondary: #fafafa;
+  --shadcn-ui-secondary-foreground: #18181b;
+}
+
+[data-shadcn-ui-mode="light-zinc"] {
+  --shadcn-ui-accent: #fafafa;
+  --shadcn-ui-accent-foreground: #18181b;
+  --shadcn-ui-background: #ffffff;
+  --shadcn-ui-border: #e4e4e7;
+  --shadcn-ui-card: #ffffff;
+  --shadcn-ui-card-foreground: #09090b;
+  --shadcn-ui-destructive: #ef4444;
+  --shadcn-ui-destructive-foreground: #fafafa;
+  --shadcn-ui-foreground: #09090b;
+  --shadcn-ui-input: #e4e4e7;
+  --shadcn-ui-muted: #fafafa;
+  --shadcn-ui-muted-foreground: #71717a;
+  --shadcn-ui-popover: #ffffff;
+  --shadcn-ui-popover-foreground: #09090b;
+  --shadcn-ui-primary: #18181b;
+  --shadcn-ui-primary-foreground: #fafafa;
+  --shadcn-ui-ring: #71717a;
+  --shadcn-ui-secondary: #fafafa;
+  --shadcn-ui-secondary-foreground: #18181b;
 }
