@@ -12,7 +12,7 @@ import {
   FlowMetrics,
   FlowValidationResult
 } from './types';
-import { prisma } from '@/lib/prisma';
+import prisma from '@/lib/db';
 
 export class ConfigurableFlowEngine {
   private agent: Agent;
