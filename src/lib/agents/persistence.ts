@@ -39,15 +39,36 @@ export class ConversationStore {
       metadata: options?.metadata || {},
     };
 
-    const conversation = await this.prisma.conversation.create({
-      data: {
-        teamId,
-        managerId,
-        currentAgent: context.currentAgent,
-        phase: context.transformationPhase,
-        contextData: context,
-      },
-    });
+    let conversation;
+    try {
+      // Try to create with metadata field
+      conversation = await this.prisma.conversation.create({
+        data: {
+          teamId,
+          managerId,
+          currentAgent: context.currentAgent,
+          phase: context.transformationPhase,
+          contextData: context,
+          metadata: options?.metadata || {},
+        },
+      });
+    } catch (error: any) {
+      // If metadata column doesn't exist, create without it
+      if (error?.code === 'P2022' && error.message?.includes('metadata')) {
+        console.warn('Metadata column not found in Conversation table, creating without it');
+        conversation = await this.prisma.conversation.create({
+          data: {
+            teamId,
+            managerId,
+            currentAgent: context.currentAgent,
+            phase: context.transformationPhase,
+            contextData: context,
+          },
+        });
+      } else {
+        throw error;
+      }
+    }
 
     // Update context with conversation ID
     context.conversationId = conversation.id;
@@ -196,31 +217,70 @@ export class ConversationStore {
       managerId: currentContext.managerId,
     };
 
-    await this.prisma.conversation.update({
-      where: { id: conversationId },
-      data: {
-        currentAgent: updatedContext.currentAgent,
-        phase: updatedContext.transformationPhase,
-        contextData: updatedContext,
-      },
-    });
+    try {
+      // Try to update with metadata field
+      await this.prisma.conversation.update({
+        where: { id: conversationId },
+        data: {
+          currentAgent: updatedContext.currentAgent,
+          phase: updatedContext.transformationPhase,
+          contextData: updatedContext,
+          metadata: updatedContext.metadata || {},
+        },
+      });
+    } catch (error: any) {
+      // If metadata column doesn't exist, update without it
+      if (error?.code === 'P2022' && error.message?.includes('metadata')) {
+        console.warn('Metadata column not found in Conversation table, updating without it');
+        await this.prisma.conversation.update({
+          where: { id: conversationId },
+          data: {
+            currentAgent: updatedContext.currentAgent,
+            phase: updatedContext.transformationPhase,
+            contextData: updatedContext,
+          },
+        });
+      } else {
+        throw error;
+      }
+    }
   }
 
   /**
    * Add a message to a conversation
    */
   async addMessage(conversationId: string, message: Message): Promise<void> {
-    await this.prisma.message.create({
-      data: {
-        id: message.id,
-        conversationId,
-        role: message.role,
-        content: message.content,
-        agent: message.agent,
-        metadata: message.metadata,
-        timestamp: message.timestamp,
-      },
-    });
+    try {
+      // Try to create with metadata field
+      await this.prisma.message.create({
+        data: {
+          id: message.id,
+          conversationId,
+          role: message.role,
+          content: message.content,
+          agent: message.agent,
+          metadata: message.metadata,
+          timestamp: message.timestamp,
+        },
+      });
+    } catch (error: any) {
+      // If metadata column doesn't exist, create without it
+      if (error?.code === 'P2022' && error.message?.includes('metadata')) {
+        console.warn('Metadata column not found in Message table, creating without it');
+        await this.prisma.message.create({
+          data: {
+            id: message.id,
+            conversationId,
+            role: message.role,
+            content: message.content,
+            agent: message.agent,
+            timestamp: message.timestamp,
+          },
+        });
+      } else {
+        throw error;
+      }
+    }
   }
 
   /**
