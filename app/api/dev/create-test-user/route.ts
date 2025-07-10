@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth, clerkClient } from '@clerk/nextjs/server'
 import { prisma } from '@/lib/prisma'
+import { getRoleAssignment } from '@/lib/auth/role-assignment'
+import { validateDevApiAccess } from '@/lib/auth/dev-auth'
 
 export async function POST(req: NextRequest) {
-  // Only allow in development
-  if (process.env.NODE_ENV !== 'development') {
-    return NextResponse.json({ error: 'Not allowed in production' }, { status: 403 })
-  }
+  const authError = validateDevApiAccess(req)
+  if (authError) return authError
 
   try {
     const { email, password } = await req.json()
@@ -18,24 +18,19 @@ export async function POST(req: NextRequest) {
       password: password,
     })
 
-    // Determine role based on email domain
-    let role = 'TEAM_MEMBER'
-    const domain = email.split('@')[1]
-    if (email === 'rowan@teammanagementsystems.com') {
-      role = 'ADMIN'
-    } else if (['bythelight.band', 'example.com'].includes(domain)) {
-      role = 'MANAGER'
-    }
+    // Get role assignment based on email
+    const { role, journeyStatus } = getRoleAssignment(email)
 
     // Create user in database
     await prisma.user.create({
       data: {
         clerkId: user.id,
         email: email,
-        role: role as any,
+        role,
         name: email.split('@')[0], // Use email prefix as name
-        journeyStatus: 'ONBOARDING',
+        journeyStatus,
         lastActivity: new Date(),
+        completedSteps: [],
       },
     })
 

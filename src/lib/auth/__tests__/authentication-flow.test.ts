@@ -1,42 +1,42 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach } from '@jest/globals'
 import { redirect } from 'next/navigation'
 import { currentUser } from '@clerk/nextjs/server'
 import { getCurrentUserWithJourney, getUserRole } from '@/lib/auth/roles'
 
 // Mock Next.js navigation
-vi.mock('next/navigation', () => ({
-  redirect: vi.fn()
+jest.mock('next/navigation', () => ({
+  redirect: jest.fn()
 }))
 
 // Mock Clerk
-vi.mock('@clerk/nextjs/server', () => ({
-  currentUser: vi.fn(),
-  auth: vi.fn()
+jest.mock('@clerk/nextjs/server', () => ({
+  currentUser: jest.fn(),
+  auth: jest.fn()
 }))
 
 // Mock Prisma
-vi.mock('@/lib/prisma', () => ({
+jest.mock('@/lib/prisma', () => ({
   prisma: {
     user: {
-      findUnique: vi.fn(),
-      create: vi.fn(),
-      update: vi.fn(),
-      upsert: vi.fn()
+      findUnique: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      upsert: jest.fn()
     }
   }
 }))
 
 describe('Authentication and Onboarding Flow', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    jest.clearAllMocks()
   })
 
   describe('Sign In Flow', () => {
     it('should redirect unauthenticated users to sign-in page', async () => {
-      vi.mocked(currentUser).mockResolvedValue(null)
+      jest.mocked(currentUser).mockResolvedValue(null)
       
       // Simulate dashboard access without auth
-      const mockAuth = vi.fn().mockResolvedValue({ userId: null })
+      const mockAuth = jest.fn().mockResolvedValue({ userId: null })
       
       expect(redirect).toHaveBeenCalledWith('/sign-in')
     })
@@ -46,7 +46,7 @@ describe('Authentication and Onboarding Flow', () => {
         id: 'user_123', 
         emailAddresses: [{ emailAddress: 'test@example.com' }] 
       }
-      vi.mocked(currentUser).mockResolvedValue(mockUser as any)
+      jest.mocked(currentUser).mockResolvedValue(mockUser as any)
       
       // Should not redirect when authenticated
       expect(redirect).not.toHaveBeenCalled()
@@ -107,7 +107,7 @@ describe('Authentication and Onboarding Flow', () => {
       }
       
       // Mock getCurrentUserWithJourney
-      vi.mocked(getCurrentUserWithJourney).mockResolvedValue(mockManager as any)
+      jest.mocked(getCurrentUserWithJourney).mockResolvedValue(mockManager as any)
       
       // Simulate dashboard page logic
       if (mockManager.journeyStatus === 'ONBOARDING' && mockManager.role === 'MANAGER') {
@@ -125,7 +125,7 @@ describe('Authentication and Onboarding Flow', () => {
         journeyStatus: 'ACTIVE'
       }
       
-      vi.mocked(getCurrentUserWithJourney).mockResolvedValue(mockManager as any)
+      jest.mocked(getCurrentUserWithJourney).mockResolvedValue(mockManager as any)
       
       // Should not redirect when already active
       if (mockManager.journeyStatus === 'ONBOARDING' && mockManager.role === 'MANAGER') {

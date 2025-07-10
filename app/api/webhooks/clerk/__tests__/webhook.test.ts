@@ -1,28 +1,28 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach } from '@jest/globals'
 import { POST } from '../route'
 import { Webhook } from 'svix'
 import { prisma } from '@/lib/prisma'
 
 // Mock Svix
-vi.mock('svix', () => ({
-  Webhook: vi.fn().mockImplementation(() => ({
-    verify: vi.fn()
+jest.mock('svix', () => ({
+  Webhook: jest.fn().mockImplementation(() => ({
+    verify: jest.fn()
   }))
 }))
 
 // Mock Prisma
-vi.mock('@/lib/prisma', () => ({
+jest.mock('@/lib/prisma', () => ({
   prisma: {
     user: {
-      upsert: vi.fn()
+      upsert: jest.fn()
     }
   }
 }))
 
 // Mock headers
-vi.mock('next/headers', () => ({
-  headers: vi.fn(() => ({
-    get: vi.fn((key: string) => {
+jest.mock('next/headers', () => ({
+  headers: jest.fn(() => ({
+    get: jest.fn((key: string) => {
       const mockHeaders: Record<string, string> = {
         'svix-id': 'test-id',
         'svix-timestamp': 'test-timestamp',
@@ -35,16 +35,16 @@ vi.mock('next/headers', () => ({
 
 describe('Clerk Webhook Handler', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    jest.clearAllMocks()
     process.env.CLERK_WEBHOOK_SECRET = 'test-secret'
   })
 
   describe('Webhook Validation', () => {
     it('should reject requests without svix headers', async () => {
-      const mockHeaders = vi.fn(() => ({
-        get: vi.fn(() => null)
+      const mockHeaders = jest.fn(() => ({
+        get: jest.fn(() => null)
       }))
-      vi.mocked(require('next/headers').headers).mockImplementation(mockHeaders)
+      jest.mocked(require('next/headers').headers).mockImplementation(mockHeaders)
 
       const request = new Request('http://localhost/api/webhooks/clerk', {
         method: 'POST',
@@ -57,12 +57,12 @@ describe('Clerk Webhook Handler', () => {
     })
 
     it('should verify webhook signature', async () => {
-      const mockVerify = vi.fn().mockReturnValue({
+      const mockVerify = jest.fn().mockReturnValue({
         type: 'user.created',
         data: { id: 'user_123' }
       })
       
-      vi.mocked(Webhook).mockImplementation(() => ({
+      jest.mocked(Webhook).mockImplementation(() => ({
         verify: mockVerify
       } as any))
 
@@ -89,8 +89,8 @@ describe('Clerk Webhook Handler', () => {
         }
       }
 
-      vi.mocked(Webhook).mockImplementation(() => ({
-        verify: vi.fn().mockReturnValue(adminPayload)
+      jest.mocked(Webhook).mockImplementation(() => ({
+        verify: jest.fn().mockReturnValue(adminPayload)
       } as any))
 
       const request = new Request('http://localhost/api/webhooks/clerk', {
@@ -123,8 +123,8 @@ describe('Clerk Webhook Handler', () => {
         }
       }
 
-      vi.mocked(Webhook).mockImplementation(() => ({
-        verify: vi.fn().mockReturnValue(managerPayload)
+      jest.mocked(Webhook).mockImplementation(() => ({
+        verify: jest.fn().mockReturnValue(managerPayload)
       } as any))
 
       const request = new Request('http://localhost/api/webhooks/clerk', {
@@ -153,8 +153,8 @@ describe('Clerk Webhook Handler', () => {
         }
       }
 
-      vi.mocked(Webhook).mockImplementation(() => ({
-        verify: vi.fn().mockReturnValue(invalidPayload)
+      jest.mocked(Webhook).mockImplementation(() => ({
+        verify: jest.fn().mockReturnValue(invalidPayload)
       } as any))
 
       const request = new Request('http://localhost/api/webhooks/clerk', {
@@ -181,8 +181,8 @@ describe('Clerk Webhook Handler', () => {
         }
       }
 
-      vi.mocked(Webhook).mockImplementation(() => ({
-        verify: vi.fn().mockReturnValue(updatePayload)
+      jest.mocked(Webhook).mockImplementation(() => ({
+        verify: jest.fn().mockReturnValue(updatePayload)
       } as any))
 
       const request = new Request('http://localhost/api/webhooks/clerk', {
@@ -213,11 +213,11 @@ describe('Clerk Webhook Handler', () => {
         }
       }
 
-      vi.mocked(Webhook).mockImplementation(() => ({
-        verify: vi.fn().mockReturnValue(deletePayload)
+      jest.mocked(Webhook).mockImplementation(() => ({
+        verify: jest.fn().mockReturnValue(deletePayload)
       } as any))
 
-      vi.mocked(prisma.user).update = vi.fn()
+      jest.mocked(prisma.user).update = jest.fn()
 
       const request = new Request('http://localhost/api/webhooks/clerk', {
         method: 'POST',
@@ -237,7 +237,7 @@ describe('Clerk Webhook Handler', () => {
 
   describe('Error Handling', () => {
     it('should handle database errors', async () => {
-      vi.mocked(prisma.user.upsert).mockRejectedValue(new Error('Database error'))
+      jest.mocked(prisma.user.upsert).mockRejectedValue(new Error('Database error'))
 
       const payload = {
         type: 'user.created',
@@ -247,8 +247,8 @@ describe('Clerk Webhook Handler', () => {
         }
       }
 
-      vi.mocked(Webhook).mockImplementation(() => ({
-        verify: vi.fn().mockReturnValue(payload)
+      jest.mocked(Webhook).mockImplementation(() => ({
+        verify: jest.fn().mockReturnValue(payload)
       } as any))
 
       const request = new Request('http://localhost/api/webhooks/clerk', {

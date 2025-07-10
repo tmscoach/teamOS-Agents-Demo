@@ -1,8 +1,13 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { currentUser } from '@clerk/nextjs/server'
 import { prisma } from '@/lib/prisma'
+import { getRoleAssignment } from '@/lib/auth/role-assignment'
+import { validateDevApiAccess } from '@/lib/auth/dev-auth'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const authError = validateDevApiAccess(req)
+  if (authError) return authError
+  
   try {
     const clerkUser = await currentUser()
     
@@ -23,20 +28,13 @@ export async function GET() {
       })
     }
 
-    // Determine role based on email
+    // Get email and role assignment
     const email = clerkUser.emailAddresses[0]?.emailAddress
     if (!email) {
       return NextResponse.json({ error: 'No email found' }, { status: 400 })
     }
 
-    let role = 'TEAM_MEMBER'
-    const domain = email.split('@')[1]
-    
-    if (email === 'rowan@teammanagementsystems.com') {
-      role = 'ADMIN'
-    } else if (['bythelight.band', 'example.com'].includes(domain)) {
-      role = 'MANAGER'
-    }
+    const { role, journeyStatus } = getRoleAssignment(email)
 
     // Create user in database
     const user = await prisma.user.create({
@@ -44,9 +42,10 @@ export async function GET() {
         clerkId: clerkUser.id,
         email: email,
         name: clerkUser.firstName || email.split('@')[0],
-        role: role as any,
-        journeyStatus: role === 'ADMIN' ? 'ACTIVE' : 'ONBOARDING',
+        role,
+        journeyStatus,
         lastActivity: new Date(),
+        completedSteps: [],
       }
     })
 

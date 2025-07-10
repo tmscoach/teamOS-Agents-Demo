@@ -1,22 +1,22 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { describe, it, expect, beforeEach } from '@jest/globals'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { useUser } from '@clerk/nextjs'
 import { useRouter } from 'next/navigation'
 import OnboardingPage from '../page'
 
 // Mock Clerk hooks
-vi.mock('@clerk/nextjs', () => ({
-  useUser: vi.fn(),
-  UserButton: vi.fn(() => <div data-testid="user-button">UserButton</div>)
+jest.mock('@clerk/nextjs', () => ({
+  useUser: jest.fn(),
+  UserButton: jest.fn(() => <div data-testid="user-button">UserButton</div>)
 }))
 
 // Mock Next.js navigation
-vi.mock('next/navigation', () => ({
-  useRouter: vi.fn()
+jest.mock('next/navigation', () => ({
+  useRouter: jest.fn()
 }))
 
 describe('Onboarding Page', () => {
-  const mockPush = vi.fn()
+  const mockPush = jest.fn()
   const mockUser = {
     id: 'user_123',
     firstName: 'Test',
@@ -24,9 +24,9 @@ describe('Onboarding Page', () => {
   }
 
   beforeEach(() => {
-    vi.clearAllMocks()
-    vi.mocked(useRouter).mockReturnValue({ push: mockPush } as any)
-    vi.mocked(useUser).mockReturnValue({ 
+    jest.clearAllMocks()
+    jest.mocked(useRouter).mockReturnValue({ push: mockPush } as any)
+    jest.mocked(useUser).mockReturnValue({ 
       user: mockUser, 
       isLoaded: true 
     } as any)
@@ -71,7 +71,7 @@ describe('Onboarding Page', () => {
 
   describe('Journey API Integration', () => {
     it('should fetch journey data on mount', async () => {
-      const mockFetch = vi.fn().mockResolvedValue({
+      const mockFetch = jest.fn().mockResolvedValue({
         ok: true,
         json: async () => ({
           status: 'ONBOARDING',
@@ -93,7 +93,7 @@ describe('Onboarding Page', () => {
     })
 
     it('should show current step indicator', async () => {
-      const mockFetch = vi.fn().mockResolvedValue({
+      const mockFetch = jest.fn().mockResolvedValue({
         ok: true,
         json: async () => ({
           status: 'ONBOARDING',
@@ -121,7 +121,7 @@ describe('Onboarding Page', () => {
     })
 
     it('should navigate to chat with agent context', async () => {
-      const mockFetch = vi.fn().mockResolvedValue({
+      const mockFetch = jest.fn().mockResolvedValue({
         ok: true,
         json: async () => ({
           nextStep: {
@@ -142,7 +142,7 @@ describe('Onboarding Page', () => {
     })
 
     it('should disable continue button if no next step', async () => {
-      const mockFetch = vi.fn().mockResolvedValue({
+      const mockFetch = jest.fn().mockResolvedValue({
         ok: true,
         json: async () => ({
           nextStep: null,
@@ -167,7 +167,7 @@ describe('Onboarding Page', () => {
     })
 
     it('should calculate progress percentage correctly', async () => {
-      const mockFetch = vi.fn().mockResolvedValue({
+      const mockFetch = jest.fn().mockResolvedValue({
         ok: true,
         json: async () => ({
           completedSteps: ['welcome', 'team_context'] // 2 of 5 steps = 40%
@@ -194,7 +194,7 @@ describe('Onboarding Page', () => {
     })
 
     it('should redirect to sign-in if not authenticated', () => {
-      vi.mocked(useUser).mockReturnValue({ 
+      jest.mocked(useUser).mockReturnValue({ 
         user: null, 
         isLoaded: true 
       } as any)

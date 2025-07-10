@@ -3,10 +3,11 @@ import { NextResponse } from 'next/server';
 import { Webhook } from 'svix';
 import { WebhookEvent } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
+import { getRoleAssignment } from '@/lib/auth/role-assignment';
 
 export async function POST(req: Request) {
   // Get the headers
-  const headerPayload = headers();
+  const headerPayload = await headers();
   const svix_id = headerPayload.get("svix-id");
   const svix_timestamp = headerPayload.get("svix-timestamp");
   const svix_signature = headerPayload.get("svix-signature");
@@ -22,8 +23,17 @@ export async function POST(req: Request) {
   const payload = await req.json();
   const body = JSON.stringify(payload);
 
+  // Validate webhook secret exists
+  const webhookSecret = process.env.CLERK_WEBHOOK_SECRET;
+  if (!webhookSecret) {
+    console.error('Missing CLERK_WEBHOOK_SECRET environment variable');
+    return new Response('Webhook secret not configured', {
+      status: 500
+    });
+  }
+
   // Create a new Svix instance with your secret.
-  const wh = new Webhook(process.env.CLERK_WEBHOOK_SECRET || '');
+  const wh = new Webhook(webhookSecret);
 
   let evt: WebhookEvent;
 
@@ -52,8 +62,8 @@ export async function POST(req: Request) {
       return new Response('No email found', { status: 400 });
     }
 
-    // Check if this is the admin user
-    const isAdmin = email === 'rowan@teammanagementsystems.com';
+    // Get role assignment based on email
+    const { role, journeyStatus } = getRoleAssignment(email);
 
     try {
       await prisma.user.upsert({
@@ -69,8 +79,8 @@ export async function POST(req: Request) {
           email,
           name: `${first_name || ''} ${last_name || ''}`.trim() || email,
           imageUrl: image_url || null,
-          role: isAdmin ? 'ADMIN' : 'MANAGER',
-          journeyStatus: isAdmin ? 'ACTIVE' : 'ONBOARDING',
+          role,
+          journeyStatus,
           completedSteps: [],
         },
       });

@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { clerkClient } from '@clerk/nextjs/server'
+import { validateDevApiAccess } from '@/lib/auth/dev-auth'
 
 export async function POST(req: NextRequest) {
-  // Only allow in development
-  if (process.env.NODE_ENV !== 'development') {
-    return NextResponse.json({ error: 'Not allowed in production' }, { status: 403 })
-  }
+  const authError = validateDevApiAccess(req)
+  if (authError) return authError
 
   try {
     const { email } = await req.json()
