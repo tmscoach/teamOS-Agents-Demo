@@ -49,13 +49,7 @@ export class CheckpointManager {
             flowConfigId: this.flowConfigId,
             state,
             data,
-            createdAt: checkpoint.timestamp,
-            conversation: {
-              connect: { id: this.conversationId }
-            },
-            flowConfig: {
-              connect: { id: this.flowConfigId }
-            }
+            createdAt: checkpoint.timestamp
           }
         });
         

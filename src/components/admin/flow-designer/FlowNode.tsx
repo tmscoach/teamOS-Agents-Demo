@@ -2,7 +2,7 @@
 
 import React, { memo } from 'react';
 import { Handle, Position, NodeProps } from 'reactflow';
-import { FlowState } from '@/lib/agents/graph/types';
+import { FlowState } from '@/src/lib/agents/graph/types';
 import { Activity, CheckCircle, Flag, Save } from 'lucide-react';
 
 interface FlowNodeData {

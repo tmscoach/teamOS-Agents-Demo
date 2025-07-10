@@ -133,7 +133,8 @@ export class GraphNode {
   
   private checkParallelComplete(nodes: string[], context: GraphExecutionContext): boolean {
     if (!context.parallelResults) return false;
-    return nodes.every(node => node in context.parallelResults);
+    const results = context.parallelResults;
+    return nodes.every(node => node in results);
   }
   
   private evaluateCustomCondition(expression: string, context: GraphExecutionContext): boolean {
