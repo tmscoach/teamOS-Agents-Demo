@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { clerkClient } from '@clerk/nextjs/server'
-import { validateDevApiAccess } from '@/lib/auth/dev-auth'
+import { validateDevApiAccess } from '@/src/lib/auth/dev-auth'
 
 export async function POST(req: NextRequest) {
   const authError = validateDevApiAccess(req)

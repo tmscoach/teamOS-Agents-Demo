@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
 import { Webhook } from 'svix';
 import { WebhookEvent } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
-import { getRoleAssignment } from '@/lib/auth/role-assignment';
+import { getRoleAssignment } from '@/src/lib/auth/role-assignment';
 
 export async function POST(req: Request) {
   // Get the headers

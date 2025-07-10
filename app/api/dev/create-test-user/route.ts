@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { auth, clerkClient } from '@clerk/nextjs/server'
 import { prisma } from '@/lib/prisma'
-import { getRoleAssignment } from '@/lib/auth/role-assignment'
-import { validateDevApiAccess } from '@/lib/auth/dev-auth'
+import { getRoleAssignment } from '@/src/lib/auth/role-assignment'
+import { validateDevApiAccess } from '@/src/lib/auth/dev-auth'
 
 export async function POST(req: NextRequest) {
   const authError = validateDevApiAccess(req)
