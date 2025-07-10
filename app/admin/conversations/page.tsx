@@ -4,18 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { MetricCard } from "@/components/admin/metric-card";
-import { StatusBadge } from "@/components/admin/status-badge";
-import { 
-  AdminTable, 
-  AdminTableHeader, 
-  AdminTableBody, 
-  AdminTableRow, 
-  AdminTableHead, 
-  AdminTableCell 
-} from "@/components/admin/admin-table";
-import { EmptyState } from "@/components/admin/empty-state";
-import { TabNav } from "@/components/admin/tab-nav";
-import { Search, MessageSquare, User, FileDown } from "lucide-react";
+import { Search, MessageSquare, FileDown } from "lucide-react";
 import { ConversationState } from "@/src/lib/agents/types/conversation-state";
 
 interface ConversationListItem {

@@ -1,25 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { EmptyState } from "@/components/admin/empty-state";
-import { TabNav } from "@/components/admin/tab-nav";
 import { MetricCard } from "@/components/admin/metric-card";
 import { StatusBadge } from "@/components/admin/status-badge";
-import { 
-  AdminTable, 
-  AdminTableHeader, 
-  AdminTableBody, 
-  AdminTableRow, 
-  AdminTableHead, 
-  AdminTableCell 
-} from "@/components/admin/admin-table";
-import { Settings, Save, TestTube, GitBranch, RotateCcw, Search, Plus, Edit2, Code, FileJson, FlaskConical, History } from "lucide-react";
+import { Settings, Save, TestTube, GitBranch, RotateCcw, Search, Plus, Edit2, Code, FlaskConical, History } from "lucide-react";
 import { useAuth } from "@clerk/nextjs";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { format, formatDistanceToNow } from "date-fns";
 
@@ -66,7 +51,7 @@ const TABS = [
 ];
 
 export default function AgentConfigPage() {
-  const { userId } = useAuth();
+  useAuth();
   const [agents, setAgents] = useState<AgentSummary[]>([]);
   const [selectedAgent, setSelectedAgent] = useState("");
   const [currentConfig, setCurrentConfig] = useState<AgentConfig | null>(null);
@@ -754,7 +739,7 @@ You are a friendly Team Development Assistant conducting a quick 5-minute intake
                           ...editedConfig!,
                           flowConfig: parsed,
                         });
-                      } catch (error) {
+                      } catch {
                         // Invalid JSON, don't update
                       }
                     }}
@@ -923,7 +908,7 @@ You are a friendly Team Development Assistant conducting a quick 5-minute intake
                           ...editedConfig!,
                           extractionRules: parsed,
                         });
-                      } catch (error) {
+                      } catch {
                         // Invalid JSON, don't update
                       }
                     }}

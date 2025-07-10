@@ -58,7 +58,7 @@ describe('Admin API Integration Tests', () => {
       (prisma.conversation.findMany as jest.Mock).mockResolvedValue(mockConversations);
 
       // Import the handler
-      const { GET } = require('../../../api/admin/conversations/route');
+      const { GET } = await import('../../../api/admin/conversations/route');
       const request = new NextRequest('http://localhost:3000/api/admin/conversations');
       
       const response = await GET(request);
@@ -80,7 +80,7 @@ describe('Admin API Integration Tests', () => {
         mockConversations.filter(c => c.status === 'active')
       );
 
-      const { GET } = require('../../../api/admin/conversations/route');
+      const { GET } = await import('../../../api/admin/conversations/route');
       const request = new NextRequest('http://localhost:3000/api/admin/conversations?status=active');
       
       const response = await GET(request);
@@ -121,7 +121,7 @@ describe('Admin API Integration Tests', () => {
 
       (prisma.conversation.findUnique as jest.Mock).mockResolvedValue(mockConversation);
 
-      const { GET } = require('../../../api/admin/conversations/[id]/route');
+      const { GET } = await import('../../../api/admin/conversations/[id]/route');
       const request = new NextRequest('http://localhost:3000/api/admin/conversations/conv-1');
       
       const response = await GET(request, { params: { id: 'conv-1' } });
@@ -150,7 +150,7 @@ describe('Admin API Integration Tests', () => {
         }
       ]);
 
-      const { GET } = require('../../../api/admin/stats/route');
+      const { GET } = await import('../../../api/admin/stats/route');
       const request = new NextRequest('http://localhost:3000/api/admin/stats');
       
       const response = await GET(request);
@@ -186,7 +186,7 @@ describe('Admin API Integration Tests', () => {
         }))
       );
 
-      const { GET } = require('../../../api/admin/guardrails/route');
+      const { GET } = await import('../../../api/admin/guardrails/route');
       const request = new NextRequest('http://localhost:3000/api/admin/guardrails');
       
       const response = await GET(request);

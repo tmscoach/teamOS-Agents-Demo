@@ -4,16 +4,7 @@ import { useState, useEffect } from "react";
 import { MetricCard } from "@/components/admin/metric-card";
 import { TabNav } from "@/components/admin/tab-nav";
 import { EmptyState } from "@/components/admin/empty-state";
-import { 
-  AdminTable, 
-  AdminTableHeader, 
-  AdminTableBody, 
-  AdminTableRow, 
-  AdminTableHead, 
-  AdminTableCell 
-} from "@/components/admin/admin-table";
 import { Shield, CheckCircle, Search } from "lucide-react";
-import { format } from "date-fns";
 
 interface GuardrailStats {
   totalChecks: number;

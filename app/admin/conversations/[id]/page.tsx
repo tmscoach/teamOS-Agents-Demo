@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { format, formatDistanceToNow } from "date-fns";
+import { format } from "date-fns";
 import Link from "next/link";
 import {
   User,
@@ -618,7 +618,7 @@ export default function ConversationDetailPage() {
                 let eventDetails = null;
                 try {
                   eventDetails = typeof event.content === 'string' ? JSON.parse(event.content) : event.content;
-                } catch (e) {
+                } catch {
                   // If parsing fails, use the raw content
                 }
 
