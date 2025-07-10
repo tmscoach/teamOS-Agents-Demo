@@ -889,11 +889,11 @@ You are a friendly Team Development Assistant conducting a quick 5-minute intake
                       }}>
                         {rule.pattern ? (
                           <div>{rule.pattern}</div>
-                        ) : (
+                        ) : rule.patterns ? (
                           rule.patterns.map((pattern: string, idx: number) => (
                             <div key={idx}>{pattern}</div>
                           ))
-                        )}
+                        ) : null}
                       </div>
                     )}
                   </div>
@@ -1119,7 +1119,7 @@ You are a friendly Team Development Assistant conducting a quick 5-minute intake
                             </td>
                             <td style={{ padding: '16px 12px' }}>
                               <StatusBadge 
-                                status={config.active ? "active" : "inactive"} 
+                                status={config.active ? "active" : "neutral"} 
                               />
                             </td>
                             <td style={{ padding: '16px 12px', color: '#6b7280' }}>
