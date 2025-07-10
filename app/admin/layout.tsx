@@ -1,6 +1,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import { AdminLayout } from "@/components/admin/admin-layout";
+import { isAdmin } from "@/lib/auth/roles";
 
 export default async function AdminLayoutWrapper({
   children,
@@ -13,9 +14,12 @@ export default async function AdminLayoutWrapper({
     redirect("/sign-in");
   }
 
-  // TODO: Add proper admin role check
-  // For now, we'll allow all authenticated users
-  // In production, check if user has admin role in database
+  // Check if user has admin role
+  const hasAdminRole = await isAdmin();
+  
+  if (!hasAdminRole) {
+    redirect("/dashboard");
+  }
 
   return (
     <AdminLayout>

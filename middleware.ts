@@ -1,6 +1,5 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 import { NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
 
 const isProtectedRoute = createRouteMatcher([
   '/dashboard(.*)',
@@ -15,8 +14,21 @@ const isAdminRoute = createRouteMatcher([
   '/api/admin(.*)',
 ])
 
+const isPublicRoute = createRouteMatcher([
+  '/',
+  '/sign-in(.*)',
+  '/sign-up(.*)',
+  '/sso-callback(.*)',
+  '/api/webhooks(.*)',
+])
+
 export default clerkMiddleware(async (auth, req) => {
   const { userId, redirectToSignIn } = await auth()
+
+  // Allow public routes
+  if (isPublicRoute(req)) {
+    return NextResponse.next()
+  }
 
   // Protect all protected routes
   if (isProtectedRoute(req)) {
@@ -25,44 +37,13 @@ export default clerkMiddleware(async (auth, req) => {
     }
   }
 
-  // Check admin access
+  // For admin routes, we'll check permissions in the route handlers
+  // since we can't access Prisma in middleware
   if (isAdminRoute(req)) {
     if (!userId) {
       return redirectToSignIn()
     }
-
-    try {
-      // Get user from database to check role
-      const user = await prisma.user.findUnique({
-        where: { clerkId: userId },
-        select: { role: true }
-      })
-
-      if (!user || user.role !== 'ADMIN') {
-        // Redirect non-admin users to dashboard
-        return NextResponse.redirect(new URL('/dashboard', req.url))
-      }
-    } catch (error) {
-      console.error('Error checking admin access:', error)
-      return NextResponse.redirect(new URL('/dashboard', req.url))
-    }
-  }
-
-  // For authenticated users, check if they need onboarding
-  if (userId && req.nextUrl.pathname === '/dashboard') {
-    try {
-      const user = await prisma.user.findUnique({
-        where: { clerkId: userId },
-        select: { journeyStatus: true, role: true }
-      })
-
-      if (user && user.journeyStatus === 'ONBOARDING' && user.role === 'TEAM_MANAGER') {
-        // Redirect to onboarding if not completed
-        return NextResponse.redirect(new URL('/onboarding', req.url))
-      }
-    } catch (error) {
-      console.error('Error checking journey status:', error)
-    }
+    // Admin role check will be done in the route handler
   }
 
   return NextResponse.next()
