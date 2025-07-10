@@ -18,23 +18,31 @@ datasource db {
 
 // User model for team members and managers
 model User {
-  id                  String    @id @default(cuid())
-  clerkId             String    @unique
-  email               String    @unique
+  id                  String        @id @default(cuid())
+  clerkId             String        @unique
+  email               String        @unique
   name                String?
-  role                UserRole  @default(TEAM_MEMBER)
+  imageUrl            String?
+  role                UserRole      @default(TEAM_MANAGER)
+  journeyStatus       JourneyStatus @default(ONBOARDING)
+  currentAgent        String?
+  completedSteps      String[]      @default([])
+  lastActivity        DateTime      @default(now())
+  onboardingData      Json?
   teamId              String?
-  team                Team?     @relation(fields: [teamId], references: [id])
-  managedTeams        Team[]    @relation("TeamManager")
+  team                Team?         @relation(fields: [teamId], references: [id])
+  managedTeams        Team[]        @relation("TeamManager")
   department          String?
-  profileData         Json?     // Stores profile data from TMS assessments
+  profileData         Json?         // Stores profile data from TMS assessments
   engagementMetrics   Json?
-  assessmentStatus    Json?     // Tracks completion status of various assessments
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+  assessmentStatus    Json?         // Tracks completion status of various assessments
+  deletedAt           DateTime?     // Soft delete for user deletion
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
   
   @@index([teamId])
   @@index([clerkId])
+  @@index([journeyStatus])
 }
 
 // Team model
@@ -59,9 +67,16 @@ model Team {
 
 // Enum for user roles
 enum UserRole {
-  TEAM_MEMBER
-  MANAGER
   ADMIN
+  TEAM_MANAGER
+  TEAM_MEMBER
+}
+
+// Enum for user journey status
+enum JourneyStatus {
+  ONBOARDING
+  ACTIVE
+  DORMANT
 }
 
 // Conversation model for agent interactions
