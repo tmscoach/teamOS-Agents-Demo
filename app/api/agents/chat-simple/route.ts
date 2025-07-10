@@ -128,7 +128,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { message, conversationId } = body;
+    const { message, conversationId, agentName } = body;
 
     if (!message) {
       return NextResponse.json(
@@ -224,7 +224,7 @@ export async function POST(req: NextRequest) {
         teamId,
         dbUser.id,
         {
-          initialAgent: 'OnboardingAgent',
+          initialAgent: agentName || 'OrchestratorAgent',
           metadata: {
             initiatedBy: dbUser.id,
             userRole: dbUser.role,

@@ -175,13 +175,37 @@ export class JourneyTracker {
   }
 
   static async getOrCreateJourneyForUser(clerkId: string): Promise<JourneyTracker> {
-    const user = await prisma.user.findUnique({
+    let user = await prisma.user.findUnique({
       where: { clerkId },
       select: { id: true }
     })
 
     if (!user) {
-      throw new Error('User not found. Ensure user is synced from Clerk.')
+      // Try to get user details from Clerk and create user
+      try {
+        const { clerkClient } = await import('@clerk/nextjs/server')
+        const clerk = await clerkClient()
+        const clerkUser = await clerk.users.getUser(clerkId)
+        
+        if (clerkUser) {
+          // Create user in database
+          user = await prisma.user.create({
+            data: {
+              clerkId: clerkUser.id,
+              email: clerkUser.emailAddresses[0]?.emailAddress || '',
+              name: `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() || 'User',
+            },
+            select: { id: true }
+          })
+          
+          console.log(`Auto-synced user ${clerkUser.id} from Clerk`)
+        } else {
+          throw new Error('User not found in Clerk')
+        }
+      } catch (error: any) {
+        console.error('Failed to sync user from Clerk:', error)
+        throw new Error('User not found. Ensure user is synced from Clerk.')
+      }
     }
 
     return new JourneyTracker(user.id)

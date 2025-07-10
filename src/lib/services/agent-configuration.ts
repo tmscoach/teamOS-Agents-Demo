@@ -272,6 +272,9 @@ export class AgentConfigurationService {
    */
   static async getAllAgentConfigurations() {
     try {
+      // Ensure database connection
+      await prisma.$connect();
+      
       const configs = await prisma.agentConfiguration.findMany({
         where: { active: true },
         orderBy: { agentName: 'asc' },
@@ -298,27 +301,50 @@ export class AgentConfigurationService {
         };
       });
     } catch (error: any) {
+      console.error('Error in getAllAgentConfigurations:', error);
+      
+      // Handle missing table
+      if (error?.code === 'P2021' || (error?.message && error.message.includes('relation') && error.message.includes('does not exist'))) {
+        console.warn('AgentConfiguration table does not exist, returning empty array');
+        return [];
+      }
+      
       // Handle missing guardrailConfig column
       if (error?.code === 'P2022' && error.message?.includes('guardrailConfig')) {
         console.warn('guardrailConfig column not found, using fallback query');
         
-        // Query without guardrailConfig
-        const configs = await prisma.$queryRaw<any[]>`
-          SELECT "agentName", MAX(version) as "activeVersion", COUNT(*) as "totalVersions", 
-                 MAX("updatedAt") as "lastUpdated", MAX("createdBy") as "updatedBy"
-          FROM "AgentConfiguration"
-          WHERE active = true
-          GROUP BY "agentName"
-          ORDER BY "agentName" ASC
-        `;
-        
-        return configs.map(config => ({
-          agentName: config.agentName,
-          activeVersion: config.activeVersion || 0,
-          totalVersions: parseInt(config.totalVersions) || 0,
-          lastUpdated: config.lastUpdated,
-          updatedBy: config.updatedBy,
-        }));
+        try {
+          // Ensure connection before raw query
+          await prisma.$connect();
+          
+          // Query without guardrailConfig
+          const configs = await prisma.$queryRaw<any[]>`
+            SELECT "agentName", MAX(version) as "activeVersion", COUNT(*) as "totalVersions", 
+                   MAX("updatedAt") as "lastUpdated", MAX("createdBy") as "updatedBy"
+            FROM "AgentConfiguration"
+            WHERE active = true
+            GROUP BY "agentName"
+            ORDER BY "agentName" ASC
+          `;
+          
+          return configs.map(config => ({
+            agentName: config.agentName,
+            activeVersion: config.activeVersion || 0,
+            totalVersions: parseInt(config.totalVersions) || 0,
+            lastUpdated: config.lastUpdated,
+            updatedBy: config.updatedBy,
+          }));
+        } catch (rawError: any) {
+          console.error('Raw query also failed:', rawError);
+          // If even the raw query fails, return empty array
+          return [];
+        }
+      }
+      
+      // Handle connection errors
+      if (error?.code === 'P1001' || error?.code === 'P1002') {
+        console.error('Database connection error in getAllAgentConfigurations');
+        return [];
       }
       
       throw error;

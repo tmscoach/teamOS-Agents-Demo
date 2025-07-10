@@ -307,20 +307,27 @@ Required fields to capture: ${OnboardingAgent.REQUIRED_FIELDS.join(', ')}`;
   }
 
   private async extractInformation(message: string, context: AgentContext): Promise<Record<string, any>> {
-    // Use the extractTeamInfo tool
-    const toolCall: ToolCall = {
-      id: `extract-${Date.now()}`,
-      name: 'extractTeamInfo',
-      parameters: { message, context }
-    };
+    try {
+      // Use the extractTeamInfo tool
+      const toolCall: ToolCall = {
+        id: `extract-${Date.now()}`,
+        name: 'extractTeamInfo',
+        parameters: { message, context }
+      };
 
-    const tool = this.tools.find((t: AgentTool) => t.name === 'extractTeamInfo');
-    if (tool) {
-      const result = await tool.execute(toolCall.parameters, context);
-      return result.output || {};
+      const tool = this.tools.find((t: AgentTool) => t.name === 'extractTeamInfo');
+      if (tool) {
+        const result = await tool.execute(toolCall.parameters, context);
+        return result.output || {};
+      }
+
+      console.warn('extractTeamInfo tool not found');
+      return {};
+    } catch (error: any) {
+      console.error('Error extracting information:', error);
+      // Return empty object on error to prevent conversation crash
+      return {};
     }
-
-    return {};
   }
 
   private updateCapturedFields(metadata: OnboardingMetadata, extractedData: Record<string, any>) {

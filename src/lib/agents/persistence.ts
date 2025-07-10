@@ -73,10 +73,20 @@ export class ConversationStore {
     // Update context with conversation ID
     context.conversationId = conversation.id;
     
-    await this.prisma.conversation.update({
-      where: { id: conversation.id },
-      data: { contextData: context },
-    });
+    try {
+      await this.prisma.conversation.update({
+        where: { id: conversation.id },
+        data: { contextData: context },
+      });
+    } catch (updateError: any) {
+      // If update fails due to metadata column, it's okay - the context is already in contextData
+      if (updateError?.code === 'P2022' && updateError.message?.includes('metadata')) {
+        console.warn('Skipping context update due to missing metadata column');
+      } else {
+        console.error('Failed to update conversation context:', updateError);
+        // Don't throw - the conversation was created successfully
+      }
+    }
 
     return conversation.id;
   }
