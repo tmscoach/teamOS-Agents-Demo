@@ -37,7 +37,7 @@ interface ConversationDetail {
     onboarding?: {
       state: string;
       startTime: Date;
-      capturedFields: Record<string, any>;
+      capturedFields: Record<string, string | number | boolean | string[]>;
       requiredFieldsStatus: Record<string, boolean>;
       qualityMetrics: {
         rapportScore: number;
@@ -57,8 +57,8 @@ interface ConversationDetail {
     type: string;
     timestamp: Date;
     agent: string;
-    content?: any;
-    data?: any;
+    content?: Record<string, unknown>;
+    data?: Record<string, unknown>;
   }>;
 }
 

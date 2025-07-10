@@ -8,13 +8,36 @@ import { useAuth } from "@clerk/nextjs";
 import { toast } from "sonner";
 import { format, formatDistanceToNow } from "date-fns";
 
+interface FlowConfig {
+  states: Array<{
+    name: string;
+    description: string;
+    objectives: string[];
+    duration?: string;
+    key_outputs: string[];
+  }>;
+  transitions: Array<{
+    from: string;
+    to: string;
+    condition: string;
+    action: string;
+  }>;
+}
+
+interface ExtractionRule {
+  type: 'string' | 'number' | 'boolean' | 'array';
+  patterns?: string[];
+  required?: boolean;
+  description?: string;
+}
+
 interface AgentConfig {
   id: string;
   agentName: string;
   version: number;
   systemPrompt: string;
-  flowConfig: Record<string, any>;
-  extractionRules: Record<string, any>;
+  flowConfig: FlowConfig;
+  extractionRules: Record<string, ExtractionRule>;
   active: boolean;
   createdBy: string;
   createdAt: string;
@@ -680,7 +703,7 @@ You are a friendly Team Development Assistant conducting a quick 5-minute intake
                     State Transitions
                   </h4>
                   <div style={{ fontSize: '13px', color: '#374151' }}>
-                    {Object.entries(editedConfig?.flowConfig?.transitions || {}).map(([from, to]: [string, any]) => (
+                    {Object.entries(editedConfig?.flowConfig?.transitions || {}).map(([from, to]: [string, string | string[]]) => (
                       <div key={from} style={{ marginBottom: '4px' }}>
                         <span style={{ fontWeight: '500' }}>{from}</span>
                         {' → '}
@@ -824,7 +847,7 @@ You are a friendly Team Development Assistant conducting a quick 5-minute intake
               {/* Extraction Rules Display */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 {/* Rules List */}
-                {Object.entries(editedConfig?.extractionRules || {}).map(([fieldName, rule]: [string, any]) => (
+                {Object.entries(editedConfig?.extractionRules || {}).map(([fieldName, rule]: [string, ExtractionRule]) => (
                   <div key={fieldName} style={{
                     backgroundColor: '#f9fafb',
                     padding: '16px',

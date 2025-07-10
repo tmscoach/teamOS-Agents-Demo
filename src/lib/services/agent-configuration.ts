@@ -5,8 +5,27 @@ export interface AgentConfigInput {
   agentName: string;
   systemPrompt?: string;
   prompts?: Record<string, string>; // Keep for backward compatibility
-  flowConfig: Record<string, any>;
-  extractionRules: Record<string, any>;
+  flowConfig: {
+    states: Array<{
+      name: string;
+      description: string;
+      objectives: string[];
+      duration?: string;
+      key_outputs: string[];
+    }>;
+    transitions: Array<{
+      from: string;
+      to: string;
+      condition: string;
+      action: string;
+    }>;
+  };
+  extractionRules: Record<string, {
+    type: 'string' | 'number' | 'boolean' | 'array';
+    patterns?: string[];
+    required?: boolean;
+    description?: string;
+  }>;
   createdBy: string;
 }
 
@@ -47,7 +66,7 @@ export class AgentConfigurationService {
           createdBy: data.createdBy,
         },
       });
-    } catch (error: any) {
+    } catch (error) {
       // Re-throw the error with the original code for proper handling upstream
       throw error;
     }
@@ -262,8 +281,8 @@ export class AgentConfigurationService {
   /**
    * Helper to diff two objects
    */
-  private static diffObjects(obj1: Record<string, any>, obj2: Record<string, any>) {
-    const diff: Record<string, { old: any; new: any }> = {};
+  private static diffObjects(obj1: Record<string, unknown>, obj2: Record<string, unknown>) {
+    const diff: Record<string, { old: unknown; new: unknown }> = {};
     const allKeys = new Set([...Object.keys(obj1), ...Object.keys(obj2)]);
 
     allKeys.forEach(key => {
