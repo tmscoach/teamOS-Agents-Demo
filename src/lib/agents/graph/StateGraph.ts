@@ -226,7 +226,7 @@ export class StateGraph {
       message: this.createParallelResponseContent(results, aggregated),
       toolCalls: [],
       events: [],
-      context: executor.getCurrentContext(),
+      context: context,
       metadata: {
         parallelExecution: true,
         parallelResults: results,

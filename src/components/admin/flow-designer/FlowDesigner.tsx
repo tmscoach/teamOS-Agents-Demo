@@ -20,7 +20,7 @@ import 'reactflow/dist/style.css';
 import { FlowNode } from './FlowNode';
 import { FlowToolbar } from './FlowToolbar';
 import { NodeConfigPanel } from './NodeConfigPanel';
-import { FlowConfiguration, FlowState } from '@/lib/agents/graph/types';
+import { FlowConfiguration, FlowState } from '@/src/lib/agents/graph/types';
 import { toast } from 'sonner';
 
 const nodeTypes = {
@@ -212,7 +212,7 @@ export function FlowDesigner({ flowConfig, onConfigChange, readOnly = false }: F
         >
           <Controls />
           <MiniMap />
-          <Background variant="dots" gap={12} size={1} />
+          <Background gap={12} size={1} />
         </ReactFlow>
         
         {!readOnly && (

@@ -3,7 +3,7 @@
 import React from 'react';
 import { ReactFlowProvider } from 'reactflow';
 import { FlowDesigner } from './FlowDesigner';
-import { FlowConfiguration } from '@/lib/agents/graph/types';
+import { FlowConfiguration } from '@/src/lib/agents/graph/types';
 
 interface FlowDesignerWrapperProps {
   flowConfig: FlowConfiguration;

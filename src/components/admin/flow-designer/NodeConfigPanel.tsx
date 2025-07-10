@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { X, Trash2, Plus, Minus } from 'lucide-react';
-import { FlowState, ExitCondition } from '@/lib/agents/graph/types';
+import { FlowState, ExitCondition } from '@/src/lib/agents/graph/types';
 
 interface NodeConfigPanelProps {
   nodeId: string;
