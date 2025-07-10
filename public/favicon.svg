@@ -1,31 +1,6 @@
-<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Green petal (top-left) -->
-  <path d="M150 50c60 0 100 40 100 100s-40 100-100 100c-60 0-100-40-100-100s40-100 100-100z" fill="#9ACD69" opacity="0.9"/>
-  
-  <!-- Yellow petal (top) -->
-  <path d="M256 30c60 0 100 40 100 100s-40 100-100 100c-60 0-100-40-100-100s40-100 100-100z" fill="#FFEB00" opacity="0.9"/>
-  
-  <!-- Orange petal (top-right) -->
-  <path d="M362 50c60 0 100 40 100 100s-40 100-100 100c-60 0-100-40-100-100s40-100 100-100z" fill="#FFB366" opacity="0.9"/>
-  
-  <!-- Teal petal (left) -->
-  <path d="M80 180c60 0 100 40 100 100s-40 100-100 100c-60 0-100-40-100-100s40-100 100-100z" fill="#00A99D" opacity="0.9"/>
-  
-  <!-- Pink petal (right) -->
-  <path d="M432 180c60 0 100 40 100 100s-40 100-100 100c-60 0-100-40-100-100s40-100 100-100z" fill="#ED0E9F" opacity="0.9"/>
-  
-  <!-- Light blue petal (bottom-left) -->
-  <path d="M150 332c60 0 100 40 100 100s-40 100-100 100c-60 0-100-40-100-100s40-100 100-100z" fill="#00B9F2" opacity="0.9"/>
-  
-  <!-- Dark blue petal (bottom) -->
-  <path d="M256 362c60 0 100 40 100 100s-40 100-100 100c-60 0-100-40-100-100s40-100 100-100z" fill="#1B75BC" opacity="0.9"/>
-  
-  <!-- Purple petal (bottom-right) -->
-  <path d="M362 332c60 0 100 40 100 100s-40 100-100 100c-60 0-100-40-100-100s40-100 100-100z" fill="#9B77A8" opacity="0.9"/>
-  
-  <!-- Center circle (gray) -->
-  <circle cx="256" cy="256" r="80" fill="#B3B3B3"/>
-  
-  <!-- Inner white circle -->
-  <circle cx="256" cy="256" r="50" fill="white"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" rx="8" fill="#fbbf24"/>
+  <circle cx="11" cy="16" r="4" fill="#1f2937"/>
+  <circle cx="21" cy="16" r="4" fill="#1f2937"/>
+  <path d="M11 16L21 16" stroke="#1f2937" stroke-width="2"/>
 </svg>

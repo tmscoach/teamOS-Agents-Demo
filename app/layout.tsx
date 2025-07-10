@@ -10,7 +10,7 @@ export const metadata: Metadata = {
   description: 'TMS (Team Management Systems) transformation platform',
   icons: {
     icon: [
-      { url: '/teamos-flower.svg', type: 'image/svg+xml' },
+      { url: '/favicon.svg', type: 'image/svg+xml' },
       { url: '/favicon.ico', sizes: 'any' }
     ],
   },
