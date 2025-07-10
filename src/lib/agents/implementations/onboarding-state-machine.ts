@@ -38,7 +38,7 @@ export class OnboardingStateMachine {
     {
       from: ConversationState.GOAL_SETTING,
       to: ConversationState.RESOURCE_CONFIRMATION,
-      condition: (data) => data.goals && data.goals.length > 0
+      condition: (data) => !!(data.goals && data.goals.length > 0)
     },
     {
       from: ConversationState.RESOURCE_CONFIRMATION,

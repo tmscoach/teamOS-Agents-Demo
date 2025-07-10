@@ -202,6 +202,23 @@ export interface LLPResults {
   [key: string]: any;
 }
 
+// Conversation data structure for onboarding
+export interface ConversationData {
+  managerName?: string;
+  teamSize?: number;
+  teamStructure?: string;
+  primaryChallenge?: string;
+  goals?: string[];
+  expectations?: string;
+  currentSituation?: string;
+  teamExperience?: string;
+  concernsOrQuestions?: string;
+  excited?: boolean;
+  collaborative?: boolean;
+  open?: boolean;
+  [key: string]: any; // Allow additional properties
+}
+
 // Agent configuration
 export interface AgentConfig {
   name: string;
