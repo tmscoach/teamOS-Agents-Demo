@@ -18,6 +18,7 @@ export async function GET(req: NextRequest) {
   try {
     const { userId } = await auth();
     if (!userId) {
+      console.error('Unauthorized access attempt to agent config');
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
@@ -26,6 +27,8 @@ export async function GET(req: NextRequest) {
     const version = searchParams.get('version');
     const history = searchParams.get('history') === 'true';
     const compare = searchParams.get('compare') === 'true';
+
+    console.log('Agent config request:', { agentName, version, history, compare });
 
     // Try to use the database service
     try {
@@ -154,9 +157,13 @@ export async function GET(req: NextRequest) {
       });
       
       return NextResponse.json(agentStatuses);
-    } catch (dbError) {
+    } catch (dbError: any) {
       // If database fails, return default agents
-      console.error('Database error in agent config API:', dbError);
+      console.error('Database error in agent config API:', {
+        message: dbError?.message,
+        code: dbError?.code,
+        stack: dbError?.stack
+      });
       
       // Return all agents with default status
       const defaultAgents = ALL_AGENTS.map(agentName => ({
@@ -170,8 +177,12 @@ export async function GET(req: NextRequest) {
       
       return NextResponse.json(defaultAgents);
     }
-  } catch (error) {
-    console.error('Error in agent config API:', error);
+  } catch (error: any) {
+    console.error('Outer error in agent config API:', {
+      message: error?.message,
+      code: error?.code,
+      stack: error?.stack
+    });
     
     // Return basic fallback
     const defaultAgents = ALL_AGENTS.map(agentName => ({

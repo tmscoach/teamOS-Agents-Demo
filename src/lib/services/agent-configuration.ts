@@ -120,10 +120,33 @@ export class AgentConfigurationService {
    * Get configuration history for an agent
    */
   static async getConfigurationHistory(agentName: string): Promise<AgentConfiguration[]> {
-    return await prisma.agentConfiguration.findMany({
-      where: { agentName },
-      orderBy: { version: 'desc' },
-    });
+    try {
+      return await prisma.agentConfiguration.findMany({
+        where: { agentName },
+        orderBy: { version: 'desc' },
+      });
+    } catch (error: any) {
+      // Handle missing guardrailConfig column
+      if (error?.code === 'P2022' && error.message?.includes('guardrailConfig')) {
+        console.warn('guardrailConfig column not found, using fallback query for history');
+        
+        const result = await prisma.$queryRaw<AgentConfiguration[]>`
+          SELECT id, "agentName", version, prompts, "flowConfig", "extractionRules", 
+                 active, "createdBy", "createdAt", "updatedAt"
+          FROM "AgentConfiguration"
+          WHERE "agentName" = ${agentName}
+          ORDER BY version DESC
+        `;
+        
+        // Add empty guardrailConfig to each result
+        return result.map(config => ({
+          ...config,
+          guardrailConfig: {}
+        }));
+      }
+      
+      throw error;
+    }
   }
 
   /**
@@ -248,31 +271,58 @@ export class AgentConfigurationService {
    * Get all agent configurations
    */
   static async getAllAgentConfigurations() {
-    const configs = await prisma.agentConfiguration.findMany({
-      where: { active: true },
-      orderBy: { agentName: 'asc' },
-    });
+    try {
+      const configs = await prisma.agentConfiguration.findMany({
+        where: { active: true },
+        orderBy: { agentName: 'asc' },
+      });
 
-    const configsByAgent = await prisma.agentConfiguration.groupBy({
-      by: ['agentName'],
-      _max: {
-        version: true,
-      },
-      _count: {
-        _all: true,
-      },
-    });
+      const configsByAgent = await prisma.agentConfiguration.groupBy({
+        by: ['agentName'],
+        _max: {
+          version: true,
+        },
+        _count: {
+          _all: true,
+        },
+      });
 
-    return configsByAgent.map(group => {
-      const activeConfig = configs.find(c => c.agentName === group.agentName);
-      return {
-        agentName: group.agentName,
-        activeVersion: activeConfig?.version || 0,
-        totalVersions: group._count._all,
-        lastUpdated: activeConfig?.updatedAt,
-        updatedBy: activeConfig?.createdBy,
-      };
-    });
+      return configsByAgent.map(group => {
+        const activeConfig = configs.find(c => c.agentName === group.agentName);
+        return {
+          agentName: group.agentName,
+          activeVersion: activeConfig?.version || 0,
+          totalVersions: group._count._all,
+          lastUpdated: activeConfig?.updatedAt,
+          updatedBy: activeConfig?.createdBy,
+        };
+      });
+    } catch (error: any) {
+      // Handle missing guardrailConfig column
+      if (error?.code === 'P2022' && error.message?.includes('guardrailConfig')) {
+        console.warn('guardrailConfig column not found, using fallback query');
+        
+        // Query without guardrailConfig
+        const configs = await prisma.$queryRaw<any[]>`
+          SELECT "agentName", MAX(version) as "activeVersion", COUNT(*) as "totalVersions", 
+                 MAX("updatedAt") as "lastUpdated", MAX("createdBy") as "updatedBy"
+          FROM "AgentConfiguration"
+          WHERE active = true
+          GROUP BY "agentName"
+          ORDER BY "agentName" ASC
+        `;
+        
+        return configs.map(config => ({
+          agentName: config.agentName,
+          activeVersion: config.activeVersion || 0,
+          totalVersions: parseInt(config.totalVersions) || 0,
+          lastUpdated: config.lastUpdated,
+          updatedBy: config.updatedBy,
+        }));
+      }
+      
+      throw error;
+    }
   }
 
   /**
