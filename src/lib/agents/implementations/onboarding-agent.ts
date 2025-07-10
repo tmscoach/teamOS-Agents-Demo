@@ -161,7 +161,7 @@ Required fields to capture: ${OnboardingAgent.REQUIRED_FIELDS.join(', ')}`;
     });
   }
   
-  private async loadConfiguration() {
+  protected async loadConfiguration() {
     try {
       const config = await AgentConfigLoader.loadConfiguration('OnboardingAgent');
       if (config && config.prompts) {
