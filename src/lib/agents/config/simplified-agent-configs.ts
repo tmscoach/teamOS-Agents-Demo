@@ -6,6 +6,8 @@
  * - Extraction rules for capturing variables
  */
 
+import { FlowConfiguration } from '../graph/types';
+
 export interface SimplifiedAgentConfig {
   systemPrompt: string;
   flowConfig: {
@@ -22,7 +24,7 @@ export interface SimplifiedAgentConfig {
       condition: string;
       action: string;
     }>;
-  };
+  } | FlowConfiguration;  // Support both simple and graph-based flows
   extractionRules: Record<string, {
     type: 'string' | 'number' | 'boolean' | 'array';
     patterns?: string[];

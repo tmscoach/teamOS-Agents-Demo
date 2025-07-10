@@ -3,10 +3,13 @@
 import { useState, useEffect } from "react";
 import { MetricCard } from "@/components/admin/metric-card";
 import { StatusBadge } from "@/components/admin/status-badge";
-import { Settings, Save, TestTube, GitBranch, RotateCcw, Search, Plus, FlaskConical, History } from "lucide-react";
+import { Settings, Save, TestTube, GitBranch, RotateCcw, Search, Plus, FlaskConical, History, Workflow } from "lucide-react";
 import { useAuth } from "@clerk/nextjs";
 import { toast } from "sonner";
 import { format, formatDistanceToNow } from "date-fns";
+import { FlowDesignerWrapper } from "@/src/components/admin/flow-designer/FlowDesignerWrapper";
+import { FlowConfiguration } from "@/src/lib/agents/graph/types";
+import { ENHANCED_ONBOARDING_FLOW } from "@/src/lib/agents/config/enhanced-onboarding-flow";
 
 interface AgentConfig {
   id: string;
@@ -55,10 +58,22 @@ const AGENT_NAMES = [
 const TABS = [
   { id: "prompt", label: "System Prompt" },
   { id: "flow", label: "Flow Configuration" },
+  { id: "flow-designer", label: "Flow Designer" },
   { id: "extraction", label: "Extraction Rules" },
   { id: "test", label: "Test Playground" },
   { id: "history", label: "Version History" }
 ];
+
+// Helper function to check if config is a FlowConfiguration
+function isFlowConfiguration(config: any): config is FlowConfiguration {
+  return config && 
+    typeof config === 'object' &&
+    'states' in config &&
+    'transitions' in config &&
+    'settings' in config &&
+    typeof config.states === 'object' &&
+    Array.isArray(config.transitions);
+}
 
 export default function AgentConfigPage() {
   const { } = useAuth();
@@ -495,6 +510,7 @@ export default function AgentConfigPage() {
               >
                 {tab.id === 'prompt' && <Settings style={{ width: '14px', height: '14px' }} />}
                 {tab.id === 'flow' && <GitBranch style={{ width: '14px', height: '14px' }} />}
+                {tab.id === 'flow-designer' && <Workflow style={{ width: '14px', height: '14px' }} />}
                 {tab.id === 'extraction' && <Settings style={{ width: '14px', height: '14px' }} />}
                 {tab.id === 'test' && <FlaskConical style={{ width: '14px', height: '14px' }} />}
                 {tab.id === 'history' && <History style={{ width: '14px', height: '14px' }} />}
@@ -774,6 +790,119 @@ You are a friendly Team Development Assistant conducting a quick 5-minute intake
                   />
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Flow Designer Tab */}
+          {activeTab === "flow-designer" && (
+            <div>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '24px'
+              }}>
+                <div>
+                  <h3 style={{
+                    fontSize: '18px',
+                    fontWeight: '600',
+                    color: '#111827',
+                    marginBottom: '4px'
+                  }}>
+                    Visual Flow Designer
+                  </h3>
+                  <p style={{
+                    fontSize: '14px',
+                    color: '#6b7280'
+                  }}>
+                    Design and configure your agent&apos;s conversation flow with a visual graph editor
+                  </p>
+                </div>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    onClick={() => {
+                      // Load the enhanced TMS flow for OnboardingAgent
+                      if (selectedAgent === 'Onboarding Agent') {
+                        setEditedConfig({
+                          ...editedConfig!,
+                          flowConfig: ENHANCED_ONBOARDING_FLOW as any
+                        });
+                        toast.success('Loaded enhanced TMS onboarding flow');
+                      } else {
+                        toast.info('Enhanced flows coming soon for other agents');
+                      }
+                    }}
+                    style={{
+                      padding: '8px 16px',
+                      borderRadius: '6px',
+                      border: '1px solid #e5e7eb',
+                      backgroundColor: 'white',
+                      color: '#111827',
+                      fontWeight: '500',
+                      cursor: 'pointer',
+                      fontSize: '13px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = '#f9fafb';
+                      e.currentTarget.style.borderColor = '#111827';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = 'white';
+                      e.currentTarget.style.borderColor = '#e5e7eb';
+                    }}
+                  >
+                    <Plus style={{ width: '14px', height: '14px' }} />
+                    Load TMS Template
+                  </button>
+                </div>
+              </div>
+              
+              {/* Flow Designer Component */}
+              {editedConfig?.flowConfig && isFlowConfiguration(editedConfig.flowConfig) ? (
+                <FlowDesignerWrapper
+                  flowConfig={editedConfig.flowConfig as FlowConfiguration}
+                  onConfigChange={(newConfig) => {
+                    setEditedConfig({
+                      ...editedConfig,
+                      flowConfig: newConfig as any
+                    });
+                  }}
+                />
+              ) : (
+                <div style={{
+                  backgroundColor: '#f9fafb',
+                  borderRadius: '8px',
+                  padding: '48px',
+                  textAlign: 'center',
+                  border: '1px solid #e5e7eb'
+                }}>
+                  <Workflow style={{
+                    width: '48px',
+                    height: '48px',
+                    margin: '0 auto 16px',
+                    color: '#9ca3af'
+                  }} />
+                  <h4 style={{
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    color: '#111827',
+                    marginBottom: '8px'
+                  }}>
+                    No Graph-Based Flow Configuration
+                  </h4>
+                  <p style={{
+                    color: '#6b7280',
+                    fontSize: '14px',
+                    marginBottom: '16px'
+                  }}>
+                    This agent is using a simple flow configuration. Click "Load TMS Template" to use the enhanced graph-based flow system.
+                  </p>
+                </div>
+              )}
             </div>
           )}
 

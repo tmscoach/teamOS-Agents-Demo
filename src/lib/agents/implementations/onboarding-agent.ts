@@ -6,6 +6,7 @@ import { OnboardingStateMachine } from './onboarding-state-machine';
 import { OnboardingQualityCalculator, QualityMetrics } from './onboarding-quality-metrics';
 import { ConversationState } from '../types/conversation-state';
 import { AgentConfigLoader } from '../config/agent-config-loader';
+import { ConfigurableFlowEngine, FlowConfiguration } from '../graph';
 
 // Re-export for backward compatibility
 export { ConversationState };
@@ -32,6 +33,8 @@ export class OnboardingAgent extends KnowledgeEnabledAgent {
   private stateMachine: OnboardingStateMachine;
   private qualityCalculator: OnboardingQualityCalculator;
   private configuredPrompts: Record<string, string> | null = null;
+  private flowEngine?: ConfigurableFlowEngine;
+  private useGraphFlow: boolean = false;
   
   private static readonly REQUIRED_FIELDS = [
     "team_size",
@@ -152,6 +155,11 @@ Required fields to capture: ${OnboardingAgent.REQUIRED_FIELDS.join(', ')}`;
     this.stateMachine = new OnboardingStateMachine();
     this.qualityCalculator = new OnboardingQualityCalculator();
     
+    // Initialize flow engine if enabled
+    if (process.env.USE_GRAPH_FLOW === 'true') {
+      this.initializeFlowEngine();
+    }
+    
     // Load configuration on initialization
     this.loadConfiguration().catch(err => {
       console.error('Failed to load initial configuration:', err);
@@ -165,10 +173,25 @@ Required fields to capture: ${OnboardingAgent.REQUIRED_FIELDS.join(', ')}`;
         this.configuredPrompts = config.prompts;
         console.log('Loaded OnboardingAgent configuration version:', config.version);
       }
+      
+      // Load flow configuration if available
+      if (config && config.flowConfig && this.flowEngine) {
+        await this.flowEngine.loadConfiguration(config.flowConfig as FlowConfiguration);
+        this.useGraphFlow = true;
+        console.log('Loaded flow configuration for OnboardingAgent');
+      }
     } catch (error) {
       console.error('Failed to load OnboardingAgent configuration:', error);
       // Continue with default prompts
     }
+  }
+  
+  private initializeFlowEngine() {
+    // Create agent map for flow engine
+    const agentMap = new Map();
+    agentMap.set('OnboardingAgent', this);
+    
+    this.flowEngine = new ConfigurableFlowEngine(this, agentMap);
   }
   
   private mapStateToPromptKey(state: ConversationState): string {
@@ -191,6 +214,41 @@ Required fields to capture: ${OnboardingAgent.REQUIRED_FIELDS.join(', ')}`;
       await this.loadConfiguration();
     }
     
+    // If flow engine is enabled and configured, use it
+    if (this.useGraphFlow && this.flowEngine) {
+      return this.processMessageWithFlow(message, context);
+    }
+    
+    // Otherwise, use traditional state machine approach
+    return this.processMessageWithStateMachine(message, context);
+  }
+  
+  private async processMessageWithFlow(message: string, context: AgentContext): Promise<AgentResponse> {
+    const messageObj: Message = {
+      role: 'user',
+      content: message,
+      timestamp: new Date()
+    };
+    
+    const response = await this.flowEngine!.processMessage(messageObj, context, {
+      resumeFromCheckpoint: context.metadata.resumeFromCheckpoint || false
+    });
+    
+    // Extract flow state for metadata
+    const flowState = this.flowEngine!.getCurrentState();
+    if (flowState) {
+      context.metadata.onboarding = {
+        ...context.metadata.onboarding,
+        currentFlowState: flowState.state,
+        collectedData: flowState.collectedData,
+        timeInState: flowState.timeInState
+      };
+    }
+    
+    return response;
+  }
+  
+  private async processMessageWithStateMachine(message: string, context: AgentContext): Promise<AgentResponse> {
     // Initialize metadata if not present
     if (!context.metadata.onboarding) {
       context.metadata.onboarding = this.initializeMetadata();
@@ -364,6 +422,62 @@ Required fields to capture: ${OnboardingAgent.REQUIRED_FIELDS.join(', ')}`;
       return result.output;
     }
     return null;
+  }
+  
+  /**
+   * Get extraction rules for the flow engine
+   */
+  getExtractionRules(): Record<string, any> {
+    return {
+      manager_name: {
+        type: 'string',
+        patterns: ['my name is', "I'm", 'call me'],
+        required: true,
+        description: "Manager's preferred name"
+      },
+      team_size: {
+        type: 'number',
+        patterns: ['team of', 'manage', 'people', 'direct reports'],
+        required: true,
+        description: 'Number of team members'
+      },
+      team_tenure: {
+        type: 'string',
+        patterns: ['been managing', 'years', 'months', 'new to'],
+        required: true,
+        description: 'How long managing this team'
+      },
+      primary_challenge: {
+        type: 'string',
+        patterns: ['challenge', 'problem', 'issue', 'struggling with'],
+        required: true,
+        description: 'Main team challenge'
+      },
+      success_metrics: {
+        type: 'array',
+        patterns: ['success looks like', 'goals', 'objectives'],
+        required: true,
+        description: 'Definition of success'
+      },
+      timeline_preference: {
+        type: 'string',
+        patterns: ['timeline', 'timeframe', 'by when'],
+        required: true,
+        description: 'Preferred timeline'
+      },
+      budget_range: {
+        type: 'string',
+        patterns: ['budget', 'invest', 'spend', 'cost'],
+        required: true,
+        description: 'Budget range'
+      },
+      leader_commitment: {
+        type: 'string',
+        patterns: ['commit', 'dedicate', 'time', 'availability'],
+        required: true,
+        description: 'Leader time commitment'
+      }
+    };
   }
 }
 
