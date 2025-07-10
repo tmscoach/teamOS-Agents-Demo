@@ -23,23 +23,28 @@ TMS (Team Management Systems) transformation platform - An intelligent multi-age
 ### Installation
 
 1. Clone the repository:
+
    ```bash
    git clone https://github.com/tmscoach/teamOS-Agents-Demo.git
    cd teamOS-Agents-Demo
    ```
 
 2. Install dependencies:
+
    ```bash
    npm install
    ```
 
 3. Set up environment variables:
+
    ```bash
    cp .env.example .env
    ```
+
    **Important**: Update `.env` with your actual Clerk credentials to avoid runtime errors. See [Setup Guide](./docs/SETUP.md) for detailed instructions.
 
 4. Set up the database:
+
    ```bash
    npm run db:generate
    npm run db:push
@@ -98,6 +103,53 @@ See `.env.example` for required environment variables.
 3. Run `npm run lint` and `npm run type-check`
 4. Commit your changes
 5. Create a pull request
+
+## CI/CD and GitHub Notifications
+
+### Continuous Integration
+
+The project uses GitHub Actions for CI with the following checks:
+
+- ESLint for code quality
+- TypeScript type checking
+- Prettier formatting validation
+- Build verification
+
+### Pre-commit Hooks
+
+To prevent CI failures, pre-commit hooks are configured using Husky and lint-staged:
+
+- Automatically runs ESLint and Prettier on staged files
+- Prevents commits with linting or formatting errors
+- Ensures code quality before pushing to GitHub
+
+### Managing GitHub Notifications
+
+To reduce email notifications from CI workflow failures:
+
+1. **Configure Repository Watch Settings**
+   - Go to the repository page on GitHub
+   - Click the "Watch" button dropdown
+   - Select "Custom" and uncheck "Actions" to disable workflow notifications
+   - Or select "Participating and @mentions" to only get notifications for PRs you're involved in
+
+2. **Configure Personal Notification Settings**
+   - Go to GitHub Settings → Notifications
+   - Under "Actions", uncheck "Failed workflows only" if you don't want failure emails
+   - Consider setting up email filters for GitHub Actions emails
+
+3. **Email Filtering (Recommended)**
+   - Create email filters for GitHub Actions notifications
+   - Filter sender: `notifications@github.com`
+   - Filter subject containing: `[teamOS-Agents-Demo] Run failed:`
+   - Action: Skip inbox, apply label, or move to folder
+
+### Best Practices
+
+- Always run `npm run lint` and `npm run type-check` before pushing
+- Fix all linting errors before creating a PR
+- The pre-commit hooks will help catch issues early
+- Keep your local `main` branch up to date to avoid merge conflicts
 
 ## Deployment
 
