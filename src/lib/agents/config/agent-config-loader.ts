@@ -64,8 +64,13 @@ export class AgentConfigLoader {
       }
 
       return null;
-    } catch (error) {
-      console.error(`Failed to load configuration for ${agentName}:`, error);
+    } catch (error: any) {
+      console.warn(`Failed to load configuration for ${agentName}:`, {
+        message: error?.message,
+        code: error?.code
+      });
+      
+      // Return null instead of throwing to allow fallback to defaults
       return null;
     }
   }

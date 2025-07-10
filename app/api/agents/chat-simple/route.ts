@@ -66,24 +66,58 @@ class PersistentContextManager extends ContextManager {
   }
 }
 
-// Initialize services
-const conversationStore = new ConversationStore(prisma);
-const contextManager = new PersistentContextManager(conversationStore);
-const router = new AgentRouter({ contextManager });
+// Initialize services with error handling
+let conversationStore: ConversationStore;
+let contextManager: PersistentContextManager;
+let router: AgentRouter;
 
-// Register all agents
-router.registerAgent(createOrchestratorAgent());
-router.registerAgent(createOnboardingAgent());
-router.registerAgent(createDiscoveryAgent());
-router.registerAgent(createAssessmentAgent());
-router.registerAgent(createAlignmentAgent());
-router.registerAgent(createLearningAgent());
-router.registerAgent(createNudgeAgent());
-router.registerAgent(createProgressMonitor());
-router.registerAgent(createRecognitionAgent());
+try {
+  conversationStore = new ConversationStore(prisma);
+  contextManager = new PersistentContextManager(conversationStore);
+  router = new AgentRouter({ contextManager });
+
+  // Register all agents with error handling
+  const agents = [
+    { name: 'OrchestratorAgent', create: createOrchestratorAgent },
+    { name: 'OnboardingAgent', create: createOnboardingAgent },
+    { name: 'DiscoveryAgent', create: createDiscoveryAgent },
+    { name: 'AssessmentAgent', create: createAssessmentAgent },
+    { name: 'AlignmentAgent', create: createAlignmentAgent },
+    { name: 'LearningAgent', create: createLearningAgent },
+    { name: 'NudgeAgent', create: createNudgeAgent },
+    { name: 'ProgressMonitor', create: createProgressMonitor },
+    { name: 'RecognitionAgent', create: createRecognitionAgent }
+  ];
+
+  for (const agentDef of agents) {
+    try {
+      const agent = agentDef.create();
+      router.registerAgent(agent);
+      console.log(`Successfully registered ${agentDef.name}`);
+    } catch (error) {
+      console.error(`Failed to register ${agentDef.name}:`, error);
+      // Continue with other agents
+    }
+  }
+} catch (error) {
+  console.error('Failed to initialize chat services:', error);
+  // These will be checked in the request handler
+}
 
 export async function POST(req: NextRequest) {
   try {
+    // Check if services are initialized
+    if (!conversationStore || !contextManager || !router) {
+      console.error('Chat services not initialized');
+      return NextResponse.json(
+        { 
+          error: 'Chat service is temporarily unavailable',
+          details: 'Services are still initializing or database connection failed'
+        },
+        { status: 503 }
+      );
+    }
+
     // Authenticate user
     const user = await currentUser();
     if (!user) {
@@ -264,13 +298,41 @@ export async function POST(req: NextRequest) {
         timestamp: event.timestamp.toISOString(),
       })),
     });
-  } catch (error) {
-    console.error('Chat API error:', error);
+  } catch (error: any) {
+    console.error('Chat API error:', {
+      message: error?.message,
+      stack: error?.stack,
+      code: error?.code
+    });
+    
+    // Handle specific database errors
+    if (error?.code === 'P2021') {
+      return NextResponse.json(
+        {
+          error: 'Database configuration error',
+          message: 'The database schema is not properly initialized. Please run migrations.',
+          details: error.message
+        },
+        { status: 503 }
+      );
+    }
+    
+    if (error?.code === 'P2022') {
+      return NextResponse.json(
+        {
+          error: 'Database schema mismatch',
+          message: 'The database schema is out of sync. Some columns may be missing.',
+          details: error.message
+        },
+        { status: 503 }
+      );
+    }
     
     return NextResponse.json(
       {
         error: 'Internal server error',
         message: error instanceof Error ? error.message : 'Unknown error',
+        code: error?.code
       },
       { status: 500 }
     );
