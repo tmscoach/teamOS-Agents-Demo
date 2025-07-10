@@ -64,12 +64,14 @@ model Conversation {
   currentAgent        String
   phase               String
   contextData         Json
+  metadata            Json?
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
   events              AgentEvent[]
   guardrailChecks     GuardrailCheck[]
   messages            Message[]
   variableExtractions VariableExtraction[]
+  flowCheckpoints     FlowCheckpoint[]
 
   @@index([teamId])
   @@index([managerId])
@@ -222,4 +224,49 @@ enum DocumentType {
   QUESTIONNAIRE
   REPORT
   RESEARCH
+}
+
+model Agent {
+  id                  String               @id @default(cuid())
+  name                String               @unique
+  type                String
+  description         String?
+  isActive            Boolean              @default(true)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  flowConfigurations  FlowConfiguration[]
+
+  @@index([name])
+  @@index([type])
+}
+
+model FlowConfiguration {
+  id              String           @id @default(cuid())
+  agentId         String
+  agent           Agent            @relation(fields: [agentId], references: [id])
+  version         Int              @default(1)
+  name            String
+  config          Json
+  isActive        Boolean          @default(false)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  flowCheckpoints FlowCheckpoint[]
+
+  @@unique([agentId, version])
+  @@index([agentId, isActive])
+}
+
+model FlowCheckpoint {
+  id              String             @id @default(cuid())
+  conversationId  String
+  conversation    Conversation       @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  flowConfigId    String
+  flowConfig      FlowConfiguration  @relation(fields: [flowConfigId], references: [id])
+  state           String
+  data            Json
+  createdAt       DateTime           @default(now())
+
+  @@index([conversationId])
+  @@index([flowConfigId])
+  @@index([createdAt])
 }
