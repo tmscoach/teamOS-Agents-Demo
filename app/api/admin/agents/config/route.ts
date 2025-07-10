@@ -132,7 +132,9 @@ export async function GET(req: NextRequest) {
       }
 
       // Get all agent configurations
+      console.log('Fetching all agent configurations...');
       const allConfigs = await AgentConfigurationService.getAllAgentConfigurations();
+      console.log('Fetched configurations:', allConfigs);
       
       // Create a map of configured agents
       const configuredAgentsMap = new Map(
@@ -162,8 +164,19 @@ export async function GET(req: NextRequest) {
       console.error('Database error in agent config API:', {
         message: dbError?.message,
         code: dbError?.code,
-        stack: dbError?.stack
+        stack: dbError?.stack,
+        name: dbError?.name,
+        fullError: dbError
       });
+      
+      // Check for specific Prisma errors
+      if (dbError?.code === 'P2022') {
+        console.error('Missing database column:', dbError.meta?.column_name || 'unknown');
+      } else if (dbError?.code === 'P2021') {
+        console.error('Missing database table:', dbError.meta?.table || 'unknown');
+      } else if (dbError?.code === 'P1001' || dbError?.code === 'P1002') {
+        console.error('Database connection error');
+      }
       
       // Return all agents with default status
       const defaultAgents = ALL_AGENTS.map(agentName => ({

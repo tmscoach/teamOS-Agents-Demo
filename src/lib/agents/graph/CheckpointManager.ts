@@ -54,16 +54,25 @@ export class CheckpointManager {
         });
         
         // Update conversation metadata
-        await tx.conversation.update({
-          where: { id: this.conversationId },
-          data: {
-            metadata: {
-              lastCheckpoint: state,
-              lastCheckpointTime: checkpoint.timestamp.toISOString(),
-              hasCheckpoint: true
+        try {
+          await tx.conversation.update({
+            where: { id: this.conversationId },
+            data: {
+              metadata: {
+                lastCheckpoint: state,
+                lastCheckpointTime: checkpoint.timestamp.toISOString(),
+                hasCheckpoint: true
+              }
             }
+          });
+        } catch (updateError: any) {
+          // If metadata column doesn't exist, skip the update
+          if (updateError?.code === 'P2022' && updateError.message?.includes('metadata')) {
+            console.warn('Metadata column not found in Conversation table, skipping metadata update');
+          } else {
+            throw updateError;
           }
-        });
+        }
       });
     } catch (error) {
       console.error('Error saving checkpoint:', error);
@@ -136,16 +145,25 @@ export class CheckpointManager {
           }
         });
         
-        await tx.conversation.update({
-          where: { id: this.conversationId },
-          data: {
-            metadata: {
-              hasCheckpoint: false,
-              lastCheckpoint: null,
-              lastCheckpointTime: null
+        try {
+          await tx.conversation.update({
+            where: { id: this.conversationId },
+            data: {
+              metadata: {
+                hasCheckpoint: false,
+                lastCheckpoint: null,
+                lastCheckpointTime: null
+              }
             }
+          });
+        } catch (updateError: any) {
+          // If metadata column doesn't exist, skip the update
+          if (updateError?.code === 'P2022' && updateError.message?.includes('metadata')) {
+            console.warn('Metadata column not found in Conversation table, skipping metadata update');
+          } else {
+            throw updateError;
           }
-        });
+        }
       });
     } catch (error) {
       console.error('Error clearing checkpoints:', error);
