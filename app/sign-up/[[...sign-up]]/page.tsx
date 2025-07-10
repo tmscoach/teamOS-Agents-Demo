@@ -4,7 +4,8 @@ import React, { useEffect, useState } from "react"
 import { useSignUp } from "@clerk/nextjs"
 import { useRouter } from "next/navigation"
 import { BlocksDashboard } from "@/components/blocks/blocks-dashboard"
-import { Button } from "@/components/ui/anima-button"
+import { Button as AnimaButton } from "@/components/ui/anima-button"
+import { Button } from "@/components/ui/button"
 import { CardHeader } from "@/components/ui/card-header"
 import { Separator } from "@/components/ui/separator"
 import Image from "next/image"
@@ -43,7 +44,10 @@ export default function SignUpPage() {
         router.push("/onboarding")
       } else if (result.status === "missing_requirements") {
         // Send verification email if needed
-        await signUp.prepareEmailAddressVerification({ strategy: "email_link" })
+        await signUp.prepareEmailAddressVerification({ 
+          strategy: "email_link",
+          redirectUrl: window.location.origin + "/sign-up/verify-email"
+        })
         router.push("/sign-up/verify-email?email=" + encodeURIComponent(email))
       }
     } catch (err: any) {
@@ -126,7 +130,7 @@ export default function SignUpPage() {
       <div className="flex flex-col min-h-[400px] h-[50vh] lg:min-h-[600px] lg:h-screen items-start relative w-full lg:w-1/2 bg-white shadow-[0px_1px_2px_#0000000d] overflow-y-auto">
         <div className="items-end gap-1.5 p-6 lg:p-9 pb-0 flex flex-col relative self-stretch w-full">
           <Link href="/sign-in">
-            <Button variant="ghost" size="sm">Sign In</Button>
+            <AnimaButton type="ghost" size="sm">Sign In</AnimaButton>
           </Link>
         </div>
 

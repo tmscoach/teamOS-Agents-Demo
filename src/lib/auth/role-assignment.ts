@@ -1,4 +1,5 @@
-import { UserRole, JourneyStatus } from '@prisma/client'
+type UserRole = 'ADMIN' | 'MANAGER' | 'TEAM_MEMBER'
+type JourneyStatus = 'ONBOARDING' | 'ACTIVE'
 
 interface RoleAssignment {
   role: UserRole

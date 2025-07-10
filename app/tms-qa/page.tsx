@@ -32,7 +32,7 @@ export default function TMSQAPage() {
       const data = await res.json();
       setResult(data);
     } catch (error) {
-      setResult({ success: false, error: error.message });
+      setResult({ success: false, error: error instanceof Error ? error.message : String(error) });
     }
     
     setLoading(false);
@@ -76,7 +76,7 @@ export default function TMSQAPage() {
           {exampleQuestions.map((q, idx) => (
             <button
               key={idx}
-              onClick={() => useExample(q)}
+              onClick={() => setQuestion(q)}
               className="block text-left w-full p-2 text-sm text-blue-600 hover:bg-blue-50 rounded transition"
             >
               → {q}

@@ -4,8 +4,9 @@ import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { TeamOSLogo } from "@/components/ui/teamos-logo"
+import { Suspense } from "react"
 
-export default function VerifySignUpEmailPage() {
+function VerifySignUpEmailContent() {
   const searchParams = useSearchParams()
   const email = searchParams.get("email") || ""
 
@@ -38,5 +39,13 @@ export default function VerifySignUpEmailPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function VerifySignUpEmailPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <VerifySignUpEmailContent />
+    </Suspense>
   )
 }

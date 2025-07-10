@@ -1,5 +1,5 @@
 import { GuardrailCheck } from '@/lib/generated/prisma';
-import { GuardrailResult } from '@/lib/agents/types';
+import { GuardrailResult } from '@/src/lib/agents/types';
 import prisma from '@/lib/db';
 
 export interface GuardrailCheckInput {

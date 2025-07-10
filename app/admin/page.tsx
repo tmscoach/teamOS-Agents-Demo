@@ -2,28 +2,14 @@
 
 import { useEffect, useState } from "react";
 import { MetricCard } from "@/components/admin/metric-card";
-import { ActivityItem } from "@/components/admin/activity-item";
-import { 
-  AdminTable, 
-  AdminTableHeader, 
-  AdminTableBody, 
-  AdminTableRow, 
-  AdminTableHead, 
-  AdminTableCell 
-} from "@/components/admin/admin-table";
-import { ProgressBar } from "@/components/admin/progress-bar";
-import { StatusBadge } from "@/components/admin/status-badge";
 import { 
   Plus,
   AlertTriangle,
   CheckCircle,
-  Clock,
   MessageSquare,
   Shield,
   Database,
-  Settings,
-  Activity,
-  TrendingUp
+  Settings
 } from "lucide-react";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
@@ -86,12 +72,12 @@ export default function AdminDashboardPage() {
         
         // Calculate stats from conversations
         const totalConversations = conversations.length;
-        const activeConversations = conversations.filter((c: any) => c.status === 'active').length;
+        const activeConversations = conversations.filter((c: { status: string }) => c.status === 'active').length;
         
         // Transform conversations to active sessions
         const sessions = conversations
-          .filter((c: any) => c.status === 'active' || c.status === 'pending')
-          .map((c: any) => ({
+          .filter((c: { status: string }) => c.status === 'active' || c.status === 'pending')
+          .map((c: { id: string; managerName: string; teamName: string; status: string; completionPercentage?: number; lastMessageTime: string }) => ({
             id: c.id,
             manager: c.managerName,
             team: c.teamName,
@@ -111,7 +97,7 @@ export default function AdminDashboardPage() {
         // Generate recent activity from conversations
         const activities: RecentActivity[] = conversations
           .slice(0, 3)
-          .map((c: any, index: number) => ({
+          .map((c: { managerName: string; startTime: string }, index: number) => ({
             id: `conv-${index}`,
             type: 'conversation_started' as const,
             title: 'New conversation started',
@@ -181,7 +167,7 @@ export default function AdminDashboardPage() {
           color: '#111827'
         }}>Dashboard</h2>
         <p style={{ color: '#6b7280' }}>
-          Here's an overview of your TMS transformation system
+          Here&apos;s an overview of your TMS transformation system
         </p>
       </div>
 

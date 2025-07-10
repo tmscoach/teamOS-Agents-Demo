@@ -1,6 +1,6 @@
 import { GuardrailTrackingService } from '../guardrail-tracking';
 import { PrismaClient } from '@/lib/generated/prisma';
-import { GuardrailResult } from '@/lib/agents/types';
+import { GuardrailResult } from '@/src/lib/agents/types';
 
 // Mock Prisma Client
 jest.mock('@/lib/generated/prisma', () => ({

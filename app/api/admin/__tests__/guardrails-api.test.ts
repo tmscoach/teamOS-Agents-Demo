@@ -3,6 +3,8 @@ import { GET, POST } from '../guardrails/route';
 import { GuardrailTrackingService } from '@/src/lib/services/guardrail-tracking';
 import { auth } from '@clerk/nextjs/server';
 
+type AuthResult = { userId: string | null };
+
 // Mock dependencies
 jest.mock('@clerk/nextjs/server', () => ({
   auth: jest.fn(),
@@ -16,12 +18,12 @@ describe('Guardrails API', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockAuth.mockResolvedValue({ userId: 'test-user-id' } as any);
+    mockAuth.mockResolvedValue({ userId: 'test-user-id' } as AuthResult);
   });
 
   describe('GET /api/admin/guardrails', () => {
     it('should return unauthorized if not authenticated', async () => {
-      mockAuth.mockResolvedValue({ userId: null } as any);
+      mockAuth.mockResolvedValue({ userId: null } as AuthResult);
 
       const req = new NextRequest('http://localhost:3000/api/admin/guardrails');
       const response = await GET(req);
@@ -42,7 +44,7 @@ describe('Guardrails API', () => {
         },
       ];
 
-      mockGuardrailService.getConversationGuardrails.mockResolvedValue(mockGuardrails as any);
+      mockGuardrailService.getConversationGuardrails.mockResolvedValue(mockGuardrails);
 
       const req = new NextRequest('http://localhost:3000/api/admin/guardrails?conversationId=conv-123');
       const response = await GET(req);
@@ -123,7 +125,7 @@ describe('Guardrails API', () => {
         timestamp: new Date(),
       };
 
-      mockGuardrailService.trackGuardrailCheck.mockResolvedValue(mockCheck as any);
+      mockGuardrailService.trackGuardrailCheck.mockResolvedValue(mockCheck);
 
       const req = new NextRequest('http://localhost:3000/api/admin/guardrails', {
         method: 'POST',

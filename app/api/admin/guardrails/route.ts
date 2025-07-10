@@ -34,11 +34,11 @@ export async function GET(req: NextRequest) {
     const results = await GuardrailTrackingService.searchGuardrailChecks(params);
     
     return NextResponse.json(results);
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error fetching guardrails:', error);
     
     // Handle missing database table error
-    if (error.code === 'P2021' && error.message?.includes('table `public.GuardrailCheck` does not exist')) {
+    if (error instanceof Error && 'code' in error && error.code === 'P2021' && error.message?.includes('table `public.GuardrailCheck` does not exist')) {
       return NextResponse.json({
         results: [],
         total: 0,

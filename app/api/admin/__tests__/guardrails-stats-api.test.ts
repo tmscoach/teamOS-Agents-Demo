@@ -3,6 +3,8 @@ import { GET } from '../guardrails/stats/route';
 import { GuardrailTrackingService } from '@/src/lib/services/guardrail-tracking';
 import { auth } from '@clerk/nextjs/server';
 
+type AuthResult = { userId: string | null };
+
 // Mock dependencies
 jest.mock('@clerk/nextjs/server', () => ({
   auth: jest.fn(),
@@ -16,12 +18,12 @@ describe('Guardrails Stats API', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockAuth.mockResolvedValue({ userId: 'test-user-id' } as any);
+    mockAuth.mockResolvedValue({ userId: 'test-user-id' } as AuthResult);
   });
 
   describe('GET /api/admin/guardrails/stats', () => {
     it('should return unauthorized if not authenticated', async () => {
-      mockAuth.mockResolvedValue({ userId: null } as any);
+      mockAuth.mockResolvedValue({ userId: null } as AuthResult);
 
       const req = new NextRequest('http://localhost:3000/api/admin/guardrails/stats');
       const response = await GET(req);
@@ -48,7 +50,7 @@ describe('Guardrails Stats API', () => {
         },
       ];
 
-      mockGuardrailService.getRecentViolations.mockResolvedValue(mockViolations as any);
+      mockGuardrailService.getRecentViolations.mockResolvedValue(mockViolations);
 
       const req = new NextRequest('http://localhost:3000/api/admin/guardrails/stats?recent=true&limit=5');
       const response = await GET(req);

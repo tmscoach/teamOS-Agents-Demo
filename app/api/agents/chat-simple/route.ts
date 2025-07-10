@@ -229,16 +229,24 @@ export async function POST(req: NextRequest) {
     if (guardrailEvents.length > 0) {
       try {
         await prisma.guardrailCheck.createMany({
-          data: guardrailEvents.map(event => ({
-            conversationId: context.conversationId,
-            agentName: event.agent,
-            guardrailType: (event as any).guardrailName || 'unknown',
-            input: message,
-            passed: (event as any).result?.passed || false,
-            severity: (event as any).result?.severity || null,
-            reasoning: JSON.stringify((event as any).result),
-            timestamp: event.timestamp
-          }))
+          data: guardrailEvents.map(event => {
+            const guardrailEvent = event as { 
+              guardrailName?: string; 
+              result?: { passed?: boolean; severity?: string | null };
+              agent: string;
+              timestamp: Date;
+            };
+            return {
+              conversationId: context.conversationId,
+              agentName: guardrailEvent.agent,
+              guardrailType: guardrailEvent.guardrailName || 'unknown',
+              input: message,
+              passed: guardrailEvent.result?.passed || false,
+              severity: guardrailEvent.result?.severity || null,
+              reasoning: JSON.stringify(guardrailEvent.result),
+              timestamp: guardrailEvent.timestamp
+            };
+          })
         });
       } catch (error) {
         console.error('Failed to save guardrail checks:', error);

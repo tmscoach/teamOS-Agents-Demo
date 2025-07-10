@@ -44,7 +44,8 @@ describe('Clerk Webhook Handler', () => {
       const mockHeaders = jest.fn(() => ({
         get: jest.fn(() => null)
       }))
-      jest.mocked(require('next/headers').headers).mockImplementation(mockHeaders)
+      const { headers } = await import('next/headers');
+      jest.mocked(headers).mockImplementation(mockHeaders)
 
       const request = new Request('http://localhost/api/webhooks/clerk', {
         method: 'POST',
@@ -64,7 +65,7 @@ describe('Clerk Webhook Handler', () => {
       
       jest.mocked(Webhook).mockImplementation(() => ({
         verify: mockVerify
-      } as any))
+      } as unknown as Webhook))
 
       const request = new Request('http://localhost/api/webhooks/clerk', {
         method: 'POST',
@@ -91,7 +92,7 @@ describe('Clerk Webhook Handler', () => {
 
       jest.mocked(Webhook).mockImplementation(() => ({
         verify: jest.fn().mockReturnValue(adminPayload)
-      } as any))
+      } as unknown as Webhook))
 
       const request = new Request('http://localhost/api/webhooks/clerk', {
         method: 'POST',
@@ -125,7 +126,7 @@ describe('Clerk Webhook Handler', () => {
 
       jest.mocked(Webhook).mockImplementation(() => ({
         verify: jest.fn().mockReturnValue(managerPayload)
-      } as any))
+      } as unknown as Webhook))
 
       const request = new Request('http://localhost/api/webhooks/clerk', {
         method: 'POST',
@@ -155,7 +156,7 @@ describe('Clerk Webhook Handler', () => {
 
       jest.mocked(Webhook).mockImplementation(() => ({
         verify: jest.fn().mockReturnValue(invalidPayload)
-      } as any))
+      } as unknown as Webhook))
 
       const request = new Request('http://localhost/api/webhooks/clerk', {
         method: 'POST',
@@ -183,7 +184,7 @@ describe('Clerk Webhook Handler', () => {
 
       jest.mocked(Webhook).mockImplementation(() => ({
         verify: jest.fn().mockReturnValue(updatePayload)
-      } as any))
+      } as unknown as Webhook))
 
       const request = new Request('http://localhost/api/webhooks/clerk', {
         method: 'POST',
@@ -215,7 +216,7 @@ describe('Clerk Webhook Handler', () => {
 
       jest.mocked(Webhook).mockImplementation(() => ({
         verify: jest.fn().mockReturnValue(deletePayload)
-      } as any))
+      } as unknown as Webhook))
 
       jest.mocked(prisma.user).update = jest.fn()
 
@@ -249,7 +250,7 @@ describe('Clerk Webhook Handler', () => {
 
       jest.mocked(Webhook).mockImplementation(() => ({
         verify: jest.fn().mockReturnValue(payload)
-      } as any))
+      } as unknown as Webhook))
 
       const request = new Request('http://localhost/api/webhooks/clerk', {
         method: 'POST',
