@@ -37,7 +37,7 @@ export class OpenAIAgent extends Agent {
     super(config);
     
     this.llm = new LLMProvider(config.llmConfig);
-    this.model = config.model || 'gpt-4-turbo-preview';
+    this.model = config.model || 'gpt-4o-mini';  // Updated to a valid model
     this.temperature = config.temperature ?? 0.7;
     this.maxTokens = config.maxTokens ?? 2048;
     this.systemPrompt = config.systemPrompt;
@@ -71,6 +71,7 @@ export class OpenAIAgent extends Agent {
       const openAITools = this.buildOpenAITools();
 
       // Get LLM response
+      console.log(`[${this.name}] Calling OpenAI with model: ${this.model}`);
       const { completion } = await this.llm.generateResponse(messages, {
         tools: openAITools.length > 0 ? openAITools : undefined,
         model: this.model,
@@ -78,8 +79,15 @@ export class OpenAIAgent extends Agent {
         maxTokens: this.maxTokens,
       });
 
+      console.log(`[${this.name}] OpenAI response:`, {
+        hasContent: !!completion.choices[0]?.message?.content,
+        content: completion.choices[0]?.message?.content?.substring(0, 100),
+        hasToolCalls: !!completion.choices[0]?.message?.tool_calls,
+        toolCallCount: completion.choices[0]?.message?.tool_calls?.length || 0
+      });
+
       // Process the completion
-      return await this.processCompletion(completion, context, events);
+      return await this.processCompletion(completion, context, events, messages);
     } catch (error) {
       // Create error response
       return this.buildResponse(context, events, {
@@ -239,17 +247,19 @@ export class OpenAIAgent extends Agent {
   protected async processCompletion(
     completion: any,
     context: AgentContext,
-    events: AgentEvent[]
+    events: AgentEvent[],
+    originalMessages?: ChatCompletionMessageParam[]
   ): Promise<AgentResponse> {
     const choice = completion.choices[0];
     const message = choice.message;
 
     // Extract content
-    const responseContent = message.content || '';
+    let responseContent = message.content || '';
 
     // Process tool calls if any
     const toolCalls: ToolCall[] = [];
     let handoffRequest: HandoffRequest | undefined;
+    const toolResults: Array<{ toolCallId: string; result: any }> = [];
 
     if (message.tool_calls) {
       for (const toolCall of message.tool_calls) {
@@ -284,7 +294,41 @@ export class OpenAIAgent extends Agent {
             context
           );
           events.push(callEvent, outputEvent);
+          
+          // Store tool result for follow-up
+          toolResults.push({
+            toolCallId: toolCall.id,
+            result: outputEvent.result
+          });
         }
+      }
+      
+      // If we have tool calls but no content, make a follow-up call to get a response
+      if (!responseContent && toolResults.length > 0 && originalMessages) {
+        console.log(`[${this.name}] Making follow-up call after tool execution`);
+        
+        // Build messages including tool results
+        const followUpMessages = [...originalMessages];
+        followUpMessages.push(message); // Add the assistant's tool call message
+        
+        // Add tool response messages
+        for (const { toolCallId, result } of toolResults) {
+          followUpMessages.push({
+            role: 'tool',
+            content: JSON.stringify(result.output || result),
+            tool_call_id: toolCallId
+          });
+        }
+        
+        // Make follow-up call
+        const { completion: followUpCompletion } = await this.llm.generateResponse(followUpMessages, {
+          model: this.model,
+          temperature: this.temperature,
+          maxTokens: this.maxTokens,
+        });
+        
+        responseContent = followUpCompletion.choices[0]?.message?.content || '';
+        console.log(`[${this.name}] Follow-up response:`, responseContent.substring(0, 100));
       }
     }
 
