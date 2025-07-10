@@ -4,7 +4,7 @@ import { useState } from "react";
 
 export default function APITestPage() {
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<{ error?: string; [key: string]: unknown } | null>(null);
   const [message, setMessage] = useState("");
 
   const testDatabase = async () => {
@@ -14,7 +14,7 @@ export default function APITestPage() {
       const data = await res.json();
       setResult(data);
     } catch (error) {
-      setResult({ error: error.message });
+      setResult({ error: error instanceof Error ? error.message : 'Unknown error' });
     }
     setLoading(false);
   };
@@ -30,7 +30,7 @@ export default function APITestPage() {
       const data = await res.json();
       setResult(data);
     } catch (error) {
-      setResult({ error: error.message });
+      setResult({ error: error instanceof Error ? error.message : 'Unknown error' });
     }
     setLoading(false);
   };
@@ -50,7 +50,7 @@ export default function APITestPage() {
       const data = await res.json();
       setResult(data);
     } catch (error) {
-      setResult({ error: error.message });
+      setResult({ error: error instanceof Error ? error.message : 'Unknown error' });
     }
     setLoading(false);
   };

@@ -20,15 +20,22 @@ export async function GET(req: NextRequest) {
 
     // Parse and validate query parameters
     const searchParams = req.nextUrl.searchParams;
-    const filters: any = {};
+    const filters: Record<string, string> = {};
     
     // Only add filters that are actually provided
-    if (searchParams.get('status')) filters.status = searchParams.get('status');
-    if (searchParams.get('agentName')) filters.agentName = searchParams.get('agentName');
-    if (searchParams.get('dateFrom')) filters.dateFrom = searchParams.get('dateFrom');
-    if (searchParams.get('dateTo')) filters.dateTo = searchParams.get('dateTo');
-    if (searchParams.get('managerId')) filters.managerId = searchParams.get('managerId');
-    if (searchParams.get('teamId')) filters.teamId = searchParams.get('teamId');
+    const status = searchParams.get('status');
+    const agentName = searchParams.get('agentName');
+    const dateFrom = searchParams.get('dateFrom');
+    const dateTo = searchParams.get('dateTo');
+    const managerId = searchParams.get('managerId');
+    const teamId = searchParams.get('teamId');
+    
+    if (status) filters.status = status;
+    if (agentName) filters.agentName = agentName;
+    if (dateFrom) filters.dateFrom = dateFrom;
+    if (dateTo) filters.dateTo = dateTo;
+    if (managerId) filters.managerId = managerId;
+    if (teamId) filters.teamId = teamId;
 
     const validation = validateRequest(filters, adminFilterSchema);
     if (!validation.success) {
@@ -41,7 +48,7 @@ export async function GET(req: NextRequest) {
     const validatedFilters = validation.data;
 
     // Build query conditions
-    const where: any = {};
+    const where: Record<string, unknown> = {};
     
     if (validatedFilters.agentName) {
       where.currentAgent = validatedFilters.agentName;
@@ -56,13 +63,14 @@ export async function GET(req: NextRequest) {
     }
     
     if (validatedFilters.dateFrom || validatedFilters.dateTo) {
-      where.createdAt = {};
+      const dateFilter: Record<string, Date> = {};
       if (validatedFilters.dateFrom) {
-        where.createdAt.gte = new Date(validatedFilters.dateFrom);
+        dateFilter.gte = new Date(validatedFilters.dateFrom);
       }
       if (validatedFilters.dateTo) {
-        where.createdAt.lte = new Date(validatedFilters.dateTo);
+        dateFilter.lte = new Date(validatedFilters.dateTo);
       }
+      where.createdAt = dateFilter;
     }
 
     // Fetch conversations with aggregated data
@@ -108,9 +116,9 @@ export async function GET(req: NextRequest) {
 
     // Transform data for the frontend
     const transformedConversations = conversations.map(conv => {
-      const contextData = conv.contextData as any;
-      const metadata = contextData?.metadata;
-      const onboardingData = metadata?.onboarding;
+      const contextData = conv.contextData as Record<string, unknown>;
+      const metadata = contextData?.metadata as Record<string, unknown> | undefined;
+      const onboardingData = metadata?.onboarding as Record<string, unknown> | undefined;
       const lastMessage = conv.messages[0];
       const team = teamMap.get(conv.teamId);
       const manager = managerMap.get(conv.managerId);

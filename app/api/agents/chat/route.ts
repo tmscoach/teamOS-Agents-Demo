@@ -30,7 +30,7 @@ const chatRequestSchema = z.object({
   conversationId: z.string().optional(),
   message: z.string().min(1).max(4000),
   teamId: z.string().optional(),
-  metadata: z.record(z.any()).optional(),
+  metadata: z.record(z.unknown()).optional(),
 });
 
 // Response type
@@ -45,7 +45,7 @@ interface ChatResponse {
   events: Array<{
     type: string;
     timestamp: string;
-    [key: string]: any;
+    [key: string]: unknown;
   }>;
 }
 

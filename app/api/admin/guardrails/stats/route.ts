@@ -29,11 +29,11 @@ export async function GET(req: NextRequest) {
     const stats = await GuardrailTrackingService.getGuardrailStats(filters);
     
     return NextResponse.json(stats);
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error fetching guardrail stats:', error);
     
     // Handle database connection error
-    if (error.code === 'P1001') {
+    if (error instanceof Error && 'code' in error && error.code === 'P1001') {
       // Return empty data structure for recent violations request
       if (req.nextUrl.searchParams.get('recent') === 'true') {
         return NextResponse.json([]);
@@ -48,12 +48,12 @@ export async function GET(req: NextRequest) {
         violationsByType: [],
         violationsByAgent: [],
         warning: 'Database connection error. Please check your database connection.',
-        error: error.message
+        error: error instanceof Error ? error.message : 'Unknown error'
       });
     }
     
     // Handle missing database table error
-    if (error.code === 'P2021' && error.message?.includes('table `public.GuardrailCheck` does not exist')) {
+    if (error instanceof Error && 'code' in error && error.code === 'P2021' && error.message?.includes('table `public.GuardrailCheck` does not exist')) {
       // Return empty data structure for recent violations request
       if (req.nextUrl.searchParams.get('recent') === 'true') {
         return NextResponse.json([]);

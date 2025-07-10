@@ -16,7 +16,7 @@ jest.mock('next/server', () => ({
     headers: new Map(),
   })),
   NextResponse: {
-    json: jest.fn((data: any, init?: any) => ({
+    json: jest.fn((data: unknown, init?: { status?: number }) => ({
       status: init?.status || 200,
       json: async () => data,
     })),
@@ -42,8 +42,16 @@ jest.mock('@/lib/db/prisma', () => ({
   },
 }));
 
-const mockPrisma = require('@/lib/db/prisma').prisma;
+import { prisma } from '@/lib/db/prisma';
+const mockPrisma = prisma as jest.Mocked<typeof prisma>;
 const mockCurrentUser = currentUser as jest.MockedFunction<typeof currentUser>;
+
+interface MockUser {
+  id: string;
+  emailAddresses?: Array<{ emailAddress: string }>;
+  fullName?: string;
+  firstName?: string;
+}
 
 describe('Admin Conversations API', () => {
   beforeEach(() => {
@@ -63,7 +71,7 @@ describe('Admin Conversations API', () => {
     });
 
     it('should return 403 if user is not an admin', async () => {
-      mockCurrentUser.mockResolvedValue({ id: 'user-123' } as any);
+      mockCurrentUser.mockResolvedValue({ id: 'user-123' } as MockUser);
       mockPrisma.user.findUnique.mockResolvedValue({
         id: 'user-123',
         clerkId: 'user-123',
@@ -79,7 +87,7 @@ describe('Admin Conversations API', () => {
     });
 
     it('should return 404 if conversation not found', async () => {
-      mockCurrentUser.mockResolvedValue({ id: 'admin-123' } as any);
+      mockCurrentUser.mockResolvedValue({ id: 'admin-123' } as MockUser);
       mockPrisma.user.findUnique.mockResolvedValue({
         id: 'admin-123',
         clerkId: 'admin-123',
@@ -160,7 +168,7 @@ describe('Admin Conversations API', () => {
         ],
       };
 
-      mockCurrentUser.mockResolvedValue({ id: 'admin-123' } as any);
+      mockCurrentUser.mockResolvedValue({ id: 'admin-123' } as MockUser);
       mockPrisma.user.findUnique.mockResolvedValue({
         id: 'admin-123',
         clerkId: 'admin-123',
@@ -222,7 +230,7 @@ describe('Admin Conversations API', () => {
     });
 
     it('should handle database connection errors with retries', async () => {
-      mockCurrentUser.mockResolvedValue({ id: 'admin-123' } as any);
+      mockCurrentUser.mockResolvedValue({ id: 'admin-123' } as MockUser);
       
       // Simulate database connection errors that succeed on retry
       let attempts = 0;
@@ -261,7 +269,7 @@ describe('Admin Conversations API', () => {
     });
 
     it('should return 503 for persistent database connection errors', async () => {
-      mockCurrentUser.mockResolvedValue({ id: 'admin-123' } as any);
+      mockCurrentUser.mockResolvedValue({ id: 'admin-123' } as MockUser);
       mockPrisma.user.findUnique.mockRejectedValue(new Error("Can't reach database server"));
 
       const req = new NextRequest('http://localhost:3000/api/admin/conversations/conv-123');

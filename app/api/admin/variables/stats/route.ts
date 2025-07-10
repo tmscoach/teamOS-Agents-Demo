@@ -64,11 +64,11 @@ export async function GET(req: NextRequest) {
         });
       }
     }
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error fetching variable extraction stats:', error);
     
     // Handle database connection error
-    if (error.code === 'P1001') {
+    if (error instanceof Error && 'code' in error && error.code === 'P1001') {
       return NextResponse.json({
         totalExtractions: 0,
         successfulExtractions: 0,
@@ -78,12 +78,12 @@ export async function GET(req: NextRequest) {
         trends: [],
         byAgent: [],
         warning: 'Database connection error. Please check your database connection.',
-        error: error.message
+        error: error instanceof Error ? error.message : 'Unknown error'
       });
     }
     
     // Handle missing database table error
-    if (error.code === 'P2021' && error.message?.includes('table `public.VariableExtraction` does not exist')) {
+    if (error instanceof Error && 'code' in error && error.code === 'P2021' && error.message?.includes('table `public.VariableExtraction` does not exist')) {
       return NextResponse.json({
         totalExtractions: 0,
         successfulExtractions: 0,

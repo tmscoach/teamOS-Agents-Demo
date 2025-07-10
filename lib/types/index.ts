@@ -10,6 +10,7 @@ export interface User {
   role: UserRole
   teamId?: string
   department?: string
+  journeyStatus?: 'ONBOARDING' | 'ACTIVE' | string
   profileData?: Record<string, unknown>
   engagementMetrics?: Record<string, unknown>
   assessmentStatus?: Record<string, unknown>

@@ -157,10 +157,11 @@ export default function AgentConfigPage() {
 
   // Migrate old multi-prompt format to single system prompt if needed
   useEffect(() => {
-    if (currentConfig && (currentConfig as any).prompts && !currentConfig.systemPrompt) {
+    if (currentConfig && 'prompts' in currentConfig && !currentConfig.systemPrompt) {
       // Convert old format: combine all prompts into system prompt
-      const systemPrompt = (currentConfig as any).prompts.system || 
-        Object.entries((currentConfig as any).prompts)
+      const oldConfig = currentConfig as AgentConfig & { prompts: { system?: string; [key: string]: string | undefined } };
+      const systemPrompt = oldConfig.prompts.system || 
+        Object.entries(oldConfig.prompts)
           .map(([key, value]) => `## ${key.replace(/_/g, ' ').toUpperCase()}\n${value}`)
           .join('\n\n');
       
@@ -524,7 +525,7 @@ export default function AgentConfigPage() {
                     fontSize: '14px',
                     color: '#6b7280'
                   }}>
-                    Define the agent's complete behavior, approach, and conversation flow in a single prompt
+                    Define the agent&apos;s complete behavior, approach, and conversation flow in a single prompt
                   </p>
                 </div>
                 <span style={{
@@ -618,7 +619,7 @@ You are a friendly Team Development Assistant conducting a quick 5-minute intake
                     fontSize: '14px',
                     color: '#6b7280'
                   }}>
-                    Define conversation states and transitions for the agent's state machine
+                    Define conversation states and transitions for the agent&apos;s state machine
                   </p>
                 </div>
                 <button
@@ -664,7 +665,7 @@ You are a friendly Team Development Assistant conducting a quick 5-minute intake
                     Conversation States ({editedConfig?.flowConfig?.states?.length || 0})
                   </h4>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                    {editedConfig?.flowConfig?.states?.map((state: string) => (
+                    {editedConfig?.flowConfig?.states?.map((state) => (
                       <span key={state} style={{
                         padding: '4px 12px',
                         borderRadius: '16px',
@@ -714,7 +715,7 @@ You are a friendly Team Development Assistant conducting a quick 5-minute intake
                       Required Fields ({editedConfig.flowConfig.requiredFields.length})
                     </h4>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                      {editedConfig.flowConfig.requiredFields.map((field: string) => (
+                      {editedConfig.flowConfig.requiredFields.map((field) => (
                         <span key={field} style={{
                           padding: '4px 12px',
                           borderRadius: '16px',
@@ -749,7 +750,7 @@ You are a friendly Team Development Assistant conducting a quick 5-minute intake
                           ...editedConfig!,
                           flowConfig: parsed,
                         });
-                      } catch (error) {
+                      } catch {
                         // Invalid JSON, don't update
                       }
                     }}
@@ -890,7 +891,7 @@ You are a friendly Team Development Assistant conducting a quick 5-minute intake
                         {rule.pattern ? (
                           <div>{rule.pattern}</div>
                         ) : rule.patterns ? (
-                          rule.patterns.map((pattern: string, idx: number) => (
+                          rule.patterns.map((pattern, idx) => (
                             <div key={idx}>{pattern}</div>
                           ))
                         ) : null}
@@ -918,7 +919,7 @@ You are a friendly Team Development Assistant conducting a quick 5-minute intake
                           ...editedConfig!,
                           extractionRules: parsed,
                         });
-                      } catch (error) {
+                      } catch {
                         // Invalid JSON, don't update
                       }
                     }}

@@ -64,8 +64,8 @@ export async function GET(
     }
 
     // Extract metadata from contextData
-    const contextData = conversation.contextData as any;
-    const metadata = contextData?.metadata || {};
+    const contextData = conversation.contextData as Record<string, unknown>;
+    const metadata = (contextData?.metadata as Record<string, unknown>) || {};
 
     // Transform the data
     const transformedConversation = {

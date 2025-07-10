@@ -96,8 +96,8 @@ export async function GET(req: NextRequest) {
       // Convert legacy multi-prompt format to single system prompt
       let systemPrompt = '';
       if (activeConfig.prompts && typeof activeConfig.prompts === 'object') {
-        const prompts = activeConfig.prompts as Record<string, any>;
-        systemPrompt = prompts.system || 
+        const prompts = activeConfig.prompts as Record<string, unknown>;
+        systemPrompt = (typeof prompts.system === 'string' ? prompts.system : '') || 
           Object.entries(prompts)
             .map(([key, value]) => `## ${key.replace(/_/g, ' ').toUpperCase()}\n${value}`)
             .join('\n\n');
@@ -148,11 +148,11 @@ export async function GET(req: NextRequest) {
     });
     
     return NextResponse.json(agentStatuses);
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error fetching agent configurations:', error);
     
     // Handle database connection error or missing table
-    if (error.code === 'P1001' || (error.code === 'P2021' && error.message?.includes('table `public.AgentConfiguration` does not exist'))) {
+    if (error instanceof Error && 'code' in error && (error.code === 'P1001' || (error.code === 'P2021' && error.message?.includes('table `public.AgentConfiguration` does not exist')))) {
       const defaultAgents = [
         {
           agentName: 'OnboardingAgent',
@@ -211,11 +211,11 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json(config);
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error creating agent configuration:', error);
     
     // Handle missing database table error
-    if (error.code === 'P2021' && error.message?.includes('table `public.AgentConfiguration` does not exist')) {
+    if (error instanceof Error && 'code' in error && error.code === 'P2021' && error.message?.includes('table `public.AgentConfiguration` does not exist')) {
       return NextResponse.json(
         { 
           error: 'Agent configuration table not initialized. Please run database migrations.',
@@ -302,11 +302,11 @@ export async function PUT(req: NextRequest) {
     AgentConfigLoader.clearCache(body.agentName);
 
     return NextResponse.json(config);
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error updating agent configuration:', error);
     
     // Handle missing database table error
-    if (error.code === 'P2021' && error.message?.includes('table `public.AgentConfiguration` does not exist')) {
+    if (error instanceof Error && 'code' in error && error.code === 'P2021' && error.message?.includes('table `public.AgentConfiguration` does not exist')) {
       return NextResponse.json(
         { 
           error: 'Agent configuration table not initialized. Please run database migrations.',

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 
 // Mock data for demonstration
@@ -56,7 +56,7 @@ const mockConversations = [
 ];
 
 export default function AdminTestPage() {
-  const [conversations, setConversations] = useState(mockConversations);
+  const [conversations] = useState(mockConversations);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
 

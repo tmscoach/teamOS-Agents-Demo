@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuth } from "@clerk/nextjs";
+import Link from "next/link";
 
 export default function TestConfigPage() {
   const { isLoaded, isSignedIn, userId } = useAuth();
@@ -31,9 +32,9 @@ export default function TestConfigPage() {
           <h2 className="font-semibold mb-2">Test Links</h2>
           <ul className="space-y-2">
             <li>
-              <a href="/sign-in" className="text-blue-600 hover:underline">
+              <Link href="/sign-in" className="text-blue-600 hover:underline">
                 Go to Sign-In Page →
-              </a>
+              </Link>
             </li>
             <li>
               <a href="/test-chat.html" className="text-blue-600 hover:underline">
