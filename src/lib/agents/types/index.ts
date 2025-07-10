@@ -168,6 +168,7 @@ export interface AgentResponse {
   handoff?: HandoffRequest;
   events: AgentEvent[];
   context: AgentContext;
+  metadata?: Record<string, any>;
 }
 
 export interface ToolCall {
