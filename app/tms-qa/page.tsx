@@ -32,7 +32,7 @@ export default function TMSQAPage() {
       const data = await res.json();
       setResult(data);
     } catch (error) {
-      setResult({ success: false, error: error.message });
+      setResult({ success: false, error: error instanceof Error ? error.message : String(error) });
     }
     
     setLoading(false);

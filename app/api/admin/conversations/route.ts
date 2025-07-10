@@ -118,7 +118,14 @@ export async function GET(req: NextRequest) {
     const transformedConversations = conversations.map(conv => {
       const contextData = conv.contextData as Record<string, unknown>;
       const metadata = contextData?.metadata as Record<string, unknown> | undefined;
-      const onboardingData = metadata?.onboarding as Record<string, unknown> | undefined;
+      const onboardingData = metadata?.onboarding as {
+        state?: string;
+        qualityMetrics?: {
+          completionPercentage?: number;
+          rapportScore?: number;
+          managerConfidence?: string;
+        };
+      } | undefined;
       const lastMessage = conv.messages[0];
       const team = teamMap.get(conv.teamId);
       const manager = managerMap.get(conv.managerId);

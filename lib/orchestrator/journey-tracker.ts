@@ -1,5 +1,4 @@
 import { prisma } from '@/lib/prisma'
-import { JourneyStatus } from '@prisma/client'
 
 export interface JourneyStep {
   id: string

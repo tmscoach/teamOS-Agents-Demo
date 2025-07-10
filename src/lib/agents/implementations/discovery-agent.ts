@@ -142,8 +142,8 @@ Remember to:
       metadata.discoveredData.teamStructure,
       metadata.discoveredData.workProcesses,
       metadata.discoveredData.communicationPatterns,
-      metadata.discoveredData.challenges?.length > 0,
-      metadata.discoveredData.opportunities?.length > 0
+      (metadata.discoveredData.challenges?.length ?? 0) > 0,
+      (metadata.discoveredData.opportunities?.length ?? 0) > 0
     ];
 
     const completedPoints = dataPoints.filter(Boolean).length;
