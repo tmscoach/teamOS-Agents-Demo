@@ -26,6 +26,7 @@ export default function OnboardingPage() {
   const { user } = useUser()
   const [journey, setJourney] = useState<JourneyData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (user) {
@@ -35,18 +36,24 @@ export default function OnboardingPage() {
 
   const fetchJourneyStatus = async () => {
     try {
+      setError(null)
       const response = await fetch('/api/user/journey')
-      if (response.ok) {
-        const data = await response.json()
-        setJourney(data)
-        
-        // If onboarding is complete, redirect to dashboard
-        if (data.status === 'ACTIVE') {
-          router.push('/dashboard')
-        }
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || `Failed to fetch journey status: ${response.status}`)
+      }
+      
+      const data = await response.json()
+      setJourney(data)
+      
+      // If onboarding is complete, redirect to dashboard
+      if (data.status === 'ACTIVE') {
+        router.push('/dashboard')
       }
     } catch (error) {
       console.error('Error fetching journey status:', error)
+      setError(error instanceof Error ? error.message : 'Failed to load journey status')
     } finally {
       setLoading(false)
     }
@@ -66,6 +73,24 @@ export default function OnboardingPage() {
           <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto mb-4"></div>
           <p className="text-muted-foreground">Loading your journey...</p>
         </div>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex min-h-screen items-center justify-center p-4">
+        <Card className="max-w-md w-full">
+          <CardHeader>
+            <CardTitle className="text-destructive">Error</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground mb-4">{error}</p>
+            <Button onClick={() => fetchJourneyStatus()} variant="default">
+              Try Again
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     )
   }
