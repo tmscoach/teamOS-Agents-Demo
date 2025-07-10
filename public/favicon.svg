@@ -1,6 +1,35 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <rect width="32" height="32" rx="8" fill="#fbbf24"/>
-  <circle cx="11" cy="16" r="4" fill="#1f2937"/>
-  <circle cx="21" cy="16" r="4" fill="#1f2937"/>
-  <path d="M11 16L21 16" stroke="#1f2937" stroke-width="2"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <!-- Background circle for rounded corners in some contexts -->
+  <circle cx="128" cy="128" r="128" fill="white" opacity="0"/>
+  
+  <!-- Flower petals -->
+  <!-- Top petal - Yellow -->
+  <ellipse cx="128" cy="60" rx="40" ry="60" fill="#FDE047" transform="rotate(0 128 128)"/>
+  
+  <!-- Top-right petal - Orange -->
+  <ellipse cx="128" cy="60" rx="40" ry="60" fill="#FB923C" transform="rotate(45 128 128)"/>
+  
+  <!-- Right petal - Pink -->
+  <ellipse cx="128" cy="60" rx="40" ry="60" fill="#F472B6" transform="rotate(90 128 128)"/>
+  
+  <!-- Bottom-right petal - Purple -->
+  <ellipse cx="128" cy="60" rx="40" ry="60" fill="#C084FC" transform="rotate(135 128 128)"/>
+  
+  <!-- Bottom petal - Blue -->
+  <ellipse cx="128" cy="60" rx="40" ry="60" fill="#3B82F6" transform="rotate(180 128 128)"/>
+  
+  <!-- Bottom-left petal - Light Blue -->
+  <ellipse cx="128" cy="60" rx="40" ry="60" fill="#38BDF8" transform="rotate(225 128 128)"/>
+  
+  <!-- Left petal - Green -->
+  <ellipse cx="128" cy="60" rx="40" ry="60" fill="#86EFAC" transform="rotate(270 128 128)"/>
+  
+  <!-- Top-left petal - Teal -->
+  <ellipse cx="128" cy="60" rx="40" ry="60" fill="#2DD4BF" transform="rotate(315 128 128)"/>
+  
+  <!-- Center gray circle -->
+  <circle cx="128" cy="128" r="45" fill="#9CA3AF"/>
+  
+  <!-- Inner white circle -->
+  <circle cx="128" cy="128" r="25" fill="white"/>
 </svg>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { format, formatDistanceToNow } from "date-fns";
+import { format } from "date-fns";
 import Link from "next/link";
 import {
   User,
@@ -37,7 +37,7 @@ interface ConversationDetail {
     onboarding?: {
       state: string;
       startTime: Date;
-      capturedFields: Record<string, any>;
+      capturedFields: Record<string, unknown>;
       requiredFieldsStatus: Record<string, boolean>;
       qualityMetrics: {
         rapportScore: number;
@@ -57,8 +57,8 @@ interface ConversationDetail {
     type: string;
     timestamp: Date;
     agent: string;
-    content?: any;
-    data?: any;
+    content?: unknown;
+    data?: unknown;
   }>;
 }
 
@@ -73,6 +73,7 @@ export default function ConversationDetailPage() {
 
   useEffect(() => {
     fetchConversation();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationId]);
 
   useEffect(() => {
@@ -618,7 +619,7 @@ export default function ConversationDetailPage() {
                 let eventDetails = null;
                 try {
                   eventDetails = typeof event.content === 'string' ? JSON.parse(event.content) : event.content;
-                } catch (e) {
+                } catch {
                   // If parsing fails, use the raw content
                 }
 
