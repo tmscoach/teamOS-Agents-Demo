@@ -67,10 +67,7 @@ export default function ConversationsPage() {
   ];
 
   useEffect(() => {
-    fetchConversations();
-  }, []);
-
-  const fetchConversations = async () => {
+    const fetchConversations = async () => {
     try {
       const response = await fetch('/api/admin/conversations');
       if (!response.ok) {
@@ -80,15 +77,18 @@ export default function ConversationsPage() {
         return;
       }
       const data = await response.json();
-      setConversations(data.conversations || mockConversations);
+      setConversations(data.conversations || []);
     } catch (error) {
       console.error('Failed to fetch conversations:', error);
       // Use mock data if API fails
-      setConversations(mockConversations);
+      setConversations([]);
     } finally {
       setLoading(false);
     }
   };
+    
+    fetchConversations();
+  }, []);
 
   const filteredConversations = conversations.filter(conv => {
     const matchesSearch = 

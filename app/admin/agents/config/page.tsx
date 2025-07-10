@@ -537,7 +537,7 @@ export default function AgentConfigPage() {
                     fontSize: '14px',
                     color: '#6b7280'
                   }}>
-                    Define the agent's complete behavior, approach, and conversation flow in a single prompt
+                    Define the agent&apos;s complete behavior, approach, and conversation flow in a single prompt
                   </p>
                 </div>
                 <span style={{
@@ -631,7 +631,7 @@ You are a friendly Team Development Assistant conducting a quick 5-minute intake
                     fontSize: '14px',
                     color: '#6b7280'
                   }}>
-                    Define conversation states and transitions for the agent's state machine
+                    Define conversation states and transitions for the agent&apos;s state machine
                   </p>
                 </div>
                 <button
@@ -980,7 +980,7 @@ You are a friendly Team Development Assistant conducting a quick 5-minute intake
                 Test Playground Coming Soon
               </h4>
               <p style={{ fontSize: '14px' }}>
-                You'll be able to test your agent configurations with simulated conversations
+                You&apos;ll be able to test your agent configurations with simulated conversations
               </p>
             </div>
           )}

@@ -72,14 +72,7 @@ export default function ConversationDetailPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    fetchConversation();
-  }, [conversationId]);
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [conversation?.messages]);
-
-  const fetchConversation = async () => {
+    const fetchConversation = async () => {
     try {
       const response = await fetch(`/api/admin/conversations/${conversationId}`);
       if (!response.ok) {
@@ -98,6 +91,13 @@ export default function ConversationDetailPage() {
       setLoading(false);
     }
   };
+    
+    fetchConversation();
+  }, [conversationId]);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [conversation?.messages]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
