@@ -65,10 +65,18 @@ export class AgentConfigLoader {
 
       return null;
     } catch (error: any) {
-      console.warn(`Failed to load configuration for ${agentName}:`, {
-        message: error?.message,
-        code: error?.code
-      });
+      // Only log actual errors, not "no config found" cases
+      if (error?.code === 'P1001' || error?.code === 'P1002') {
+        console.warn(`Database connection issue loading config for ${agentName}:`, {
+          code: error.code,
+          message: error.message?.split('\n')[0], // Just the first line
+        });
+      } else if (error?.message && !error.message.includes('No active configuration found')) {
+        console.warn(`Failed to load configuration for ${agentName}:`, {
+          message: error?.message,
+          code: error?.code
+        });
+      }
       
       // Return null instead of throwing to allow fallback to defaults
       return null;
