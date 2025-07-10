@@ -184,7 +184,8 @@ export class JourneyTracker {
       // Try to get user details from Clerk and create user
       try {
         const { clerkClient } = await import('@clerk/nextjs/server')
-        const clerkUser = await clerkClient().users.getUser(clerkId)
+        const clerk = await clerkClient()
+        const clerkUser = await clerk.users.getUser(clerkId)
         
         if (clerkUser) {
           // Create user in database

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
 import { UserButton } from "@clerk/nextjs";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -20,10 +20,15 @@ interface Message {
 export default function ChatPage() {
   const { user, isLoaded } = useUser();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  
+  // Get agent from URL params
+  const agentName = searchParams.get('agent') || 'OrchestratorAgent';
+  const isNewConversation = searchParams.get('new') === 'true';
 
   useEffect(() => {
     if (isLoaded && !user) {
@@ -53,7 +58,8 @@ export default function ChatPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: messageContent,  // Use the stored value
-          conversationId: conversationId
+          conversationId: conversationId,
+          agentName: agentName
         })
       });
 
@@ -111,9 +117,11 @@ export default function ChatPage() {
         <CardHeader>
           <div className="flex justify-between items-start">
             <div>
-              <CardTitle>Chat with teamOS Assistant</CardTitle>
+              <CardTitle>Chat with {agentName === 'OnboardingAgent' ? 'Onboarding Assistant' : 'teamOS Assistant'}</CardTitle>
               <p className="text-sm text-muted-foreground">
-                Start a conversation to begin your team transformation journey
+                {agentName === 'OnboardingAgent' 
+                  ? "Let's get to know you and your team better"
+                  : "Start a conversation to begin your team transformation journey"}
               </p>
             </div>
             <UserButton afterSignOutUrl="/sign-in" />
