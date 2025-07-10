@@ -17,6 +17,7 @@ import {
   HandoffRequest,
   Message,
 } from '../types';
+import { AgentConfigLoader, LoadedAgentConfig } from '../config/agent-config-loader';
 
 export interface OpenAIAgentConfig extends AgentConfig {
   llmConfig?: LLMConfig;
@@ -32,6 +33,8 @@ export class OpenAIAgent extends Agent {
   protected temperature: number;
   protected maxTokens: number;
   protected systemPrompt?: string;
+  protected loadedConfig: LoadedAgentConfig | null = null;
+  private configLoadPromise: Promise<void> | null = null;
 
   constructor(config: OpenAIAgentConfig) {
     super(config);
@@ -41,6 +44,40 @@ export class OpenAIAgent extends Agent {
     this.temperature = config.temperature ?? 0.7;
     this.maxTokens = config.maxTokens ?? 2048;
     this.systemPrompt = config.systemPrompt;
+    
+    // Start loading configuration asynchronously
+    this.configLoadPromise = this.loadConfiguration();
+  }
+  
+  /**
+   * Load configuration from the database
+   */
+  protected async loadConfiguration(): Promise<void> {
+    try {
+      const config = await AgentConfigLoader.loadConfiguration(this.name);
+      if (config) {
+        this.loadedConfig = config;
+        // Override systemPrompt if loaded from config
+        if (config.systemPrompt) {
+          this.systemPrompt = config.systemPrompt;
+        }
+        console.log(`[${this.name}] Loaded configuration version ${config.version}`);
+      } else {
+        console.log(`[${this.name}] No configuration found, using defaults`);
+      }
+    } catch (error) {
+      console.error(`[${this.name}] Failed to load configuration:`, error);
+    }
+  }
+  
+  /**
+   * Ensure configuration is loaded before processing
+   */
+  protected async ensureConfigLoaded(): Promise<void> {
+    if (this.configLoadPromise) {
+      await this.configLoadPromise;
+      this.configLoadPromise = null;
+    }
   }
 
   /**
@@ -50,6 +87,9 @@ export class OpenAIAgent extends Agent {
     message: string,
     context: AgentContext
   ): Promise<AgentResponse> {
+    // Ensure configuration is loaded
+    await this.ensureConfigLoaded();
+    
     const events: AgentEvent[] = [];
 
     try {
@@ -131,6 +171,12 @@ export class OpenAIAgent extends Agent {
    * Build system message with instructions
    */
   protected buildSystemMessage(context: AgentContext): string {
+    // If we have a loaded configuration with systemPrompt, use it as the primary prompt
+    if (this.loadedConfig?.systemPrompt) {
+      return this.loadedConfig.systemPrompt;
+    }
+    
+    // Otherwise fall back to the original behavior
     const instructions = this.getInstructions(context);
     
     let systemMessage = `You are ${this.name}. ${this.description}\n\n`;

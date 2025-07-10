@@ -50,10 +50,32 @@ export class OnboardingGuardrails {
       name: 'MessageLength',
       description: 'Validates message length is appropriate',
       validate: async (input: string, context: AgentContext): Promise<GuardrailResult> => {
+        const lowerInput = input.toLowerCase().trim();
+        
+        // Allow common greetings regardless of length
+        const greetings = [
+          'hi', 'hey', 'hello', 'yo', 'hiya', 'howdy',
+          'good morning', 'good afternoon', 'good evening',
+          'greetings', 'salutations', 'sup', 'hola',
+          'yes', 'no', 'ok', 'okay', 'sure', 'thanks',
+          'thank you', 'please', 'help', 'start'
+        ];
+        
+        if (greetings.includes(lowerInput)) {
+          return { passed: true };
+        }
+        
+        // For first message from user, be more lenient
+        const messageCount = context.messageHistory.filter(m => m.role === 'user').length;
+        if (messageCount === 0 && input.length >= 2) {
+          return { passed: true };
+        }
+        
+        // Otherwise enforce minimum length for substantive messages
         if (input.length < this.MIN_MESSAGE_LENGTH) {
           return {
             passed: false,
-            reason: 'Message is too short. Please provide more detail.',
+            reason: 'Could you provide a bit more detail? For example, tell me about your team or what brings you here.',
             metadata: { length: input.length, min: this.MIN_MESSAGE_LENGTH }
           };
         }

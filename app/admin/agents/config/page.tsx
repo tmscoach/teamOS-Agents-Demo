@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { MetricCard } from "@/components/admin/metric-card";
 import { StatusBadge } from "@/components/admin/status-badge";
-import { Settings, Save, TestTube, GitBranch, RotateCcw, Search, Plus, FlaskConical, History } from "lucide-react";
+import { Settings, Save, TestTube, GitBranch, RotateCcw, Search, Plus, FlaskConical, History, Shield } from "lucide-react";
 import { useAuth } from "@clerk/nextjs";
 import { toast } from "sonner";
 import { format, formatDistanceToNow } from "date-fns";
@@ -14,8 +14,19 @@ interface AgentConfig {
   version: number;
   systemPrompt: string;
   flowConfig: {
-    states?: string[];
-    transitions?: Record<string, string | string[]>;
+    states?: Array<{
+      name: string;
+      description: string;
+      objectives: string[];
+      duration?: string;
+      key_outputs: string[];
+    }>;
+    transitions?: Array<{
+      from: string;
+      to: string;
+      condition: string;
+      action: string;
+    }>;
     requiredFields?: string[];
   };
   extractionRules: Record<string, {
@@ -25,6 +36,7 @@ interface AgentConfig {
     pattern?: string;
     patterns?: string[];
   }>;
+  guardrailConfig?: Record<string, any>;
   active: boolean;
   createdBy: string;
   createdAt: string;
@@ -56,6 +68,7 @@ const TABS = [
   { id: "prompt", label: "System Prompt" },
   { id: "flow", label: "Flow Configuration" },
   { id: "extraction", label: "Extraction Rules" },
+  { id: "guardrails", label: "Guardrails" },
   { id: "test", label: "Test Playground" },
   { id: "history", label: "Version History" }
 ];
@@ -137,6 +150,7 @@ export default function AgentConfigPage() {
           systemPrompt: editedConfig.systemPrompt,
           flowConfig: editedConfig.flowConfig,
           extractionRules: editedConfig.extractionRules,
+          guardrailConfig: editedConfig.guardrailConfig,
         }),
       });
 
@@ -145,7 +159,12 @@ export default function AgentConfigPage() {
         await fetchAgentConfig(selectedAgent);
         await fetchAgents(); // Refresh agent list to update metrics
       } else {
-        toast.error("Failed to save configuration");
+        const errorData = await res.json().catch(() => ({ error: 'Unknown error' }));
+        console.error("Save failed:", errorData);
+        toast.error(`Failed to save: ${errorData.error || 'Unknown error'}`);
+        if (errorData.details) {
+          console.error("Error details:", errorData.details);
+        }
       }
     } catch (error) {
       console.error("Error saving configuration:", error);
@@ -496,6 +515,7 @@ export default function AgentConfigPage() {
                 {tab.id === 'prompt' && <Settings style={{ width: '14px', height: '14px' }} />}
                 {tab.id === 'flow' && <GitBranch style={{ width: '14px', height: '14px' }} />}
                 {tab.id === 'extraction' && <Settings style={{ width: '14px', height: '14px' }} />}
+                {tab.id === 'guardrails' && <Shield style={{ width: '14px', height: '14px' }} />}
                 {tab.id === 'test' && <FlaskConical style={{ width: '14px', height: '14px' }} />}
                 {tab.id === 'history' && <History style={{ width: '14px', height: '14px' }} />}
                 {tab.label}
@@ -666,7 +686,7 @@ You are a friendly Team Development Assistant conducting a quick 5-minute intake
                   </h4>
                   <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                     {editedConfig?.flowConfig?.states?.map((state) => (
-                      <span key={state} style={{
+                      <span key={state.name} style={{
                         padding: '4px 12px',
                         borderRadius: '16px',
                         backgroundColor: '#dbeafe',
@@ -674,7 +694,7 @@ You are a friendly Team Development Assistant conducting a quick 5-minute intake
                         fontSize: '13px',
                         fontWeight: '500'
                       }}>
-                        {state}
+                        {state.name}
                       </span>
                     ))}
                   </div>
@@ -691,12 +711,15 @@ You are a friendly Team Development Assistant conducting a quick 5-minute intake
                     State Transitions
                   </h4>
                   <div style={{ fontSize: '13px', color: '#374151' }}>
-                    {Object.entries(editedConfig?.flowConfig?.transitions || {}).map(([from, to]) => (
-                      <div key={from} style={{ marginBottom: '4px' }}>
-                        <span style={{ fontWeight: '500' }}>{from}</span>
+                    {(editedConfig?.flowConfig?.transitions || []).map((transition, idx) => (
+                      <div key={idx} style={{ marginBottom: '4px' }}>
+                        <span style={{ fontWeight: '500' }}>{transition.from}</span>
                         {' → '}
                         <span style={{ color: '#6b7280' }}>
-                          {Array.isArray(to) ? to.join(', ') : to || 'END'}
+                          {transition.to || 'END'}
+                        </span>
+                        <span style={{ fontSize: '11px', color: '#9ca3af', marginLeft: '8px' }}>
+                          ({transition.condition})
                         </span>
                       </div>
                     ))}
@@ -941,6 +964,249 @@ You are a friendly Team Development Assistant conducting a quick 5-minute intake
                     onBlur={(e) => e.currentTarget.style.borderColor = '#334155'}
                     placeholder="Enter extraction rules..."
                   />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Guardrails Tab */}
+          {activeTab === "guardrails" && (
+            <div>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '24px'
+              }}>
+                <div>
+                  <h3 style={{
+                    fontSize: '18px',
+                    fontWeight: '600',
+                    color: '#111827',
+                    marginBottom: '4px'
+                  }}>
+                    Guardrail Configuration
+                  </h3>
+                  <p style={{
+                    fontSize: '14px',
+                    color: '#6b7280'
+                  }}>
+                    Configure conversation guardrails to keep interactions on track and appropriate
+                  </p>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                {/* Message Length Settings */}
+                <div style={{
+                  backgroundColor: '#f9fafb',
+                  padding: '20px',
+                  borderRadius: '8px',
+                  border: '1px solid #e5e7eb'
+                }}>
+                  <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>
+                    Message Length
+                  </h4>
+                  
+                  <div style={{ display: 'flex', gap: '16px', marginBottom: '16px' }}>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ display: 'block', fontSize: '14px', color: '#374151', marginBottom: '4px' }}>
+                        Minimum Length
+                      </label>
+                      <input
+                        type="number"
+                        value={editedConfig?.guardrailConfig?.minMessageLength || 10}
+                        onChange={(e) => setEditedConfig({
+                          ...editedConfig!,
+                          guardrailConfig: {
+                            ...editedConfig?.guardrailConfig,
+                            minMessageLength: parseInt(e.target.value) || 10
+                          }
+                        })}
+                        style={{
+                          width: '100%',
+                          padding: '8px 12px',
+                          borderRadius: '6px',
+                          border: '1px solid #e5e7eb',
+                          fontSize: '14px'
+                        }}
+                      />
+                    </div>
+                    <div style={{ flex: 1 }}>
+                      <label style={{ display: 'block', fontSize: '14px', color: '#374151', marginBottom: '4px' }}>
+                        Maximum Length
+                      </label>
+                      <input
+                        type="number"
+                        value={editedConfig?.guardrailConfig?.maxMessageLength || 1000}
+                        onChange={(e) => setEditedConfig({
+                          ...editedConfig!,
+                          guardrailConfig: {
+                            ...editedConfig?.guardrailConfig,
+                            maxMessageLength: parseInt(e.target.value) || 1000
+                          }
+                        })}
+                        style={{
+                          width: '100%',
+                          padding: '8px 12px',
+                          borderRadius: '6px',
+                          border: '1px solid #e5e7eb',
+                          fontSize: '14px'
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '14px', color: '#374151', marginBottom: '8px' }}>
+                      Allowed Greetings (messages shorter than minimum that are still allowed)
+                    </label>
+                    <textarea
+                      value={(editedConfig?.guardrailConfig?.allowedGreetings || []).join(', ')}
+                      onChange={(e) => setEditedConfig({
+                        ...editedConfig!,
+                        guardrailConfig: {
+                          ...editedConfig?.guardrailConfig,
+                          allowedGreetings: e.target.value.split(',').map(s => s.trim()).filter(Boolean)
+                        }
+                      })}
+                      rows={3}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        borderRadius: '6px',
+                        border: '1px solid #e5e7eb',
+                        fontSize: '14px',
+                        resize: 'vertical'
+                      }}
+                      placeholder="hi, hello, hey, good morning, thanks, yes, no, ok..."
+                    />
+                  </div>
+                </div>
+
+                {/* Topic Relevance Settings */}
+                <div style={{
+                  backgroundColor: '#f9fafb',
+                  padding: '20px',
+                  borderRadius: '8px',
+                  border: '1px solid #e5e7eb'
+                }}>
+                  <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>
+                    Topic Relevance
+                  </h4>
+                  
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                      <input
+                        type="checkbox"
+                        checked={editedConfig?.guardrailConfig?.enableTopicRelevance !== false}
+                        onChange={(e) => setEditedConfig({
+                          ...editedConfig!,
+                          guardrailConfig: {
+                            ...editedConfig?.guardrailConfig,
+                            enableTopicRelevance: e.target.checked
+                          }
+                        })}
+                        style={{ width: '16px', height: '16px' }}
+                      />
+                      <span style={{ fontSize: '14px', color: '#374151' }}>
+                        Enable topic relevance checking
+                      </span>
+                    </label>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '14px', color: '#374151', marginBottom: '8px' }}>
+                      Off-Topic Patterns (regex patterns, one per line)
+                    </label>
+                    <textarea
+                      value={(editedConfig?.guardrailConfig?.offTopicPatterns || []).join('\n')}
+                      onChange={(e) => setEditedConfig({
+                        ...editedConfig!,
+                        guardrailConfig: {
+                          ...editedConfig?.guardrailConfig,
+                          offTopicPatterns: e.target.value.split('\n').filter(Boolean)
+                        }
+                      })}
+                      rows={5}
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        borderRadius: '6px',
+                        border: '1px solid #e5e7eb',
+                        fontSize: '13px',
+                        fontFamily: 'monospace',
+                        resize: 'vertical'
+                      }}
+                      placeholder="/\b(michael jackson|celebrity|movie)\b/i&#10;/\b(who is|what is|when was)\b/i"
+                    />
+                  </div>
+                </div>
+
+                {/* Conversation Time Settings */}
+                <div style={{
+                  backgroundColor: '#f9fafb',
+                  padding: '20px',
+                  borderRadius: '8px',
+                  border: '1px solid #e5e7eb'
+                }}>
+                  <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>
+                    Time Limits
+                  </h4>
+                  
+                  <div>
+                    <label style={{ display: 'block', fontSize: '14px', color: '#374151', marginBottom: '4px' }}>
+                      Maximum Conversation Time (minutes)
+                    </label>
+                    <input
+                      type="number"
+                      value={(editedConfig?.guardrailConfig?.maxConversationTime || 2700000) / 60000}
+                      onChange={(e) => setEditedConfig({
+                        ...editedConfig!,
+                        guardrailConfig: {
+                          ...editedConfig?.guardrailConfig,
+                          maxConversationTime: (parseInt(e.target.value) || 45) * 60000
+                        }
+                      })}
+                      style={{
+                        width: '200px',
+                        padding: '8px 12px',
+                        borderRadius: '6px',
+                        border: '1px solid #e5e7eb',
+                        fontSize: '14px'
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Content Moderation */}
+                <div style={{
+                  backgroundColor: '#f9fafb',
+                  padding: '20px',
+                  borderRadius: '8px',
+                  border: '1px solid #e5e7eb'
+                }}>
+                  <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>
+                    Content Moderation
+                  </h4>
+                  
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={editedConfig?.guardrailConfig?.enableProfanityCheck !== false}
+                      onChange={(e) => setEditedConfig({
+                        ...editedConfig!,
+                        guardrailConfig: {
+                          ...editedConfig?.guardrailConfig,
+                          enableProfanityCheck: e.target.checked
+                        }
+                      })}
+                      style={{ width: '16px', height: '16px' }}
+                    />
+                    <span style={{ fontSize: '14px', color: '#374151' }}>
+                      Enable profanity and inappropriate content checking
+                    </span>
+                  </label>
                 </div>
               </div>
             </div>

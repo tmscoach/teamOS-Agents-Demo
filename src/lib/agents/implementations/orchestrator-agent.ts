@@ -21,6 +21,7 @@ export interface OrchestratorMetadata {
 }
 
 export class OrchestratorAgent extends KnowledgeEnabledAgent {
+  // State instructions can be used as fallback or reference, but the loaded config takes precedence
   private static readonly STATE_INSTRUCTIONS: Record<OrchestratorState, string> = {
     [OrchestratorState.INITIALIZATION]: `
       Initialize the transformation process:
@@ -72,6 +73,7 @@ export class OrchestratorAgent extends KnowledgeEnabledAgent {
       description: 'Manages overall transformation workflow and coordinates other agents',
       handoffDescription: 'Let me orchestrate your team transformation journey',
       instructions: (context: AgentContext) => {
+        // This is now used as a fallback - the loaded configuration's systemPrompt takes precedence
         const metadata = context.metadata as OrchestratorMetadata;
         const state = metadata?.state || OrchestratorState.INITIALIZATION;
         const baseInstructions = OrchestratorAgent.STATE_INSTRUCTIONS[state];

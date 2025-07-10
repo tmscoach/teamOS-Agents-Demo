@@ -1,5 +1,5 @@
 import { currentUser } from '@clerk/nextjs/server'
-import { prisma } from '@/lib/prisma'
+import prisma from '@/lib/db'
 import { UserRole } from '@/lib/generated/prisma'
 
 export async function getUserRole(): Promise<UserRole | null> {
