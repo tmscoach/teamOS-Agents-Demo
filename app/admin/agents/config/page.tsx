@@ -1,25 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { EmptyState } from "@/components/admin/empty-state";
-import { TabNav } from "@/components/admin/tab-nav";
 import { MetricCard } from "@/components/admin/metric-card";
 import { StatusBadge } from "@/components/admin/status-badge";
-import { 
-  AdminTable, 
-  AdminTableHeader, 
-  AdminTableBody, 
-  AdminTableRow, 
-  AdminTableHead, 
-  AdminTableCell 
-} from "@/components/admin/admin-table";
-import { Settings, Save, TestTube, GitBranch, RotateCcw, Search, Plus, Edit2, Code, FileJson, FlaskConical, History } from "lucide-react";
+import { Settings, Save, TestTube, GitBranch, RotateCcw, Search, Plus, FlaskConical, History } from "lucide-react";
 import { useAuth } from "@clerk/nextjs";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { format, formatDistanceToNow } from "date-fns";
 
@@ -28,8 +13,18 @@ interface AgentConfig {
   agentName: string;
   version: number;
   systemPrompt: string;
-  flowConfig: Record<string, any>;
-  extractionRules: Record<string, any>;
+  flowConfig: {
+    states?: string[];
+    transitions?: Record<string, string | string[]>;
+    requiredFields?: string[];
+  };
+  extractionRules: Record<string, {
+    type: string;
+    description?: string;
+    required?: boolean;
+    pattern?: string;
+    patterns?: string[];
+  }>;
   active: boolean;
   createdBy: string;
   createdAt: string;
@@ -66,7 +61,7 @@ const TABS = [
 ];
 
 export default function AgentConfigPage() {
-  const { userId } = useAuth();
+  const { } = useAuth();
   const [agents, setAgents] = useState<AgentSummary[]>([]);
   const [selectedAgent, setSelectedAgent] = useState("");
   const [currentConfig, setCurrentConfig] = useState<AgentConfig | null>(null);
@@ -74,7 +69,7 @@ export default function AgentConfigPage() {
   const [configHistory, setConfigHistory] = useState<AgentConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState("prompts");
+  const [activeTab, setActiveTab] = useState("prompt");
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
@@ -162,10 +157,10 @@ export default function AgentConfigPage() {
 
   // Migrate old multi-prompt format to single system prompt if needed
   useEffect(() => {
-    if (currentConfig && currentConfig.prompts && !currentConfig.systemPrompt) {
+    if (currentConfig && (currentConfig as any).prompts && !currentConfig.systemPrompt) {
       // Convert old format: combine all prompts into system prompt
-      const systemPrompt = currentConfig.prompts.system || 
-        Object.entries(currentConfig.prompts)
+      const systemPrompt = (currentConfig as any).prompts.system || 
+        Object.entries((currentConfig as any).prompts)
           .map(([key, value]) => `## ${key.replace(/_/g, ' ').toUpperCase()}\n${value}`)
           .join('\n\n');
       
@@ -497,9 +492,9 @@ export default function AgentConfigPage() {
                   }
                 }}
               >
-                {tab.id === 'prompts' && <Edit2 style={{ width: '14px', height: '14px' }} />}
+                {tab.id === 'prompt' && <Settings style={{ width: '14px', height: '14px' }} />}
                 {tab.id === 'flow' && <GitBranch style={{ width: '14px', height: '14px' }} />}
-                {tab.id === 'extraction' && <Code style={{ width: '14px', height: '14px' }} />}
+                {tab.id === 'extraction' && <Settings style={{ width: '14px', height: '14px' }} />}
                 {tab.id === 'test' && <FlaskConical style={{ width: '14px', height: '14px' }} />}
                 {tab.id === 'history' && <History style={{ width: '14px', height: '14px' }} />}
                 {tab.label}
@@ -695,7 +690,7 @@ You are a friendly Team Development Assistant conducting a quick 5-minute intake
                     State Transitions
                   </h4>
                   <div style={{ fontSize: '13px', color: '#374151' }}>
-                    {Object.entries(editedConfig?.flowConfig?.transitions || {}).map(([from, to]: [string, any]) => (
+                    {Object.entries(editedConfig?.flowConfig?.transitions || {}).map(([from, to]) => (
                       <div key={from} style={{ marginBottom: '4px' }}>
                         <span style={{ fontWeight: '500' }}>{from}</span>
                         {' → '}
@@ -839,7 +834,7 @@ You are a friendly Team Development Assistant conducting a quick 5-minute intake
               {/* Extraction Rules Display */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 {/* Rules List */}
-                {Object.entries(editedConfig?.extractionRules || {}).map(([fieldName, rule]: [string, any]) => (
+                {Object.entries(editedConfig?.extractionRules || {}).map(([fieldName, rule]) => (
                   <div key={fieldName} style={{
                     backgroundColor: '#f9fafb',
                     padding: '16px',
@@ -972,7 +967,7 @@ You are a friendly Team Development Assistant conducting a quick 5-minute intake
                 Test Playground Coming Soon
               </h4>
               <p style={{ fontSize: '14px' }}>
-                You'll be able to test your agent configurations with simulated conversations
+                You&apos;ll be able to test your agent configurations with simulated conversations
               </p>
             </div>
           )}

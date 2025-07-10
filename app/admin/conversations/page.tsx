@@ -4,18 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { MetricCard } from "@/components/admin/metric-card";
-import { StatusBadge } from "@/components/admin/status-badge";
-import { 
-  AdminTable, 
-  AdminTableHeader, 
-  AdminTableBody, 
-  AdminTableRow, 
-  AdminTableHead, 
-  AdminTableCell 
-} from "@/components/admin/admin-table";
-import { EmptyState } from "@/components/admin/empty-state";
-import { TabNav } from "@/components/admin/tab-nav";
-import { Search, MessageSquare, User, FileDown } from "lucide-react";
+import { Search, MessageSquare, FileDown } from "lucide-react";
 import { ConversationState } from "@/src/lib/agents/types/conversation-state";
 
 interface ConversationListItem {
@@ -79,6 +68,7 @@ export default function ConversationsPage() {
 
   useEffect(() => {
     fetchConversations();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchConversations = async () => {
@@ -282,7 +272,6 @@ export default function ConversationsPage() {
                 onClick={() => setActiveTab(tab.id)}
                 style={{
                   padding: '12px 0',
-                  borderBottom: `2px solid ${activeTab === tab.id ? '#111827' : 'transparent'}`,
                   color: activeTab === tab.id ? '#111827' : '#6b7280',
                   cursor: 'pointer',
                   fontWeight: '500',

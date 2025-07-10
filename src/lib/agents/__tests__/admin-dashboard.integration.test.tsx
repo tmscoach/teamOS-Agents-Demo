@@ -2,6 +2,7 @@
  * Integration tests for admin dashboard functionality
  */
 
+import * as React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import '@testing-library/jest-dom';
@@ -18,8 +19,8 @@ jest.mock('next/navigation', () => ({
 // Mock Clerk
 jest.mock('@clerk/nextjs', () => ({
   useAuth: () => ({ userId: 'test-user-id' }),
-  SignedIn: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  SignedOut: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  SignedIn: ({ children }: { children: React.ReactNode }) => children,
+  SignedOut: ({ children }: { children: React.ReactNode }) => children,
 }));
 
 // Mock fetch for API calls
