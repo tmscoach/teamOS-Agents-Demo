@@ -108,10 +108,10 @@ export class OnboardingGuardrails {
             return {
               passed: false,
               reason: 'I appreciate your question, but let\'s focus on your team transformation journey. Could you tell me about your team and what challenges you\'re facing?',
-              severity: 'medium',
               metadata: { 
                 detectedPattern: pattern.source,
-                suggestion: 'redirect_to_onboarding'
+                suggestion: 'redirect_to_onboarding',
+                severity: 'medium'
               }
             };
           }
@@ -144,11 +144,11 @@ export class OnboardingGuardrails {
           return {
             passed: false,
             reason: 'Let\'s keep our focus on your team transformation. What specific challenges is your team facing that brought you to TMS?',
-            severity: 'low',
             metadata: { 
               messageCount,
               inputLength: input.length,
-              suggestion: 'guide_to_challenges'
+              suggestion: 'guide_to_challenges',
+              severity: 'low'
             }
           };
         }
