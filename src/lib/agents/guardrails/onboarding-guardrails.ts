@@ -78,42 +78,77 @@ export class OnboardingGuardrails {
       validate: async (input: string, context: AgentContext): Promise<GuardrailResult> => {
         const lowerInput = input.toLowerCase();
         
-        // Check for off-topic patterns
+        // Skip relevance check for very first message (greeting)
+        const messageCount = context.messageHistory.filter(m => m.role === 'user').length;
+        if (messageCount === 0) {
+          return { passed: true };
+        }
+        
+        // Check for clearly off-topic patterns
         const offTopicPatterns = [
+          // Entertainment/Pop culture
+          /\b(michael jackson|taylor swift|movie|film|music|song|celebrity|singer|actor)\b/i,
+          // General knowledge questions
+          /\b(who is|what is|when was|where is|define|explain)\b.*\b(?!team|management|challenge|goal|transform)/i,
+          // Sports/Games
+          /\b(football|soccer|basketball|game|sport|play)\b/i,
+          // Politics/News
+          /\b(president|election|politics|news|war)\b/i,
+          // Technical but unrelated
+          /\b(python|javascript|code|programming|bitcoin|crypto)\b/i,
+          // Support issues
           /technical support/i,
           /password reset/i,
           /billing question/i,
-          /refund/i,
-          /competitor/i
+          /refund/i
         ];
 
         for (const pattern of offTopicPatterns) {
           if (pattern.test(input)) {
             return {
               passed: false,
-              reason: 'This seems to be off-topic for onboarding. Let\'s focus on understanding your team and transformation goals.',
-              metadata: { detectedPattern: pattern.source }
+              reason: 'I appreciate your question, but let\'s focus on your team transformation journey. Could you tell me about your team and what challenges you\'re facing?',
+              severity: 'medium',
+              metadata: { 
+                detectedPattern: pattern.source,
+                suggestion: 'redirect_to_onboarding'
+              }
             };
           }
         }
 
         // Check for relevant keywords that indicate on-topic discussion
         const relevantKeywords = [
-          'team', 'manage', 'challenge', 'goal', 'transform', 
-          'improve', 'culture', 'communication', 'performance'
+          'team', 'manage', 'leader', 'challenge', 'goal', 'transform', 
+          'improve', 'culture', 'communication', 'performance', 'work',
+          'employee', 'staff', 'department', 'company', 'organization',
+          'problem', 'issue', 'help', 'better', 'change', 'growth'
         ];
 
         const hasRelevantContent = relevantKeywords.some(keyword => 
           lowerInput.includes(keyword)
         );
 
-        // Only enforce relevance after initial greeting
-        const messageCount = context.messageHistory.filter(m => m.role === 'user').length;
-        if (messageCount > 2 && !hasRelevantContent) {
+        // Check for personal/greeting words that are acceptable
+        const personalKeywords = [
+          'hello', 'hi', 'hey', 'name', 'nice', 'meet', 'thank', 'please',
+          'yes', 'no', 'okay', 'sure', 'great', 'good'
+        ];
+        
+        const isPersonalGreeting = personalKeywords.some(keyword => 
+          lowerInput.includes(keyword)
+        );
+
+        // After initial exchanges, require relevance
+        if (messageCount > 1 && !hasRelevantContent && !isPersonalGreeting && input.length > 20) {
           return {
-            passed: true, // Soft fail - allow but guide back
+            passed: false,
+            reason: 'Let\'s keep our focus on your team transformation. What specific challenges is your team facing that brought you to TMS?',
+            severity: 'low',
             metadata: { 
-              warning: 'Consider steering conversation back to team transformation topics' 
+              messageCount,
+              inputLength: input.length,
+              suggestion: 'guide_to_challenges'
             }
           };
         }

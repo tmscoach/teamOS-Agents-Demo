@@ -293,12 +293,24 @@ Required fields to capture: ${OnboardingAgent.REQUIRED_FIELDS.join(', ')}`;
     // Map captured fields to conversation data format
     const conversationData = this.mapToConversationData(metadata.capturedFields);
     
+    // Check if we should force progression based on missing fields
+    const missingFields = this.getMissingRequiredFields(metadata.capturedFields);
+    if (missingFields.length > 0 && metadata.state === ConversationState.GREETING) {
+      // Force move to basic info collection
+      this.stateMachine.setState(ConversationState.CONTEXT_DISCOVERY);
+      return ConversationState.CONTEXT_DISCOVERY;
+    }
+    
     // Attempt state transition
     if (this.stateMachine.attemptTransition(conversationData)) {
       return this.stateMachine.getState();
     }
     
     return metadata.state;
+  }
+  
+  private getMissingRequiredFields(capturedFields: Record<string, any>): string[] {
+    return OnboardingAgent.REQUIRED_FIELDS.filter(field => !capturedFields[field]);
   }
   
   private mapToConversationData(capturedFields: Record<string, any>): any {
