@@ -3,7 +3,7 @@
  */
 
 import { FlowCheckpoint, StateHistoryEntry } from './types';
-import { prisma } from '@/lib/prisma';
+import prisma from '@/lib/db';
 
 export class CheckpointManager {
   private conversationId: string;

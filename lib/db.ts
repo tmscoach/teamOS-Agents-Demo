@@ -16,21 +16,10 @@ const prismaClientSingleton = () => {
 };
 
 declare global {
-  var prisma: undefined | ReturnType<typeof prismaClientSingleton>;
+  var prisma: PrismaClient | undefined;
 }
 
 const prisma = globalThis.prisma ?? prismaClientSingleton();
-
-// Log Prisma errors for debugging connection issues
-if (prisma instanceof PrismaClient) {
-  prisma.$on('error', (e) => {
-    console.error('[Prisma Error]', {
-      message: e.message,
-      target: e.target,
-      timestamp: e.timestamp,
-    });
-  });
-}
 
 export default prisma;
 

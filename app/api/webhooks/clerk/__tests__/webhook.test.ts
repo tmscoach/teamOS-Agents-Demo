@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from '@jest/globals'
 import { POST } from '../route'
 import { Webhook } from 'svix'
-import { prisma } from '@/lib/prisma'
+import prisma from '@/lib/db'
 
 // Mock Svix
 jest.mock('svix', () => ({
