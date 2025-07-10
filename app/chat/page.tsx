@@ -34,10 +34,12 @@ export default function ChatPage() {
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
 
+    const messageContent = input.trim();  // Store the input value before clearing
+    
     const userMessage: Message = {
       id: `user-${Date.now()}`,
       role: "user",
-      content: input,
+      content: messageContent,
       timestamp: new Date()
     };
 
@@ -50,7 +52,7 @@ export default function ChatPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: input,
+          message: messageContent,  // Use the stored value
           conversationId: conversationId
         })
       });
