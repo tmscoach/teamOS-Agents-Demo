@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { MetricCard } from "@/components/admin/metric-card";
 import { StatusBadge } from "@/components/admin/status-badge";
-import { Settings, Save, TestTube, GitBranch, RotateCcw, Search, Plus, FlaskConical, History, Shield, Workflow } from "lucide-react";
+import { Settings, Save, TestTube, GitBranch, RotateCcw, Search, Plus, FlaskConical, History, Shield, Workflow, Edit2, Trash2, X } from "lucide-react";
 import { useAuth } from "@clerk/nextjs";
 import { toast } from "sonner";
 import { format, formatDistanceToNow } from "date-fns";
@@ -98,6 +98,17 @@ export default function AgentConfigPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState("prompt");
+  
+  // UI states for managing extraction rules
+  const [isAddingVariable, setIsAddingVariable] = useState(false);
+  const [editingVariable, setEditingVariable] = useState<string | null>(null);
+  const [variableForm, setVariableForm] = useState({
+    name: '',
+    type: 'string',
+    description: '',
+    required: false,
+    patterns: ['']
+  });
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
@@ -209,6 +220,124 @@ export default function AgentConfigPage() {
       });
     }
   }, [currentConfig]);
+
+  // Handler functions for variable management
+  const handleAddVariable = () => {
+    if (!variableForm.name || !editedConfig) return;
+    
+    const newRules = {
+      ...editedConfig.extractionRules,
+      [variableForm.name]: {
+        type: variableForm.type,
+        description: variableForm.description,
+        required: variableForm.required,
+        patterns: variableForm.patterns.filter(p => p.trim() !== '')
+      }
+    };
+    
+    setEditedConfig({
+      ...editedConfig,
+      extractionRules: newRules
+    });
+    
+    // Reset form
+    setVariableForm({
+      name: '',
+      type: 'string',
+      description: '',
+      required: false,
+      patterns: ['']
+    });
+    setIsAddingVariable(false);
+    
+    toast.success(`Variable "${variableForm.name}" added successfully`);
+  };
+
+  const handleEditVariable = (fieldName: string) => {
+    if (!editedConfig?.extractionRules) return;
+    
+    const rule = editedConfig.extractionRules[fieldName];
+    setVariableForm({
+      name: fieldName,
+      type: rule.type || 'string',
+      description: rule.description || '',
+      required: rule.required || false,
+      patterns: rule.patterns || (rule.pattern ? [rule.pattern] : [''])
+    });
+    setEditingVariable(fieldName);
+  };
+
+  const handleUpdateVariable = () => {
+    if (!editingVariable || !editedConfig) return;
+    
+    // Remove old variable if name changed
+    const newRules = { ...editedConfig.extractionRules };
+    if (editingVariable !== variableForm.name) {
+      delete newRules[editingVariable];
+    }
+    
+    // Add/update variable with new values
+    newRules[variableForm.name] = {
+      type: variableForm.type,
+      description: variableForm.description,
+      required: variableForm.required,
+      patterns: variableForm.patterns.filter(p => p.trim() !== '')
+    };
+    
+    setEditedConfig({
+      ...editedConfig,
+      extractionRules: newRules
+    });
+    
+    // Reset form
+    setVariableForm({
+      name: '',
+      type: 'string',
+      description: '',
+      required: false,
+      patterns: ['']
+    });
+    setEditingVariable(null);
+    
+    toast.success(`Variable "${variableForm.name}" updated successfully`);
+  };
+
+  const handleDeleteVariable = (fieldName: string) => {
+    if (!editedConfig) return;
+    
+    const newRules = { ...editedConfig.extractionRules };
+    delete newRules[fieldName];
+    
+    setEditedConfig({
+      ...editedConfig,
+      extractionRules: newRules
+    });
+    
+    toast.success(`Variable "${fieldName}" deleted successfully`);
+  };
+
+  const handleAddPattern = () => {
+    setVariableForm({
+      ...variableForm,
+      patterns: [...variableForm.patterns, '']
+    });
+  };
+
+  const handleRemovePattern = (index: number) => {
+    setVariableForm({
+      ...variableForm,
+      patterns: variableForm.patterns.filter((_, i) => i !== index)
+    });
+  };
+
+  const handlePatternChange = (index: number, value: string) => {
+    const newPatterns = [...variableForm.patterns];
+    newPatterns[index] = value;
+    setVariableForm({
+      ...variableForm,
+      patterns: newPatterns
+    });
+  };
 
   if (loading) {
     return (
@@ -955,7 +1084,7 @@ You are a friendly Team Development Assistant conducting a quick 5-minute intake
                   </p>
                 </div>
                 <button
-                  onClick={() => toast.info("Visual rule builder coming soon")}
+                  onClick={() => setIsAddingVariable(true)}
                   style={{
                     padding: '8px 16px',
                     borderRadius: '6px',
@@ -980,9 +1109,230 @@ You are a friendly Team Development Assistant conducting a quick 5-minute intake
                   }}
                 >
                   <Plus style={{ width: '14px', height: '14px' }} />
-                  Rule Builder
+                  Add Variable
                 </button>
               </div>
+              
+              {/* Variable Form */}
+              {(isAddingVariable || editingVariable) && (
+                <div style={{
+                  backgroundColor: 'white',
+                  padding: '20px',
+                  borderRadius: '8px',
+                  border: '2px solid #111827',
+                  marginBottom: '16px'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                    <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#111827' }}>
+                      {isAddingVariable ? 'Add New Variable' : 'Edit Variable'}
+                    </h4>
+                    <button
+                      onClick={() => {
+                        setIsAddingVariable(false);
+                        setEditingVariable(null);
+                        setVariableForm({
+                          name: '',
+                          type: 'string',
+                          description: '',
+                          required: false,
+                          patterns: ['']
+                        });
+                      }}
+                      style={{
+                        padding: '4px',
+                        backgroundColor: 'transparent',
+                        border: 'none',
+                        cursor: 'pointer',
+                        color: '#6b7280'
+                      }}
+                    >
+                      <X style={{ width: '20px', height: '20px' }} />
+                    </button>
+                  </div>
+                  
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '4px' }}>
+                        Variable Name
+                      </label>
+                      <input
+                        type="text"
+                        value={variableForm.name}
+                        onChange={(e) => setVariableForm({ ...variableForm, name: e.target.value.replace(/\s+/g, '_').toLowerCase() })}
+                        placeholder="e.g., team_size"
+                        style={{
+                          width: '100%',
+                          padding: '8px 12px',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '6px',
+                          fontSize: '14px',
+                          outline: 'none'
+                        }}
+                      />
+                    </div>
+                    
+                    <div>
+                      <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '4px' }}>
+                        Type
+                      </label>
+                      <select
+                        value={variableForm.type}
+                        onChange={(e) => setVariableForm({ ...variableForm, type: e.target.value })}
+                        style={{
+                          width: '100%',
+                          padding: '8px 12px',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '6px',
+                          fontSize: '14px',
+                          outline: 'none',
+                          backgroundColor: 'white'
+                        }}
+                      >
+                        <option value="string">String</option>
+                        <option value="number">Number</option>
+                        <option value="boolean">Boolean</option>
+                        <option value="array">Array</option>
+                      </select>
+                    </div>
+                  </div>
+                  
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'block', fontSize: '14px', fontWeight: '500', color: '#374151', marginBottom: '4px' }}>
+                      Description
+                    </label>
+                    <input
+                      type="text"
+                      value={variableForm.description}
+                      onChange={(e) => setVariableForm({ ...variableForm, description: e.target.value })}
+                      placeholder="Describe what this variable captures"
+                      style={{
+                        width: '100%',
+                        padding: '8px 12px',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '6px',
+                        fontSize: '14px',
+                        outline: 'none'
+                      }}
+                    />
+                  </div>
+                  
+                  <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
+                      <input
+                        type="checkbox"
+                        checked={variableForm.required}
+                        onChange={(e) => setVariableForm({ ...variableForm, required: e.target.checked })}
+                        style={{ width: '16px', height: '16px' }}
+                      />
+                      Required Field
+                    </label>
+                  </div>
+                  
+                  <div style={{ marginBottom: '16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <label style={{ fontSize: '14px', fontWeight: '500', color: '#374151' }}>
+                        Extraction Patterns (Regex)
+                      </label>
+                      <button
+                        onClick={handleAddPattern}
+                        style={{
+                          padding: '4px 8px',
+                          fontSize: '12px',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '4px',
+                          backgroundColor: 'white',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                        <Plus style={{ width: '12px', height: '12px' }} />
+                        Add Pattern
+                      </button>
+                    </div>
+                    
+                    {variableForm.patterns.map((pattern, index) => (
+                      <div key={index} style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                        <input
+                          type="text"
+                          value={pattern}
+                          onChange={(e) => handlePatternChange(index, e.target.value)}
+                          placeholder="Enter regex pattern"
+                          style={{
+                            flex: 1,
+                            padding: '8px 12px',
+                            border: '1px solid #e5e7eb',
+                            borderRadius: '6px',
+                            fontSize: '14px',
+                            fontFamily: 'monospace',
+                            outline: 'none'
+                          }}
+                        />
+                        {variableForm.patterns.length > 1 && (
+                          <button
+                            onClick={() => handleRemovePattern(index)}
+                            style={{
+                              padding: '8px',
+                              border: '1px solid #e5e7eb',
+                              borderRadius: '6px',
+                              backgroundColor: 'white',
+                              cursor: 'pointer',
+                              color: '#ef4444'
+                            }}
+                          >
+                            <Trash2 style={{ width: '16px', height: '16px' }} />
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                    <button
+                      onClick={() => {
+                        setIsAddingVariable(false);
+                        setEditingVariable(null);
+                        setVariableForm({
+                          name: '',
+                          type: 'string',
+                          description: '',
+                          required: false,
+                          patterns: ['']
+                        });
+                      }}
+                      style={{
+                        padding: '8px 16px',
+                        border: '1px solid #e5e7eb',
+                        borderRadius: '6px',
+                        backgroundColor: 'white',
+                        color: '#374151',
+                        fontWeight: '500',
+                        cursor: 'pointer',
+                        fontSize: '14px'
+                      }}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={isAddingVariable ? handleAddVariable : handleUpdateVariable}
+                      disabled={!variableForm.name}
+                      style={{
+                        padding: '8px 16px',
+                        border: 'none',
+                        borderRadius: '6px',
+                        backgroundColor: variableForm.name ? '#111827' : '#e5e7eb',
+                        color: variableForm.name ? 'white' : '#9ca3af',
+                        fontWeight: '500',
+                        cursor: variableForm.name ? 'pointer' : 'not-allowed',
+                        fontSize: '14px'
+                      }}
+                    >
+                      {isAddingVariable ? 'Add Variable' : 'Update Variable'}
+                    </button>
+                  </div>
+                </div>
+              )}
               
               {/* Extraction Rules Display */}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -1003,7 +1353,7 @@ You are a friendly Team Development Assistant conducting a quick 5-minute intake
                           {rule.description || 'No description'}
                         </p>
                       </div>
-                      <div style={{ display: 'flex', gap: '8px' }}>
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                         <span style={{
                           padding: '2px 8px',
                           borderRadius: '12px',
@@ -1026,6 +1376,40 @@ You are a friendly Team Development Assistant conducting a quick 5-minute intake
                             required
                           </span>
                         )}
+                        <button
+                          onClick={() => handleEditVariable(fieldName)}
+                          style={{
+                            padding: '4px',
+                            backgroundColor: 'transparent',
+                            border: 'none',
+                            cursor: 'pointer',
+                            color: '#6b7280',
+                            display: 'flex',
+                            alignItems: 'center'
+                          }}
+                          title="Edit variable"
+                        >
+                          <Edit2 style={{ width: '14px', height: '14px' }} />
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (confirm(`Are you sure you want to delete the variable "${fieldName}"?`)) {
+                              handleDeleteVariable(fieldName);
+                            }
+                          }}
+                          style={{
+                            padding: '4px',
+                            backgroundColor: 'transparent',
+                            border: 'none',
+                            cursor: 'pointer',
+                            color: '#ef4444',
+                            display: 'flex',
+                            alignItems: 'center'
+                          }}
+                          title="Delete variable"
+                        >
+                          <Trash2 style={{ width: '14px', height: '14px' }} />
+                        </button>
                       </div>
                     </div>
                     
