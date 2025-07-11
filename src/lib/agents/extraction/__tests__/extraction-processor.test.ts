@@ -28,7 +28,7 @@ describe('ExtractionProcessor', () => {
   });
 
   describe('extractFromMessage', () => {
-    it('should extract string fields with patterns', () => {
+    it('should extract string fields with patterns', async () => {
       const rules: Record<string, ExtractionRule> = {
         manager_name: {
           type: 'string',
@@ -40,7 +40,7 @@ describe('ExtractionProcessor', () => {
       };
 
       const message = "Hi, I'm Sarah Johnson from TechCorp";
-      const results = ExtractionProcessor.extractFromMessage(message, rules);
+      const results = await ExtractionProcessor.extractFromMessage(message, rules);
 
       expect(results).toHaveLength(1);
       expect(results[0]).toMatchObject({
@@ -52,7 +52,7 @@ describe('ExtractionProcessor', () => {
       });
     });
 
-    it('should extract number fields', () => {
+    it('should extract number fields', async () => {
       const rules: Record<string, ExtractionRule> = {
         team_size: {
           type: 'number',
@@ -63,7 +63,7 @@ describe('ExtractionProcessor', () => {
       };
 
       const message = "We have 25 people on our team";
-      const results = ExtractionProcessor.extractFromMessage(message, rules);
+      const results = await ExtractionProcessor.extractFromMessage(message, rules);
 
       expect(results).toHaveLength(1);
       expect(results[0]).toMatchObject({
@@ -75,7 +75,7 @@ describe('ExtractionProcessor', () => {
       });
     });
 
-    it('should handle multiple patterns for a field', () => {
+    it('should handle multiple patterns for a field', async () => {
       const rules: Record<string, ExtractionRule> = {
         organization: {
           type: 'string',
@@ -87,15 +87,15 @@ describe('ExtractionProcessor', () => {
       };
 
       const message1 = "I work at Microsoft";
-      const results1 = ExtractionProcessor.extractFromMessage(message1, rules);
+      const results1 = await ExtractionProcessor.extractFromMessage(message1, rules);
       expect(results1[0].extractedValue).toBe('Microsoft');
 
       const message2 = "My company is Apple";
-      const results2 = ExtractionProcessor.extractFromMessage(message2, rules);
+      const results2 = await ExtractionProcessor.extractFromMessage(message2, rules);
       expect(results2[0].extractedValue).toBe('Apple');
     });
 
-    it('should mark field as attempted but not successful when no match', () => {
+    it('should mark field as attempted but not successful when no match', async () => {
       const rules: Record<string, ExtractionRule> = {
         budget: {
           type: 'string',
@@ -104,7 +104,7 @@ describe('ExtractionProcessor', () => {
       };
 
       const message = "We don't have a specific budget yet";
-      const results = ExtractionProcessor.extractFromMessage(message, rules);
+      const results = await ExtractionProcessor.extractFromMessage(message, rules);
 
       expect(results[0]).toMatchObject({
         fieldName: 'budget',
@@ -114,7 +114,7 @@ describe('ExtractionProcessor', () => {
       });
     });
 
-    it('should handle fields with no patterns', () => {
+    it('should handle fields with no patterns', async () => {
       const rules: Record<string, ExtractionRule> = {
         notes: {
           type: 'string',
@@ -124,7 +124,7 @@ describe('ExtractionProcessor', () => {
       };
 
       const message = "Some random text";
-      const results = ExtractionProcessor.extractFromMessage(message, rules);
+      const results = await ExtractionProcessor.extractFromMessage(message, rules);
 
       expect(results[0]).toMatchObject({
         fieldName: 'notes',
@@ -134,7 +134,7 @@ describe('ExtractionProcessor', () => {
       });
     });
 
-    it('should handle invalid regex patterns gracefully', () => {
+    it('should handle invalid regex patterns gracefully', async () => {
       const rules: Record<string, ExtractionRule> = {
         invalid: {
           type: 'string',
@@ -143,7 +143,7 @@ describe('ExtractionProcessor', () => {
       };
 
       const message = "Test message";
-      const results = ExtractionProcessor.extractFromMessage(message, rules);
+      const results = await ExtractionProcessor.extractFromMessage(message, rules);
 
       expect(results[0]).toMatchObject({
         fieldName: 'invalid',
@@ -154,7 +154,7 @@ describe('ExtractionProcessor', () => {
   });
 
   describe('confidence calculation', () => {
-    it('should give higher confidence for matches at the beginning', () => {
+    it('should give higher confidence for matches at the beginning', async () => {
       const rules: Record<string, ExtractionRule> = {
         name: {
           type: 'string',
@@ -165,8 +165,8 @@ describe('ExtractionProcessor', () => {
       const message1 = "John is my name";
       const message2 = "My name is John but people call me Johnny";
       
-      const results1 = ExtractionProcessor.extractFromMessage(message1, rules);
-      const results2 = ExtractionProcessor.extractFromMessage(message2, rules);
+      const results1 = await ExtractionProcessor.extractFromMessage(message1, rules);
+      const results2 = await ExtractionProcessor.extractFromMessage(message2, rules);
 
       // Both should have confidence scores
       expect(results1[0].confidence).toBeGreaterThan(0);

@@ -170,13 +170,18 @@ export class ExtractionProcessor {
       const prompt = this.createExtractionPrompt(message, fieldName, rule);
       
       // Get LLM response
-      const response = await llm.generateResponse(prompt, {
+      const response = await llm.generateResponse([
+        { 
+          role: 'system', 
+          content: 'You are a precise information extraction assistant. Extract only the requested information from the given text. If the information is not present, respond with "NOT_FOUND".' 
+        },
+        { role: 'user', content: prompt }
+      ], {
         temperature: 0.1, // Low temperature for more deterministic extraction
-        maxTokens: 100,
-        systemPrompt: 'You are a precise information extraction assistant. Extract only the requested information from the given text. If the information is not present, respond with "NOT_FOUND".'
+        maxTokens: 100
       });
 
-      const extractedText = response.content.trim();
+      const extractedText = response.completion.choices[0]?.message?.content?.trim() || '';
       
       // Check if extraction was successful
       if (extractedText === 'NOT_FOUND' || extractedText === '') {
@@ -277,7 +282,7 @@ Do not include any explanation or additional text.`;
    */
   private static calculateConfidence(
     match: RegExpMatchArray,
-    pattern: string,
+    _pattern: string,
     message: string
   ): number {
     // Base confidence of 0.6 for any match

@@ -3,18 +3,37 @@ import { ExtractionProcessor, ExtractionRule, ExtractionContext } from '../extra
 // Mock the LLM provider
 jest.mock('../../llm', () => ({
   LLMProvider: jest.fn().mockImplementation(() => ({
-    generateResponse: jest.fn().mockImplementation((prompt) => {
+    generateResponse: jest.fn().mockImplementation((messages) => {
+      // Get the user message content
+      const userMessage = messages.find((m: any) => m.role === 'user')?.content || '';
+      
       // Mock responses based on prompt content
-      if (prompt.includes('manager_name') && prompt.includes('"Sarah from engineering"')) {
-        return Promise.resolve({ content: 'Sarah' });
+      if (userMessage.includes('Field: manager_name') && userMessage.includes('Sarah from engineering')) {
+        return Promise.resolve({ 
+          completion: {
+            choices: [{ message: { content: 'Sarah' } }]
+          }
+        });
       }
-      if (prompt.includes('team_size') && prompt.includes('"we have about fifteen people"')) {
-        return Promise.resolve({ content: '15' });
+      if (userMessage.includes('Field: team_size') && userMessage.includes('about fifteen people')) {
+        return Promise.resolve({ 
+          completion: {
+            choices: [{ message: { content: '15' } }]
+          }
+        });
       }
-      if (prompt.includes('department') && prompt.includes('"I work in the finance department"')) {
-        return Promise.resolve({ content: 'finance department' });
+      if (userMessage.includes('Field: department') && userMessage.includes('finance department')) {
+        return Promise.resolve({ 
+          completion: {
+            choices: [{ message: { content: 'finance department' } }]
+          }
+        });
       }
-      return Promise.resolve({ content: 'NOT_FOUND' });
+      return Promise.resolve({ 
+        completion: {
+          choices: [{ message: { content: 'NOT_FOUND' } }]
+        }
+      });
     })
   }))
 }));
