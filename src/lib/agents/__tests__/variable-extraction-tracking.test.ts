@@ -12,6 +12,19 @@ jest.mock('../../services/variable-extraction', () => ({
 describe('Variable Extraction Tracking', () => {
   let extractTeamInfoTool: any;
   let mockContext: AgentContext;
+  let originalEnv: string | undefined;
+
+  beforeAll(() => {
+    // Save original NODE_ENV
+    originalEnv = process.env.NODE_ENV;
+    // Set NODE_ENV to 'development' to enable tracking in tests
+    process.env.NODE_ENV = 'development';
+  });
+
+  afterAll(() => {
+    // Restore original NODE_ENV
+    process.env.NODE_ENV = originalEnv;
+  });
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -149,6 +162,27 @@ describe('Variable Extraction Tracking', () => {
   });
 
   test('should not track in test environment', async () => {
+    // Temporarily set NODE_ENV to test
+    const currentEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'test';
+    
+    try {
+      await extractTeamInfoTool.execute(
+        { message: "I'm Sarah with 10 people" },
+        mockContext
+      );
+
+      // Should not call tracking in test environment
+      expect(VariableExtractionService.trackExtractionBatch).not.toHaveBeenCalled();
+    } finally {
+      // Restore NODE_ENV
+      process.env.NODE_ENV = currentEnv;
+    }
+    
+    // Reset mock for next part of test
+    jest.clearAllMocks();
+    
+    // Test with test- prefix conversation ID
     const testContext = {
       ...mockContext,
       conversationId: 'test-123' // Test conversation ID
