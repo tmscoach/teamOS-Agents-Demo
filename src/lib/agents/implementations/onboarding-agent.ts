@@ -37,15 +37,8 @@ export class OnboardingAgent extends KnowledgeEnabledAgent {
   private flowEngine?: ConfigurableFlowEngine;
   private useGraphFlow: boolean = false;
   
-  private static readonly REQUIRED_FIELDS = [
-    "team_size",
-    "team_tenure",
-    "primary_challenge",
-    "success_metrics",
-    "timeline_preference",
-    "budget_range",
-    "leader_commitment"
-  ];
+  // Required fields are now determined dynamically from extraction rules
+  // This ensures consistency with the configured extraction rules in /admin/agents/config
 
   private static readonly STATE_INSTRUCTIONS: Record<ConversationState, string> = {
     [ConversationState.GREETING]: `
@@ -134,7 +127,7 @@ Remember to:
 - Monitor conversation quality and manager confidence
 - Progress through states based on conversation flow
 
-Required fields to capture: ${OnboardingAgent.REQUIRED_FIELDS.join(', ')}`;
+Required fields are determined by extraction rules configuration.`;
       },
       tools,
       handoffs: [{
@@ -248,17 +241,17 @@ Required fields to capture: ${OnboardingAgent.REQUIRED_FIELDS.join(', ')}`;
   private async processMessageWithStateMachine(message: string, context: AgentContext): Promise<AgentResponse> {
     // Initialize metadata if not present
     if (!context.metadata.onboarding) {
-      context.metadata.onboarding = this.initializeMetadata();
+      context.metadata.onboarding = await this.initializeMetadata();
     }
 
     const metadata = context.metadata.onboarding as OnboardingMetadata;
 
     // Process the message and extract information
     const extractedData = await this.extractInformation(message, context);
-    this.updateCapturedFields(metadata, extractedData);
+    await this.updateCapturedFields(metadata, extractedData);
 
     // Update conversation state based on progress
-    const newState = this.determineNextState(metadata, context);
+    const newState = await this.determineNextState(metadata, context);
     if (newState !== metadata.state) {
       this.transitionState(metadata, newState);
     }
@@ -284,9 +277,11 @@ Required fields to capture: ${OnboardingAgent.REQUIRED_FIELDS.join(', ')}`;
     return response;
   }
 
-  private initializeMetadata(): OnboardingMetadata {
+  private async initializeMetadata(): Promise<OnboardingMetadata> {
+    // Get required fields from extraction rules
+    const requiredFields = await this.getRequiredFields();
     const requiredFieldsStatus: Record<string, boolean> = {};
-    OnboardingAgent.REQUIRED_FIELDS.forEach(field => {
+    requiredFields.forEach(field => {
       requiredFieldsStatus[field] = false;
     });
 
@@ -305,6 +300,40 @@ Required fields to capture: ${OnboardingAgent.REQUIRED_FIELDS.join(', ')}`;
       },
       stateTransitions: []
     };
+  }
+
+  /**
+   * Helper method to get required fields from extraction rules
+   */
+  private async getRequiredFields(): Promise<string[]> {
+    try {
+      const config = await AgentConfigLoader.loadConfiguration('OnboardingAgent');
+      let extractionRules: Record<string, ExtractionRule> = {};
+      
+      if (config && config.extractionRules) {
+        extractionRules = config.extractionRules as Record<string, ExtractionRule>;
+      } else {
+        // Fall back to default extraction rules
+        extractionRules = AgentConfigLoader.getDefaultExtractionRules('OnboardingAgent') as Record<string, ExtractionRule>;
+      }
+
+      // Return field names where required is true
+      return Object.entries(extractionRules)
+        .filter(([_, rule]) => rule.required === true)
+        .map(([fieldName, _]) => fieldName);
+    } catch (error) {
+      console.error('Error getting required fields:', error);
+      // Fall back to default extraction rules on error
+      try {
+        const defaultRules = AgentConfigLoader.getDefaultExtractionRules('OnboardingAgent') as Record<string, ExtractionRule>;
+        return Object.entries(defaultRules)
+          .filter(([_, rule]) => rule.required === true)
+          .map(([fieldName, _]) => fieldName);
+      } catch (fallbackError) {
+        console.error('Error getting default extraction rules:', fallbackError);
+        return [];
+      }
+    }
   }
 
   private async extractInformation(message: string, context: AgentContext): Promise<Record<string, any>> {
@@ -345,12 +374,15 @@ Required fields to capture: ${OnboardingAgent.REQUIRED_FIELDS.join(', ')}`;
     }
   }
 
-  private updateCapturedFields(metadata: OnboardingMetadata, extractedData: Record<string, any>) {
+  private async updateCapturedFields(metadata: OnboardingMetadata, extractedData: Record<string, any>) {
     // Update captured fields
     Object.assign(metadata.capturedFields, extractedData);
 
+    // Get required fields from extraction rules
+    const requiredFields = await this.getRequiredFields();
+
     // Update required fields status
-    OnboardingAgent.REQUIRED_FIELDS.forEach(field => {
+    requiredFields.forEach(field => {
       if (metadata.capturedFields[field]) {
         metadata.requiredFieldsStatus[field] = true;
       }
@@ -358,11 +390,12 @@ Required fields to capture: ${OnboardingAgent.REQUIRED_FIELDS.join(', ')}`;
 
     // Update completion percentage
     const completedFields = Object.values(metadata.requiredFieldsStatus).filter(Boolean).length;
+    const totalRequiredFields = requiredFields.length;
     metadata.qualityMetrics.completionPercentage = 
-      (completedFields / OnboardingAgent.REQUIRED_FIELDS.length) * 100;
+      totalRequiredFields > 0 ? (completedFields / totalRequiredFields) * 100 : 0;
   }
 
-  private determineNextState(metadata: OnboardingMetadata, context: AgentContext): ConversationState {
+  private async determineNextState(metadata: OnboardingMetadata, context: AgentContext): Promise<ConversationState> {
     // Update state machine with current state
     this.stateMachine.setState(metadata.state);
     
@@ -370,7 +403,7 @@ Required fields to capture: ${OnboardingAgent.REQUIRED_FIELDS.join(', ')}`;
     const conversationData = this.mapToConversationData(metadata.capturedFields);
     
     // Check if we should force progression based on missing fields
-    const missingFields = this.getMissingRequiredFields(metadata.capturedFields);
+    const missingFields = await this.getMissingRequiredFields(metadata.capturedFields);
     if (missingFields.length > 0 && metadata.state === ConversationState.GREETING) {
       // Force move to basic info collection
       this.stateMachine.setState(ConversationState.CONTEXT_DISCOVERY);
@@ -385,8 +418,9 @@ Required fields to capture: ${OnboardingAgent.REQUIRED_FIELDS.join(', ')}`;
     return metadata.state;
   }
   
-  private getMissingRequiredFields(capturedFields: Record<string, any>): string[] {
-    return OnboardingAgent.REQUIRED_FIELDS.filter(field => !capturedFields[field]);
+  private async getMissingRequiredFields(capturedFields: Record<string, any>): Promise<string[]> {
+    const requiredFields = await this.getRequiredFields();
+    return requiredFields.filter(field => !capturedFields[field]);
   }
   
   private mapToConversationData(capturedFields: Record<string, any>): any {

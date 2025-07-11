@@ -23,10 +23,8 @@ jest.mock('../../llm', () => ({
 }));
 
 // Mock the knowledge base
-jest.mock('../../knowledge/knowledge-base', () => ({
-  KnowledgeBase: jest.fn().mockImplementation(() => ({
-    search: jest.fn().mockResolvedValue([])
-  }))
+jest.mock('../../../knowledge-base', () => ({
+  knowledgeBaseTools: []
 }));
 
 describe('OnboardingAgent Extraction with Configuration', () => {
