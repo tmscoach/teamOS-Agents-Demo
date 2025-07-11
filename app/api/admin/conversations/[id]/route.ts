@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { currentUser } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/db/prisma';
+import { ONBOARDING_STEPS } from '@/lib/orchestrator/journey-tracker';
 
 export async function GET(
   req: NextRequest,
@@ -52,7 +53,19 @@ export async function GET(
       try {
         [team, manager] = await Promise.all([
           prisma.team.findUnique({ where: { id: conversation.teamId } }),
-          prisma.user.findUnique({ where: { id: conversation.managerId } })
+          prisma.user.findUnique({ 
+            where: { id: conversation.managerId },
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              journeyStatus: true,
+              currentAgent: true,
+              completedSteps: true,
+              lastActivity: true,
+              onboardingData: true
+            }
+          })
         ]);
         break;
       } catch (error) {
@@ -66,6 +79,12 @@ export async function GET(
     // Extract metadata from contextData
     const contextData = conversation.contextData as Record<string, unknown>;
     const metadata = (contextData?.metadata as Record<string, unknown>) || {};
+
+    // Calculate current step
+    const completedSteps = manager?.completedSteps || [];
+    const currentStep = ONBOARDING_STEPS
+      .filter(step => !completedSteps.includes(step.id))
+      .sort((a, b) => a.order - b.order)[0];
 
     // Transform the data
     const transformedConversation = {
@@ -89,7 +108,17 @@ export async function GET(
         timestamp: event.timestamp,
         agent: event.agent,
         data: event.metadata
-      }))
+      })),
+      // Journey tracking data
+      journeyStatus: manager?.journeyStatus || 'ONBOARDING',
+      completedSteps: manager?.completedSteps || [],
+      currentStep: currentStep ? {
+        id: currentStep.id,
+        name: currentStep.name,
+        order: currentStep.order
+      } : null,
+      lastActivity: manager?.lastActivity || conversation.updatedAt,
+      onboardingData: manager?.onboardingData as Record<string, any> || {}
     };
 
     return NextResponse.json(transformedConversation);

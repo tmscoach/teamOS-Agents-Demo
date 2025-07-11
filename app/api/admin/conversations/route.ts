@@ -3,6 +3,7 @@ import { currentUser } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/db/prisma';
 import { ConversationState } from '@/src/lib/agents/implementations/onboarding-agent';
 import { adminFilterSchema, validateRequest } from '@/src/lib/validation';
+import { ONBOARDING_STEPS } from '@/lib/orchestrator/journey-tracker';
 
 export async function GET(req: NextRequest) {
   try {
@@ -29,6 +30,8 @@ export async function GET(req: NextRequest) {
     const dateTo = searchParams.get('dateTo');
     const managerId = searchParams.get('managerId');
     const teamId = searchParams.get('teamId');
+    const journeyStatus = searchParams.get('journeyStatus');
+    const inactiveDays = searchParams.get('inactiveDays');
     
     if (status) filters.status = status;
     if (agentName) filters.agentName = agentName;
@@ -36,6 +39,8 @@ export async function GET(req: NextRequest) {
     if (dateTo) filters.dateTo = dateTo;
     if (managerId) filters.managerId = managerId;
     if (teamId) filters.teamId = teamId;
+    if (journeyStatus) filters.journeyStatus = journeyStatus;
+    if (inactiveDays) filters.inactiveDays = inactiveDays;
 
     const validation = validateRequest(filters, adminFilterSchema);
     if (!validation.success) {
@@ -108,7 +113,17 @@ export async function GET(req: NextRequest) {
     });
 
     const managers = await prisma.user.findMany({
-      where: { id: { in: managerIds } }
+      where: { id: { in: managerIds } },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        journeyStatus: true,
+        currentAgent: true,
+        completedSteps: true,
+        lastActivity: true,
+        onboardingData: true
+      }
     });
 
     const teamMap = new Map(teams.map(t => [t.id, t]));
@@ -144,10 +159,33 @@ export async function GET(req: NextRequest) {
       // Count total messages
       const messageCount = conv.messages.length;
 
+      // Calculate journey progress
+      const completedSteps = manager?.completedSteps || [];
+      const totalRequiredSteps = ONBOARDING_STEPS.filter(s => s.required).length;
+      const journeyProgress = totalRequiredSteps > 0 
+        ? Math.round((completedSteps.length / totalRequiredSteps) * 100)
+        : 0;
+
+      // Find current step
+      const currentStep = ONBOARDING_STEPS
+        .filter(step => !completedSteps.includes(step.id))
+        .sort((a, b) => a.order - b.order)[0];
+      
+      // Calculate days since last activity
+      const daysSinceActivity = Math.floor(
+        (Date.now() - (manager?.lastActivity ? new Date(manager.lastActivity).getTime() : lastActivityTime.getTime())) / (1000 * 60 * 60 * 24)
+      );
+      
+      // Calculate hours since last activity for more granular view
+      const hoursSinceActivity = Math.floor(
+        (Date.now() - (manager?.lastActivity ? new Date(manager.lastActivity).getTime() : lastActivityTime.getTime())) / (1000 * 60 * 60)
+      );
+
       return {
         id: conv.id,
         managerId: conv.managerId,
         managerName: manager?.name || 'Unknown',
+        managerEmail: manager?.email || '',
         teamId: conv.teamId,
         teamName: team?.name || 'Unknown Team',
         currentAgent: conv.currentAgent,
@@ -158,12 +196,40 @@ export async function GET(req: NextRequest) {
         completionPercentage: onboardingData?.qualityMetrics?.completionPercentage || 0,
         rapportScore: onboardingData?.qualityMetrics?.rapportScore || 0,
         managerConfidence: onboardingData?.qualityMetrics?.managerConfidence || 'low',
-        status
+        status,
+        // Journey tracking data
+        journeyStatus: manager?.journeyStatus || 'ONBOARDING',
+        completedSteps,
+        journeyProgress,
+        currentStep: currentStep ? {
+          id: currentStep.id,
+          name: currentStep.name,
+          order: currentStep.order
+        } : null,
+        daysSinceActivity,
+        hoursSinceActivity,
+        lastActivity: manager?.lastActivity || lastActivityTime
       };
     });
 
+    // Apply additional filters for journey data
+    let filteredConversations = transformedConversations;
+    
+    if (validatedFilters.journeyStatus) {
+      filteredConversations = filteredConversations.filter(
+        conv => conv.journeyStatus === validatedFilters.journeyStatus
+      );
+    }
+    
+    if (validatedFilters.inactiveDays) {
+      const maxDays = parseInt(validatedFilters.inactiveDays);
+      filteredConversations = filteredConversations.filter(
+        conv => conv.daysSinceActivity >= maxDays
+      );
+    }
+
     return NextResponse.json({
-      conversations: transformedConversations
+      conversations: filteredConversations
     });
   } catch (error) {
     console.error('Admin conversations API error:', error);
