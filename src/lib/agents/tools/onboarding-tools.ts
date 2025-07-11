@@ -88,9 +88,9 @@ export function createOnboardingTools(): AgentTool[] {
 
         // Extract manager name
         const namePatterns = [
-          /(?:I'm|I am|My name is|Call me)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/i,
-          /^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+here/i,
-          /^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:and|,)/i  // Handle "I'm Rowan and..."
+          /(?:I'm|I am|My name is|Call me)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i,
+          /^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\s+here/i,
+          /^My name is\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i
         ];
         let nameMatch: RegExpMatchArray | null = null;
         let matchedPattern: RegExp | null = null;
@@ -107,8 +107,9 @@ export function createOnboardingTools(): AgentTool[] {
         
         // Extract organization/company
         const orgPatterns = [
-          /(?:work (?:at|for)|from|with|represent)\s+([A-Za-z0-9\s&,.-]+?)(?:\.|,|$)/i,
-          /(?:company|organization|org)\s+(?:is|called)?\s*([A-Za-z0-9\s&,.-]+?)(?:\.|,|$)/i
+          /(?:work (?:at|for)|from)\s+([A-Za-z0-9]+(?:\s+[A-Za-z0-9]+)*?)(?:\s|,|\.|$)/i,
+          /(?:at|with)\s+([A-Z][A-Za-z0-9]+(?:\s+[A-Z][A-Za-z0-9]+)*?)(?:\s|,|\.|$)/i,
+          /(?:company|organization|org)\s+(?:is|called)?\s*([A-Za-z0-9]+(?:\s+[A-Za-z0-9]+)*?)(?:\s|,|\.|$)/i
         ];
         let orgMatch: RegExpMatchArray | null = null;
         let orgPattern: RegExp | null = null;
