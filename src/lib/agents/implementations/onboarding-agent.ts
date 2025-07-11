@@ -174,6 +174,48 @@ Required fields are determined by extraction rules configuration.`;
       // Continue with default prompts
     }
   }
+
+  /**
+   * Override buildContextPrompt to include captured fields information
+   * This ensures the LLM is aware of what information has already been extracted
+   */
+  protected buildContextPrompt(context: AgentContext): string {
+    let prompt = super.buildContextPrompt(context);
+    
+    // Add captured fields to context
+    const metadata = context.metadata.onboarding as OnboardingMetadata;
+    if (metadata?.capturedFields && Object.keys(metadata.capturedFields).length > 0) {
+      prompt += '\n\nAlready captured information:\n';
+      for (const [field, value] of Object.entries(metadata.capturedFields)) {
+        // Format field name for display (e.g., team_size -> Team Size)
+        const displayName = field.split('_').map(word => 
+          word.charAt(0).toUpperCase() + word.slice(1)
+        ).join(' ');
+        prompt += `- ${displayName}: ${value}\n`;
+      }
+      prompt += '\nIMPORTANT: Do not ask for information that has already been captured above. ';
+      prompt += 'Focus your questions on gathering only the missing required information.\n';
+    }
+    
+    // Add missing required fields
+    if (metadata?.requiredFieldsStatus) {
+      const missingFields = Object.entries(metadata.requiredFieldsStatus)
+        .filter(([_, captured]) => !captured)
+        .map(([field, _]) => field);
+      
+      if (missingFields.length > 0) {
+        prompt += '\nStill need to capture:\n';
+        missingFields.forEach(field => {
+          const displayName = field.split('_').map(word => 
+            word.charAt(0).toUpperCase() + word.slice(1)
+          ).join(' ');
+          prompt += `- ${displayName}\n`;
+        });
+      }
+    }
+    
+    return prompt;
+  }
   
   private initializeFlowEngine() {
     // Create agent map for flow engine

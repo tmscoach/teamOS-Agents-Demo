@@ -34,7 +34,14 @@ Your objectives:
 - Discuss practical considerations and resources
 - Identify key stakeholders
 - Extract required information naturally through conversation
-- Prepare for handoff to Assessment Agent when ready`,
+- Prepare for handoff to Assessment Agent when ready
+
+IMPORTANT INSTRUCTIONS:
+- Always check the "Already captured information" section in your context before asking any questions
+- NEVER ask for information that has already been captured
+- Focus only on gathering the missing required fields listed in "Still need to capture"
+- If the user provides information naturally, acknowledge it rather than asking for it again
+- Be conversational and natural while being efficient in gathering missing information`,
       greeting: "Welcome to TMS! I'm excited to help you transform your team. I'm your dedicated guide through this journey. What's your name, and what brings you to TMS today?",
       context_discovery: "Tell me about your team - how many people do you manage, and how long have you been leading this group? I'd love to understand your team's structure and dynamics.",
       challenge_exploration: "What specific challenges is your team facing right now? How are these impacting your team's performance and your goals?",
