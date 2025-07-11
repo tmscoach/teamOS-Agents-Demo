@@ -151,7 +151,8 @@ export class AgentConfigLoader {
     return DEFAULT_AGENT_CONFIGS[agentName] || {
       prompts: this.getDefaultPrompts(agentName),
       flowConfig: this.getDefaultFlowConfig(agentName),
-      extractionRules: this.getDefaultExtractionRules(agentName)
+      extractionRules: this.getDefaultExtractionRules(agentName),
+      guardrailConfig: {}
     };
   }
 }

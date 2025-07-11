@@ -1,26 +1,40 @@
 import { Guardrail, GuardrailResult, AgentContext } from '../types';
 
+export interface GuardrailConfig {
+  minMessageLength?: number;
+  maxMessageLength?: number;
+  maxConversationTime?: number;
+  minConversationTime?: number;
+  maxQuestionsPerTopic?: number;
+  allowedGreetings?: string[];
+  offTopicPatterns?: string[];
+  enableTopicRelevance?: boolean;
+  enableProfanityCheck?: boolean;
+}
+
 export class OnboardingGuardrails {
-  // Time constraints
-  static readonly MAX_CONVERSATION_TIME = 45 * 60 * 1000; // 45 minutes
-  static readonly MIN_CONVERSATION_TIME = 20 * 60 * 1000; // 20 minutes
-  static readonly MAX_QUESTIONS_PER_TOPIC = 3;
+  // Default time constraints
+  static readonly DEFAULT_MAX_CONVERSATION_TIME = 45 * 60 * 1000; // 45 minutes
+  static readonly DEFAULT_MIN_CONVERSATION_TIME = 20 * 60 * 1000; // 20 minutes
+  static readonly DEFAULT_MAX_QUESTIONS_PER_TOPIC = 3;
 
-  // Quality thresholds
-  static readonly MIN_MESSAGE_LENGTH = 10;
-  static readonly MAX_MESSAGE_LENGTH = 1000;
+  // Default quality thresholds
+  static readonly DEFAULT_MIN_MESSAGE_LENGTH = 10;
+  static readonly DEFAULT_MAX_MESSAGE_LENGTH = 1000;
 
-  static createGuardrails(): Guardrail[] {
+  static createGuardrails(config?: GuardrailConfig): Guardrail[] {
     return [
-      this.createTimeGuardrail(),
-      this.createMessageLengthGuardrail(),
-      this.createTopicRelevanceGuardrail(),
-      this.createProgressGuardrail(),
-      this.createProfessionalismGuardrail()
+      this.createTimeGuardrail(config),
+      this.createMessageLengthGuardrail(config),
+      this.createTopicRelevanceGuardrail(config),
+      this.createProgressGuardrail(config),
+      this.createProfessionalismGuardrail(config)
     ];
   }
 
-  private static createTimeGuardrail(): Guardrail {
+  private static createTimeGuardrail(config?: GuardrailConfig): Guardrail {
+    const maxConversationTime = config?.maxConversationTime || this.DEFAULT_MAX_CONVERSATION_TIME;
+    
     return {
       name: 'ConversationTimeLimit',
       description: 'Ensures conversation stays within optimal time bounds',
@@ -32,11 +46,11 @@ export class OnboardingGuardrails {
 
         const elapsed = Date.now() - new Date(metadata.startTime).getTime();
         
-        if (elapsed > this.MAX_CONVERSATION_TIME) {
+        if (elapsed > maxConversationTime) {
           return {
             passed: false,
-            reason: 'Conversation has exceeded 45 minutes. Consider wrapping up and scheduling a follow-up.',
-            metadata: { elapsed, limit: this.MAX_CONVERSATION_TIME }
+            reason: `Conversation has exceeded ${Math.floor(maxConversationTime / 60000)} minutes. Consider wrapping up and scheduling a follow-up.`,
+            metadata: { elapsed, limit: maxConversationTime }
           };
         }
 
@@ -45,15 +59,18 @@ export class OnboardingGuardrails {
     };
   }
 
-  private static createMessageLengthGuardrail(): Guardrail {
+  private static createMessageLengthGuardrail(config?: GuardrailConfig): Guardrail {
+    const minMessageLength = config?.minMessageLength || this.DEFAULT_MIN_MESSAGE_LENGTH;
+    const maxMessageLength = config?.maxMessageLength || this.DEFAULT_MAX_MESSAGE_LENGTH;
+    
     return {
       name: 'MessageLength',
       description: 'Validates message length is appropriate',
       validate: async (input: string, context: AgentContext): Promise<GuardrailResult> => {
         const lowerInput = input.toLowerCase().trim();
         
-        // Allow common greetings regardless of length
-        const greetings = [
+        // Allow common greetings and short responses regardless of length
+        const allowedShortResponses = [
           'hi', 'hey', 'hello', 'yo', 'hiya', 'howdy',
           'good morning', 'good afternoon', 'good evening',
           'greetings', 'salutations', 'sup', 'hola',
@@ -61,8 +78,39 @@ export class OnboardingGuardrails {
           'thank you', 'please', 'help', 'start'
         ];
         
-        if (greetings.includes(lowerInput)) {
+        if (allowedShortResponses.includes(lowerInput)) {
           return { passed: true };
+        }
+        
+        // Allow numeric responses (team size, budget, etc.)
+        if (/^\d+$/.test(lowerInput)) {
+          return { passed: true };
+        }
+        
+        // Check if the last assistant message was asking for a specific piece of information
+        const lastAssistantMessage = context.messageHistory
+          .filter(m => m.role === 'assistant')
+          .slice(-1)[0];
+          
+        if (lastAssistantMessage && lastAssistantMessage.content) {
+          const askingForNumber = /how many|number of|size|count|budget|\d+/.test(
+            lastAssistantMessage.content.toLowerCase()
+          );
+          
+          // If asking for a number and user provided a short answer, allow it
+          if (askingForNumber && input.length >= 1) {
+            return { passed: true };
+          }
+          
+          // Check if asking for role/position/title
+          const askingForRole = /role|position|title|job|what do you do/.test(
+            lastAssistantMessage.content.toLowerCase()
+          );
+          
+          // If asking for role and user provided a short answer, allow it
+          if (askingForRole && input.length >= 1) {
+            return { passed: true };
+          }
         }
         
         // For first message from user, be more lenient
@@ -72,19 +120,19 @@ export class OnboardingGuardrails {
         }
         
         // Otherwise enforce minimum length for substantive messages
-        if (input.length < this.MIN_MESSAGE_LENGTH) {
+        if (input.length < minMessageLength) {
           return {
             passed: false,
             reason: 'Could you provide a bit more detail? For example, tell me about your team or what brings you here.',
-            metadata: { length: input.length, min: this.MIN_MESSAGE_LENGTH }
+            metadata: { length: input.length, min: minMessageLength }
           };
         }
 
-        if (input.length > this.MAX_MESSAGE_LENGTH) {
+        if (input.length > maxMessageLength) {
           return {
             passed: false,
             reason: 'Message is very long. Consider breaking it into smaller parts.',
-            metadata: { length: input.length, max: this.MAX_MESSAGE_LENGTH }
+            metadata: { length: input.length, max: maxMessageLength }
           };
         }
 
@@ -93,7 +141,16 @@ export class OnboardingGuardrails {
     };
   }
 
-  private static createTopicRelevanceGuardrail(): Guardrail {
+  private static createTopicRelevanceGuardrail(config?: GuardrailConfig): Guardrail {
+    // Allow disabling topic relevance checks
+    if (config?.enableTopicRelevance === false) {
+      return {
+        name: 'TopicRelevance',
+        description: 'Topic relevance checking is disabled',
+        validate: async () => ({ passed: true })
+      };
+    }
+    
     return {
       name: 'TopicRelevance',
       description: 'Ensures conversation stays focused on onboarding topics',
@@ -180,7 +237,7 @@ export class OnboardingGuardrails {
     };
   }
 
-  private static createProgressGuardrail(): Guardrail {
+  private static createProgressGuardrail(config?: GuardrailConfig): Guardrail {
     return {
       name: 'ConversationProgress',
       description: 'Ensures conversation is making appropriate progress',
@@ -222,7 +279,16 @@ export class OnboardingGuardrails {
     };
   }
 
-  private static createProfessionalismGuardrail(): Guardrail {
+  private static createProfessionalismGuardrail(config?: GuardrailConfig): Guardrail {
+    // Allow disabling profanity checks
+    if (config?.enableProfanityCheck === false) {
+      return {
+        name: 'Professionalism',
+        description: 'Professionalism checking is disabled',
+        validate: async () => ({ passed: true })
+      };
+    }
+    
     return {
       name: 'Professionalism',
       description: 'Ensures conversation maintains professional standards',
