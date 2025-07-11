@@ -1,4 +1,5 @@
 import { AgentTool, AgentContext, ToolResult } from '../types';
+import { VariableExtractionService, VariableExtractionInput } from '@/lib/services/variable-extraction';
 
 export function createOnboardingTools(): AgentTool[] {
   return [
@@ -22,18 +23,68 @@ export function createOnboardingTools(): AgentTool[] {
       execute: async (params: any, context: AgentContext): Promise<ToolResult> => {
         const { message } = params;
         const extracted: Record<string, any> = {};
+        const extractionResults: VariableExtractionInput[] = [];
+
+        // Helper function to track extraction attempts
+        const trackExtraction = (
+          fieldName: string,
+          pattern: RegExp | string,
+          match: RegExpMatchArray | null,
+          extractedValue?: any
+        ) => {
+          const attempted = true;
+          const successful = !!match;
+          const confidence = successful ? calculateConfidence(match!, pattern.toString()) : 0;
+
+          extractionResults.push({
+            conversationId: context.conversationId,
+            agentName: 'OnboardingAgent',
+            fieldName,
+            attempted,
+            successful,
+            extractedValue: extractedValue ? String(extractedValue) : undefined,
+            confidence
+          });
+        };
+
+        // Helper function to calculate confidence based on match quality
+        const calculateConfidence = (match: RegExpMatchArray, pattern: string): number => {
+          // Base confidence of 0.6 for any match
+          let confidence = 0.6;
+          
+          // Boost confidence for exact pattern matches
+          if (match[0].length === match.input!.length) {
+            confidence += 0.2;
+          }
+          
+          // Boost confidence for matches with multiple captured groups
+          if (match.length > 2) {
+            confidence += 0.1;
+          }
+          
+          // Boost confidence if match is near the beginning of the message
+          if (match.index! < 20) {
+            confidence += 0.1;
+          }
+          
+          return Math.min(confidence, 1.0);
+        };
 
         // Extract team size
-        const teamSizeMatch = message.match(/(\d+)\s*(?:people|members|employees|staff|direct reports)/i);
+        const teamSizePattern = /(\d+)\s*(?:people|members|employees|staff|direct reports)/i;
+        const teamSizeMatch = message.match(teamSizePattern);
         if (teamSizeMatch) {
           extracted.team_size = parseInt(teamSizeMatch[1]);
         }
+        trackExtraction('team_size', teamSizePattern, teamSizeMatch, extracted.team_size);
 
         // Extract tenure
-        const tenureMatch = message.match(/(\d+)\s*(?:years?|months?|weeks?)/i);
+        const tenurePattern = /(\d+)\s*(?:years?|months?|weeks?)/i;
+        const tenureMatch = message.match(tenurePattern);
         if (tenureMatch) {
           extracted.team_tenure = tenureMatch[0];
         }
+        trackExtraction('team_tenure', tenurePattern, tenureMatch, extracted.team_tenure);
 
         // Extract manager name
         const namePatterns = [
@@ -41,30 +92,41 @@ export function createOnboardingTools(): AgentTool[] {
           /^([A-Z][a-z]+)\s+here/i,
           /^([A-Z][a-z]+)\s+(?:and|,)/i  // Handle "I'm Rowan and..."
         ];
+        let nameMatch: RegExpMatchArray | null = null;
+        let matchedPattern: RegExp | null = null;
         for (const pattern of namePatterns) {
           const match = message.match(pattern);
           if (match) {
             extracted.name = match[1];
+            nameMatch = match;
+            matchedPattern = pattern;
             break;
           }
         }
+        trackExtraction('manager_name', matchedPattern || namePatterns[0], nameMatch, extracted.name);
         
         // Extract organization/company
         const orgPatterns = [
           /(?:work (?:at|for)|from|with|represent)\s+([A-Za-z0-9\s&,.-]+?)(?:\.|,|$)/i,
           /(?:company|organization|org)\s+(?:is|called)?\s*([A-Za-z0-9\s&,.-]+?)(?:\.|,|$)/i
         ];
+        let orgMatch: RegExpMatchArray | null = null;
+        let orgPattern: RegExp | null = null;
         for (const pattern of orgPatterns) {
           const match = message.match(pattern);
           if (match) {
             extracted.organization = match[1].trim();
+            orgMatch = match;
+            orgPattern = pattern;
             break;
           }
         }
+        trackExtraction('organization', orgPattern || orgPatterns[0], orgMatch, extracted.organization);
 
         // Extract challenges
         const challengeKeywords = ['challenge', 'problem', 'issue', 'struggle', 'difficulty', 'concern'];
         const lowerMessage = message.toLowerCase();
+        let challengeFound = false;
         for (const keyword of challengeKeywords) {
           if (lowerMessage.includes(keyword)) {
             // Extract the sentence containing the challenge
@@ -72,35 +134,71 @@ export function createOnboardingTools(): AgentTool[] {
             const challengeSentence = sentences.find((s: string) => s.toLowerCase().includes(keyword));
             if (challengeSentence) {
               extracted.primary_challenge = challengeSentence.trim();
+              challengeFound = true;
             }
             break;
           }
         }
+        // Create a simple pattern for tracking
+        const challengePattern = new RegExp(`(${challengeKeywords.join('|')})`, 'i');
+        trackExtraction('primary_challenge', challengePattern, challengeFound ? ['match'] as any : null, extracted.primary_challenge);
 
         // Extract budget mentions
-        const budgetMatch = message.match(/\$?([\d,]+k?)\s*(?:budget|to spend|available)/i);
+        const budgetPattern = /\$?([\d,]+k?)\s*(?:budget|to spend|available)/i;
+        const budgetMatch = message.match(budgetPattern);
         if (budgetMatch) {
           extracted.budget_range = budgetMatch[0];
         }
+        trackExtraction('budget_range', budgetPattern, budgetMatch, extracted.budget_range);
 
         // Extract timeline
-        const timelineMatch = message.match(/(?:within|in|over the next)\s+(\d+\s*(?:months?|quarters?|years?))/i);
+        const timelinePattern = /(?:within|in|over the next)\s+(\d+\s*(?:months?|quarters?|years?))/i;
+        const timelineMatch = message.match(timelinePattern);
         if (timelineMatch) {
           extracted.timeline_preference = timelineMatch[1];
         }
+        trackExtraction('timeline_preference', timelinePattern, timelineMatch, extracted.timeline_preference);
 
         // Extract commitment level
-        if (message.match(/(?:fully|totally|completely|very)\s+(?:committed|dedicated|on board)/i)) {
+        const highCommitmentPattern = /(?:fully|totally|completely|very)\s+(?:committed|dedicated|on board)/i;
+        const mediumCommitmentPattern = /(?:somewhat|partially|moderately)\s+(?:committed|dedicated)/i;
+        let commitmentMatch = null;
+        let commitmentPattern = highCommitmentPattern;
+        
+        if (message.match(highCommitmentPattern)) {
           extracted.leader_commitment = 'high';
-        } else if (message.match(/(?:somewhat|partially|moderately)\s+(?:committed|dedicated)/i)) {
+          commitmentMatch = message.match(highCommitmentPattern);
+        } else if (message.match(mediumCommitmentPattern)) {
           extracted.leader_commitment = 'medium';
+          commitmentMatch = message.match(mediumCommitmentPattern);
+          commitmentPattern = mediumCommitmentPattern;
+        }
+        trackExtraction('leader_commitment', commitmentPattern, commitmentMatch, extracted.leader_commitment);
+
+        // Extract success metrics/goals
+        const successMetricsPattern = /(?:success|goal|objective|metric|measure)\s*(?:is|would be|means)\s*(.+?)(?:\.|$)/i;
+        const successMetricsMatch = message.match(successMetricsPattern);
+        if (successMetricsMatch) {
+          extracted.success_metrics = successMetricsMatch[1].trim();
+        }
+        trackExtraction('success_metrics', successMetricsPattern, successMetricsMatch, extracted.success_metrics);
+
+        // Track all extractions to database
+        try {
+          if (extractionResults.length > 0 && context.conversationId) {
+            await VariableExtractionService.trackExtractionBatch(extractionResults);
+          }
+        } catch (error) {
+          console.error('Failed to track extractions:', error);
+          // Don't fail the tool execution if tracking fails
         }
 
         return {
           success: true,
           output: extracted,
           metadata: {
-            fieldsExtracted: Object.keys(extracted).length
+            fieldsExtracted: Object.keys(extracted).length,
+            extractionsTracked: extractionResults.length
           }
         };
       }
