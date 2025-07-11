@@ -396,7 +396,8 @@ Required fields are determined by extraction rules configuration.`;
         conversationId: context.conversationId,
         agentName: 'OnboardingAgent',
         teamId: context.teamId,
-        managerId: context.managerId
+        managerId: context.managerId,
+        enableLLMFallback: process.env.ENABLE_LLM_EXTRACTION_FALLBACK === 'true'
       };
 
       const { extracted, results } = await ExtractionProcessor.extractAndTrack(
