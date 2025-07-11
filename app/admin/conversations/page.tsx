@@ -4,13 +4,14 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { MetricCard } from "@/components/admin/metric-card";
-import { Search, MessageSquare, FileDown } from "lucide-react";
+import { Search, MessageSquare, FileDown, PlayCircle, PauseCircle, CheckCircle } from "lucide-react";
 import { ConversationState } from "@/src/lib/agents/types/conversation-state";
 
 interface ConversationListItem {
   id: string;
   managerId: string;
   managerName: string;
+  managerEmail: string;
   teamId: string;
   teamName: string;
   currentAgent: string;
@@ -22,6 +23,18 @@ interface ConversationListItem {
   rapportScore: number;
   managerConfidence: 'low' | 'medium' | 'high';
   status: 'active' | 'completed' | 'abandoned';
+  // Journey tracking fields
+  journeyStatus: 'ONBOARDING' | 'ACTIVE' | 'DORMANT';
+  completedSteps: string[];
+  journeyProgress: number;
+  currentStep: {
+    id: string;
+    name: string;
+    order: number;
+  } | null;
+  daysSinceActivity: number;
+  hoursSinceActivity: number;
+  lastActivity: Date;
 }
 
 export default function ConversationsPage() {
@@ -29,6 +42,8 @@ export default function ConversationsPage() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeTab, setActiveTab] = useState("all");
+  const [journeyStatusFilter, setJourneyStatusFilter] = useState<string>("all");
+  const [inactivityFilter, setInactivityFilter] = useState<string>("all");
 
   // Mock data for demo
   const mockConversations: ConversationListItem[] = [
@@ -36,6 +51,7 @@ export default function ConversationsPage() {
       id: "1",
       managerId: "user_1",
       managerName: "Demo User",
+      managerEmail: "demo@example.com",
       teamId: "team_1",
       teamName: "Demo User's Team",
       currentAgent: "OnboardingAgent",
@@ -46,12 +62,20 @@ export default function ConversationsPage() {
       completionPercentage: 0,
       rapportScore: 0,
       managerConfidence: 'medium',
-      status: 'active'
+      status: 'active',
+      journeyStatus: 'ONBOARDING',
+      completedSteps: [],
+      journeyProgress: 0,
+      currentStep: { id: 'welcome', name: 'Welcome & Introduction', order: 1 },
+      daysSinceActivity: 0,
+      hoursSinceActivity: 0,
+      lastActivity: new Date(Date.now() - 7 * 60 * 1000)
     },
     {
       id: "2",
       managerId: "user_2",
       managerName: "Test User",
+      managerEmail: "test@example.com",
       teamId: "team_2",
       teamName: "Test Team",
       currentAgent: "OnboardingAgent",
@@ -62,7 +86,14 @@ export default function ConversationsPage() {
       completionPercentage: 25,
       rapportScore: 30,
       managerConfidence: 'low',
-      status: 'abandoned'
+      status: 'abandoned',
+      journeyStatus: 'DORMANT',
+      completedSteps: ['welcome'],
+      journeyProgress: 20,
+      currentStep: { id: 'team_context', name: 'Team Context', order: 2 },
+      daysSinceActivity: 0,
+      hoursSinceActivity: 13,
+      lastActivity: new Date(Date.now() - 13 * 60 * 60 * 1000)
     }
   ];
 
@@ -94,14 +125,23 @@ export default function ConversationsPage() {
   const filteredConversations = conversations.filter(conv => {
     const matchesSearch = 
       conv.managerName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      conv.teamName.toLowerCase().includes(searchQuery.toLowerCase());
+      conv.teamName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      conv.managerEmail.toLowerCase().includes(searchQuery.toLowerCase());
     
     const matchesTab = activeTab === 'all' || 
       (activeTab === 'active' && conv.status === 'active') ||
       (activeTab === 'completed' && conv.status === 'completed') ||
       (activeTab === 'abandoned' && conv.status === 'abandoned');
     
-    return matchesSearch && matchesTab;
+    const matchesJourneyStatus = journeyStatusFilter === 'all' ||
+      conv.journeyStatus === journeyStatusFilter;
+    
+    const matchesInactivity = inactivityFilter === 'all' ||
+      (inactivityFilter === 'inactive_1d' && conv.daysSinceActivity >= 1) ||
+      (inactivityFilter === 'inactive_3d' && conv.daysSinceActivity >= 3) ||
+      (inactivityFilter === 'inactive_7d' && conv.daysSinceActivity >= 7);
+    
+    return matchesSearch && matchesTab && matchesJourneyStatus && matchesInactivity;
   });
 
   if (loading) {
@@ -135,6 +175,7 @@ export default function ConversationsPage() {
     (conversations.length || 1)
   );
   const highConfidenceCount = conversations.filter(c => c.managerConfidence === 'high').length;
+  const dormantCount = conversations.filter(c => c.journeyStatus === 'DORMANT').length;
 
   return (
     <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif' }}>
@@ -177,6 +218,12 @@ export default function ConversationsPage() {
           value={highConfidenceCount}
           change="Managers engaged"
           changeType="neutral"
+        />
+        <MetricCard
+          label="Dormant Journeys"
+          value={dormantCount}
+          change={dormantCount > 0 ? "Need attention" : "All active"}
+          changeType={dormantCount > 0 ? "negative" : "positive"}
         />
       </div>
 
@@ -255,6 +302,72 @@ export default function ConversationsPage() {
             />
           </div>
 
+          {/* Journey Filters */}
+          <div style={{
+            display: 'flex',
+            gap: '16px',
+            marginBottom: '16px',
+            flexWrap: 'wrap'
+          }}>
+            <div>
+              <label style={{
+                display: 'block',
+                fontSize: '12px',
+                fontWeight: '500',
+                color: '#6b7280',
+                marginBottom: '4px'
+              }}>Journey Status</label>
+              <select
+                value={journeyStatusFilter}
+                onChange={(e) => setJourneyStatusFilter(e.target.value)}
+                style={{
+                  padding: '8px 12px',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  backgroundColor: 'white',
+                  color: '#111827',
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  minWidth: '150px'
+                }}
+              >
+                <option value="all">All Statuses</option>
+                <option value="ONBOARDING">Onboarding</option>
+                <option value="ACTIVE">Active</option>
+                <option value="DORMANT">Dormant</option>
+              </select>
+            </div>
+
+            <div>
+              <label style={{
+                display: 'block',
+                fontSize: '12px',
+                fontWeight: '500',
+                color: '#6b7280',
+                marginBottom: '4px'
+              }}>Inactivity</label>
+              <select
+                value={inactivityFilter}
+                onChange={(e) => setInactivityFilter(e.target.value)}
+                style={{
+                  padding: '8px 12px',
+                  border: '1px solid #e5e7eb',
+                  borderRadius: '8px',
+                  backgroundColor: 'white',
+                  color: '#111827',
+                  fontSize: '14px',
+                  cursor: 'pointer',
+                  minWidth: '150px'
+                }}
+              >
+                <option value="all">Any Activity</option>
+                <option value="inactive_1d">Inactive 1+ days</option>
+                <option value="inactive_3d">Inactive 3+ days</option>
+                <option value="inactive_7d">Inactive 7+ days</option>
+              </select>
+            </div>
+          </div>
+
           <div style={{
             display: 'flex',
             gap: '24px',
@@ -329,7 +442,7 @@ export default function ConversationsPage() {
                     color: '#6b7280',
                     borderBottom: '1px solid #e5e7eb',
                     fontSize: '14px'
-                  }}>State</th>
+                  }}>Journey Status</th>
                   <th style={{
                     textAlign: 'left',
                     padding: '12px',
@@ -337,7 +450,7 @@ export default function ConversationsPage() {
                     color: '#6b7280',
                     borderBottom: '1px solid #e5e7eb',
                     fontSize: '14px'
-                  }}>Status</th>
+                  }}>Current Step</th>
                   <th style={{
                     textAlign: 'left',
                     padding: '12px',
@@ -353,7 +466,7 @@ export default function ConversationsPage() {
                     color: '#6b7280',
                     borderBottom: '1px solid #e5e7eb',
                     fontSize: '14px'
-                  }}>Confidence</th>
+                  }}>Progress</th>
                   <th style={{
                     textAlign: 'left',
                     padding: '12px',
@@ -361,7 +474,7 @@ export default function ConversationsPage() {
                     color: '#6b7280',
                     borderBottom: '1px solid #e5e7eb',
                     fontSize: '14px'
-                  }}>Messages</th>
+                  }}>Inactive</th>
                   <th style={{
                     textAlign: 'left',
                     padding: '12px',
@@ -420,68 +533,93 @@ export default function ConversationsPage() {
                       </Link>
                     </td>
                     <td style={{ padding: '16px 12px' }}>{conversation.teamName}</td>
-                    <td style={{ 
-                      padding: '16px 12px',
-                      color: '#6b7280',
-                      textTransform: 'capitalize'
-                    }}>
-                      {conversation.state.replace(/_/g, ' ').toLowerCase()}
-                    </td>
                     <td style={{ padding: '16px 12px' }}>
                       <span style={{
                         display: 'inline-flex',
                         alignItems: 'center',
+                        gap: '6px',
                         padding: '4px 12px',
                         borderRadius: '20px',
                         fontSize: '13px',
                         fontWeight: '500',
                         backgroundColor: 
-                          conversation.status === 'active' ? '#d1fae5' : 
-                          conversation.status === 'completed' ? '#dbeafe' :
+                          conversation.journeyStatus === 'ONBOARDING' ? '#dbeafe' : 
+                          conversation.journeyStatus === 'ACTIVE' ? '#d1fae5' :
                           '#fee2e2',
                         color: 
-                          conversation.status === 'active' ? '#065f46' : 
-                          conversation.status === 'completed' ? '#1e40af' :
+                          conversation.journeyStatus === 'ONBOARDING' ? '#1e40af' : 
+                          conversation.journeyStatus === 'ACTIVE' ? '#065f46' :
                           '#991b1b'
                       }}>
-                        {conversation.status.charAt(0).toUpperCase() + conversation.status.slice(1)}
-                      </span>
-                    </td>
-                    <td style={{ padding: '16px 12px' }}>
-                      <span style={{ color: '#111827' }}>
-                        {conversation.completionPercentage}%
-                      </span>
-                    </td>
-                    <td style={{ padding: '16px 12px' }}>
-                      <span style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        padding: '4px 12px',
-                        borderRadius: '20px',
-                        fontSize: '13px',
-                        fontWeight: '500',
-                        backgroundColor: 
-                          conversation.managerConfidence === 'high' ? '#d1fae5' :
-                          conversation.managerConfidence === 'medium' ? '#dbeafe' :
-                          '#fee2e2',
-                        color: 
-                          conversation.managerConfidence === 'high' ? '#065f46' :
-                          conversation.managerConfidence === 'medium' ? '#1e40af' :
-                          '#991b1b'
-                      }}>
-                        {conversation.managerConfidence.charAt(0).toUpperCase() + conversation.managerConfidence.slice(1)}
-                      </span>
-                    </td>
-                    <td style={{ padding: '16px 12px' }}>
-                      <span style={{ color: '#111827' }}>
-                        {conversation.messageCount}
+                        {conversation.journeyStatus === 'ONBOARDING' && <PlayCircle style={{ width: '14px', height: '14px' }} />}
+                        {conversation.journeyStatus === 'ACTIVE' && <CheckCircle style={{ width: '14px', height: '14px' }} />}
+                        {conversation.journeyStatus === 'DORMANT' && <PauseCircle style={{ width: '14px', height: '14px' }} />}
+                        {conversation.journeyStatus}
                       </span>
                     </td>
                     <td style={{ 
                       padding: '16px 12px',
                       color: '#6b7280'
                     }}>
-                      {formatDistanceToNow(new Date(conversation.lastMessageTime), { addSuffix: true })}
+                      {conversation.currentStep ? (
+                        <div>
+                          <div style={{ fontSize: '14px', color: '#111827', fontWeight: '500' }}>
+                            {conversation.currentStep.name}
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                            Step {conversation.currentStep.order} of 5
+                          </div>
+                        </div>
+                      ) : (
+                        <span style={{ color: '#059669', fontWeight: '500' }}>Completed</span>
+                      )}
+                    </td>
+                    <td style={{ padding: '16px 12px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <div style={{
+                          position: 'relative',
+                          width: '100px',
+                          height: '8px',
+                          backgroundColor: '#e5e7eb',
+                          borderRadius: '4px',
+                          overflow: 'hidden'
+                        }}>
+                          <div style={{
+                            position: 'absolute',
+                            top: 0,
+                            left: 0,
+                            height: '100%',
+                            width: `${conversation.journeyProgress}%`,
+                            backgroundColor: conversation.journeyProgress > 80 ? '#059669' : 
+                                           conversation.journeyProgress > 50 ? '#3b82f6' : '#f59e0b',
+                            transition: 'width 0.3s ease'
+                          }} />
+                        </div>
+                        <span style={{ fontSize: '13px', color: '#6b7280', minWidth: '35px' }}>
+                          {conversation.journeyProgress}%
+                        </span>
+                      </div>
+                    </td>
+                    <td style={{ 
+                      padding: '16px 12px'
+                    }}>
+                      <span style={{
+                        color: conversation.hoursSinceActivity > 24 ? '#dc2626' : 
+                               conversation.hoursSinceActivity > 8 ? '#f59e0b' : '#6b7280',
+                        fontWeight: conversation.hoursSinceActivity > 24 ? '500' : '400'
+                      }}>
+                        {conversation.daysSinceActivity > 0 
+                          ? `${conversation.daysSinceActivity}d ago`
+                          : conversation.hoursSinceActivity > 0
+                          ? `${conversation.hoursSinceActivity}h ago`
+                          : 'Just now'}
+                      </span>
+                    </td>
+                    <td style={{ 
+                      padding: '16px 12px',
+                      color: '#6b7280'
+                    }}>
+                      {formatDistanceToNow(new Date(conversation.lastActivity), { addSuffix: true })}
                     </td>
                   </tr>
                 ))}
