@@ -12,7 +12,6 @@ export interface AgentDefaultConfig {
   };
   extractionRules: Record<string, {
     type: 'string' | 'number' | 'boolean' | 'array';
-    pattern?: string;
     patterns?: string[];
     required?: boolean;
     description?: string;
@@ -89,13 +88,13 @@ Your objectives:
       },
       team_size: {
         type: 'number',
-        pattern: "(\\d+)\\s*(?:people|members|employees|staff|direct reports|folks|individuals)",
+        patterns: ["(\\d+)\\s*(?:people|members|employees|staff|direct reports|folks|individuals)"],
         required: true,
         description: 'Extract the number of team members'
       },
       team_tenure: {
         type: 'string',
-        pattern: "(\\d+)\\s*(?:years?|months?|weeks?)\\s*(?:managing|leading|with)?",
+        patterns: ["(\\d+)\\s*(?:years?|months?|weeks?)\\s*(?:managing|leading|with)?"],
         required: true,
         description: 'How long they\'ve been managing the team'
       },
@@ -110,25 +109,25 @@ Your objectives:
       },
       success_metrics: {
         type: 'array',
-        pattern: "(?:success|goal|objective|outcome)\\s+(?:would be|is|means)\\s+(.+)",
+        patterns: ["(?:success|goal|objective|outcome)\\s+(?:would be|is|means)\\s+(.+)"],
         required: true,
         description: 'How they define success'
       },
       timeline_preference: {
         type: 'string',
-        pattern: "(\\d+)\\s*(?:weeks?|months?|quarters?|years?)\\s*(?:timeline|timeframe|to see results)?",
+        patterns: ["(\\d+)\\s*(?:weeks?|months?|quarters?|years?)\\s*(?:timeline|timeframe|to see results)?"],
         required: true,
         description: 'Preferred timeline for transformation'
       },
       budget_range: {
         type: 'string',
-        pattern: "(?:\\$|dollar|budget|invest)\\s*([0-9,]+(?:k|K|thousand|million)?)",
+        patterns: ["(?:\\$|dollar|budget|invest)\\s*([0-9,]+(?:k|K|thousand|million)?)"],
         required: true,
         description: 'Budget range for transformation'
       },
       leader_commitment: {
         type: 'string',
-        pattern: "(?:commit|dedicate|spend)\\s*(.+?)\\s*(?:hours?|time|per week|weekly)",
+        patterns: ["(?:commit|dedicate|spend)\\s*(.+?)\\s*(?:hours?|time|per week|weekly)"],
         required: true,
         description: 'Time commitment from leader'
       }

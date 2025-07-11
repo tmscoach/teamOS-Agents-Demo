@@ -7,6 +7,7 @@ import { OnboardingQualityCalculator, QualityMetrics } from './onboarding-qualit
 import { ConversationState } from '../types/conversation-state';
 import { AgentConfigLoader } from '../config/agent-config-loader';
 import { ConfigurableFlowEngine, FlowConfiguration } from '../graph';
+import { ExtractionProcessor, ExtractionRule } from '../extraction/extraction-processor';
 
 // Re-export for backward compatibility
 export { ConversationState };
@@ -308,21 +309,35 @@ Required fields to capture: ${OnboardingAgent.REQUIRED_FIELDS.join(', ')}`;
 
   private async extractInformation(message: string, context: AgentContext): Promise<Record<string, any>> {
     try {
-      // Use the extractTeamInfo tool
-      const toolCall: ToolCall = {
-        id: `extract-${Date.now()}`,
-        name: 'extractTeamInfo',
-        parameters: { message, context }
-      };
-
-      const tool = this.tools.find((t: AgentTool) => t.name === 'extractTeamInfo');
-      if (tool) {
-        const result = await tool.execute(toolCall.parameters, context);
-        return result.output || {};
+      // Load extraction rules from configuration
+      const config = await AgentConfigLoader.loadConfiguration('OnboardingAgent');
+      let extractionRules: Record<string, ExtractionRule> = {};
+      
+      if (config && config.extractionRules) {
+        extractionRules = config.extractionRules as Record<string, ExtractionRule>;
+      } else {
+        // Fall back to default extraction rules
+        extractionRules = AgentConfigLoader.getDefaultExtractionRules('OnboardingAgent') as Record<string, ExtractionRule>;
       }
 
-      console.warn('extractTeamInfo tool not found');
-      return {};
+      // Use ExtractionProcessor to extract and track
+      const extractionContext = {
+        conversationId: context.conversationId,
+        agentName: 'OnboardingAgent',
+        teamId: context.teamId,
+        managerId: context.managerId
+      };
+
+      const { extracted, results } = await ExtractionProcessor.extractAndTrack(
+        message,
+        extractionRules,
+        extractionContext
+      );
+
+      // Update metadata with extraction results count (backward compatibility)
+      context.metadata.extractionsTracked = results.length;
+
+      return extracted;
     } catch (error: any) {
       console.error('Error extracting information:', error);
       // Return empty object on error to prevent conversation crash
