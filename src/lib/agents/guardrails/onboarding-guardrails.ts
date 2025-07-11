@@ -52,8 +52,8 @@ export class OnboardingGuardrails {
       validate: async (input: string, context: AgentContext): Promise<GuardrailResult> => {
         const lowerInput = input.toLowerCase().trim();
         
-        // Allow common greetings regardless of length
-        const greetings = [
+        // Allow common greetings and short responses regardless of length
+        const allowedShortResponses = [
           'hi', 'hey', 'hello', 'yo', 'hiya', 'howdy',
           'good morning', 'good afternoon', 'good evening',
           'greetings', 'salutations', 'sup', 'hola',
@@ -61,8 +61,29 @@ export class OnboardingGuardrails {
           'thank you', 'please', 'help', 'start'
         ];
         
-        if (greetings.includes(lowerInput)) {
+        if (allowedShortResponses.includes(lowerInput)) {
           return { passed: true };
+        }
+        
+        // Allow numeric responses (team size, budget, etc.)
+        if (/^\d+$/.test(lowerInput)) {
+          return { passed: true };
+        }
+        
+        // Check if the last assistant message was asking for a specific piece of information
+        const lastAssistantMessage = context.messageHistory
+          .filter(m => m.role === 'assistant')
+          .slice(-1)[0];
+          
+        if (lastAssistantMessage && lastAssistantMessage.content) {
+          const askingForNumber = /how many|number of|size|count|budget|\d+/.test(
+            lastAssistantMessage.content.toLowerCase()
+          );
+          
+          // If asking for a number and user provided a short answer, allow it
+          if (askingForNumber && input.length >= 1) {
+            return { passed: true };
+          }
         }
         
         // For first message from user, be more lenient
