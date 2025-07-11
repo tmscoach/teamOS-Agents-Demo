@@ -1,6 +1,105 @@
 import { AgentTool, AgentContext, ToolResult } from '../types';
 import { VariableExtractionService, VariableExtractionInput } from '../../services/variable-extraction';
 
+// Helper function to create extraction tracking function
+function createExtractionTracker(context: AgentContext) {
+  const extractionResults: VariableExtractionInput[] = [];
+  
+  const trackExtraction = (
+    fieldName: string,
+    pattern: RegExp | string,
+    match: RegExpMatchArray | null,
+    extractedValue?: any
+  ) => {
+    const attempted = true;
+    const successful = !!match;
+    const confidence = successful ? calculateConfidence(match!, pattern.toString()) : 0;
+
+    extractionResults.push({
+      conversationId: context.conversationId,
+      agentName: 'OnboardingAgent',
+      fieldName,
+      attempted,
+      successful,
+      extractedValue: extractedValue ? String(extractedValue) : undefined,
+      confidence
+    });
+  };
+
+  // Helper function to calculate confidence based on match quality
+  const calculateConfidence = (match: RegExpMatchArray, pattern: string): number => {
+    // Base confidence of 0.6 for any match
+    let confidence = 0.6;
+    
+    // Boost confidence for exact pattern matches
+    if (match[0].length === match.input!.length) {
+      confidence += 0.2;
+    }
+    
+    // Boost confidence for matches with multiple captured groups
+    if (match.length > 2) {
+      confidence += 0.1;
+    }
+    
+    // Boost confidence if match is near the beginning of the message
+    if (match.index! < 20) {
+      confidence += 0.1;
+    }
+    
+    return Math.min(confidence, 1.0);
+  };
+
+  return { trackExtraction, extractionResults };
+}
+
+// Helper function to determine if tracking should be enabled
+function shouldTrackExtractions(conversationId: string): boolean {
+  // Skip tracking in test environment
+  if (process.env.NODE_ENV === 'test') {
+    return false;
+  }
+  
+  // Skip tracking for test conversation IDs (legacy support)
+  if (conversationId.startsWith('test-')) {
+    return false;
+  }
+  
+  // Check for explicit tracking disable flag
+  if (process.env.DISABLE_EXTRACTION_TRACKING === 'true') {
+    return false;
+  }
+  
+  return true;
+}
+
+// Helper function to persist extraction results to database
+async function persistExtractionResults(
+  extractionResults: VariableExtractionInput[], 
+  context: AgentContext
+): Promise<{ success: boolean; error?: Error }> {
+  try {
+    // Only track if conditions are met
+    if (extractionResults.length > 0 && context.conversationId && shouldTrackExtractions(context.conversationId)) {
+      const count = await VariableExtractionService.trackExtractionBatch(extractionResults);
+      return { success: true };
+    }
+    return { success: true }; // No tracking needed
+  } catch (error) {
+    // Log errors with context
+    const errorMessage = `Failed to track extractions for conversation ${context.conversationId}`;
+    
+    if (process.env.NODE_ENV !== 'test') {
+      console.error(errorMessage, error);
+    }
+    
+    // Return error details for monitoring
+    return { 
+      success: false, 
+      error: error instanceof Error ? error : new Error(String(error))
+    };
+  }
+}
+
 export function createOnboardingTools(): AgentTool[] {
   return [
     {
@@ -23,52 +122,9 @@ export function createOnboardingTools(): AgentTool[] {
       execute: async (params: any, context: AgentContext): Promise<ToolResult> => {
         const { message } = params;
         const extracted: Record<string, any> = {};
-        const extractionResults: VariableExtractionInput[] = [];
-
-        // Helper function to track extraction attempts
-        const trackExtraction = (
-          fieldName: string,
-          pattern: RegExp | string,
-          match: RegExpMatchArray | null,
-          extractedValue?: any
-        ) => {
-          const attempted = true;
-          const successful = !!match;
-          const confidence = successful ? calculateConfidence(match!, pattern.toString()) : 0;
-
-          extractionResults.push({
-            conversationId: context.conversationId,
-            agentName: 'OnboardingAgent',
-            fieldName,
-            attempted,
-            successful,
-            extractedValue: extractedValue ? String(extractedValue) : undefined,
-            confidence
-          });
-        };
-
-        // Helper function to calculate confidence based on match quality
-        const calculateConfidence = (match: RegExpMatchArray, pattern: string): number => {
-          // Base confidence of 0.6 for any match
-          let confidence = 0.6;
-          
-          // Boost confidence for exact pattern matches
-          if (match[0].length === match.input!.length) {
-            confidence += 0.2;
-          }
-          
-          // Boost confidence for matches with multiple captured groups
-          if (match.length > 2) {
-            confidence += 0.1;
-          }
-          
-          // Boost confidence if match is near the beginning of the message
-          if (match.index! < 20) {
-            confidence += 0.1;
-          }
-          
-          return Math.min(confidence, 1.0);
-        };
+        
+        // Create extraction tracker
+        const { trackExtraction, extractionResults } = createExtractionTracker(context);
 
         // Extract team size
         const teamSizePattern = /(\d+)\s*(?:people|members|employees|staff|direct reports)/i;
@@ -88,16 +144,21 @@ export function createOnboardingTools(): AgentTool[] {
 
         // Extract manager name
         const namePatterns = [
-          /(?:I'm|I am|My name is|Call me)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i,
+          /(?:I'm|I am|My name is|Call me)\s+(?:definitely\s+|really\s+|actually\s+)?([A-Z][a-z]+)(?:\s+([A-Z][a-z]+)(?=\s+(?:from|at|with|,|and)|$))?/i,
           /^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)\s+here/i,
-          /^My name is\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?)/i
+          /^My name is\s+([A-Z][a-z]+)(?:\s+([A-Z][a-z]+)(?=\s+(?:from|at|with|,|and)|$))?/i
         ];
         let nameMatch: RegExpMatchArray | null = null;
         let matchedPattern: RegExp | null = null;
         for (const pattern of namePatterns) {
           const match = message.match(pattern);
           if (match) {
-            extracted.name = match[1];
+            // Handle patterns with optional last name capture
+            if (pattern === namePatterns[0] || pattern === namePatterns[2]) {
+              extracted.name = match[1] + (match[2] ? ' ' + match[2] : '');
+            } else {
+              extracted.name = match[1];
+            }
             nameMatch = match;
             matchedPattern = pattern;
             break;
@@ -107,8 +168,8 @@ export function createOnboardingTools(): AgentTool[] {
         
         // Extract organization/company
         const orgPatterns = [
-          /(?:work (?:at|for)|from)\s+([A-Za-z0-9]+(?:\s+[A-Za-z0-9]+)*?)(?:\s|,|\.|$)/i,
-          /(?:at|with)\s+([A-Z][A-Za-z0-9]+(?:\s+[A-Z][A-Za-z0-9]+)*?)(?:\s|,|\.|$)/i,
+          /(?:work (?:at|for)|from)\s+([A-Z][A-Za-z0-9]+(?:\s+[A-Z]?[A-Za-z0-9]+)*?)(?:\s|,|\.|$)/i,
+          /(?:at|with)\s+(?!my|the|a|an|our|your|their|his|her|its)([A-Z][A-Za-z0-9]+(?:\s+[A-Z][A-Za-z0-9]+)*?)(?:\s|,|\.|$)/i,
           /(?:company|organization|org)\s+(?:is|called)?\s*([A-Za-z0-9]+(?:\s+[A-Za-z0-9]+)*?)(?:\s|,|\.|$)/i
         ];
         let orgMatch: RegExpMatchArray | null = null;
@@ -180,25 +241,16 @@ export function createOnboardingTools(): AgentTool[] {
         trackExtraction('success_metrics', successMetricsPattern, successMetricsMatch, extracted.success_metrics);
 
         // Track all extractions to database
-        try {
-          // Only track if we have a valid conversationId and it's not a test environment
-          if (extractionResults.length > 0 && context.conversationId && !context.conversationId.startsWith('test-')) {
-            await VariableExtractionService.trackExtractionBatch(extractionResults);
-          }
-        } catch (error) {
-          // Silently skip tracking errors in test environment
-          if (process.env.NODE_ENV !== 'test') {
-            console.error('Failed to track extractions:', error);
-          }
-          // Don't fail the tool execution if tracking fails
-        }
+        const trackingResult = await persistExtractionResults(extractionResults, context);
 
         return {
           success: true,
           output: extracted,
           metadata: {
             fieldsExtracted: Object.keys(extracted).length,
-            extractionsTracked: extractionResults.length
+            extractionsTracked: extractionResults.length,
+            trackingSuccess: trackingResult.success,
+            trackingError: trackingResult.error?.message
           }
         };
       }
