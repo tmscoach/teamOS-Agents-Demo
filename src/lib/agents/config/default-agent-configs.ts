@@ -19,6 +19,7 @@ export interface AgentDefaultConfig {
     description?: string;
     useLLMFallback?: boolean;
   }>;
+  guardrailConfig?: Record<string, any>;
 }
 
 export const DEFAULT_AGENT_CONFIGS: Record<string, AgentDefaultConfig> = {
@@ -102,7 +103,14 @@ IMPORTANT INSTRUCTIONS:
       team_distribution: ENHANCED_EXTRACTION_PATTERNS.team_distribution,
       urgency_level: ENHANCED_EXTRACTION_PATTERNS.urgency_level,
       previous_initiatives: ENHANCED_EXTRACTION_PATTERNS.previous_initiatives
-    })
+    }),
+    guardrailConfig: {
+      minMessageLength: 1,
+      maxMessageLength: 1000,
+      maxConversationTime: 45 * 60 * 1000,
+      enableTopicRelevance: true,
+      enableProfanityCheck: true
+    }
   },
 
   OrchestratorAgent: {

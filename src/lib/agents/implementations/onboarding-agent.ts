@@ -1,7 +1,7 @@
 import { KnowledgeEnabledAgent } from './knowledge-enabled-agent';
 import { AgentContext, Message, AgentResponse, ToolCall, AgentTool } from '../types';
 import { createOnboardingTools } from '../tools/onboarding-tools';
-import { OnboardingGuardrails } from '../guardrails/onboarding-guardrails';
+import { OnboardingGuardrails, GuardrailConfig } from '../guardrails/onboarding-guardrails';
 import { OnboardingStateMachine } from './onboarding-state-machine';
 import { OnboardingQualityCalculator, QualityMetrics } from './onboarding-quality-metrics';
 import { ConversationState } from '../types/conversation-state';
@@ -36,6 +36,7 @@ export class OnboardingAgent extends KnowledgeEnabledAgent {
   private configuredPrompts: Record<string, string> | null = null;
   private flowEngine?: ConfigurableFlowEngine;
   private useGraphFlow: boolean = false;
+  private guardrailConfig?: GuardrailConfig;
   
   // Required fields are now determined dynamically from extraction rules
   // This ensures consistency with the configured extraction rules in /admin/agents/config
@@ -102,6 +103,8 @@ export class OnboardingAgent extends KnowledgeEnabledAgent {
 
   constructor() {
     const tools = createOnboardingTools();
+    // Initially create guardrails with default config
+    // Will be updated when configuration is loaded
     const guardrails = OnboardingGuardrails.createGuardrails();
     
     super({
@@ -161,6 +164,14 @@ Required fields are determined by extraction rules configuration.`;
       if (config && config.prompts) {
         this.configuredPrompts = config.prompts;
         console.log('Loaded OnboardingAgent configuration version:', config.version);
+      }
+      
+      // Load guardrail configuration and update guardrails
+      if (config && config.guardrailConfig) {
+        this.guardrailConfig = config.guardrailConfig as GuardrailConfig;
+        // Update the input guardrails with the new configuration
+        this.inputGuardrails = OnboardingGuardrails.createGuardrails(this.guardrailConfig);
+        console.log('Loaded guardrail configuration for OnboardingAgent:', this.guardrailConfig);
       }
       
       // Load flow configuration if available

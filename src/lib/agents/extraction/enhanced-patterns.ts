@@ -25,14 +25,16 @@ export const ENHANCED_EXTRACTION_PATTERNS: Record<string, EnhancedExtractionRule
     description: 'Extract the manager or leader name',
     required: true,
     patterns: [
-      // Handle titles and formal introductions
-      "(?:I'm|I am|My name is|Call me)\\s+(?:Dr\\.|Prof\\.|Mr\\.|Ms\\.|Mrs\\.)?\\s*([A-Z][a-z]+(?:['-][A-Z][a-z]+)?(?:\\s+[A-Z][a-z]+(?:['-][A-Z][a-z]+)?)*)",
-      // Handle "Hi, [Name] here" variations
-      "^(?:Hi|Hello|Hey|Greetings),?\\s*([A-Z][a-z]+(?:\\s+[A-Z][a-z]+)?)\\s+(?:here|speaking)",
-      // Handle "Good morning, I'm [Name]"
-      "^Good (?:morning|afternoon|evening),?\\s*I'm\\s+([A-Z][a-z]+)",
-      // Handle "This is [Name]"
-      "^This is\\s+([A-Z][a-z]+(?:\\s+[A-Z][a-z]+)?)",
+      // Handle nickname patterns first - capture just the nickname (most specific)
+      "but\\s+(?:you can\\s+|please\\s+)?call\\s+me\\s+([A-Z][a-z]+)",
+      // Handle titles and formal introductions (but not when followed by "but call me")
+      "(?:I'm|I am|My name is|Call me)\\s+(?:Dr\\.|Prof\\.|Mr\\.|Ms\\.|Mrs\\.)?\\s*([A-Z][a-z]+(?:['-][A-Z][a-z]+)?(?:\\s+[A-Z][a-z]+(?:['-][A-Z][a-z]+)?)*)(?!\\s+but\\s+call\\s+me)",
+      // Handle "Hi, [Name] here" variations - also catches hyphenated names
+      "^(?:Hi|Hello|Hey|Greetings),?\\s*([A-Z][a-z]+(?:['-][A-Z][a-z]+)?(?:\\s+[A-Z][a-z]+(?:['-][A-Z][a-z]+)?)?)\\s+(?:here|speaking)",
+      // Handle "Good morning, I'm [Name]" - also catches hyphenated names
+      "^Good (?:morning|afternoon|evening),?\\s*I'm\\s+([A-Z][a-z]+(?:['-][A-Z][a-z]+)?)",
+      // Handle "This is [Name]" - also catches hyphenated names
+      "^This is\\s+([A-Z][a-z]+(?:['-][A-Z][a-z]+)?(?:\\s+[A-Z][a-z]+(?:['-][A-Z][a-z]+)?)?)",
       // Handle casual introductions
       "(?:call me|I go by|everyone calls me)\\s+([A-Z][a-z]+)",
       // Handle sign-offs
@@ -41,8 +43,6 @@ export const ENHANCED_EXTRACTION_PATTERNS: Record<string, EnhancedExtractionRule
       "^([A-Z][a-z]+(?:\\s+[A-Z][a-z]+)?)\\s+(?:from|at|with)\\s+",
       // Handle possessive introductions
       "(?:It's|It is)\\s+([A-Z][a-z]+)(?:\\s*[,.])?",
-      // Handle nickname patterns
-      "(?:but\\s+)?(?:you can\\s+|please\\s+)?call me\\s+([A-Z][a-z]+)"
     ],
     useLLMFallback: true,
     examples: [
@@ -236,8 +236,8 @@ export const ENHANCED_EXTRACTION_PATTERNS: Record<string, EnhancedExtractionRule
       "(?:by|in|during)\\s+(?:spring|summer|fall|autumn|winter)\\s*(?:20\\d{2})?",
       // ASAP patterns
       "(?:asap|immediately|urgent(?:ly)?|right away|as soon as possible|yesterday)",
-      // Fiscal patterns
-      "(Q[1-4]|FY)\\s*(?:20)?\\d{2}",
+      // Fiscal patterns - fix to properly capture fiscal periods
+      "((Q[1-4]|FY)(?:\\s*(?:20)?\\d{2})?)",
       // No rush
       "(?:no|not)\\s+(?:specific|particular|set)?\\s*(?:timeline|deadline|rush)",
       // Flexible timeline
