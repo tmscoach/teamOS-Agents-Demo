@@ -3,6 +3,8 @@
  * These serve as templates when no database configuration exists
  */
 
+import { ENHANCED_EXTRACTION_PATTERNS, convertToStandardRules } from '../extraction/enhanced-patterns';
+
 export interface AgentDefaultConfig {
   prompts: Record<string, string>;
   flowConfig: {
@@ -15,6 +17,7 @@ export interface AgentDefaultConfig {
     patterns?: string[];
     required?: boolean;
     description?: string;
+    useLLMFallback?: boolean;
   }>;
 }
 
@@ -83,62 +86,23 @@ IMPORTANT INSTRUCTIONS:
         'leader_commitment'
       ]
     },
-    extractionRules: {
-      manager_name: {
-        type: 'string',
-        patterns: [
-          "(?:I'm|I am|My name is|Call me)\\s+([A-Z][a-z]+(?:\\s+[A-Z][a-z]+)?)",
-          "^([A-Z][a-z]+(?:\\s+[A-Z][a-z]+)?)\\s+here"
-        ],
-        required: true,
-        description: 'Extract the manager\'s name from conversation'
-      },
-      team_size: {
-        type: 'number',
-        patterns: ["(\\d+)\\s*(?:people|members|employees|staff|direct reports|folks|individuals)"],
-        required: true,
-        description: 'Extract the number of team members'
-      },
-      team_tenure: {
-        type: 'string',
-        patterns: ["(\\d+)\\s*(?:years?|months?|weeks?)\\s*(?:managing|leading|with)?"],
-        required: true,
-        description: 'How long they\'ve been managing the team'
-      },
-      primary_challenge: {
-        type: 'string',
-        patterns: [
-          "(?:challenge|problem|issue|struggle|difficulty)\\s+(?:is|are)\\s+(.+)",
-          "(?:facing|dealing with|struggling with)\\s+(.+)"
-        ],
-        required: true,
-        description: 'Main challenge the team is facing'
-      },
-      success_metrics: {
-        type: 'array',
-        patterns: ["(?:success|goal|objective|outcome)\\s+(?:would be|is|means)\\s+(.+)"],
-        required: true,
-        description: 'How they define success'
-      },
-      timeline_preference: {
-        type: 'string',
-        patterns: ["(\\d+)\\s*(?:weeks?|months?|quarters?|years?)\\s*(?:timeline|timeframe|to see results)?"],
-        required: true,
-        description: 'Preferred timeline for transformation'
-      },
-      budget_range: {
-        type: 'string',
-        patterns: ["(?:\\$|dollar|budget|invest)\\s*([0-9,]+(?:k|K|thousand|million)?)"],
-        required: true,
-        description: 'Budget range for transformation'
-      },
-      leader_commitment: {
-        type: 'string',
-        patterns: ["(?:commit|dedicate|spend)\\s*(.+?)\\s*(?:hours?|time|per week|weekly)"],
-        required: true,
-        description: 'Time commitment from leader'
-      }
-    }
+    // Use enhanced extraction patterns for better coverage
+    extractionRules: convertToStandardRules({
+      manager_name: ENHANCED_EXTRACTION_PATTERNS.manager_name,
+      team_size: ENHANCED_EXTRACTION_PATTERNS.team_size,
+      team_tenure: ENHANCED_EXTRACTION_PATTERNS.team_tenure,
+      primary_challenge: ENHANCED_EXTRACTION_PATTERNS.primary_challenge,
+      success_metrics: ENHANCED_EXTRACTION_PATTERNS.success_metrics,
+      timeline_preference: ENHANCED_EXTRACTION_PATTERNS.timeline_preference,
+      budget_range: ENHANCED_EXTRACTION_PATTERNS.budget_range,
+      leader_commitment: ENHANCED_EXTRACTION_PATTERNS.leader_commitment,
+      // Additional fields for richer context
+      company_name: ENHANCED_EXTRACTION_PATTERNS.company_name,
+      department: ENHANCED_EXTRACTION_PATTERNS.department,
+      team_distribution: ENHANCED_EXTRACTION_PATTERNS.team_distribution,
+      urgency_level: ENHANCED_EXTRACTION_PATTERNS.urgency_level,
+      previous_initiatives: ENHANCED_EXTRACTION_PATTERNS.previous_initiatives
+    })
   },
 
   OrchestratorAgent: {
@@ -279,7 +243,7 @@ Your approach:
       },
       meeting_cadence: {
         type: 'string',
-        pattern: "(?:meet|meeting|standup|sync)\\s+(?:daily|weekly|biweekly|monthly)",
+        patterns: ["(?:meet|meeting|standup|sync)\\s+(?:daily|weekly|biweekly|monthly)"],
         required: false,
         description: 'Frequency and types of meetings'
       },
@@ -342,7 +306,7 @@ Your expertise includes:
     extractionRules: {
       selected_assessment: {
         type: 'string',
-        pattern: "(?:TMP|QO2|WoWV|LLP|HET|Team Management Profile|Quotient of Organizational Outcomes)",
+        patterns: ["(?:TMP|QO2|WoWV|LLP|HET|Team Management Profile|Quotient of Organizational Outcomes)"],
         required: true,
         description: 'Which assessment was selected'
       },

@@ -102,11 +102,43 @@ export class ExtractionProcessor {
           // Extract based on type
           switch (rule.type) {
             case 'number':
+              // Check for range patterns (e.g., "10-15" or "10 to 15")
+              if (match[2] && (pattern.includes('to|') || pattern.includes('-'))) {
+                // Range detected - extract both numbers
+                const start = parseInt(match[1].replace(/[^\d]/g, ''), 10);
+                const end = parseInt(match[2].replace(/[^\d]/g, ''), 10);
+                if (!isNaN(start) && !isNaN(end)) {
+                  // Return the average for now (could be enhanced to return range object)
+                  extractedValue = Math.round((start + end) / 2);
+                  break;
+                }
+              }
+              
               // Extract the first capture group or the full match
               const numStr = match[1] || match[0];
-              extractedValue = parseInt(numStr.replace(/[^\d]/g, ''), 10);
-              if (isNaN(extractedValue)) {
-                continue; // Try next pattern
+              
+              // Check for descriptive terms
+              const descriptiveMap: Record<string, number> = {
+                'couple': 2,
+                'few': 3,
+                'several': 4,
+                'handful': 5,
+                'dozen': 12
+              };
+              
+              const lowerStr = numStr.toLowerCase();
+              for (const [term, value] of Object.entries(descriptiveMap)) {
+                if (lowerStr.includes(term)) {
+                  extractedValue = value;
+                  break;
+                }
+              }
+              
+              if (!extractedValue) {
+                extractedValue = parseInt(numStr.replace(/[^\d]/g, ''), 10);
+                if (isNaN(extractedValue)) {
+                  continue; // Try next pattern
+                }
               }
               break;
 
