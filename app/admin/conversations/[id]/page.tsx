@@ -16,6 +16,7 @@ import {
   ArrowLeft,
   MessageSquare,
 } from "lucide-react";
+import { JourneyDetails } from "@/components/admin/journey-details";
 
 interface Message {
   id: string;
@@ -60,6 +61,16 @@ interface ConversationDetail {
     content?: unknown;
     data?: unknown;
   }>;
+  // Journey tracking data
+  journeyStatus: 'ONBOARDING' | 'ACTIVE' | 'DORMANT';
+  completedSteps: string[];
+  currentStep: {
+    id: string;
+    name: string;
+    order: number;
+  } | null;
+  lastActivity: Date;
+  onboardingData: Record<string, any>;
 }
 
 export default function ConversationDetailPage() {
@@ -351,6 +362,16 @@ export default function ConversationDetailPage() {
 
         {/* Right Panel */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          {/* Journey Details */}
+          <JourneyDetails
+            journeyStatus={conversation.journeyStatus}
+            completedSteps={conversation.completedSteps}
+            currentStep={conversation.currentStep}
+            lastActivity={conversation.lastActivity}
+            onboardingData={conversation.onboardingData}
+            stateTransitions={onboardingData?.stateTransitions}
+          />
+
           {/* Captured Variables */}
           {onboardingData && (
             <div style={{
