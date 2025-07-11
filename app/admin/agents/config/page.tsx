@@ -38,6 +38,7 @@ interface AgentConfig {
     required?: boolean;
     pattern?: string;
     patterns?: string[];
+    useLLMFallback?: boolean;
   }>;
   guardrailConfig?: Record<string, any>;
   active: boolean;
@@ -107,7 +108,8 @@ export default function AgentConfigPage() {
     type: 'string',
     description: '',
     required: false,
-    patterns: ['']
+    patterns: [''],
+    useLLMFallback: false
   });
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -231,7 +233,8 @@ export default function AgentConfigPage() {
         type: variableForm.type,
         description: variableForm.description,
         required: variableForm.required,
-        patterns: variableForm.patterns.filter(p => p.trim() !== '')
+        patterns: variableForm.patterns.filter(p => p.trim() !== ''),
+        useLLMFallback: variableForm.useLLMFallback
       }
     };
     
@@ -246,7 +249,8 @@ export default function AgentConfigPage() {
       type: 'string',
       description: '',
       required: false,
-      patterns: ['']
+      patterns: [''],
+      useLLMFallback: false
     });
     setIsAddingVariable(false);
     
@@ -262,7 +266,8 @@ export default function AgentConfigPage() {
       type: rule.type || 'string',
       description: rule.description || '',
       required: rule.required || false,
-      patterns: rule.patterns || (rule.pattern ? [rule.pattern] : [''])
+      patterns: rule.patterns || (rule.pattern ? [rule.pattern] : ['']),
+      useLLMFallback: rule.useLLMFallback || false
     });
     setEditingVariable(fieldName);
   };
@@ -281,7 +286,8 @@ export default function AgentConfigPage() {
       type: variableForm.type,
       description: variableForm.description,
       required: variableForm.required,
-      patterns: variableForm.patterns.filter(p => p.trim() !== '')
+      patterns: variableForm.patterns.filter(p => p.trim() !== ''),
+      useLLMFallback: variableForm.useLLMFallback
     };
     
     setEditedConfig({
@@ -295,7 +301,8 @@ export default function AgentConfigPage() {
       type: 'string',
       description: '',
       required: false,
-      patterns: ['']
+      patterns: [''],
+      useLLMFallback: false
     });
     setEditingVariable(null);
     
@@ -1135,7 +1142,8 @@ You are a friendly Team Development Assistant conducting a quick 5-minute intake
                           type: 'string',
                           description: '',
                           required: false,
-                          patterns: ['']
+                          patterns: [''],
+                          useLLMFallback: false
                         });
                       }}
                       style={{
@@ -1229,6 +1237,24 @@ You are a friendly Team Development Assistant conducting a quick 5-minute intake
                   </div>
                   
                   <div style={{ marginBottom: '16px' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: '500', color: '#374151' }}>
+                      <input
+                        type="checkbox"
+                        checked={variableForm.useLLMFallback}
+                        onChange={(e) => setVariableForm({ ...variableForm, useLLMFallback: e.target.checked })}
+                        style={{ width: '16px', height: '16px' }}
+                        disabled={!variableForm.required}
+                      />
+                      Use LLM Fallback
+                    </label>
+                    {variableForm.required && (
+                      <p style={{ fontSize: '12px', color: '#6b7280', marginLeft: '24px', marginTop: '4px' }}>
+                        If regex patterns fail, use AI to extract this field
+                      </p>
+                    )}
+                  </div>
+                  
+                  <div style={{ marginBottom: '16px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                       <label style={{ fontSize: '14px', fontWeight: '500', color: '#374151' }}>
                         Extraction Patterns (Regex)
@@ -1298,7 +1324,8 @@ You are a friendly Team Development Assistant conducting a quick 5-minute intake
                           type: 'string',
                           description: '',
                           required: false,
-                          patterns: ['']
+                          patterns: [''],
+                          useLLMFallback: false
                         });
                       }}
                       style={{
@@ -1374,6 +1401,18 @@ You are a friendly Team Development Assistant conducting a quick 5-minute intake
                             fontWeight: '500'
                           }}>
                             required
+                          </span>
+                        )}
+                        {rule.useLLMFallback && (
+                          <span style={{
+                            padding: '2px 8px',
+                            borderRadius: '12px',
+                            backgroundColor: '#e0e7ff',
+                            color: '#4338ca',
+                            fontSize: '11px',
+                            fontWeight: '500'
+                          }}>
+                            LLM
                           </span>
                         )}
                         <button

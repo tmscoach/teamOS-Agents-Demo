@@ -9,6 +9,7 @@ export interface VariableExtractionInput {
   successful: boolean;
   extractedValue?: string;
   confidence?: number;
+  extractionMethod?: 'regex' | 'llm';
 }
 
 export class VariableExtractionService {
@@ -25,6 +26,7 @@ export class VariableExtractionService {
         successful: data.successful,
         extractedValue: data.extractedValue,
         confidence: data.confidence,
+        extractionMethod: data.extractionMethod,
       },
     });
   }
