@@ -51,6 +51,8 @@ export const adminFilterSchema = z.object({
   dateTo: z.string().optional(),
   managerId: z.string().optional(),
   teamId: z.string().optional(),
+  journeyStatus: z.enum(['ONBOARDING', 'ACTIVE', 'DORMANT']).optional(),
+  inactiveDays: z.string().optional(),
 });
 
 // Validation helper

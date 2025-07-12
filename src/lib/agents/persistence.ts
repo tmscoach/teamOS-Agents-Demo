@@ -87,6 +87,10 @@ export class ConversationStore {
         // Don't throw - the conversation was created successfully
       }
     }
+    
+    // Note: We don't update user's lastActivity here because it would affect
+    // all conversations for that user. Instead, we rely on the conversation's
+    // own timestamps (createdAt/updatedAt) for activity tracking.
 
     return conversation.id;
   }
@@ -290,6 +294,17 @@ export class ConversationStore {
       } else {
         throw error;
       }
+    }
+    
+    // Update conversation's updatedAt timestamp
+    try {
+      await this.prisma.conversation.update({
+        where: { id: conversationId },
+        data: { updatedAt: new Date() }
+      });
+    } catch (error) {
+      console.warn('Failed to update conversation timestamp:', error);
+      // Don't throw - this is not critical for message creation
     }
   }
 
