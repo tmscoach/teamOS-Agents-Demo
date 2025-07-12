@@ -87,6 +87,17 @@ export class ConversationStore {
         // Don't throw - the conversation was created successfully
       }
     }
+    
+    // Update user's lastActivity when conversation is created
+    try {
+      await this.prisma.user.update({
+        where: { id: managerId },
+        data: { lastActivity: new Date() }
+      });
+    } catch (error) {
+      console.warn('Failed to update user lastActivity on conversation creation:', error);
+      // Don't throw - this is not critical
+    }
 
     return conversation.id;
   }
@@ -290,6 +301,24 @@ export class ConversationStore {
       } else {
         throw error;
       }
+    }
+    
+    // Update user's lastActivity when a message is added
+    try {
+      const conversation = await this.prisma.conversation.findUnique({
+        where: { id: conversationId },
+        select: { managerId: true }
+      });
+      
+      if (conversation?.managerId) {
+        await this.prisma.user.update({
+          where: { id: conversation.managerId },
+          data: { lastActivity: new Date() }
+        });
+      }
+    } catch (error) {
+      console.warn('Failed to update user lastActivity:', error);
+      // Don't throw - this is not critical for message creation
     }
   }
 
