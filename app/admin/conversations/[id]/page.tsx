@@ -17,6 +17,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { JourneyDetails } from "@/components/admin/journey-details";
+import { UserRole } from "@/lib/orchestrator/journey-phases";
 
 interface Message {
   id: string;
@@ -63,6 +64,7 @@ interface ConversationDetail {
   }>;
   // Journey tracking data
   journeyStatus: 'ONBOARDING' | 'ACTIVE' | 'DORMANT';
+  userRole?: UserRole;
   completedSteps: string[];
   currentStep: {
     id: string;
