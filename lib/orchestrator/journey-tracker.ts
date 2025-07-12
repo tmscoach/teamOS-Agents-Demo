@@ -197,8 +197,9 @@ export class JourneyTracker {
               clerkId: clerkUser.id,
               email: clerkUser.emailAddresses[0]?.emailAddress || '',
               name: `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() || 'User',
+              role: 'MANAGER', // Default to manager role for new sign-ups
             },
-            select: { id: true }
+            select: { id: true, role: true }
           })
           
           console.log(`Auto-synced user ${clerkUser.id} from Clerk`)
