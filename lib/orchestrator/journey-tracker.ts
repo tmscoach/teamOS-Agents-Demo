@@ -11,7 +11,7 @@ import {
 } from './journey-phases'
 
 // Re-export for backward compatibility
-export { JourneyStep }
+export type { JourneyStep }
 export const ONBOARDING_STEPS = JOURNEY_STEPS // Temporary backward compatibility
 
 export class JourneyTracker {
