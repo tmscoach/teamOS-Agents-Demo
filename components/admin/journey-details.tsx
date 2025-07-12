@@ -1,15 +1,18 @@
 import React from 'react';
-import { CheckCircle, Circle, Clock, AlertCircle } from 'lucide-react';
+import { CheckCircle, Circle, Clock, AlertCircle, User, Users } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { JourneyPhase, UserRole, JOURNEY_STEPS, getStepsForRole, getCurrentPhase } from '@/lib/orchestrator/journey-phases';
 
-interface JourneyStep {
+interface JourneyStepWithProgress {
   id: string;
   name: string;
   description: string;
+  phase: JourneyPhase;
   order: number;
   completed: boolean;
   completedAt?: Date;
   timeSpent?: number; // in minutes
+  roles: UserRole[];
 }
 
 interface JourneyDetailsProps {
@@ -22,6 +25,7 @@ interface JourneyDetailsProps {
   } | null;
   lastActivity: Date;
   onboardingData?: Record<string, any>;
+  userRole?: UserRole;
   stateTransitions?: Array<{
     from: string;
     to: string;
@@ -30,43 +34,29 @@ interface JourneyDetailsProps {
   }>;
 }
 
-const JOURNEY_STEPS: JourneyStep[] = [
-  {
-    id: 'welcome',
-    name: 'Welcome & Introduction',
-    description: 'Introduction to TeamOS and the transformation journey',
-    order: 1,
-    completed: false
+// Phase display configuration
+const PHASE_CONFIG = {
+  [JourneyPhase.ONBOARDING]: {
+    label: 'Onboarding',
+    color: '#3b82f6',
+    bgColor: '#dbeafe'
   },
-  {
-    id: 'team_context',
-    name: 'Team Context',
-    description: 'Gather information about your team and challenges',
-    order: 2,
-    completed: false
+  [JourneyPhase.ASSESSMENT]: {
+    label: 'Assessment',
+    color: '#8b5cf6',
+    bgColor: '#ede9fe'
   },
-  {
-    id: 'goals_setting',
-    name: 'Goals Setting',
-    description: 'Define transformation goals and success metrics',
-    order: 3,
-    completed: false
+  [JourneyPhase.DEBRIEF]: {
+    label: 'Debrief',
+    color: '#f59e0b',
+    bgColor: '#fef3c7'
   },
-  {
-    id: 'initial_assessment',
-    name: 'Initial Assessment',
-    description: 'Complete Team Signals baseline assessment',
-    order: 4,
-    completed: false
-  },
-  {
-    id: 'transformation_plan',
-    name: 'Transformation Plan',
-    description: 'Review and approve your customized transformation plan',
-    order: 5,
-    completed: false
+  [JourneyPhase.CONTINUOUS_ENGAGEMENT]: {
+    label: 'Continuous',
+    color: '#10b981',
+    bgColor: '#d1fae5'
   }
-];
+};
 
 export function JourneyDetails({
   journeyStatus,
@@ -74,17 +64,27 @@ export function JourneyDetails({
   currentStep,
   lastActivity,
   onboardingData,
+  userRole = UserRole.MANAGER,
   stateTransitions = []
 }: JourneyDetailsProps) {
-  // Map completed steps to journey steps
-  const journeySteps = JOURNEY_STEPS.map(step => ({
+  // Get steps for user's role
+  const roleSteps = getStepsForRole(userRole);
+  const currentPhase = getCurrentPhase(completedSteps, userRole);
+  
+  // Map completed steps to journey steps with progress info
+  const journeySteps: JourneyStepWithProgress[] = roleSteps.map(step => ({
     ...step,
     completed: completedSteps.includes(step.id),
     completedAt: stateTransitions.find(t => t.to === step.id)?.timestamp,
     timeSpent: calculateTimeSpent(step.id, stateTransitions)
   }));
-
-  const progressPercentage = Math.round((completedSteps.length / JOURNEY_STEPS.length) * 100);
+  
+  // Calculate progress based on required steps only
+  const requiredSteps = roleSteps.filter(s => s.required);
+  const completedRequiredSteps = requiredSteps.filter(s => completedSteps.includes(s.id));
+  const progressPercentage = requiredSteps.length > 0 
+    ? Math.round((completedRequiredSteps.length / requiredSteps.length) * 100)
+    : 0;
 
   function calculateTimeSpent(stepId: string, transitions: typeof stateTransitions): number {
     const startTransition = transitions.find(t => t.to === stepId);
@@ -105,12 +105,34 @@ export function JourneyDetails({
       padding: '24px',
       boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
     }}>
-      <h3 style={{
-        fontSize: '18px',
-        fontWeight: '600',
-        marginBottom: '20px',
-        color: '#111827'
-      }}>Journey Progress</h3>
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '20px'
+      }}>
+        <h3 style={{
+          fontSize: '18px',
+          fontWeight: '600',
+          color: '#111827'
+        }}>Journey Progress</h3>
+        <div style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '8px',
+          padding: '4px 12px',
+          borderRadius: '16px',
+          backgroundColor: '#f3f4f6',
+          fontSize: '14px',
+          color: '#4b5563'
+        }}>
+          {userRole === UserRole.MANAGER ? (
+            <><Users style={{ width: '14px', height: '14px' }} /> Manager</>  
+          ) : (
+            <><User style={{ width: '14px', height: '14px' }} /> Team Member</>  
+          )}
+        </div>
+      </div>
 
       {/* Journey Status Bar */}
       <div style={{ marginBottom: '32px' }}>

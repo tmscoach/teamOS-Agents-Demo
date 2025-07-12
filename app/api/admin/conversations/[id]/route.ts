@@ -59,6 +59,7 @@ export async function GET(
               id: true,
               name: true,
               email: true,
+              role: true,
               journeyStatus: true,
               currentAgent: true,
               completedSteps: true,
@@ -111,6 +112,7 @@ export async function GET(
       })),
       // Journey tracking data
       journeyStatus: manager?.journeyStatus || 'ONBOARDING',
+      userRole: manager?.role || 'MANAGER',
       completedSteps: manager?.completedSteps || [],
       currentStep: currentStep ? {
         id: currentStep.id,

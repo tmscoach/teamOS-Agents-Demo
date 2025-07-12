@@ -369,6 +369,7 @@ export default function ConversationDetailPage() {
             currentStep={conversation.currentStep}
             lastActivity={conversation.lastActivity}
             onboardingData={conversation.onboardingData}
+            userRole={conversation.userRole}
             stateTransitions={onboardingData?.stateTransitions}
           />
 
