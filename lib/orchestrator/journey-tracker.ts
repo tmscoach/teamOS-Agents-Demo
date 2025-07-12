@@ -1,60 +1,21 @@
 import prisma from '@/lib/db'
+import { 
+  JourneyPhase, 
+  UserRole, 
+  JourneyStep, 
+  JOURNEY_STEPS,
+  getStepsForRole,
+  getNextStep,
+  getCurrentPhase,
+  mapLegacyStatusToPhase
+} from './journey-phases'
 
-export interface JourneyStep {
-  id: string
-  name: string
-  description: string
-  agent: string
-  required: boolean
-  order: number
-}
-
-// Define the onboarding journey steps
-export const ONBOARDING_STEPS: JourneyStep[] = [
-  {
-    id: 'welcome',
-    name: 'Welcome & Introduction',
-    description: 'Introduction to TeamOS and the transformation journey',
-    agent: 'onboarding',
-    required: true,
-    order: 1
-  },
-  {
-    id: 'team_context',
-    name: 'Team Context',
-    description: 'Gather information about your team and challenges',
-    agent: 'onboarding',
-    required: true,
-    order: 2
-  },
-  {
-    id: 'goals_setting',
-    name: 'Goals Setting',
-    description: 'Define transformation goals and success metrics',
-    agent: 'onboarding',
-    required: true,
-    order: 3
-  },
-  {
-    id: 'initial_assessment',
-    name: 'Initial Assessment',
-    description: 'Complete Team Signals baseline assessment',
-    agent: 'assessment',
-    required: true,
-    order: 4
-  },
-  {
-    id: 'transformation_plan',
-    name: 'Transformation Plan',
-    description: 'Review and approve your customized transformation plan',
-    agent: 'onboarding',
-    required: true,
-    order: 5
-  }
-]
+// Re-export for backward compatibility
+export { JourneyStep }
+export const ONBOARDING_STEPS = JOURNEY_STEPS // Temporary backward compatibility
 
 export class JourneyTracker {
-  constructor(private userId: string) {}
+  constructor(private userId: string, private userRole?: UserRole) {}
 
   async getCurrentJourney() {
     const user = await prisma.user.findUnique({
@@ -64,19 +25,35 @@ export class JourneyTracker {
         currentAgent: true,
         completedSteps: true,
         onboardingData: true,
-        lastActivity: true
+        lastActivity: true,
+        role: true
       }
     })
 
     if (!user) throw new Error('User not found')
 
+    // Get user role (use provided role or fetch from DB)
+    const role = this.userRole || (user.role as UserRole)
+    
+    // Map legacy status to phase
+    const currentPhase = mapLegacyStatusToPhase(
+      user.journeyStatus,
+      user.completedSteps,
+      role
+    )
+    
+    // Get next step based on role
+    const nextStep = getNextStep(user.completedSteps, role, currentPhase)
+
     return {
       status: user.journeyStatus,
+      currentPhase,
       currentAgent: user.currentAgent,
       completedSteps: user.completedSteps,
       onboardingData: user.onboardingData as Record<string, any> || {},
       lastActivity: user.lastActivity,
-      nextStep: this.getNextStep(user.completedSteps)
+      nextStep,
+      role
     }
   }
 
@@ -98,9 +75,19 @@ export class JourneyTracker {
       onboardingData[stepId] = data
     }
 
-    // Check if onboarding is complete
-    const requiredSteps = ONBOARDING_STEPS.filter(s => s.required).map(s => s.id)
-    const isOnboardingComplete = requiredSteps.every(step => completedSteps.includes(step))
+    // Get user role
+    const userWithRole = await prisma.user.findUnique({
+      where: { id: this.userId },
+      select: { role: true }
+    })
+    const role = this.userRole || (userWithRole?.role as UserRole) || UserRole.MANAGER
+    
+    // Check if onboarding phase is complete
+    const onboardingSteps = getStepsForRole(role, JourneyPhase.ONBOARDING)
+    const requiredOnboardingSteps = onboardingSteps.filter(s => s.required)
+    const isOnboardingComplete = requiredOnboardingSteps.every(step => 
+      completedSteps.includes(step.id)
+    )
 
     await prisma.user.update({
       where: { id: this.userId },
@@ -124,11 +111,13 @@ export class JourneyTracker {
   }
 
   async completeOnboarding() {
+    // This method is called when onboarding phase is complete
+    // Set status to ACTIVE to indicate user is past onboarding
     await prisma.user.update({
       where: { id: this.userId },
       data: {
         journeyStatus: 'ACTIVE',
-        currentAgent: null,
+        currentAgent: 'AssessmentAgent', // Move to assessment phase
         lastActivity: new Date()
       }
     })
@@ -152,9 +141,12 @@ export class JourneyTracker {
 
     if (!user) throw new Error('User not found')
 
-    const requiredSteps = ONBOARDING_STEPS.filter(s => s.required).map(s => s.id)
-    const isOnboardingComplete = requiredSteps.every(step => 
-      user.completedSteps.includes(step)
+    // Get user role to check phase completion
+    const role = this.userRole || (user.role as UserRole) || UserRole.MANAGER
+    const onboardingSteps = getStepsForRole(role, JourneyPhase.ONBOARDING)
+    const requiredOnboardingSteps = onboardingSteps.filter(s => s.required)
+    const isOnboardingComplete = requiredOnboardingSteps.every(step => 
+      user.completedSteps.includes(step.id)
     )
 
     await prisma.user.update({
@@ -166,18 +158,29 @@ export class JourneyTracker {
     })
   }
 
-  private getNextStep(completedSteps: string[]): JourneyStep | null {
-    const nextStep = ONBOARDING_STEPS
-      .filter(step => !completedSteps.includes(step.id))
-      .sort((a, b) => a.order - b.order)[0]
-
-    return nextStep || null
+  private async getNextStep(completedSteps: string[]): Promise<JourneyStep | null> {
+    // Get user role
+    const user = await prisma.user.findUnique({
+      where: { id: this.userId },
+      select: { role: true, journeyStatus: true }
+    })
+    
+    if (!user) return null
+    
+    const role = this.userRole || (user.role as UserRole)
+    const currentPhase = mapLegacyStatusToPhase(
+      user.journeyStatus,
+      completedSteps,
+      role
+    )
+    
+    return getNextStep(completedSteps, role, currentPhase)
   }
 
   static async getOrCreateJourneyForUser(clerkId: string): Promise<JourneyTracker> {
     let user = await prisma.user.findUnique({
       where: { clerkId },
-      select: { id: true }
+      select: { id: true, role: true }
     })
 
     if (!user) {
@@ -208,6 +211,6 @@ export class JourneyTracker {
       }
     }
 
-    return new JourneyTracker(user.id)
+    return new JourneyTracker(user.id, user.role as UserRole)
   }
 }

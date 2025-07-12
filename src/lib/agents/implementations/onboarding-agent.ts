@@ -8,6 +8,7 @@ import { ConversationState } from '../types/conversation-state';
 import { AgentConfigLoader } from '../config/agent-config-loader';
 import { ConfigurableFlowEngine, FlowConfiguration } from '../graph';
 import { ExtractionProcessor, ExtractionRule } from '../extraction/extraction-processor';
+import { UserRole } from '@/lib/orchestrator/journey-phases';
 
 // Re-export for backward compatibility
 export { ConversationState };
@@ -17,6 +18,7 @@ export interface OnboardingMetadata {
   startTime: Date;
   capturedFields: Record<string, any>;
   requiredFieldsStatus: Record<string, boolean>;
+  userRole?: UserRole;
   qualityMetrics: {
     rapportScore: number;
     managerConfidence: 'low' | 'medium' | 'high';
@@ -41,64 +43,129 @@ export class OnboardingAgent extends KnowledgeEnabledAgent {
   // Required fields are now determined dynamically from extraction rules
   // This ensures consistency with the configured extraction rules in /admin/agents/config
 
-  private static readonly STATE_INSTRUCTIONS: Record<ConversationState, string> = {
-    [ConversationState.GREETING]: `
-      Welcome the manager warmly and introduce yourself as their TMS transformation guide.
-      Express enthusiasm about helping them transform their team.
-      Ask for their name and what brings them to TMS today.
-    `,
-    [ConversationState.CONTEXT_DISCOVERY]: `
-      Learn about their team context:
-      - Team size and structure
-      - How long they've been managing this team
-      - Industry/department context
-      - Recent changes or transitions
-      Ask open-ended questions to understand their situation.
-    `,
-    [ConversationState.CHALLENGE_EXPLORATION]: `
-      Explore their primary challenges:
-      - What specific issues are they facing?
-      - How are these challenges impacting the team?
-      - What have they tried so far?
-      Use the knowledge base to relate their challenges to TMS solutions.
-    `,
-    [ConversationState.TMS_EXPLANATION]: `
-      Explain how TMS can help based on their specific challenges.
-      Use the knowledge base to:
-      - Share relevant success stories
-      - Explain appropriate assessment tools
-      - Describe the transformation journey
-      Keep explanations relevant and concise.
-    `,
-    [ConversationState.GOAL_SETTING]: `
-      Help them set SMART goals:
-      - What specific outcomes do they want?
-      - What does success look like?
-      - What's their timeline?
-      - How will they measure progress?
-    `,
-    [ConversationState.RESOURCE_CONFIRMATION]: `
-      Discuss practical considerations:
-      - Budget range for transformation
-      - Time commitment from leader and team
-      - Any constraints or considerations
-      - Support from upper management
-    `,
-    [ConversationState.STAKEHOLDER_MAPPING]: `
-      Identify key stakeholders:
-      - Who needs to be involved?
-      - Who are the champions and skeptics?
-      - How will they communicate the process?
-      - What support systems exist?
-    `,
-    [ConversationState.RECAP_AND_HANDOFF]: `
-      Summarize what you've learned:
-      - Recap their team context and challenges
-      - Confirm their goals and timeline
-      - Review next steps
-      - Prepare handoff to Assessment Agent
-      Ensure they feel confident about moving forward.
-    `
+  private static readonly STATE_INSTRUCTIONS: Record<ConversationState, { manager: string; teamMember: string }> = {
+    [ConversationState.GREETING]: {
+      manager: `
+        Welcome the manager warmly and introduce yourself as their TMS transformation guide.
+        Express enthusiasm about helping them transform their team.
+        Ask for their name and what brings them to TMS today.
+      `,
+      teamMember: `
+        Welcome the team member warmly and introduce yourself as their TMS guide.
+        Express enthusiasm about helping them understand their work style better.
+        Ask for their name and mention their manager invited them to complete assessments.
+      `
+    },
+    [ConversationState.CONTEXT_DISCOVERY]: {
+      manager: `
+        Learn about their team context:
+        - Team size and structure
+        - How long they've been managing this team
+        - Industry/department context
+        - Recent changes or transitions
+        Ask open-ended questions to understand their situation.
+      `,
+      teamMember: `
+        Learn about their role and work context:
+        - Current role and responsibilities
+        - How long they've been in this role
+        - What they enjoy most about their work
+        - Any current challenges they face
+        Keep it conversational and supportive.
+      `
+    },
+    [ConversationState.CHALLENGE_EXPLORATION]: {
+      manager: `
+        Explore their primary challenges:
+        - What specific issues are they facing?
+        - How are these challenges impacting the team?
+        - What have they tried so far?
+        Use the knowledge base to relate their challenges to TMS solutions.
+      `,
+      teamMember: `
+        Explore their work preferences:
+        - How they prefer to work (independently vs collaboratively)
+        - Communication style preferences
+        - What motivates them at work
+        - Areas where they'd like to grow
+        Make them feel heard and valued.
+      `
+    },
+    [ConversationState.TMS_EXPLANATION]: {
+      manager: `
+        Explain how TMS can help based on their specific challenges.
+        Use the knowledge base to:
+        - Share relevant success stories
+        - Explain appropriate assessment tools
+        - Describe the transformation journey
+        Keep explanations relevant and concise.
+      `,
+      teamMember: `
+        Explain the TMP assessment:
+        - It helps understand their unique work personality
+        - No right or wrong answers
+        - Results will help the team work better together
+        - Completely confidential
+        Build excitement about discovering their profile.
+      `
+    },
+    [ConversationState.GOAL_SETTING]: {
+      manager: `
+        Help them set SMART goals:
+        - What specific outcomes do they want?
+        - What does success look like?
+        - What's their timeline?
+        - How will they measure progress?
+      `,
+      teamMember: `
+        For team members, skip this state and move to recap.
+        Team members don't need to set transformation goals.
+      `
+    },
+    [ConversationState.RESOURCE_CONFIRMATION]: {
+      manager: `
+        Discuss practical considerations:
+        - Budget range for transformation
+        - Time commitment from leader and team
+        - Any constraints or considerations
+        - Support from upper management
+      `,
+      teamMember: `
+        For team members, skip this state.
+        Resource discussions are only for managers.
+      `
+    },
+    [ConversationState.STAKEHOLDER_MAPPING]: {
+      manager: `
+        Identify key stakeholders:
+        - Who needs to be involved?
+        - Who are the champions and skeptics?
+        - How will they communicate the process?
+        - What support systems exist?
+      `,
+      teamMember: `
+        For team members, skip this state.
+        Stakeholder mapping is only for managers.
+      `
+    },
+    [ConversationState.RECAP_AND_HANDOFF]: {
+      manager: `
+        Summarize what you've learned:
+        - Recap their team context and challenges
+        - Confirm their goals and timeline
+        - Review next steps (TMP assessment first)
+        - Prepare handoff to Assessment Agent
+        Ensure they feel confident about moving forward.
+      `,
+      teamMember: `
+        Summarize and prepare for assessment:
+        - Thank them for sharing about their role
+        - Explain next step is the TMP assessment
+        - Reassure them it's enjoyable and insightful
+        - Prepare handoff to Assessment Agent
+        Make them excited to discover their profile.
+      `
+    }
   };
 
   constructor() {
@@ -115,11 +182,15 @@ export class OnboardingAgent extends KnowledgeEnabledAgent {
         // This is now used as a fallback - the loaded configuration's systemPrompt takes precedence
         const metadata = context.metadata as OnboardingMetadata;
         const state = metadata?.state || ConversationState.GREETING;
-        const baseInstructions = OnboardingAgent.STATE_INSTRUCTIONS[state];
+        const userRole = metadata?.userRole || UserRole.MANAGER;
+        const roleInstructions = OnboardingAgent.STATE_INSTRUCTIONS[state];
+        const baseInstructions = userRole === UserRole.MANAGER ? 
+          roleInstructions.manager : roleInstructions.teamMember;
         
-        return `You are the TMS Onboarding Agent. Your role is to guide new managers through their initial platform setup.
+        return `You are the TMS Onboarding Agent. Your role is to guide ${userRole === UserRole.MANAGER ? 'managers' : 'team members'} through their initial platform setup.
 
 Current conversation state: ${state}
+User role: ${userRole}
 
 ${baseInstructions}
 
@@ -127,8 +198,9 @@ Remember to:
 - Be warm, professional, and encouraging
 - Use the knowledge base to provide accurate TMS information
 - Extract and validate required information naturally
-- Monitor conversation quality and manager confidence
+- Monitor conversation quality and confidence
 - Progress through states based on conversation flow
+- Adapt your approach based on whether you're talking to a manager or team member
 
 Required fields are determined by extraction rules configuration.`;
       },
@@ -331,8 +403,11 @@ Required fields are determined by extraction rules configuration.`;
   }
 
   private async initializeMetadata(): Promise<OnboardingMetadata> {
-    // Get required fields from extraction rules
-    const requiredFields = await this.getRequiredFields();
+    // Determine user role from context or default to manager
+    const userRole = await this.getUserRole();
+    
+    // Get required fields from extraction rules based on role
+    const requiredFields = await this.getRequiredFields(userRole);
     const requiredFieldsStatus: Record<string, boolean> = {};
     requiredFields.forEach(field => {
       requiredFieldsStatus[field] = false;
@@ -346,6 +421,7 @@ Required fields are determined by extraction rules configuration.`;
       startTime: new Date(),
       capturedFields: {},
       requiredFieldsStatus,
+      userRole,
       qualityMetrics: {
         rapportScore: 0,
         managerConfidence: 'low',
@@ -354,11 +430,19 @@ Required fields are determined by extraction rules configuration.`;
       stateTransitions: []
     };
   }
+  
+  private async getUserRole(): Promise<UserRole> {
+    // Try to get user role from the database via context
+    // This would be set when a team member is invited by their manager
+    // For now, default to MANAGER
+    // TODO: Implement proper role detection based on user context
+    return UserRole.MANAGER;
+  }
 
   /**
    * Helper method to get required fields from extraction rules
    */
-  private async getRequiredFields(): Promise<string[]> {
+  private async getRequiredFields(userRole?: UserRole): Promise<string[]> {
     try {
       const config = await AgentConfigLoader.loadConfiguration('OnboardingAgent');
       let extractionRules: Record<string, ExtractionRule> = {};
@@ -370,8 +454,11 @@ Required fields are determined by extraction rules configuration.`;
         extractionRules = AgentConfigLoader.getDefaultExtractionRules('OnboardingAgent') as Record<string, ExtractionRule>;
       }
 
+      // Filter fields based on user role
+      const roleBasedFields = this.filterFieldsByRole(extractionRules, userRole || UserRole.MANAGER);
+      
       // Return field names where required is true
-      return Object.entries(extractionRules)
+      return Object.entries(roleBasedFields)
         .filter(([_, rule]) => rule.required === true)
         .map(([fieldName, _]) => fieldName);
     } catch (error) {
@@ -379,7 +466,8 @@ Required fields are determined by extraction rules configuration.`;
       // Fall back to default extraction rules on error
       try {
         const defaultRules = AgentConfigLoader.getDefaultExtractionRules('OnboardingAgent') as Record<string, ExtractionRule>;
-        return Object.entries(defaultRules)
+        const roleBasedFields = this.filterFieldsByRole(defaultRules, userRole || UserRole.MANAGER);
+        return Object.entries(roleBasedFields)
           .filter(([_, rule]) => rule.required === true)
           .map(([fieldName, _]) => fieldName);
       } catch (fallbackError) {
@@ -387,6 +475,32 @@ Required fields are determined by extraction rules configuration.`;
         return [];
       }
     }
+  }
+  
+  private filterFieldsByRole(
+    rules: Record<string, ExtractionRule>, 
+    userRole: UserRole
+  ): Record<string, ExtractionRule> {
+    // Define which fields are relevant for each role
+    const managerFields = [
+      'manager_name', 'team_size', 'team_tenure', 'industry_context', 
+      'primary_challenge', 'budget_range', 'leader_commitment', 
+      'success_metrics', 'timeline_preference', 'key_stakeholders'
+    ];
+    
+    const teamMemberFields = [
+      'name', 'role_title', 'role_tenure', 'work_preference',
+      'communication_style', 'motivation_factors', 'growth_areas'
+    ];
+    
+    const relevantFields = userRole === UserRole.MANAGER ? managerFields : teamMemberFields;
+    
+    // Filter rules to only include relevant fields
+    return Object.fromEntries(
+      Object.entries(rules).filter(([fieldName]) => 
+        relevantFields.includes(fieldName)
+      )
+    );
   }
 
   private async extractInformation(message: string, context: AgentContext): Promise<Record<string, any>> {
@@ -432,8 +546,8 @@ Required fields are determined by extraction rules configuration.`;
     // Update captured fields
     Object.assign(metadata.capturedFields, extractedData);
 
-    // Get required fields from extraction rules
-    const requiredFields = await this.getRequiredFields();
+    // Get required fields from extraction rules based on user role
+    const requiredFields = await this.getRequiredFields(metadata.userRole);
 
     // Update required fields status
     requiredFields.forEach(field => {
@@ -457,7 +571,7 @@ Required fields are determined by extraction rules configuration.`;
     const conversationData = this.mapToConversationData(metadata.capturedFields);
     
     // Check if we should force progression based on missing fields
-    const missingFields = await this.getMissingRequiredFields(metadata.capturedFields);
+    const missingFields = await this.getMissingRequiredFields(metadata.capturedFields, metadata.userRole);
     if (missingFields.length > 0 && metadata.state === ConversationState.GREETING) {
       // Force move to basic info collection
       this.stateMachine.setState(ConversationState.CONTEXT_DISCOVERY);
@@ -472,8 +586,8 @@ Required fields are determined by extraction rules configuration.`;
     return metadata.state;
   }
   
-  private async getMissingRequiredFields(capturedFields: Record<string, any>): Promise<string[]> {
-    const requiredFields = await this.getRequiredFields();
+  private async getMissingRequiredFields(capturedFields: Record<string, any>, userRole?: UserRole): Promise<string[]> {
+    const requiredFields = await this.getRequiredFields(userRole);
     return requiredFields.filter(field => !capturedFields[field]);
   }
   

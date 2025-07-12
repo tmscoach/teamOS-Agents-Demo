@@ -171,7 +171,34 @@ export function JourneyDetails({
           color: '#6b7280',
           textAlign: 'center'
         }}>
-          {progressPercentage}% Complete ({completedSteps.length} of {JOURNEY_STEPS.length} steps)
+          {progressPercentage}% Complete ({completedRequiredSteps.length} of {requiredSteps.length} required steps)
+        </div>
+      </div>
+
+      {/* Current Phase Indicator */}
+      <div style={{
+        marginBottom: '24px',
+        padding: '16px',
+        borderRadius: '8px',
+        backgroundColor: PHASE_CONFIG[currentPhase].bgColor,
+        border: `1px solid ${PHASE_CONFIG[currentPhase].color}40`
+      }}>
+        <div style={{
+          fontSize: '14px',
+          fontWeight: '600',
+          color: PHASE_CONFIG[currentPhase].color,
+          marginBottom: '4px'
+        }}>
+          Current Phase: {PHASE_CONFIG[currentPhase].label}
+        </div>
+        <div style={{
+          fontSize: '13px',
+          color: '#4b5563'
+        }}>
+          {currentPhase === JourneyPhase.ONBOARDING && 'Getting to know you and your team'}
+          {currentPhase === JourneyPhase.ASSESSMENT && 'Completing assessments to understand team dynamics'}
+          {currentPhase === JourneyPhase.DEBRIEF && 'Reviewing insights and creating action plans'}
+          {currentPhase === JourneyPhase.CONTINUOUS_ENGAGEMENT && 'Ongoing monitoring and improvement'}
         </div>
       </div>
 
@@ -240,14 +267,27 @@ export function JourneyDetails({
                 alignItems: 'flex-start',
                 marginBottom: '4px'
               }}>
-                <h4 style={{
-                  fontSize: '16px',
-                  fontWeight: '500',
-                  color: step.completed ? '#059669' : 
-                         currentStep?.id === step.id ? '#111827' : '#6b7280'
-                }}>
-                  {step.name}
-                </h4>
+                <div>
+                  <h4 style={{
+                    fontSize: '16px',
+                    fontWeight: '500',
+                    color: step.completed ? '#059669' : 
+                           currentStep?.id === step.id ? '#111827' : '#6b7280',
+                    marginBottom: '2px'
+                  }}>
+                    {step.name}
+                  </h4>
+                  <span style={{
+                    fontSize: '11px',
+                    fontWeight: '500',
+                    padding: '2px 6px',
+                    borderRadius: '4px',
+                    backgroundColor: PHASE_CONFIG[step.phase].bgColor,
+                    color: PHASE_CONFIG[step.phase].color
+                  }}>
+                    {PHASE_CONFIG[step.phase].label}
+                  </span>
+                </div>
                 {step.timeSpent > 0 && (
                   <div style={{
                     display: 'flex',
