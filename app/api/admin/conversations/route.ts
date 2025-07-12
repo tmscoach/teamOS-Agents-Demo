@@ -171,14 +171,18 @@ export async function GET(req: NextRequest) {
         .filter(step => !completedSteps.includes(step.id))
         .sort((a, b) => a.order - b.order)[0];
       
+      // Use conversation's own activity time (last message or updatedAt)
+      // Don't use manager's lastActivity as it affects all their conversations
+      const conversationActivityTime = lastMessage?.timestamp || conv.updatedAt;
+      
       // Calculate days since last activity
       const daysSinceActivity = Math.floor(
-        (Date.now() - (manager?.lastActivity ? new Date(manager.lastActivity).getTime() : lastActivityTime.getTime())) / (1000 * 60 * 60 * 24)
+        (Date.now() - conversationActivityTime.getTime()) / (1000 * 60 * 60 * 24)
       );
       
       // Calculate hours since last activity for more granular view
       const hoursSinceActivity = Math.floor(
-        (Date.now() - (manager?.lastActivity ? new Date(manager.lastActivity).getTime() : lastActivityTime.getTime())) / (1000 * 60 * 60)
+        (Date.now() - conversationActivityTime.getTime()) / (1000 * 60 * 60)
       );
 
       return {
@@ -208,7 +212,7 @@ export async function GET(req: NextRequest) {
         } : null,
         daysSinceActivity,
         hoursSinceActivity,
-        lastActivity: manager?.lastActivity || lastActivityTime
+        lastActivity: conversationActivityTime
       };
     });
 

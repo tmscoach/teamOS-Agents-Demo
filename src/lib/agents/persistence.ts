@@ -88,16 +88,9 @@ export class ConversationStore {
       }
     }
     
-    // Update user's lastActivity when conversation is created
-    try {
-      await this.prisma.user.update({
-        where: { id: managerId },
-        data: { lastActivity: new Date() }
-      });
-    } catch (error) {
-      console.warn('Failed to update user lastActivity on conversation creation:', error);
-      // Don't throw - this is not critical
-    }
+    // Note: We don't update user's lastActivity here because it would affect
+    // all conversations for that user. Instead, we rely on the conversation's
+    // own timestamps (createdAt/updatedAt) for activity tracking.
 
     return conversation.id;
   }
@@ -303,21 +296,14 @@ export class ConversationStore {
       }
     }
     
-    // Update user's lastActivity when a message is added
+    // Update conversation's updatedAt timestamp
     try {
-      const conversation = await this.prisma.conversation.findUnique({
+      await this.prisma.conversation.update({
         where: { id: conversationId },
-        select: { managerId: true }
+        data: { updatedAt: new Date() }
       });
-      
-      if (conversation?.managerId) {
-        await this.prisma.user.update({
-          where: { id: conversation.managerId },
-          data: { lastActivity: new Date() }
-        });
-      }
     } catch (error) {
-      console.warn('Failed to update user lastActivity:', error);
+      console.warn('Failed to update conversation timestamp:', error);
       // Don't throw - this is not critical for message creation
     }
   }
