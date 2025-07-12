@@ -11,31 +11,36 @@ datasource db {
 }
 
 model User {
-  id                String        @id @default(cuid())
-  clerkId           String        @unique
-  email             String        @unique
-  name              String?
-  imageUrl          String?
-  role              UserRole      @default(MANAGER)
-  journeyStatus     JourneyStatus @default(ONBOARDING)
-  currentAgent      String?
-  completedSteps    String[]      @default([])
-  lastActivity      DateTime      @default(now())
-  onboardingData    Json?
-  teamId            String?
-  department        String?
-  profileData       Json?
-  engagementMetrics Json?
-  assessmentStatus  Json?
-  deletedAt         DateTime?
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
-  managedTeams      Team[]        @relation("TeamManager")
-  team              Team?         @relation(fields: [teamId], references: [id])
+  id                    String        @id @default(cuid())
+  clerkId               String        @unique
+  email                 String        @unique
+  name                  String?
+  imageUrl              String?
+  role                  UserRole      @default(MANAGER)
+  journeyStatus         JourneyStatus @default(ONBOARDING) // Legacy field - to be removed
+  journeyPhase          JourneyPhase  @default(ONBOARDING)
+  currentAgent          String?
+  completedSteps        String[]      @default([])
+  completedAssessments  Json?         @default("{}") // Track completed assessment types and timestamps
+  viewedDebriefs        Json?         @default("{}") // Track which debrief reports have been viewed
+  teamSignalsEligible   Boolean       @default(false) // Whether user is eligible for Team Signals
+  lastActivity          DateTime      @default(now())
+  onboardingData        Json?
+  teamId                String?
+  department            String?
+  profileData           Json?
+  engagementMetrics     Json?
+  assessmentStatus      Json?         // Legacy field - use completedAssessments instead
+  deletedAt             DateTime?
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+  managedTeams          Team[]        @relation("TeamManager")
+  team                  Team?         @relation(fields: [teamId], references: [id])
 
   @@index([teamId])
   @@index([clerkId])
   @@index([journeyStatus])
+  @@index([journeyPhase])
 }
 
 model Team {
@@ -219,6 +224,13 @@ enum JourneyStatus {
   ONBOARDING
   ACTIVE
   DORMANT
+}
+
+enum JourneyPhase {
+  ONBOARDING
+  ASSESSMENT
+  DEBRIEF
+  CONTINUOUS_ENGAGEMENT
 }
 
 enum DocumentType {

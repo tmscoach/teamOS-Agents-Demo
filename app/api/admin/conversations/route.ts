@@ -119,10 +119,15 @@ export async function GET(req: NextRequest) {
         name: true,
         email: true,
         journeyStatus: true,
+        journeyPhase: true,
         currentAgent: true,
         completedSteps: true,
+        completedAssessments: true,
+        viewedDebriefs: true,
+        teamSignalsEligible: true,
         lastActivity: true,
-        onboardingData: true
+        onboardingData: true,
+        role: true
       }
     });
 
