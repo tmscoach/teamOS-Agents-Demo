@@ -310,7 +310,7 @@ export function JourneyDetails({
                     {PHASE_CONFIG[step.phase].label}
                   </span>
                 </div>
-                {step.timeSpent > 0 && (
+                {step.timeSpent && step.timeSpent > 0 && (
                   <div style={{
                     display: 'flex',
                     alignItems: 'center',

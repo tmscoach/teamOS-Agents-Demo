@@ -136,7 +136,7 @@ export class JourneyTracker {
   async resumeJourney() {
     const user = await prisma.user.findUnique({
       where: { id: this.userId },
-      select: { completedSteps: true }
+      select: { completedSteps: true, role: true }
     })
 
     if (!user) throw new Error('User not found')
