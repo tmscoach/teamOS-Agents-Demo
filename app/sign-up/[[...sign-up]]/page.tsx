@@ -41,7 +41,8 @@ export default function SignUpPage() {
 
       if (result.status === "complete") {
         await setActive({ session: result.createdSessionId })
-        router.push("/onboarding")
+        // Redirect directly to chat for new managers
+        router.push("/chat?agent=OnboardingAgent&step=welcome&new=true")
       } else if (result.status === "missing_requirements") {
         // Send verification email if needed
         await signUp.prepareEmailAddressVerification({ 
@@ -72,7 +73,7 @@ export default function SignUpPage() {
       await signUp.authenticateWithRedirect({
         strategy,
         redirectUrl: "/sso-callback",
-        redirectUrlComplete: "/onboarding",
+        redirectUrlComplete: "/chat?agent=OnboardingAgent&step=welcome&new=true",
       })
     } catch (err: any) {
       console.error(`Error signing up with ${strategy}:`, err)

@@ -2,13 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { useUser } from "@clerk/nextjs";
-import { UserButton } from "@clerk/nextjs";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Send } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import ChatLayout from "./components/ChatLayout";
 
 interface Message {
   id: string;
@@ -16,6 +12,8 @@ interface Message {
   content: string;
   timestamp: Date;
 }
+
+const CONVERSATION_STORAGE_KEY = 'teamOS_activeConversationId';
 
 export default function ChatClient() {
   const { user, isLoaded } = useUser();
@@ -25,6 +23,8 @@ export default function ChatClient() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
+  const [loadingConversation, setLoadingConversation] = useState(true);
+  const [conversationRestored, setConversationRestored] = useState(false);
   
   // Get agent from URL params
   const agentName = searchParams.get('agent') || 'OrchestratorAgent';
@@ -36,9 +36,89 @@ export default function ChatClient() {
     }
   }, [isLoaded, user, router]);
 
-  // Auto-start conversation for new chats
+
+  // Load existing conversation on mount
   useEffect(() => {
-    if (isLoaded && user && isNewConversation && messages.length === 0 && !loading) {
+    if (isLoaded && user && !isNewConversation) {
+      const loadExistingConversation = async () => {
+        try {
+          // Check localStorage for existing conversation
+          const storedConversationId = localStorage.getItem(CONVERSATION_STORAGE_KEY);
+          
+          if (storedConversationId) {
+            // Try to load the conversation
+            const response = await fetch(`/api/agents/chat/conversation/${storedConversationId}`);
+            
+            if (response.ok) {
+              const data = await response.json();
+              
+              setConversationId(storedConversationId);
+              
+              // Convert messages from the conversation
+              if (data.messages && data.messages.length > 0) {
+                const formattedMessages: Message[] = data.messages.map((msg: any) => ({
+                  id: msg.id,
+                  role: msg.role,
+                  content: msg.content,
+                  timestamp: new Date(msg.timestamp)
+                }));
+                setMessages(formattedMessages);
+                setConversationRestored(true);
+                // Hide the restored indicator after 3 seconds
+                setTimeout(() => setConversationRestored(false), 3000);
+              }
+            } else if (response.status === 404) {
+              // Conversation not found, clear localStorage
+              localStorage.removeItem(CONVERSATION_STORAGE_KEY);
+            } else if (response.status === 403) {
+              // Access denied, clear localStorage
+              localStorage.removeItem(CONVERSATION_STORAGE_KEY);
+            }
+          } else {
+            // If no localStorage, try to find the user's most recent conversation
+            const recentResponse = await fetch(`/api/agents/chat/recent?agent=${agentName}`);
+            
+            if (recentResponse.ok) {
+              const recentData = await recentResponse.json();
+              if (recentData.conversationId) {
+                setConversationId(recentData.conversationId);
+                localStorage.setItem(CONVERSATION_STORAGE_KEY, recentData.conversationId);
+                
+                if (recentData.messages && recentData.messages.length > 0) {
+                  const formattedMessages: Message[] = recentData.messages.map((msg: any) => ({
+                    id: msg.id,
+                    role: msg.role,
+                    content: msg.content,
+                    timestamp: new Date(msg.timestamp)
+                  }));
+                  setMessages(formattedMessages);
+                  setConversationRestored(true);
+                  setTimeout(() => setConversationRestored(false), 3000);
+                }
+              }
+            }
+          }
+        } catch (error) {
+          console.error("Failed to load existing conversation:", error);
+        } finally {
+          setLoadingConversation(false);
+        }
+      };
+
+      loadExistingConversation();
+    } else {
+      if (isNewConversation) {
+        localStorage.removeItem(CONVERSATION_STORAGE_KEY);
+      }
+      setLoadingConversation(false);
+    }
+  }, [isLoaded, user, isNewConversation, agentName]);
+
+  // Auto-start conversation ONLY for explicitly new chats
+  useEffect(() => {
+    if (isLoaded && user && isNewConversation && !conversationId && messages.length === 0 && !loading && !loadingConversation) {
+      // Clear any existing conversation from localStorage when starting new
+      localStorage.removeItem(CONVERSATION_STORAGE_KEY);
       // Send an initial empty message to trigger the agent's greeting
       const autoStart = async () => {
         setLoading(true);
@@ -61,6 +141,8 @@ export default function ChatClient() {
 
           if (data.conversationId) {
             setConversationId(data.conversationId);
+            // Store in localStorage
+            localStorage.setItem(CONVERSATION_STORAGE_KEY, data.conversationId);
           }
 
           if (data.message) {
@@ -81,7 +163,7 @@ export default function ChatClient() {
 
       autoStart();
     }
-  }, [isLoaded, user, isNewConversation, agentName, messages.length, loading]);
+  }, [isLoaded, user, isNewConversation, conversationId, agentName, messages.length, loading, loadingConversation]);
 
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
@@ -118,6 +200,8 @@ export default function ChatClient() {
 
       if (data.conversationId && !conversationId) {
         setConversationId(data.conversationId);
+        // Store in localStorage
+        localStorage.setItem(CONVERSATION_STORAGE_KEY, data.conversationId);
       }
 
       if (data.message) {
@@ -143,14 +227,7 @@ export default function ChatClient() {
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  };
-
-  if (!isLoaded) {
+  if (!isLoaded || loadingConversation) {
     return (
       <div className="flex items-center justify-center h-screen">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -158,65 +235,33 @@ export default function ChatClient() {
     );
   }
 
+  const startNewConversation = () => {
+    // Clear localStorage
+    localStorage.removeItem(CONVERSATION_STORAGE_KEY);
+    // Reset state
+    setConversationId(null);
+    setMessages([]);
+    // Redirect to new conversation
+    router.push(`/chat?agent=${agentName}&new=true`);
+  };
+
   return (
-    <div className="container mx-auto p-4 max-w-4xl">
-      <Card className="h-[80vh] flex flex-col">
-        <CardHeader>
-          <div className="flex justify-between items-start">
-            <div>
-              <CardTitle>teamOS Chat</CardTitle>
-            </div>
-            <UserButton afterSignOutUrl="/sign-in" />
-          </div>
-        </CardHeader>
-        <CardContent className="flex-1 flex flex-col p-0">
-          <ScrollArea className="flex-1 p-6">
-            <div className="space-y-4">
-              {messages.map((message) => (
-                <div
-                  key={message.id}
-                  className={`flex ${message.role === "user" ? "justify-end" : "justify-start"}`}
-                >
-                  <div
-                    className={`max-w-[70%] rounded-lg p-4 ${
-                      message.role === "user"
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted"
-                    }`}
-                  >
-                    <p className="whitespace-pre-wrap">{message.content}</p>
-                    <p className="text-xs opacity-70 mt-1">
-                      {message.timestamp.toLocaleTimeString()}
-                    </p>
-                  </div>
-                </div>
-              ))}
-              {loading && (
-                <div className="flex justify-start">
-                  <div className="bg-muted rounded-lg p-4">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  </div>
-                </div>
-              )}
-            </div>
-          </ScrollArea>
-          <div className="p-6 pt-0">
-            <div className="flex gap-2">
-              <Input
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Type your message..."
-                disabled={loading}
-                className="flex-1"
-              />
-              <Button onClick={sendMessage} disabled={loading || !input.trim()}>
-                <Send className="h-4 w-4" />
-              </Button>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+    <>
+      {conversationRestored && (
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50 bg-green-100 border border-green-400 text-green-700 px-4 py-2 rounded-md shadow-md">
+          Conversation restored successfully
+        </div>
+      )}
+      <ChatLayout
+        messages={messages}
+        input={input}
+        setInput={setInput}
+        onSendMessage={sendMessage}
+        loading={loading}
+        userName={user?.firstName || undefined}
+        agentName={agentName === 'OnboardingAgent' ? 'OSmos' : agentName}
+        onNewConversation={conversationId ? startNewConversation : undefined}
+      />
+    </>
   );
 }

@@ -338,3 +338,90 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+
+// GET endpoint to retrieve user's recent conversations
+export async function GET(req: NextRequest) {
+  try {
+    // Check if services are initialized
+    if (!conversationStore) {
+      return NextResponse.json(
+        { error: 'Chat service is temporarily unavailable' },
+        { status: 503 }
+      );
+    }
+
+    // Authenticate user
+    const user = await currentUser();
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Please sign in to view conversations' },
+        { status: 401 }
+      );
+    }
+
+    // Get user from database
+    const dbUser = await prisma.user.findUnique({
+      where: { clerkId: user.id },
+      include: { managedTeams: true }
+    });
+
+    if (!dbUser) {
+      return NextResponse.json(
+        { error: 'User not found' },
+        { status: 404 }
+      );
+    }
+
+    // Get conversations for user's teams
+    const teamIds = dbUser.managedTeams.map(team => team.id);
+    if (dbUser.teamId) {
+      teamIds.push(dbUser.teamId);
+    }
+
+    const conversations = await prisma.conversation.findMany({
+      where: {
+        OR: [
+          { managerId: dbUser.id },
+          { teamId: { in: teamIds } }
+        ]
+      },
+      select: {
+        id: true,
+        teamId: true,
+        managerId: true,
+        currentAgent: true,
+        phase: true,
+        createdAt: true,
+        updatedAt: true,
+        _count: {
+          select: { messages: true }
+        }
+      },
+      orderBy: { updatedAt: 'desc' },
+      take: 10
+    });
+
+    return NextResponse.json({
+      conversations: conversations.map(conv => ({
+        id: conv.id,
+        teamId: conv.teamId,
+        managerId: conv.managerId,
+        currentAgent: conv.currentAgent,
+        phase: conv.phase,
+        createdAt: conv.createdAt.toISOString(),
+        updatedAt: conv.updatedAt.toISOString(),
+        messageCount: conv._count.messages
+      }))
+    });
+  } catch (error) {
+    console.error('Chat GET API error:', error);
+    
+    return NextResponse.json(
+      {
+        error: 'Internal server error',
+        message: error instanceof Error ? error.message : 'Unknown error',
+      },
+      { status: 500 }
+    );
+  }
+}
