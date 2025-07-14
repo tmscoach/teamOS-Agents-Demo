@@ -36,6 +36,53 @@ export default function ChatClient() {
     }
   }, [isLoaded, user, router]);
 
+  // Auto-start conversation for new chats
+  useEffect(() => {
+    if (isLoaded && user && isNewConversation && messages.length === 0 && !loading) {
+      // Send an initial empty message to trigger the agent's greeting
+      const autoStart = async () => {
+        setLoading(true);
+        try {
+          const response = await fetch("/api/agents/chat-simple", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              message: "Hello, let's start", // Proper greeting message
+              conversationId: null,
+              agentName: agentName
+            })
+          });
+
+          if (!response.ok) {
+            throw new Error(`Failed to start conversation: ${response.statusText}`);
+          }
+
+          const data = await response.json();
+
+          if (data.conversationId) {
+            setConversationId(data.conversationId);
+          }
+
+          if (data.message) {
+            const assistantMessage: Message = {
+              id: `assistant-${Date.now()}`,
+              role: "assistant",
+              content: data.message,
+              timestamp: new Date()
+            };
+            setMessages([assistantMessage]);
+          }
+        } catch (error) {
+          console.error("Failed to auto-start conversation:", error);
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      autoStart();
+    }
+  }, [isLoaded, user, isNewConversation, agentName, messages.length, loading]);
+
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
 
@@ -117,12 +164,7 @@ export default function ChatClient() {
         <CardHeader>
           <div className="flex justify-between items-start">
             <div>
-              <CardTitle>Chat with {agentName === 'OnboardingAgent' ? 'Onboarding Assistant' : 'teamOS Assistant'}</CardTitle>
-              <p className="text-sm text-muted-foreground">
-                {agentName === 'OnboardingAgent' 
-                  ? "Let's get to know you and your team better"
-                  : "Start a conversation to begin your team transformation journey"}
-              </p>
+              <CardTitle>teamOS Chat</CardTitle>
             </div>
             <UserButton afterSignOutUrl="/sign-in" />
           </div>
@@ -130,12 +172,6 @@ export default function ChatClient() {
         <CardContent className="flex-1 flex flex-col p-0">
           <ScrollArea className="flex-1 p-6">
             <div className="space-y-4">
-              {messages.length === 0 && (
-                <div className="text-center text-muted-foreground py-8">
-                  <p className="mb-2">Welcome! I'm here to help you understand your team better.</p>
-                  <p className="text-sm">Try introducing yourself and telling me about your team.</p>
-                </div>
-              )}
               {messages.map((message) => (
                 <div
                   key={message.id}

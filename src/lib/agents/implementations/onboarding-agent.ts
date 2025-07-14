@@ -231,11 +231,14 @@ Required fields are determined by extraction rules configuration.`;
   }
   
   protected async loadConfiguration() {
+    // First call the parent class's loadConfiguration to set loadedConfig
+    await super.loadConfiguration();
+    
+    // Then do OnboardingAgent-specific configuration loading
     try {
       const config = await AgentConfigLoader.loadConfiguration('OnboardingAgent');
       if (config && config.prompts) {
         this.configuredPrompts = config.prompts;
-        console.log('Loaded OnboardingAgent configuration version:', config.version);
       }
       
       // Load guardrail configuration and update guardrails
@@ -253,7 +256,7 @@ Required fields are determined by extraction rules configuration.`;
         console.log('Loaded flow configuration for OnboardingAgent');
       }
     } catch (error) {
-      console.error('Failed to load OnboardingAgent configuration:', error);
+      console.error('Failed to load OnboardingAgent-specific configuration:', error);
       // Continue with default prompts
     }
   }

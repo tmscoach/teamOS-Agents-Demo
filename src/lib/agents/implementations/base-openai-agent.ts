@@ -171,9 +171,21 @@ export class OpenAIAgent extends Agent {
    * Build system message with instructions
    */
   protected buildSystemMessage(context: AgentContext): string {
-    // If we have a loaded configuration with systemPrompt, use it as the primary prompt
+    // If we have a loaded configuration with a complete systemPrompt, use it as the primary message
     if (this.loadedConfig?.systemPrompt) {
-      return this.loadedConfig.systemPrompt;
+      let systemMessage = this.loadedConfig.systemPrompt;
+      
+      // Add context-specific instructions if available
+      const instructions = this.getInstructions(context);
+      if (instructions) {
+        systemMessage += `\n\nContext-Specific Instructions:\n${instructions}\n\n`;
+      }
+      
+      // Add context information
+      systemMessage += this.buildContextPrompt(context);
+      
+      // Add available tools and handoffs
+      return this.addToolsAndHandoffsToMessage(systemMessage);
     }
     
     // Otherwise fall back to the original behavior
@@ -182,6 +194,7 @@ export class OpenAIAgent extends Agent {
     let systemMessage = `You are ${this.name}. ${this.description}\n\n`;
     systemMessage += `Instructions:\n${instructions}\n\n`;
 
+    // Use constructor-provided systemPrompt if available
     if (this.systemPrompt) {
       systemMessage += `${this.systemPrompt}\n\n`;
     }
@@ -189,6 +202,14 @@ export class OpenAIAgent extends Agent {
     // Add context information
     systemMessage += this.buildContextPrompt(context);
 
+    // Add tools and handoffs
+    return this.addToolsAndHandoffsToMessage(systemMessage);
+  }
+  
+  /**
+   * Add tools and handoffs information to system message
+   */
+  protected addToolsAndHandoffsToMessage(systemMessage: string): string {
     // Add available tools
     if (this.tools.length > 0) {
       systemMessage += '\n\nAvailable tools:\n';
