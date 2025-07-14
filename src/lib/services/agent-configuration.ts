@@ -11,6 +11,14 @@ export interface AgentConfigInput {
   createdBy: string;
 }
 
+export interface ExtractionRuleWithMetadata {
+  fieldName: string;
+  type: 'string' | 'number' | 'boolean' | 'array';
+  required: boolean;
+  description?: string;
+  displayName: string;
+}
+
 export class AgentConfigurationService {
   /**
    * Create a new agent configuration version
@@ -416,5 +424,39 @@ export class AgentConfigurationService {
     });
 
     return diff;
+  }
+
+  /**
+   * Get extraction rules with metadata for display
+   */
+  static async getExtractionRulesWithMetadata(agentName: string): Promise<ExtractionRuleWithMetadata[]> {
+    try {
+      const config = await this.getActiveConfiguration(agentName);
+      
+      if (!config || !config.extractionRules) {
+        return [];
+      }
+
+      const rules = config.extractionRules as Record<string, any>;
+      
+      return Object.entries(rules).map(([fieldName, rule]) => {
+        // Format field name for display (e.g., team_size -> Team Size)
+        const displayName = fieldName
+          .split('_')
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(' ');
+
+        return {
+          fieldName,
+          type: rule.type || 'string',
+          required: rule.required || false,
+          description: rule.description,
+          displayName
+        };
+      });
+    } catch (error) {
+      console.error('Error getting extraction rules:', error);
+      return [];
+    }
   }
 }

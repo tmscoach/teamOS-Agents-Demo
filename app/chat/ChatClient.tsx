@@ -13,6 +13,16 @@ interface Message {
   timestamp: Date;
 }
 
+interface ExtractedData {
+  [key: string]: any;
+}
+
+interface OnboardingState {
+  isComplete: boolean;
+  requiredFieldsCount: number;
+  capturedFieldsCount: number;
+}
+
 const CONVERSATION_STORAGE_KEY = 'teamOS_activeConversationId';
 
 export default function ChatClient() {
@@ -25,6 +35,12 @@ export default function ChatClient() {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [loadingConversation, setLoadingConversation] = useState(true);
   const [conversationRestored, setConversationRestored] = useState(false);
+  const [extractedData, setExtractedData] = useState<ExtractedData>({});
+  const [onboardingState, setOnboardingState] = useState<OnboardingState>({
+    isComplete: false,
+    requiredFieldsCount: 0,
+    capturedFieldsCount: 0
+  });
   
   // Get agent from URL params
   const agentName = searchParams.get('agent') || 'OrchestratorAgent';
@@ -154,6 +170,14 @@ export default function ChatClient() {
             };
             setMessages([assistantMessage]);
           }
+
+          // Handle extracted data and onboarding state
+          if (data.extractedData) {
+            setExtractedData(data.extractedData);
+          }
+          if (data.onboardingState) {
+            setOnboardingState(data.onboardingState);
+          }
         } catch (error) {
           console.error("Failed to auto-start conversation:", error);
         } finally {
@@ -213,6 +237,14 @@ export default function ChatClient() {
         };
         setMessages(prev => [...prev, assistantMessage]);
       }
+
+      // Handle extracted data and onboarding state
+      if (data.extractedData) {
+        setExtractedData(data.extractedData);
+      }
+      if (data.onboardingState) {
+        setOnboardingState(data.onboardingState);
+      }
     } catch (error) {
       console.error("Failed to send message:", error);
       const errorMessage: Message = {
@@ -261,6 +293,9 @@ export default function ChatClient() {
         userName={user?.firstName || undefined}
         agentName={agentName === 'OnboardingAgent' ? 'OSmos' : agentName}
         onNewConversation={conversationId ? startNewConversation : undefined}
+        extractedData={extractedData}
+        onboardingState={onboardingState}
+        isOnboarding={agentName === 'OnboardingAgent'}
       />
     </>
   );

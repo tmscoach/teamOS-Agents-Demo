@@ -19,6 +19,7 @@ export interface OnboardingMetadata {
   capturedFields: Record<string, any>;
   requiredFieldsStatus: Record<string, boolean>;
   userRole?: UserRole;
+  isComplete?: boolean;
   qualityMetrics: {
     rapportScore: number;
     managerConfidence: 'low' | 'medium' | 'high';
@@ -270,6 +271,27 @@ Required fields are determined by extraction rules configuration.`;
     
     // Add captured fields to context
     const metadata = context.metadata.onboarding as OnboardingMetadata;
+    
+    // Check if onboarding is complete
+    if (metadata?.isComplete) {
+      prompt += '\n\n🎉 ONBOARDING COMPLETE! All required information has been captured.\n';
+      prompt += '\nCaptured information:\n';
+      for (const [field, value] of Object.entries(metadata.capturedFields)) {
+        const displayName = field.split('_').map(word => 
+          word.charAt(0).toUpperCase() + word.slice(1)
+        ).join(' ');
+        prompt += `- ${displayName}: ${value}\n`;
+      }
+      prompt += '\nYour response should:\n';
+      prompt += '1. Acknowledge that you have all the information needed\n';
+      prompt += '2. Briefly summarize what you\'ve learned about them and their team\n';
+      prompt += '3. Express excitement about helping them transform their team\n';
+      prompt += '4. Let them know they\'re ready to begin their transformation journey\n';
+      prompt += '5. End with: "Let\'s begin building something amazing together."\n';
+      prompt += '\nDO NOT ask any more questions. Keep the response positive and forward-looking.\n';
+      return prompt;
+    }
+    
     if (metadata?.capturedFields && Object.keys(metadata.capturedFields).length > 0) {
       prompt += '\n\nAlready captured information:\n';
       for (const [field, value] of Object.entries(metadata.capturedFields)) {
@@ -564,6 +586,11 @@ Required fields are determined by extraction rules configuration.`;
     const totalRequiredFields = requiredFields.length;
     metadata.qualityMetrics.completionPercentage = 
       totalRequiredFields > 0 ? (completedFields / totalRequiredFields) * 100 : 0;
+    
+    // Check if all required fields are now captured
+    if (completedFields === totalRequiredFields && totalRequiredFields > 0) {
+      metadata.isComplete = true;
+    }
   }
 
   private async determineNextState(metadata: OnboardingMetadata, context: AgentContext): Promise<ConversationState> {

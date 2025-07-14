@@ -287,12 +287,33 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Extract onboarding data if this is the onboarding agent
+    let extractedData = {};
+    let onboardingState = {
+      isComplete: false,
+      requiredFieldsCount: 0,
+      capturedFieldsCount: 0
+    };
+
+    if (context.currentAgent === 'OnboardingAgent' && context.metadata?.onboarding) {
+      const onboardingMetadata = context.metadata.onboarding;
+      extractedData = onboardingMetadata.capturedFields || {};
+      
+      // Count required fields and captured fields
+      const requiredFieldsStatus = onboardingMetadata.requiredFieldsStatus || {};
+      onboardingState.requiredFieldsCount = Object.keys(requiredFieldsStatus).length;
+      onboardingState.capturedFieldsCount = Object.values(requiredFieldsStatus).filter(Boolean).length;
+      onboardingState.isComplete = onboardingMetadata.isComplete || false;
+    }
+
     // Format response
     return NextResponse.json({
       conversationId: context.conversationId,
       message: response.message,
       currentAgent: response.context.currentAgent,
       handoff: response.handoff,
+      extractedData,
+      onboardingState,
       events: response.events.map(event => ({
         ...event,
         timestamp: event.timestamp.toISOString(),

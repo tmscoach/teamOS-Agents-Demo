@@ -7,6 +7,9 @@ import { ArrowRightCircle1 } from "./icons/ArrowRightCircle1";
 import { parseMessageWithAgentName } from "../utils/messageParser";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2 } from "lucide-react";
+import ProfileDisplay from "./ProfileDisplay";
+import TeamVisualization from "./TeamVisualization";
+import OnboardingCompletion from "./OnboardingCompletion";
 
 interface Message {
   id: string;
@@ -24,6 +27,13 @@ interface ChatLayoutProps {
   userName?: string;
   agentName?: string;
   onNewConversation?: () => void;
+  extractedData?: Record<string, any>;
+  onboardingState?: {
+    isComplete: boolean;
+    requiredFieldsCount: number;
+    capturedFieldsCount: number;
+  };
+  isOnboarding?: boolean;
 }
 
 export default function ChatLayout({
@@ -34,7 +44,14 @@ export default function ChatLayout({
   loading,
   userName,
   agentName = "OSmos",
-  onNewConversation
+  onNewConversation,
+  extractedData = {},
+  onboardingState = {
+    isComplete: false,
+    requiredFieldsCount: 0,
+    capturedFieldsCount: 0
+  },
+  isOnboarding = false
 }: ChatLayoutProps) {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -141,39 +158,62 @@ export default function ChatLayout({
 
         {/* Right content area */}
         <div className="flex-1 flex items-center justify-center py-16 lg:py-0">
-          <div className="flex flex-col items-center">
-            {/* User button and New Conversation */}
-            <div className="absolute top-4 right-4 flex items-center gap-3">
-              {onNewConversation && (
-                <button
-                  onClick={onNewConversation}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                >
-                  New Chat
-                </button>
-              )}
-              <UserButton afterSignOutUrl="/sign-in" />
-            </div>
-            
-            {/* Avatar */}
-            <div className="w-[118px] h-[118px] items-center justify-center bg-[color:var(--radix-colours-slate-4)] rounded-[100px] overflow-hidden border border-dashed border-[color:var(--shadcn-ui-border)] shadow-[var(--shadow-md)] flex">
-              <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-                <svg className="w-14 h-14 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-                </svg>
-              </div>
-            </div>
-
-            {/* User name */}
-            <div className="mt-8 text-center">
-              <div className="font-bold text-black text-2xl text-center tracking-[-0.48px] leading-6">
-                {userName || "Team Manager"}
-              </div>
-              <div className="mt-2 font-normal text-[color:var(--shadcn-ui-muted-foreground)] text-sm text-center tracking-[-0.28px] leading-6 whitespace-nowrap">
-                Getting started with teamOS
-              </div>
-            </div>
+          {/* User button and New Conversation */}
+          <div className="absolute top-4 right-4 flex items-center gap-3">
+            {onNewConversation && (
+              <button
+                onClick={onNewConversation}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                New Chat
+              </button>
+            )}
+            <UserButton afterSignOutUrl="/sign-in" />
           </div>
+
+          {/* Dynamic content based on onboarding state and extracted data */}
+          {isOnboarding ? (
+            <>
+              {/* Show different components based on what data has been extracted */}
+              {extractedData.team_size ? (
+                // If we have team size, show the completion component (which handles both states)
+                <OnboardingCompletion
+                  managerName={extractedData.manager_name}
+                  managerRole={extractedData.manager_role}
+                  teamSize={extractedData.team_size}
+                  onboardingState={onboardingState}
+                />
+              ) : (
+                // Otherwise show the profile display
+                <ProfileDisplay
+                  userName={extractedData.manager_name}
+                  userRole={extractedData.manager_role}
+                />
+              )}
+            </>
+          ) : (
+            // Non-onboarding chat - show default profile
+            <div className="flex flex-col items-center">
+              {/* Avatar */}
+              <div className="w-[118px] h-[118px] items-center justify-center bg-[color:var(--radix-colours-slate-4)] rounded-[100px] overflow-hidden border border-dashed border-[color:var(--shadcn-ui-border)] shadow-[var(--shadow-md)] flex">
+                <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                  <svg className="w-14 h-14 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                  </svg>
+                </div>
+              </div>
+
+              {/* User name */}
+              <div className="mt-8 text-center">
+                <div className="font-bold text-black text-2xl text-center tracking-[-0.48px] leading-6">
+                  {userName || "Team Manager"}
+                </div>
+                <div className="mt-2 font-normal text-[color:var(--shadcn-ui-muted-foreground)] text-sm text-center tracking-[-0.28px] leading-6 whitespace-nowrap">
+                  Getting started with teamOS
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
