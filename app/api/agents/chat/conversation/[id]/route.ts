@@ -11,7 +11,7 @@ const conversationStore = new ConversationStore(prisma);
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Authenticate user
@@ -23,7 +23,7 @@ export async function GET(
       );
     }
 
-    const conversationId = params.id;
+    const { id: conversationId } = await params;
 
     // Load conversation
     const conversationData = await conversationStore.loadConversation(conversationId);

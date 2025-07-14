@@ -15,6 +15,11 @@ export default async function DashboardPage() {
     return null
   })
   
+  // Redirect admin users to admin dashboard
+  if (user && user.role === 'ADMIN') {
+    redirect('/admin')
+  }
+  
   // Check if user needs onboarding
   // Note: The NEXT_REDIRECT error in dev console is expected behavior - it's how Next.js handles redirects
   if (user && user.journeyStatus === 'ONBOARDING' && user.role === 'MANAGER') {
