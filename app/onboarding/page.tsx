@@ -50,6 +50,9 @@ export default function OnboardingPage() {
       // If onboarding is complete, redirect to dashboard
       if (data.status === 'ACTIVE') {
         router.push('/dashboard')
+      } else if (data.status === 'ONBOARDING' && data.nextStep) {
+        // For managers in onboarding, redirect directly to chat with auto-start
+        router.push(`/chat?agent=${data.nextStep.agent}&step=${data.nextStep.id}&new=true`)
       }
     } catch (error) {
       console.error('Error fetching journey status:', error)

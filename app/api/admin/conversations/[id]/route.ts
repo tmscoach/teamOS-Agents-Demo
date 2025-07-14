@@ -61,8 +61,12 @@ export async function GET(
               email: true,
               role: true,
               journeyStatus: true,
+              journeyPhase: true,
               currentAgent: true,
               completedSteps: true,
+              completedAssessments: true,
+              viewedDebriefs: true,
+              teamSignalsEligible: true,
               lastActivity: true,
               onboardingData: true
             }

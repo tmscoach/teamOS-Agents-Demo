@@ -22,8 +22,12 @@ export class JourneyTracker {
       where: { id: this.userId },
       select: {
         journeyStatus: true,
+        journeyPhase: true,
         currentAgent: true,
         completedSteps: true,
+        completedAssessments: true,
+        viewedDebriefs: true,
+        teamSignalsEligible: true,
         onboardingData: true,
         lastActivity: true,
         role: true
@@ -35,21 +39,20 @@ export class JourneyTracker {
     // Get user role (use provided role or fetch from DB)
     const role = this.userRole || (user.role as UserRole)
     
-    // Map legacy status to phase
-    const currentPhase = mapLegacyStatusToPhase(
-      user.journeyStatus,
-      user.completedSteps,
-      role
-    )
+    // Use journeyPhase directly from DB
+    const currentPhase = user.journeyPhase as JourneyPhase
     
     // Get next step based on role
     const nextStep = getNextStep(user.completedSteps, role, currentPhase)
 
     return {
-      status: user.journeyStatus,
+      status: user.journeyStatus, // Keep for backward compatibility
       currentPhase,
       currentAgent: user.currentAgent,
       completedSteps: user.completedSteps,
+      completedAssessments: (user.completedAssessments as Record<string, any>) || {},
+      viewedDebriefs: (user.viewedDebriefs as Record<string, any>) || {},
+      teamSignalsEligible: user.teamSignalsEligible,
       onboardingData: user.onboardingData as Record<string, any> || {},
       lastActivity: user.lastActivity,
       nextStep,
@@ -60,7 +63,12 @@ export class JourneyTracker {
   async updateJourneyProgress(stepId: string, data?: Record<string, any>) {
     const user = await prisma.user.findUnique({
       where: { id: this.userId },
-      select: { completedSteps: true, onboardingData: true }
+      select: { 
+        completedSteps: true, 
+        onboardingData: true,
+        role: true,
+        journeyPhase: true
+      }
     })
 
     if (!user) throw new Error('User not found')
@@ -75,26 +83,28 @@ export class JourneyTracker {
       onboardingData[stepId] = data
     }
 
-    // Get user role
-    const userWithRole = await prisma.user.findUnique({
-      where: { id: this.userId },
-      select: { role: true }
-    })
-    const role = this.userRole || (userWithRole?.role as UserRole) || UserRole.MANAGER
+    const role = this.userRole || (user.role as UserRole) || UserRole.MANAGER
     
-    // Check if onboarding phase is complete
-    const onboardingSteps = getStepsForRole(role, JourneyPhase.ONBOARDING)
-    const requiredOnboardingSteps = onboardingSteps.filter(s => s.required)
-    const isOnboardingComplete = requiredOnboardingSteps.every(step => 
-      completedSteps.includes(step.id)
-    )
+    // Determine current phase based on completed steps
+    const currentPhase = getCurrentPhase(completedSteps, role)
+    
+    // Legacy status for backward compatibility
+    let journeyStatus: 'ONBOARDING' | 'ACTIVE' | 'DORMANT' = 'ONBOARDING'
+    if (currentPhase === JourneyPhase.ONBOARDING) {
+      journeyStatus = 'ONBOARDING'
+    } else if (currentPhase === JourneyPhase.CONTINUOUS_ENGAGEMENT) {
+      journeyStatus = 'DORMANT'
+    } else {
+      journeyStatus = 'ACTIVE'
+    }
 
     await prisma.user.update({
       where: { id: this.userId },
       data: {
         completedSteps,
         onboardingData,
-        journeyStatus: isOnboardingComplete ? 'ACTIVE' : 'ONBOARDING',
+        journeyPhase: currentPhase,
+        journeyStatus, // Keep for backward compatibility
         lastActivity: new Date()
       }
     })
@@ -112,12 +122,12 @@ export class JourneyTracker {
 
   async completeOnboarding() {
     // This method is called when onboarding phase is complete
-    // Set status to ACTIVE to indicate user is past onboarding
     await prisma.user.update({
       where: { id: this.userId },
       data: {
-        journeyStatus: 'ACTIVE',
-        currentAgent: 'AssessmentAgent', // Move to assessment phase
+        journeyPhase: JourneyPhase.ASSESSMENT,
+        journeyStatus: 'ACTIVE', // Legacy field
+        currentAgent: 'AssessmentAgent',
         lastActivity: new Date()
       }
     })
@@ -127,7 +137,8 @@ export class JourneyTracker {
     await prisma.user.update({
       where: { id: this.userId },
       data: {
-        journeyStatus: 'DORMANT',
+        journeyPhase: JourneyPhase.CONTINUOUS_ENGAGEMENT,
+        journeyStatus: 'DORMANT', // Legacy field
         lastActivity: new Date()
       }
     })
@@ -141,18 +152,73 @@ export class JourneyTracker {
 
     if (!user) throw new Error('User not found')
 
-    // Get user role to check phase completion
     const role = this.userRole || (user.role as UserRole) || UserRole.MANAGER
-    const onboardingSteps = getStepsForRole(role, JourneyPhase.ONBOARDING)
-    const requiredOnboardingSteps = onboardingSteps.filter(s => s.required)
-    const isOnboardingComplete = requiredOnboardingSteps.every(step => 
-      user.completedSteps.includes(step.id)
-    )
+    const currentPhase = getCurrentPhase(user.completedSteps, role)
+    
+    // Map phase to legacy status
+    let journeyStatus: 'ONBOARDING' | 'ACTIVE' | 'DORMANT' = 'ACTIVE'
+    if (currentPhase === JourneyPhase.ONBOARDING) {
+      journeyStatus = 'ONBOARDING'
+    } else if (currentPhase === JourneyPhase.CONTINUOUS_ENGAGEMENT) {
+      journeyStatus = 'DORMANT'
+    }
 
     await prisma.user.update({
       where: { id: this.userId },
       data: {
-        journeyStatus: isOnboardingComplete ? 'ACTIVE' : 'ONBOARDING',
+        journeyPhase: currentPhase,
+        journeyStatus, // Legacy field
+        lastActivity: new Date()
+      }
+    })
+  }
+
+  async markAssessmentComplete(assessmentType: string, results?: Record<string, any>) {
+    const user = await prisma.user.findUnique({
+      where: { id: this.userId },
+      select: { completedAssessments: true }
+    })
+
+    if (!user) throw new Error('User not found')
+
+    const completedAssessments = (user.completedAssessments as Record<string, any>) || {}
+    completedAssessments[assessmentType] = {
+      completedAt: new Date(),
+      results: results || {}
+    }
+
+    await prisma.user.update({
+      where: { id: this.userId },
+      data: {
+        completedAssessments,
+        lastActivity: new Date()
+      }
+    })
+  }
+
+  async markDebriefViewed(debriefType: string, metadata?: Record<string, any>) {
+    const user = await prisma.user.findUnique({
+      where: { id: this.userId },
+      select: { viewedDebriefs: true }
+    })
+
+    if (!user) throw new Error('User not found')
+
+    const viewedDebriefs = (user.viewedDebriefs as Record<string, any>) || {}
+    viewedDebriefs[debriefType] = {
+      viewedAt: new Date(),
+      metadata: metadata || {}
+    }
+
+    // Check if user should be eligible for Team Signals
+    const teamSignalsEligible = debriefType === 'tmp_debrief' || 
+                               Object.keys(viewedDebriefs).includes('tmp_debrief')
+
+    await prisma.user.update({
+      where: { id: this.userId },
+      data: {
+        viewedDebriefs,
+        teamSignalsEligible,
         lastActivity: new Date()
       }
     })
@@ -162,17 +228,13 @@ export class JourneyTracker {
     // Get user role
     const user = await prisma.user.findUnique({
       where: { id: this.userId },
-      select: { role: true, journeyStatus: true }
+      select: { role: true, journeyPhase: true }
     })
     
     if (!user) return null
     
     const role = this.userRole || (user.role as UserRole)
-    const currentPhase = mapLegacyStatusToPhase(
-      user.journeyStatus,
-      completedSteps,
-      role
-    )
+    const currentPhase = user.journeyPhase as JourneyPhase
     
     return getNextStep(completedSteps, role, currentPhase)
   }
