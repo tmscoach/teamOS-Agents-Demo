@@ -35,11 +35,31 @@ function VerifySignUpEmailContent() {
         setError("Verification failed. Please try again.")
       }
     } catch (err: any) {
-      setError(err.errors?.[0]?.message || "Invalid verification code")
+      // Check if already verified
+      if (err.errors?.[0]?.code === "verification_already_verified") {
+        // Try to complete the sign-up process
+        if (signUp.status === "complete") {
+          await setActive({ session: signUp.createdSessionId })
+          router.push("/chat?agent=OnboardingAgent&new=true")
+        } else {
+          setError("Your email is already verified. Please sign in instead.")
+        }
+      } else {
+        setError(err.errors?.[0]?.message || "Invalid verification code")
+      }
     } finally {
       setIsVerifying(false)
     }
   }
+
+  // Check if already verified on mount
+  useEffect(() => {
+    if (isLoaded && signUp && signUp.status === "complete") {
+      setActive({ session: signUp.createdSessionId }).then(() => {
+        router.push("/chat?agent=OnboardingAgent&new=true")
+      })
+    }
+  }, [isLoaded, signUp, setActive, router])
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center p-4">
@@ -82,6 +102,19 @@ function VerifySignUpEmailContent() {
             {isVerifying ? "Verifying..." : "Verify Email"}
           </Button>
         </form>
+
+        {error?.includes("already verified") && (
+          <div className="rounded-lg border bg-muted p-4">
+            <p className="text-sm text-center mb-2">
+              Your email is already verified!
+            </p>
+            <Link href="/sign-in">
+              <Button variant="secondary" className="w-full">
+                Go to Sign In
+              </Button>
+            </Link>
+          </div>
+        )}
         
         <div className="flex flex-col gap-2">
           <p className="text-xs text-center text-muted-foreground">

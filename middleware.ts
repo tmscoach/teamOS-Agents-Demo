@@ -7,6 +7,7 @@ const isProtectedRoute = createRouteMatcher([
   '/assessments(.*)',
   '/api/protected(.*)',
   '/onboarding(.*)',
+  '/chat(.*)',
 ])
 
 const isAdminRoute = createRouteMatcher([
