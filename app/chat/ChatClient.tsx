@@ -36,40 +36,21 @@ export default function ChatClient() {
     }
   }, [isLoaded, user, router]);
 
-  // Debug logging
-  useEffect(() => {
-    console.log('[ChatClient] State:', {
-      isNewConversation,
-      conversationId,
-      messagesCount: messages.length,
-      loading,
-      loadingConversation,
-      agentName
-    });
-  }, [isNewConversation, conversationId, messages.length, loading, loadingConversation, agentName]);
 
   // Load existing conversation on mount
   useEffect(() => {
     if (isLoaded && user && !isNewConversation) {
       const loadExistingConversation = async () => {
         try {
-          console.log('[ChatClient] Checking for existing conversation...');
           // Check localStorage for existing conversation
           const storedConversationId = localStorage.getItem(CONVERSATION_STORAGE_KEY);
-          console.log('[ChatClient] Stored conversation ID:', storedConversationId);
           
           if (storedConversationId) {
             // Try to load the conversation
             const response = await fetch(`/api/agents/chat/conversation/${storedConversationId}`);
-            console.log('[ChatClient] Load conversation response:', response.status);
             
             if (response.ok) {
               const data = await response.json();
-              console.log('[ChatClient] Loaded conversation data:', {
-                id: data.id,
-                messageCount: data.messages?.length || 0,
-                currentAgent: data.currentAgent
-              });
               
               setConversationId(storedConversationId);
               
@@ -87,24 +68,19 @@ export default function ChatClient() {
                 setTimeout(() => setConversationRestored(false), 3000);
               }
             } else if (response.status === 404) {
-              console.log('[ChatClient] Conversation not found, clearing localStorage');
               // Conversation not found, clear localStorage
               localStorage.removeItem(CONVERSATION_STORAGE_KEY);
             } else if (response.status === 403) {
-              console.log('[ChatClient] Access denied to conversation');
               // Access denied, clear localStorage
               localStorage.removeItem(CONVERSATION_STORAGE_KEY);
             }
           } else {
-            console.log('[ChatClient] No stored conversation ID found, checking for recent conversations...');
-            
             // If no localStorage, try to find the user's most recent conversation
             const recentResponse = await fetch(`/api/agents/chat/recent?agent=${agentName}`);
             
             if (recentResponse.ok) {
               const recentData = await recentResponse.json();
               if (recentData.conversationId) {
-                console.log(`[ChatClient] Found recent conversation: ${recentData.conversationId}`);
                 setConversationId(recentData.conversationId);
                 localStorage.setItem(CONVERSATION_STORAGE_KEY, recentData.conversationId);
                 
@@ -119,13 +95,11 @@ export default function ChatClient() {
                   setConversationRestored(true);
                   setTimeout(() => setConversationRestored(false), 3000);
                 }
-              } else {
-                console.log('[ChatClient] No recent conversations found');
               }
             }
           }
         } catch (error) {
-          console.error("[ChatClient] Failed to load existing conversation:", error);
+          console.error("Failed to load existing conversation:", error);
         } finally {
           setLoadingConversation(false);
         }
@@ -134,7 +108,6 @@ export default function ChatClient() {
       loadExistingConversation();
     } else {
       if (isNewConversation) {
-        console.log('[ChatClient] New conversation requested, clearing stored ID');
         localStorage.removeItem(CONVERSATION_STORAGE_KEY);
       }
       setLoadingConversation(false);
@@ -144,7 +117,6 @@ export default function ChatClient() {
   // Auto-start conversation ONLY for explicitly new chats
   useEffect(() => {
     if (isLoaded && user && isNewConversation && !conversationId && messages.length === 0 && !loading && !loadingConversation) {
-      console.log('[ChatClient] New conversation requested, auto-starting...');
       // Clear any existing conversation from localStorage when starting new
       localStorage.removeItem(CONVERSATION_STORAGE_KEY);
       // Send an initial empty message to trigger the agent's greeting
@@ -166,16 +138,11 @@ export default function ChatClient() {
           }
 
           const data = await response.json();
-          console.log('[ChatClient] Auto-start response:', {
-            conversationId: data.conversationId,
-            hasMessage: !!data.message
-          });
 
           if (data.conversationId) {
             setConversationId(data.conversationId);
             // Store in localStorage
             localStorage.setItem(CONVERSATION_STORAGE_KEY, data.conversationId);
-            console.log('[ChatClient] Stored conversation ID in localStorage:', data.conversationId);
           }
 
           if (data.message) {
@@ -188,7 +155,7 @@ export default function ChatClient() {
             setMessages([assistantMessage]);
           }
         } catch (error) {
-          console.error("[ChatClient] Failed to auto-start conversation:", error);
+          console.error("Failed to auto-start conversation:", error);
         } finally {
           setLoading(false);
         }
@@ -235,7 +202,6 @@ export default function ChatClient() {
         setConversationId(data.conversationId);
         // Store in localStorage
         localStorage.setItem(CONVERSATION_STORAGE_KEY, data.conversationId);
-        console.log('[ChatClient] Updated conversation ID in localStorage:', data.conversationId);
       }
 
       if (data.message) {
