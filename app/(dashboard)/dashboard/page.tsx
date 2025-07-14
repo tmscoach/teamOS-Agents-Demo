@@ -1,6 +1,7 @@
 import { currentUser } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
 import { getCurrentUserWithJourney } from '@/lib/auth/roles'
+import { prisma } from '@/lib/db/prisma'
 
 export default async function DashboardPage() {
   const clerkUser = await currentUser()
@@ -17,8 +18,24 @@ export default async function DashboardPage() {
   // Check if user needs onboarding
   // Note: The NEXT_REDIRECT error in dev console is expected behavior - it's how Next.js handles redirects
   if (user && user.journeyStatus === 'ONBOARDING' && user.role === 'MANAGER') {
-    // Redirect directly to chat instead of onboarding page
-    redirect('/chat?agent=OnboardingAgent&step=welcome&new=true')
+    // Check if user has any existing conversations
+    const existingConversation = await prisma.conversation.findFirst({
+      where: {
+        managerId: user.id,
+        currentAgent: 'OnboardingAgent'
+      },
+      orderBy: { updatedAt: 'desc' },
+      select: { id: true }
+    }).catch(() => null)
+
+    // Only add new=true if this is truly their first conversation
+    if (existingConversation) {
+      console.log('[Dashboard] Found existing conversation:', existingConversation.id)
+      redirect('/chat?agent=OnboardingAgent')
+    } else {
+      console.log('[Dashboard] No existing conversation, creating new')
+      redirect('/chat?agent=OnboardingAgent&new=true')
+    }
   }
 
   return (

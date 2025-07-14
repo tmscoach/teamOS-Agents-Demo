@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useEffect, useRef } from "react";
 import { UserButton } from "@clerk/nextjs";
 import { Oscar1 } from "./icons/Oscar1";
 import { ArrowRightCircle1 } from "./icons/ArrowRightCircle1";
@@ -36,6 +36,14 @@ export default function ChatLayout({
   agentName = "OSmos",
   onNewConversation
 }: ChatLayoutProps) {
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -95,6 +103,8 @@ export default function ChatLayout({
                         <span className="text-sm">{agentName} is typing...</span>
                       </div>
                     )}
+                    {/* Invisible element to scroll to */}
+                    <div ref={messagesEndRef} />
                   </div>
                 </ScrollArea>
               </div>
