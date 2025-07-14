@@ -17,7 +17,8 @@ export default async function DashboardPage() {
   // Check if user needs onboarding
   // Note: The NEXT_REDIRECT error in dev console is expected behavior - it's how Next.js handles redirects
   if (user && user.journeyStatus === 'ONBOARDING' && user.role === 'MANAGER') {
-    redirect('/onboarding')
+    // Redirect directly to chat instead of onboarding page
+    redirect('/chat?agent=OnboardingAgent&step=welcome&new=true')
   }
 
   return (
