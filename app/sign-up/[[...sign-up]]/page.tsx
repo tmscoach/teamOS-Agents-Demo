@@ -46,8 +46,7 @@ export default function SignUpPage() {
       } else if (result.status === "missing_requirements") {
         // Send verification email if needed
         await signUp.prepareEmailAddressVerification({ 
-          strategy: "email_link",
-          redirectUrl: window.location.origin + "/sign-up/verify-email"
+          strategy: "email_code"
         })
         router.push("/sign-up/verify-email?email=" + encodeURIComponent(email))
       }
