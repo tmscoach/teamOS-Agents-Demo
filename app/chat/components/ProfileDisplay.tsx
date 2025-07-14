@@ -9,7 +9,7 @@ interface ProfileDisplayProps {
 
 export default function ProfileDisplay({ userName, userRole }: ProfileDisplayProps) {
   // Extract first name if full name is provided
-  const displayName = userName ? userName.split(' ')[0] : "Team Member";
+  const displayName = userName ? userName.split(' ')[0] : "";
   
   return (
     <div className="flex flex-col items-center">
@@ -24,8 +24,8 @@ export default function ProfileDisplay({ userName, userRole }: ProfileDisplayPro
 
       {/* Name and Role */}
       <div className="mt-8 text-center">
-        <div className="font-bold text-black text-2xl text-center tracking-[-0.48px] leading-6">
-          {displayName}
+        <div className="font-bold text-black text-2xl text-center tracking-[-0.48px] leading-6 min-h-[24px]">
+          {displayName || "\u00A0"} {/* Non-breaking space to maintain height */}
         </div>
         <div className="mt-2 font-normal text-[color:var(--shadcn-ui-muted-foreground)] text-sm text-center tracking-[-0.28px] leading-6 whitespace-nowrap">
           {userRole || "..."}

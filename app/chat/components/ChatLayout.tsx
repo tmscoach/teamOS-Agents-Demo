@@ -10,6 +10,7 @@ import { Loader2 } from "lucide-react";
 import ProfileDisplay from "./ProfileDisplay";
 import TeamVisualization from "./TeamVisualization";
 import OnboardingCompletion from "./OnboardingCompletion";
+import SuggestedValues from "./SuggestedValues";
 
 interface Message {
   id: string;
@@ -34,6 +35,11 @@ interface ChatLayoutProps {
     capturedFieldsCount: number;
   };
   isOnboarding?: boolean;
+  suggestedValues?: {
+    field: string;
+    values: string[];
+    helpText?: string;
+  };
 }
 
 export default function ChatLayout({
@@ -51,7 +57,8 @@ export default function ChatLayout({
     requiredFieldsCount: 0,
     capturedFieldsCount: 0
   },
-  isOnboarding = false
+  isOnboarding = false,
+  suggestedValues
 }: ChatLayoutProps) {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -73,6 +80,13 @@ export default function ChatLayout({
     onSendMessage();
   };
 
+  const handleSelectSuggestedValue = (value: string) => {
+    setInput(value);
+    // Focus the input field after setting the value
+    const inputElement = document.querySelector('input[placeholder="Type your message..."]') as HTMLInputElement;
+    inputElement?.focus();
+  };
+
   return (
     <div className="bg-white h-screen w-full flex overflow-hidden">
       <div className="flex flex-col lg:flex-row w-full max-w-[1280px] mx-auto h-full">
@@ -90,7 +104,7 @@ export default function ChatLayout({
 
             {/* Chat content area */}
             <div className="relative flex-1">
-              {/* Messages scroll area - with padding for input */}
+              {/* Messages scroll area - with padding for input and suggested values */}
               <div className="absolute inset-0 px-[27px] pt-0 pb-[80px]">
                 <ScrollArea className="h-full">
                   <div className="space-y-6 w-full pr-2 pb-4">
@@ -120,6 +134,16 @@ export default function ChatLayout({
                         <span className="text-sm">{agentName} is typing...</span>
                       </div>
                     )}
+                    {/* Suggested values */}
+                    {suggestedValues && !loading && (
+                      <SuggestedValues
+                        field={suggestedValues.field}
+                        values={suggestedValues.values}
+                        helpText={suggestedValues.helpText}
+                        onSelect={handleSelectSuggestedValue}
+                      />
+                    )}
+                    
                     {/* Invisible element to scroll to */}
                     <div ref={messagesEndRef} />
                   </div>

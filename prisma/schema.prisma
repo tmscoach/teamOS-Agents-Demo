@@ -153,6 +153,7 @@ model AgentConfiguration {
   flowConfig      Json
   extractionRules Json
   guardrailConfig Json?
+  knowledgeConfig Json?    // Stores { enabled: boolean, tools?: string[] }
   active          Boolean  @default(false)
   createdBy       String
   createdAt       DateTime @default(now())

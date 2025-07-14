@@ -8,6 +8,7 @@ export interface AgentConfigInput {
   flowConfig: Record<string, any>;
   extractionRules: Record<string, any>;
   guardrailConfig?: Record<string, any>;
+  knowledgeConfig?: Record<string, any>;
   createdBy: string;
 }
 
@@ -54,6 +55,7 @@ export class AgentConfigurationService {
             flowConfig: data.flowConfig,
             extractionRules: data.extractionRules,
             guardrailConfig: data.guardrailConfig || {},
+            knowledgeConfig: data.knowledgeConfig || {},
             active: true,
             createdBy: data.createdBy,
           },
@@ -97,6 +99,11 @@ export class AgentConfigurationService {
       // Add guardrailConfig if it doesn't exist
       if (config && !('guardrailConfig' in config)) {
         (config as any).guardrailConfig = {};
+      }
+      
+      // Add knowledgeConfig if it doesn't exist
+      if (config && !('knowledgeConfig' in config)) {
+        (config as any).knowledgeConfig = {};
       }
       
       return config;
@@ -190,6 +197,7 @@ export class AgentConfigurationService {
         flowConfig: updates.flowConfig || {},
         extractionRules: updates.extractionRules || {},
         guardrailConfig: updates.guardrailConfig || {},
+        knowledgeConfig: updates.knowledgeConfig || {},
         createdBy: updatedBy,
       });
     }
@@ -201,6 +209,7 @@ export class AgentConfigurationService {
       flowConfig: updates.flowConfig || (currentConfig.flowConfig as Record<string, any>),
       extractionRules: updates.extractionRules || (currentConfig.extractionRules as Record<string, any>),
       guardrailConfig: updates.guardrailConfig || (currentConfig.guardrailConfig as Record<string, any>) || {},
+      knowledgeConfig: updates.knowledgeConfig || (currentConfig.knowledgeConfig as Record<string, any>) || {},
       createdBy: updatedBy,
     });
   }
@@ -270,6 +279,10 @@ export class AgentConfigurationService {
         guardrailConfig: this.diffObjects(
           (config1.guardrailConfig || {}) as Record<string, any>,
           (config2.guardrailConfig || {}) as Record<string, any>
+        ),
+        knowledgeConfig: this.diffObjects(
+          (config1.knowledgeConfig || {}) as Record<string, any>,
+          (config2.knowledgeConfig || {}) as Record<string, any>
         ),
       },
     };
@@ -403,6 +416,7 @@ export class AgentConfigurationService {
       flowConfig: sourceConfig.flowConfig as Record<string, any>,
       extractionRules: sourceConfig.extractionRules as Record<string, any>,
       guardrailConfig: (sourceConfig.guardrailConfig || {}) as Record<string, any>,
+      knowledgeConfig: (sourceConfig.knowledgeConfig || {}) as Record<string, any>,
       createdBy,
     });
   }
@@ -458,5 +472,40 @@ export class AgentConfigurationService {
       console.error('Error getting extraction rules:', error);
       return [];
     }
+  }
+
+  /**
+   * Update knowledge configuration for an agent
+   */
+  static async updateKnowledgeConfig(
+    agentName: string,
+    knowledgeConfig: { enabled: boolean; tools?: string[] },
+    updatedBy: string
+  ): Promise<AgentConfiguration> {
+    const currentConfig = await this.getActiveConfiguration(agentName);
+    
+    if (!currentConfig) {
+      throw new Error(`No active configuration found for agent: ${agentName}`);
+    }
+
+    return await this.updateConfiguration(
+      agentName,
+      { knowledgeConfig },
+      updatedBy
+    );
+  }
+
+  /**
+   * Check if knowledge base is enabled for an agent
+   */
+  static async isKnowledgeEnabled(agentName: string): Promise<boolean> {
+    const config = await this.getActiveConfiguration(agentName);
+    
+    if (!config || !config.knowledgeConfig) {
+      return false;
+    }
+
+    const knowledgeConfig = config.knowledgeConfig as { enabled?: boolean };
+    return knowledgeConfig.enabled === true;
   }
 }

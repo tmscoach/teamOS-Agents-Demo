@@ -318,6 +318,7 @@ export async function PUT(req: NextRequest) {
       flowConfig: body.flowConfig,
       extractionRules: body.extractionRules,
       guardrailConfig: body.guardrailConfig,
+      knowledgeConfig: body.knowledgeConfig,
     };
 
     const config = await AgentConfigurationService.updateConfiguration(

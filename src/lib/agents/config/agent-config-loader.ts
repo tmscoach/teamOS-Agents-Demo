@@ -8,6 +8,7 @@ export interface LoadedAgentConfig {
   flowConfig: Record<string, any>;
   extractionRules: Record<string, any>;
   guardrailConfig?: Record<string, any>;
+  knowledgeConfig?: Record<string, any>;
   version: number;
 }
 
@@ -53,6 +54,7 @@ export class AgentConfigLoader {
           flowConfig: config.flowConfig as Record<string, any>,
           extractionRules: config.extractionRules as Record<string, any>,
           guardrailConfig: config.guardrailConfig as Record<string, any> | undefined,
+          knowledgeConfig: config.knowledgeConfig as Record<string, any> | undefined,
           version: config.version
         };
 

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { MetricCard } from "@/components/admin/metric-card";
 import { StatusBadge } from "@/components/admin/status-badge";
-import { Settings, Save, TestTube, GitBranch, RotateCcw, Search, Plus, FlaskConical, History, Shield, Workflow, Edit2, Trash2, X } from "lucide-react";
+import { Settings, Save, TestTube, GitBranch, RotateCcw, Search, Plus, FlaskConical, History, Shield, Workflow, Edit2, Trash2, X, BookOpen } from "lucide-react";
 import { useAuth } from "@clerk/nextjs";
 import { toast } from "sonner";
 import { format, formatDistanceToNow } from "date-fns";
@@ -39,8 +39,10 @@ interface AgentConfig {
     pattern?: string;
     patterns?: string[];
     useLLMFallback?: boolean;
+    suggestedValues?: string[];
   }>;
   guardrailConfig?: Record<string, any>;
+  knowledgeConfig?: Record<string, any>;
   active: boolean;
   createdBy: string;
   createdAt: string;
@@ -74,6 +76,7 @@ const TABS = [
   { id: "flow-designer", label: "Flow Designer" },
   { id: "extraction", label: "Extraction Rules" },
   { id: "guardrails", label: "Guardrails" },
+  { id: "knowledge", label: "Knowledge Base" },
   { id: "test", label: "Test Playground" },
   { id: "history", label: "Version History" }
 ];
@@ -109,7 +112,8 @@ export default function AgentConfigPage() {
     description: '',
     required: false,
     patterns: [''],
-    useLLMFallback: false
+    useLLMFallback: false,
+    suggestedValues: [] as string[]
   });
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -179,6 +183,7 @@ export default function AgentConfigPage() {
           flowConfig: editedConfig.flowConfig,
           extractionRules: editedConfig.extractionRules,
           guardrailConfig: editedConfig.guardrailConfig,
+          knowledgeConfig: editedConfig.knowledgeConfig,
         }),
       });
 
@@ -234,7 +239,8 @@ export default function AgentConfigPage() {
         description: variableForm.description,
         required: variableForm.required,
         patterns: variableForm.patterns.filter(p => p.trim() !== ''),
-        useLLMFallback: variableForm.useLLMFallback
+        useLLMFallback: variableForm.useLLMFallback,
+        suggestedValues: variableForm.suggestedValues.filter(v => v.trim() !== '')
       }
     };
     
@@ -250,7 +256,8 @@ export default function AgentConfigPage() {
       description: '',
       required: false,
       patterns: [''],
-      useLLMFallback: false
+      useLLMFallback: false,
+      suggestedValues: []
     });
     setIsAddingVariable(false);
     
@@ -267,7 +274,8 @@ export default function AgentConfigPage() {
       description: rule.description || '',
       required: rule.required || false,
       patterns: rule.patterns || (rule.pattern ? [rule.pattern] : ['']),
-      useLLMFallback: rule.useLLMFallback || false
+      useLLMFallback: rule.useLLMFallback || false,
+      suggestedValues: rule.suggestedValues || []
     });
     setEditingVariable(fieldName);
   };
@@ -287,7 +295,8 @@ export default function AgentConfigPage() {
       description: variableForm.description,
       required: variableForm.required,
       patterns: variableForm.patterns.filter(p => p.trim() !== ''),
-      useLLMFallback: variableForm.useLLMFallback
+      useLLMFallback: variableForm.useLLMFallback,
+      suggestedValues: variableForm.suggestedValues.filter(v => v.trim() !== '')
     };
     
     setEditedConfig({
@@ -302,7 +311,8 @@ export default function AgentConfigPage() {
       description: '',
       required: false,
       patterns: [''],
-      useLLMFallback: false
+      useLLMFallback: false,
+      suggestedValues: []
     });
     setEditingVariable(null);
     
@@ -343,6 +353,29 @@ export default function AgentConfigPage() {
     setVariableForm({
       ...variableForm,
       patterns: newPatterns
+    });
+  };
+
+  const handleAddSuggestedValue = () => {
+    setVariableForm({
+      ...variableForm,
+      suggestedValues: [...variableForm.suggestedValues, '']
+    });
+  };
+
+  const handleRemoveSuggestedValue = (index: number) => {
+    setVariableForm({
+      ...variableForm,
+      suggestedValues: variableForm.suggestedValues.filter((_, i) => i !== index)
+    });
+  };
+
+  const handleSuggestedValueChange = (index: number, value: string) => {
+    const newValues = [...variableForm.suggestedValues];
+    newValues[index] = value;
+    setVariableForm({
+      ...variableForm,
+      suggestedValues: newValues
     });
   };
 
@@ -668,6 +701,7 @@ export default function AgentConfigPage() {
                 {tab.id === 'flow-designer' && <Workflow style={{ width: '14px', height: '14px' }} />}
                 {tab.id === 'extraction' && <Settings style={{ width: '14px', height: '14px' }} />}
                 {tab.id === 'guardrails' && <Shield style={{ width: '14px', height: '14px' }} />}
+                {tab.id === 'knowledge' && <BookOpen style={{ width: '14px', height: '14px' }} />}
                 {tab.id === 'test' && <FlaskConical style={{ width: '14px', height: '14px' }} />}
                 {tab.id === 'history' && <History style={{ width: '14px', height: '14px' }} />}
                 {tab.label}
@@ -1143,7 +1177,8 @@ You are a friendly Team Development Assistant conducting a quick 5-minute intake
                           description: '',
                           required: false,
                           patterns: [''],
-                          useLLMFallback: false
+                          useLLMFallback: false,
+                          suggestedValues: []
                         });
                       }}
                       style={{
@@ -1314,6 +1349,89 @@ You are a friendly Team Development Assistant conducting a quick 5-minute intake
                     ))}
                   </div>
                   
+                  <div style={{ marginBottom: '16px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                      <label style={{ fontSize: '14px', fontWeight: '500', color: '#374151' }}>
+                        Suggested Values
+                      </label>
+                      <button
+                        onClick={handleAddSuggestedValue}
+                        style={{
+                          padding: '4px 8px',
+                          fontSize: '12px',
+                          border: '1px solid #e5e7eb',
+                          borderRadius: '4px',
+                          backgroundColor: 'white',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '4px'
+                        }}
+                      >
+                        <Plus style={{ width: '12px', height: '12px' }} />
+                        Add Value
+                      </button>
+                    </div>
+                    <p style={{ fontSize: '12px', color: '#6b7280', marginBottom: '8px' }}>
+                      These values will be shown to users when they're uncertain about their response
+                    </p>
+                    
+                    {variableForm.suggestedValues.length === 0 ? (
+                      <button
+                        onClick={handleAddSuggestedValue}
+                        style={{
+                          width: '100%',
+                          padding: '12px',
+                          border: '1px dashed #e5e7eb',
+                          borderRadius: '6px',
+                          backgroundColor: '#fafafa',
+                          color: '#6b7280',
+                          fontSize: '14px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '8px'
+                        }}
+                      >
+                        <Plus style={{ width: '16px', height: '16px' }} />
+                        Add your first suggested value
+                      </button>
+                    ) : (
+                      variableForm.suggestedValues.map((value, index) => (
+                        <div key={index} style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                          <input
+                            type="text"
+                            value={value}
+                            onChange={(e) => handleSuggestedValueChange(index, e.target.value)}
+                            placeholder="Enter suggested value"
+                            style={{
+                              flex: 1,
+                              padding: '8px 12px',
+                              border: '1px solid #e5e7eb',
+                              borderRadius: '6px',
+                              fontSize: '14px',
+                              outline: 'none'
+                            }}
+                          />
+                          <button
+                            onClick={() => handleRemoveSuggestedValue(index)}
+                            style={{
+                              padding: '8px',
+                              border: '1px solid #e5e7eb',
+                              borderRadius: '6px',
+                              backgroundColor: 'white',
+                              cursor: 'pointer',
+                              color: '#ef4444'
+                            }}
+                          >
+                            <Trash2 style={{ width: '16px', height: '16px' }} />
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                  
                   <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
                     <button
                       onClick={() => {
@@ -1325,7 +1443,8 @@ You are a friendly Team Development Assistant conducting a quick 5-minute intake
                           description: '',
                           required: false,
                           patterns: [''],
-                          useLLMFallback: false
+                          useLLMFallback: false,
+                          suggestedValues: []
                         });
                       }}
                       style={{
@@ -1760,6 +1879,168 @@ You are a friendly Team Development Assistant conducting a quick 5-minute intake
                     </span>
                   </label>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* Knowledge Base Tab */}
+          {activeTab === "knowledge" && (
+            <div>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '24px'
+              }}>
+                <div>
+                  <h3 style={{
+                    fontSize: '18px',
+                    fontWeight: '600',
+                    color: '#111827',
+                    marginBottom: '4px'
+                  }}>
+                    Knowledge Base Configuration
+                  </h3>
+                  <p style={{
+                    fontSize: '14px',
+                    color: '#6b7280'
+                  }}>
+                    Configure TMS knowledge base access for this agent
+                  </p>
+                </div>
+              </div>
+
+              <div style={{
+                backgroundColor: '#f9fafb',
+                borderRadius: '8px',
+                padding: '24px',
+                border: '1px solid #e5e7eb'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  marginBottom: '16px'
+                }}>
+                  <div>
+                    <h4 style={{
+                      fontSize: '16px',
+                      fontWeight: '600',
+                      color: '#111827',
+                      marginBottom: '4px'
+                    }}>
+                      Enable Knowledge Base
+                    </h4>
+                    <p style={{
+                      fontSize: '14px',
+                      color: '#6b7280'
+                    }}>
+                      Allow this agent to search and retrieve information from TMS IP documents
+                    </p>
+                  </div>
+                  <label style={{
+                    position: 'relative',
+                    display: 'inline-block',
+                    width: '48px',
+                    height: '24px',
+                    cursor: 'pointer'
+                  }}>
+                    <input
+                      type="checkbox"
+                      checked={editedConfig?.knowledgeConfig?.enabled || false}
+                      onChange={(e) => {
+                        if (editedConfig) {
+                          setEditedConfig({
+                            ...editedConfig,
+                            knowledgeConfig: {
+                              ...editedConfig.knowledgeConfig,
+                              enabled: e.target.checked
+                            }
+                          });
+                        }
+                      }}
+                      style={{
+                        opacity: 0,
+                        width: 0,
+                        height: 0
+                      }}
+                    />
+                    <span style={{
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      backgroundColor: editedConfig?.knowledgeConfig?.enabled ? '#10b981' : '#d1d5db',
+                      transition: '0.3s',
+                      borderRadius: '9999px'
+                    }}>
+                      <span style={{
+                        position: 'absolute',
+                        left: editedConfig?.knowledgeConfig?.enabled ? '26px' : '2px',
+                        top: '2px',
+                        width: '20px',
+                        height: '20px',
+                        backgroundColor: 'white',
+                        transition: '0.3s',
+                        borderRadius: '50%',
+                        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.15)'
+                      }} />
+                    </span>
+                  </label>
+                </div>
+
+                {editedConfig?.knowledgeConfig?.enabled && (
+                  <div style={{
+                    marginTop: '24px',
+                    paddingTop: '24px',
+                    borderTop: '1px solid #e5e7eb'
+                  }}>
+                    <h5 style={{
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      color: '#111827',
+                      marginBottom: '12px'
+                    }}>
+                      Available Knowledge Tools
+                    </h5>
+                    <div style={{
+                      display: 'flex',
+                      flexWrap: 'wrap',
+                      gap: '8px'
+                    }}>
+                      {[
+                        'search_tms_knowledge',
+                        'get_assessment_methodology', 
+                        'get_questionnaire_items',
+                        'search_intervention_strategies',
+                        'get_benchmark_data'
+                      ].map(tool => (
+                        <span
+                          key={tool}
+                          style={{
+                            padding: '4px 12px',
+                            backgroundColor: '#e0f2fe',
+                            color: '#0369a1',
+                            borderRadius: '4px',
+                            fontSize: '12px',
+                            fontFamily: 'monospace'
+                          }}
+                        >
+                          {tool}
+                        </span>
+                      ))}
+                    </div>
+                    <p style={{
+                      marginTop: '12px',
+                      fontSize: '12px',
+                      color: '#6b7280',
+                      fontStyle: 'italic'
+                    }}>
+                      These tools allow the agent to access TMS methodologies, questionnaires, and research documents
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
           )}

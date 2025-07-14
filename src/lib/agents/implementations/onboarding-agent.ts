@@ -256,6 +256,23 @@ Required fields are determined by extraction rules configuration.`;
         this.useGraphFlow = true;
         console.log('Loaded flow configuration for OnboardingAgent');
       }
+      
+      // Check knowledge configuration
+      if (config && config.knowledgeConfig) {
+        const knowledgeEnabled = config.knowledgeConfig.enabled === true;
+        this.knowledgeEnabled = knowledgeEnabled;
+        
+        // Update tools based on knowledge configuration
+        if (!knowledgeEnabled) {
+          // Remove knowledge base tools from the tools array
+          const { knowledgeBaseTools } = await import('../../knowledge-base');
+          const knowledgeToolNames = knowledgeBaseTools.map(t => t.name);
+          this.tools = this.tools.filter(tool => !knowledgeToolNames.includes(tool.name));
+          console.log('Knowledge base disabled for OnboardingAgent');
+        } else {
+          console.log('Knowledge base enabled for OnboardingAgent');
+        }
+      }
     } catch (error) {
       console.error('Failed to load OnboardingAgent-specific configuration:', error);
       // Continue with default prompts
@@ -424,6 +441,15 @@ Required fields are determined by extraction rules configuration.`;
       context.metadata.handoffDocument = handoffDoc;
     }
 
+    // Check if response is asking about a field with suggested values
+    const suggestedValues = await this.getSuggestedValuesForCurrentContext(message, response.message || '', metadata);
+    if (suggestedValues) {
+      response.metadata = {
+        ...response.metadata,
+        suggestedValues
+      };
+    }
+
     return response;
   }
 
@@ -541,25 +567,51 @@ Required fields are determined by extraction rules configuration.`;
         extractionRules = AgentConfigLoader.getDefaultExtractionRules('OnboardingAgent') as Record<string, ExtractionRule>;
       }
 
+      // Get previously captured fields to avoid re-extracting
+      const metadata = context.metadata?.onboarding as OnboardingMetadata;
+      const previouslyCaptured = metadata?.capturedFields || {};
+
+      // Filter rules to only fields not yet captured
+      const fieldsToExtract: Record<string, ExtractionRule> = {};
+      for (const [fieldName, rule] of Object.entries(extractionRules)) {
+        // Only try to extract fields we haven't captured yet
+        if (!previouslyCaptured[fieldName]) {
+          fieldsToExtract[fieldName] = rule;
+        }
+      }
+
       // Use ExtractionProcessor to extract and track
+      const enableLLM = process.env.ENABLE_LLM_EXTRACTION_FALLBACK === 'true';
+      console.log(`[OnboardingAgent] LLM extraction enabled: ${enableLLM} (env var: ${process.env.ENABLE_LLM_EXTRACTION_FALLBACK})`);
+      
       const extractionContext = {
         conversationId: context.conversationId,
         agentName: 'OnboardingAgent',
         teamId: context.teamId,
         managerId: context.managerId,
-        enableLLMFallback: process.env.ENABLE_LLM_EXTRACTION_FALLBACK === 'true'
+        enableLLMFallback: enableLLM
       };
 
       const { extracted, results } = await ExtractionProcessor.extractAndTrack(
         message,
-        extractionRules,
+        fieldsToExtract,
         extractionContext
       );
+
+      // Filter out any unsuccessful extractions to avoid overwriting with null
+      const successfulExtractions: Record<string, any> = {};
+      for (const [field, value] of Object.entries(extracted)) {
+        if (value !== null && value !== undefined && value !== '') {
+          successfulExtractions[field] = value;
+        }
+      }
 
       // Update metadata with extraction results count (backward compatibility)
       context.metadata.extractionsTracked = results.length;
 
-      return extracted;
+      console.log(`[OnboardingAgent] Extracted from message: ${JSON.stringify(successfulExtractions)}`);
+      
+      return successfulExtractions;
     } catch (error: any) {
       console.error('Error extracting information:', error);
       // Return empty object on error to prevent conversation crash
@@ -675,6 +727,80 @@ Required fields are determined by extraction rules configuration.`;
     
     return this.qualityCalculator.isReadyForHandoff(conversationData, metrics) && 
            metadata.state === ConversationState.RECAP_AND_HANDOFF;
+  }
+
+  private async getSuggestedValuesForCurrentContext(
+    userMessage: string,
+    agentResponse: string,
+    metadata: OnboardingMetadata
+  ): Promise<{ field: string; values: string[]; helpText?: string } | null> {
+    try {
+      // Check if user seems uncertain (common patterns)
+      const uncertaintyPatterns = [
+        /\b(dunno|don't\s+know|not\s+sure|unsure|maybe|umm+|uhh+|idk)\b/i,
+        /\b(no\s+idea|no\s+clue|hard\s+to\s+say|difficult\s+to)\b/i,
+        /\b(need\s+to\s+think|let\s+me\s+think|good\s+question)\b/i,
+        /^(hmm+|err+|uh+)\.?$/i,
+        /\?+$/  // Ends with question marks
+      ];
+      
+      const userIsUncertain = uncertaintyPatterns.some(pattern => pattern.test(userMessage));
+      
+      // Get extraction rules to check for suggested values
+      const config = await AgentConfigLoader.loadConfiguration('OnboardingAgent');
+      if (!config || !config.extractionRules) {
+        return null;
+      }
+      
+      const extractionRules = config.extractionRules as Record<string, ExtractionRule>;
+      
+      // Analyze agent response to determine which field is being asked about
+      const fieldPatterns: Record<string, RegExp[]> = {
+        manager_role: [
+          /what.*role|what.*position|what.*title|your\s+role|job\s+title/i,
+          /role.*company|position.*organization/i
+        ],
+        primary_challenge: [
+          /challenge|problem|issue|struggle|difficulty|concern/i,
+          /what.*facing|what.*dealing|what.*struggling/i
+        ],
+        team_size: [
+          /how\s+many.*team|size.*team|people.*manage|team.*members/i
+        ],
+        organization: [
+          /company|organization|where.*work|employer/i
+        ]
+      };
+      
+      // Find which field the agent is asking about
+      let currentField: string | null = null;
+      for (const [field, patterns] of Object.entries(fieldPatterns)) {
+        if (patterns.some(pattern => pattern.test(agentResponse))) {
+          currentField = field;
+          break;
+        }
+      }
+      
+      // If we found a field being asked about, check if it has suggested values
+      if (currentField && extractionRules[currentField]) {
+        const rule = extractionRules[currentField];
+        
+        // Show suggestions if the field has suggested values configured
+        // This allows proactive suggestion display when asking about fields with suggestions
+        if (rule.suggestedValues && rule.suggestedValues.length > 0) {
+          return {
+            field: currentField,
+            values: rule.suggestedValues,
+            helpText: rule.description
+          };
+        }
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('Error getting suggested values:', error);
+      return null;
+    }
   }
 
   private async generateHandoffDocument(metadata: OnboardingMetadata, context: AgentContext): Promise<any> {

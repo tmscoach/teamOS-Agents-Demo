@@ -6,7 +6,10 @@ export interface ExtractionRule {
   patterns?: string[];
   required?: boolean;
   description?: string;
-  useLLMFallback?: boolean; // New field to enable LLM fallback per rule
+  useLLMFallback?: boolean; // Enable LLM fallback when regex fails
+  preferLLM?: boolean; // Prefer LLM extraction over regex for this field
+  examples?: string[]; // Example values to help LLM understand the field
+  suggestedValues?: string[]; // Suggested values to display when user is uncertain
 }
 
 export interface ExtractionResult {
@@ -35,6 +38,9 @@ export class ExtractionProcessor {
    */
   private static getLLMProvider(): LLMProvider {
     if (!this.llmProvider) {
+      if (!process.env.OPENAI_API_KEY) {
+        console.warn('[Extraction] Warning: OPENAI_API_KEY not found. LLM extraction will not work.');
+      }
       this.llmProvider = new LLMProvider();
     }
     return this.llmProvider;
@@ -51,18 +57,45 @@ export class ExtractionProcessor {
     const results: ExtractionResult[] = [];
 
     for (const [fieldName, rule] of Object.entries(rules)) {
-      // First try regex extraction
-      let result = this.extractField(message, fieldName, rule);
+      let result: ExtractionResult;
       
-      // If regex failed and LLM fallback is enabled, try LLM extraction
-      if (!result.successful && rule.required && rule.useLLMFallback &&
-          context?.enableLLMFallback !== false) {
+      // Check if we should prefer LLM extraction for this field
+      // Default to LLM extraction when available for better accuracy
+      const preferLLM = rule.preferLLM !== false && context?.enableLLMFallback === true;
+      
+      if (fieldName === 'manager_name' || fieldName === 'manager_role') {
+        console.log(`[Extraction] Processing ${fieldName}: preferLLM=${preferLLM}, enableLLMFallback=${context?.enableLLMFallback}`);
+      }
+      
+      if (preferLLM) {
+        // Use LLM extraction when enabled (now the default)
         const llmResult = await this.extractWithLLM(message, fieldName, rule);
-        if (llmResult.successful) {
-          result = llmResult;
-        } else {
-          // Still update the extraction method even if unsuccessful
-          result.extractionMethod = 'llm';
+        result = llmResult;
+        
+        // Log results for debugging
+        if (rule.required || ['manager_name', 'manager_role', 'team_size', 'primary_challenge'].includes(fieldName)) {
+          console.log(`[Extraction] LLM result for ${fieldName}: ${llmResult.successful ? llmResult.extractedValue : 'NOT_FOUND'}`);
+        }
+        
+        // Optional: Fall back to regex if LLM fails and fallback is explicitly requested
+        if (!result.successful && rule.useRegexFallback === true) {
+          const regexResult = this.extractField(message, fieldName, rule);
+          if (regexResult.successful) {
+            result = regexResult;
+            console.log(`[Extraction] Regex fallback succeeded for ${fieldName}: ${result.extractedValue}`);
+          }
+        }
+      } else {
+        // Use regex extraction only when LLM is explicitly disabled
+        result = this.extractField(message, fieldName, rule);
+        
+        // Still allow LLM fallback if specifically configured
+        if (!result.successful && rule.useLLMFallback && context?.enableLLMFallback === true) {
+          const llmResult = await this.extractWithLLM(message, fieldName, rule);
+          if (llmResult.successful) {
+            result = llmResult;
+            console.log(`[Extraction] LLM fallback succeeded for ${fieldName}: ${result.extractedValue}`);
+          }
         }
       }
       
@@ -198,8 +231,24 @@ export class ExtractionProcessor {
     try {
       const llm = this.getLLMProvider();
       
+      // Check if LLM is properly configured
+      if (!process.env.OPENAI_API_KEY) {
+        console.error(`[LLM Extraction] Cannot extract ${fieldName}: OpenAI API key not configured`);
+        return {
+          fieldName,
+          attempted: true,
+          successful: false,
+          confidence: 0,
+          extractionMethod: 'llm'
+        };
+      }
+      
       // Create extraction prompt
       const prompt = this.createExtractionPrompt(message, fieldName, rule);
+      
+      if (fieldName === 'manager_name' || fieldName === 'manager_role') {
+        console.log(`[LLM Extraction] Starting extraction for ${fieldName} from: "${message}"`);
+      }
       
       // Get LLM response
       const response = await llm.generateResponse([
@@ -214,6 +263,10 @@ export class ExtractionProcessor {
       });
 
       const extractedText = response.completion.choices[0]?.message?.content?.trim() || '';
+      
+      if (fieldName === 'manager_name' || fieldName === 'manager_role') {
+        console.log(`[LLM Extraction] ${fieldName} from "${message}" → "${extractedText}"`);
+      }
       
       // Check if extraction was successful
       if (extractedText === 'NOT_FOUND' || extractedText === '') {
@@ -296,16 +349,139 @@ export class ExtractionProcessor {
         typeHint = 'Extract the exact text value.';
     }
 
-    return `Extract the following information from the user's message:
+    // Special handling for name fields
+    const isNameField = ['manager_name', 'user_name', 'name'].includes(fieldName);
+    const isRoleField = ['manager_role', 'role', 'job_title', 'position'].includes(fieldName);
+    
+    if (isNameField) {
+      return `Extract the person's name from the user's message.
+
+IMPORTANT RULES:
+1. Only extract if the person is explicitly introducing themselves
+2. Common greeting responses are NOT names:
+   - "I'm fine" → NOT a name introduction
+   - "I'm good" → NOT a name introduction  
+   - "I'm okay" → NOT a name introduction
+3. Phrases expressing desires/needs are NOT names:
+   - "I just want..." → NOT a name introduction
+   - "I need..." → NOT a name introduction
+   - "I think..." → NOT a name introduction
+4. Look for actual name introduction patterns:
+   - "My name is [NAME]"
+   - "I'm [NAME]" (where NAME is clearly a person's name)
+   - "Hi, I'm [NAME]"
+   - "Hello, I'm [NAME]"
+   - "Call me [NAME]"
+   - "[NAME] here"
+   - "This is [NAME]"
+
+User Message: "${message}"
+
+Respond with ONLY the person's actual name or "NOT_FOUND" if no name is introduced.
+Examples:
+- "I'm fine" → "NOT_FOUND"
+- "I'm Sarah" → "Sarah"
+- "Hi I'm Rowan" → "Rowan"
+- "Hello, I'm John" → "John"
+- "My name is John Smith" → "John Smith"
+- "I just want to understand" → "NOT_FOUND"
+- "I have 3 people in my team" → "NOT_FOUND"
+- "I manage 5 people" → "NOT_FOUND"
+- "We have 10 team members" → "NOT_FOUND"
+- "I'm john and i manage a team" → "John"
+- "i'm sarah" → "Sarah"
+
+CRITICAL: 
+- If someone says "Hi I'm [NAME]" or "Hello I'm [NAME]", extract the NAME
+- Common names like Rowan, Sarah, John, etc. should be recognized
+- Names may be written in lowercase - capitalize them properly (e.g., "john" → "John", "sarah" → "Sarah")
+- If the message contains "I'm [name] and..." where [name] is a common first name, extract it
+- If the message is about team size, roles, or work information WITHOUT a name introduction, respond with "NOT_FOUND"`;
+    }
+    
+    if (isRoleField) {
+      return `Extract the person's job title or role from the user's message.
+
+IMPORTANT RULES:
+1. Only extract the actual job title/role, not the company name or other details
+2. Common role patterns to look for:
+   - "I'm a [ROLE]"
+   - "I am a [ROLE]"
+   - "I work as [ROLE]"
+   - "My role is [ROLE]"
+   - "I'm the [ROLE]"
+   - "serving as [ROLE]"
+   - "position is [ROLE]"
+   - "[ROLE] at/for [company]"
+3. Clean up the extraction:
+   - Remove articles (a, an, the)
+   - Capitalize appropriately (e.g., "CTO", "VP of Sales")
+   - Include full title (e.g., "Senior Software Engineer", not just "Engineer")
+
+User Message: "${message}"
+
+Respond with ONLY the job title/role or "NOT_FOUND" if no role is mentioned.
+Examples:
+- "I'm a software engineer" → "Software Engineer"
+- "I work as a team lead" → "Team Lead"
+- "My role is CTO" → "CTO"
+- "I'm the VP of Engineering" → "VP of Engineering"
+- "I am a senior product manager at Google" → "Senior Product Manager"
+- "actually 'BHP' and I'm a CTO there" → "CTO"
+- "I manage the sales team" → "NOT_FOUND" (describes responsibility, not title)
+- "I have 5 years experience" → "NOT_FOUND" (no role mentioned)
+
+CRITICAL:
+- Extract ONLY the job title, not the company name
+- Common abbreviations like CTO, CEO, CFO, VP should be kept in uppercase
+- If someone says "I'm a [ROLE] at/for/with [company]", extract only the ROLE`;
+    }
+    
+    // Generic extraction prompt for other fields
+    const fieldNameFormatted = fieldName.split('_').map(word => 
+      word.charAt(0).toUpperCase() + word.slice(1)
+    ).join(' ');
+    
+    // Add field-specific guidance
+    let fieldGuidance = '';
+    if (fieldName.includes('team_size')) {
+      fieldGuidance = `
+Common patterns:
+- "team of [NUMBER]"
+- "[NUMBER] people/members/employees"
+- "manage [NUMBER]"
+- "have [NUMBER] direct reports"
+
+Extract only the number. If a range is given (e.g., "10-15"), extract the average.`;
+    } else if (fieldName.includes('challenge')) {
+      fieldGuidance = `
+Look for:
+- Problems or issues mentioned
+- Pain points or struggles
+- Goals they want to achieve
+- Improvements they're seeking
+
+Extract the main challenge or problem, not the entire explanation.`;
+    } else if (fieldName.includes('organization') || fieldName.includes('company')) {
+      fieldGuidance = `
+Extract only the company/organization name, not descriptions or additional context.`;
+    }
+    
+    return `Extract the ${fieldNameFormatted} from the user's message.
 
 Field: ${fieldName}
 Description: ${rule.description || `Extract the ${fieldName}`}
 Type: ${rule.type}
 ${typeHint}
+${fieldGuidance}
 
 User Message: "${message}"
 
-Respond with only the extracted value or "NOT_FOUND" if the information is not present in the message.
+Respond with only the extracted value or "NOT_FOUND" if the information is not present.
+Examples of responses:
+- If found: Just the value (e.g., "5", "Microsoft", "Poor communication")
+- If not found: "NOT_FOUND"
+
 Do not include any explanation or additional text.`;
   }
 
@@ -391,6 +567,14 @@ Do not include any explanation or additional text.`;
     // Track extractions
     await this.trackExtractions(results, context);
 
-    return { extracted, results };
+    // Filter out unsuccessful extractions from the extracted object
+    const cleanExtracted: Record<string, any> = {};
+    for (const result of results) {
+      if (result.successful && result.extractedValue !== undefined && result.extractedValue !== null) {
+        cleanExtracted[result.fieldName] = result.extractedValue;
+      }
+    }
+
+    return { extracted: cleanExtracted, results };
   }
 }

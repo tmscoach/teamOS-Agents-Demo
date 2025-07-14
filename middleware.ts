@@ -24,6 +24,8 @@ const isPublicRoute = createRouteMatcher([
   '/api/test-db',  // Temporary test endpoint
   '/test-tailwind',  // Test page
   '/api/dev(.*)',  // Development endpoints
+  '/dev-login',  // Development login page
+  '/dev-testing',  // Development testing guide
 ])
 
 export default clerkMiddleware(async (auth, req) => {
@@ -32,6 +34,16 @@ export default clerkMiddleware(async (auth, req) => {
   // Allow public routes
   if (isPublicRoute(req)) {
     return NextResponse.next()
+  }
+
+  // In development, check for dev auth cookie
+  if (process.env.NODE_ENV === 'development') {
+    const devAuthCookie = req.cookies.get('__dev_auth')
+    if (devAuthCookie) {
+      console.log('[Middleware] Dev auth cookie found:', devAuthCookie.value.substring(0, 50) + '...')
+      // Dev auth is present, allow access
+      return NextResponse.next()
+    }
   }
 
   // Check authentication for ALL non-public routes

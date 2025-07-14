@@ -41,21 +41,45 @@ export default function ChatClient() {
     requiredFieldsCount: 0,
     capturedFieldsCount: 0
   });
+  const [suggestedValues, setSuggestedValues] = useState<{
+    field: string;
+    values: string[];
+    helpText?: string;
+  } | null>(null);
+  const [devAuthChecked, setDevAuthChecked] = useState(false);
+  const [autoStarted, setAutoStarted] = useState(false);
   
   // Get agent from URL params
   const agentName = searchParams.get('agent') || 'OrchestratorAgent';
   const isNewConversation = searchParams.get('new') === 'true';
 
   useEffect(() => {
-    if (isLoaded && !user) {
-      router.push("/sign-in");
+    if (isLoaded && !user && !devAuthChecked) {
+      // In development, check if we have a dev auth cookie
+      if (process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_ENV === 'development') {
+        // Check if __dev_auth cookie exists by trying to make an authenticated request
+        fetch('/api/dev/check-auth')
+          .then(res => {
+            setDevAuthChecked(true);
+            if (!res.ok) {
+              router.push("/sign-in");
+            }
+          })
+          .catch(() => {
+            setDevAuthChecked(true);
+            router.push("/sign-in");
+          });
+      } else {
+        router.push("/sign-in");
+      }
     }
-  }, [isLoaded, user, router]);
+  }, [isLoaded, user, router, devAuthChecked]);
 
 
   // Load existing conversation on mount
   useEffect(() => {
-    if (isLoaded && user && !isNewConversation) {
+    const hasAuth = user || (devAuthChecked && (process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_ENV === 'development'));
+    if (isLoaded && hasAuth && !isNewConversation) {
       const loadExistingConversation = async () => {
         try {
           // Check localStorage for existing conversation
@@ -128,22 +152,24 @@ export default function ChatClient() {
       }
       setLoadingConversation(false);
     }
-  }, [isLoaded, user, isNewConversation, agentName]);
+  }, [isLoaded, user, isNewConversation, agentName, devAuthChecked]);
 
   // Auto-start conversation ONLY for explicitly new chats
   useEffect(() => {
-    if (isLoaded && user && isNewConversation && !conversationId && messages.length === 0 && !loading && !loadingConversation) {
+    const hasAuth = user || (devAuthChecked && (process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_ENV === 'development'));
+    if (isLoaded && hasAuth && isNewConversation && !autoStarted && messages.length === 0 && !loading && !loadingConversation) {
       // Clear any existing conversation from localStorage when starting new
       localStorage.removeItem(CONVERSATION_STORAGE_KEY);
       // Send an initial empty message to trigger the agent's greeting
       const autoStart = async () => {
+        setAutoStarted(true); // Set flag immediately to prevent duplicate calls
         setLoading(true);
         try {
           const response = await fetch("/api/agents/chat-simple", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
-              message: "Hello, let's start", // Proper greeting message
+              message: " ", // Single space to pass validation but prevent extraction
               conversationId: null,
               agentName: agentName
             })
@@ -178,6 +204,11 @@ export default function ChatClient() {
           if (data.onboardingState) {
             setOnboardingState(data.onboardingState);
           }
+          
+          // Handle suggested values from initial greeting
+          if (data.metadata?.suggestedValues) {
+            setSuggestedValues(data.metadata.suggestedValues);
+          }
         } catch (error) {
           console.error("Failed to auto-start conversation:", error);
         } finally {
@@ -187,7 +218,7 @@ export default function ChatClient() {
 
       autoStart();
     }
-  }, [isLoaded, user, isNewConversation, conversationId, agentName, messages.length, loading, loadingConversation]);
+  }, [isLoaded, user, isNewConversation, agentName, autoStarted, loading, loadingConversation, devAuthChecked]);
 
   const sendMessage = async () => {
     if (!input.trim() || loading) return;
@@ -244,6 +275,22 @@ export default function ChatClient() {
       }
       if (data.onboardingState) {
         setOnboardingState(data.onboardingState);
+        
+        // Auto-redirect to dashboard when onboarding completes
+        if (data.onboardingState.isComplete && data.currentAgent === 'OnboardingAgent') {
+          console.log('[ChatClient] Onboarding complete, redirecting to dashboard...');
+          // Show completion message briefly before redirect
+          setTimeout(() => {
+            router.push('/dashboard');
+          }, 2000); // 2 second delay to show completion message
+        }
+      }
+      
+      // Handle suggested values from metadata
+      if (data.metadata?.suggestedValues) {
+        setSuggestedValues(data.metadata.suggestedValues);
+      } else {
+        setSuggestedValues(null);
       }
     } catch (error) {
       console.error("Failed to send message:", error);
@@ -259,7 +306,10 @@ export default function ChatClient() {
     }
   };
 
-  if (!isLoaded || loadingConversation) {
+  // Show loading while checking auth or loading conversation
+  const isCheckingAuth = !isLoaded || (!user && !devAuthChecked && (process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_ENV === 'development'));
+  
+  if (isCheckingAuth || loadingConversation) {
     return (
       <div className="flex items-center justify-center h-screen">
         <Loader2 className="h-8 w-8 animate-spin" />
@@ -296,6 +346,7 @@ export default function ChatClient() {
         extractedData={extractedData}
         onboardingState={onboardingState}
         isOnboarding={agentName === 'OnboardingAgent'}
+        suggestedValues={suggestedValues || undefined}
       />
     </>
   );

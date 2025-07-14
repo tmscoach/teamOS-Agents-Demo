@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { currentUser } from '@clerk/nextjs/server';
+import { currentUser } from '@/src/lib/auth/clerk-dev-wrapper';
 import { AgentRouter, ContextManager, ConversationStore, AgentContext, Message } from '@/src/lib/agents';
 import { 
   createOnboardingAgent,
@@ -18,6 +18,7 @@ import {
   createRecognitionAgent
 } from '@/src/lib/agents/implementations';
 import prisma from '@/lib/db';
+import { JourneyTracker } from '@/lib/orchestrator/journey-tracker';
 
 // Custom context manager that integrates with persistence
 class PersistentContextManager extends ContextManager {
@@ -119,7 +120,22 @@ export async function POST(req: NextRequest) {
     }
 
     // Authenticate user
-    const user = await currentUser();
+    let user = await currentUser();
+    
+    // If no Clerk auth, check for dev auth
+    if (!user && process.env.NODE_ENV === 'development') {
+      const devAuth = await getDevAuth();
+      if (devAuth) {
+        // Create a mock user object for dev auth
+        user = {
+          id: devAuth.userId,
+          emailAddresses: [{ emailAddress: devAuth.email }],
+          fullName: devAuth.email.split('@')[0],
+          firstName: devAuth.email.split('@')[0],
+        } as any;
+      }
+    }
+    
     if (!user) {
       return NextResponse.json(
         { error: 'Please sign in to chat' },
@@ -130,12 +146,8 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { message, conversationId, agentName } = body;
 
-    if (!message) {
-      return NextResponse.json(
-        { error: 'Message is required' },
-        { status: 400 }
-      );
-    }
+    // Allow empty message for initial greeting
+    const messageContent = message || "";
 
     // Auto-create or get user
     let dbUser = await prisma.user.findUnique({
@@ -244,7 +256,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Process message with router using the routeMessage method directly
-    const response = await router.routeMessage(message, context);
+    const response = await router.routeMessage(messageContent, context);
 
     // Save events to database (messages are already saved by PersistentContextManager)
     for (const event of response.events) {
@@ -299,11 +311,40 @@ export async function POST(req: NextRequest) {
       const onboardingMetadata = context.metadata.onboarding;
       extractedData = onboardingMetadata.capturedFields || {};
       
+      console.log('[API] Onboarding metadata:', {
+        capturedFields: extractedData,
+        isComplete: onboardingMetadata.isComplete,
+        state: onboardingMetadata.state
+      });
+      
       // Count required fields and captured fields
       const requiredFieldsStatus = onboardingMetadata.requiredFieldsStatus || {};
       onboardingState.requiredFieldsCount = Object.keys(requiredFieldsStatus).length;
       onboardingState.capturedFieldsCount = Object.values(requiredFieldsStatus).filter(Boolean).length;
       onboardingState.isComplete = onboardingMetadata.isComplete || false;
+      
+      // Update journey status when onboarding completes
+      if (onboardingState.isComplete && !context.metadata?.journeyUpdated) {
+        try {
+          console.log('[Journey] Onboarding complete, updating journey status for user:', dbUser.id);
+          const journeyTracker = await JourneyTracker.getOrCreateJourneyForUser(dbUser.id);
+          await journeyTracker.completeOnboarding();
+          
+          // Update onboarding data with captured fields
+          await journeyTracker.updateJourneyProgress('onboarding_complete', {
+            capturedFields: extractedData,
+            completedAt: new Date()
+          });
+          
+          // Mark journey as updated to prevent duplicate updates
+          context.metadata.journeyUpdated = true;
+          await contextManager.setContext(context.conversationId, context);
+          
+          console.log('[Journey] Successfully updated journey to ASSESSMENT phase');
+        } catch (error) {
+          console.error('[Journey] Failed to update journey status:', error);
+        }
+      }
     }
 
     // Format response
