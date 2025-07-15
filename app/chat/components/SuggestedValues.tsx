@@ -20,7 +20,7 @@ export default function SuggestedValues({
     <div className="mt-4 border-t border-gray-200 pt-4">
       {helpText && (
         <p className="text-sm text-gray-500 mb-3 flex items-start gap-2">
-          <span className="text-blue-500 mt-0.5">💡</span>
+          <span className="text-blue-500 mt-0.5" aria-label="Tip">💡</span>
           <span>{helpText}</span>
         </p>
       )}
@@ -41,7 +41,7 @@ export default function SuggestedValues({
       </div>
       
       <p className="text-xs text-gray-400 mt-3 italic">
-        💭 You can also type your own response if none of these fit
+        <span aria-label="Thought bubble">💭</span> You can also type your own response if none of these fit
       </p>
     </div>
   );

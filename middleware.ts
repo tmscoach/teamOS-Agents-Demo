@@ -15,6 +15,13 @@ const isAdminRoute = createRouteMatcher([
   '/api/admin(.*)',
 ])
 
+// Define dev-only routes that should be blocked in production
+const isDevOnlyRoute = createRouteMatcher([
+  '/api/dev(.*)',
+  '/dev-login',
+  '/dev-testing',
+])
+
 const isPublicRoute = createRouteMatcher([
   '/',
   '/sign-in(.*)',
@@ -23,16 +30,23 @@ const isPublicRoute = createRouteMatcher([
   '/api/webhooks(.*)',
   '/api/test-db',  // Temporary test endpoint
   '/test-tailwind',  // Test page
-  '/api/dev(.*)',  // Development endpoints
-  '/dev-login',  // Development login page
-  '/dev-testing',  // Development testing guide
 ])
 
 export default clerkMiddleware(async (auth, req) => {
   const { userId, redirectToSignIn } = await auth()
 
+  // Block dev-only routes in production
+  if (process.env.NODE_ENV === 'production' && isDevOnlyRoute(req)) {
+    return new NextResponse('Not Found', { status: 404 })
+  }
+
   // Allow public routes
   if (isPublicRoute(req)) {
+    return NextResponse.next()
+  }
+  
+  // Allow dev-only routes in development (after checking they're not in production)
+  if (process.env.NODE_ENV === 'development' && isDevOnlyRoute(req)) {
     return NextResponse.next()
   }
 

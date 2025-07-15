@@ -14,16 +14,29 @@ export async function POST(req: NextRequest) {
   try {
     const { email } = await req.json()
     
-    if (!email) {
+    // Validate email input
+    if (!email || typeof email !== 'string') {
       return NextResponse.json(
-        { error: 'Email is required' },
+        { error: 'Valid email is required' },
         { status: 400 }
       )
     }
+    
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    if (!emailRegex.test(email)) {
+      return NextResponse.json(
+        { error: 'Invalid email format' },
+        { status: 400 }
+      )
+    }
+    
+    // Sanitize email to prevent injection
+    const sanitizedEmail = email.trim().toLowerCase()
 
-    // Create mock session data
+    // Create mock session data with sanitized email
     const mockSessionId = `dev_session_${Date.now()}`
-    const mockUserId = `dev_user_${email.replace(/[^a-zA-Z0-9]/g, '_')}`
+    const mockUserId = `dev_user_${sanitizedEmail.replace(/[^a-zA-Z0-9]/g, '_')}`
     
     // Set development session cookies
     const cookieStore = await cookies()
@@ -31,7 +44,7 @@ export async function POST(req: NextRequest) {
     const devAuthData = JSON.stringify({
       sessionId: mockSessionId,
       userId: mockUserId,
-      email: email,
+      email: sanitizedEmail,
       timestamp: Date.now()
     })
     
@@ -50,7 +63,7 @@ export async function POST(req: NextRequest) {
       success: true,
       message: 'Development session created',
       userId: mockUserId,
-      email: email,
+      email: sanitizedEmail,
       redirectUrl: '/chat?agent=OnboardingAgent&new=true'
     })
   } catch (error) {

@@ -36,17 +36,15 @@ export default function DevLoginPage() {
 
       // Force a page reload to ensure cookies are properly set
       window.location.href = data.redirectUrl || "/chat?agent=OnboardingAgent&new=true"
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred')
     } finally {
       setIsLoading(false)
     }
   }
 
-  // Only show in development
-  if (process.env.NODE_ENV === "production") {
-    return null
-  }
+  // Note: Production check is handled by middleware
+  // This page will return 404 in production
 
   return (
     <div className="flex min-h-screen items-center justify-center p-4">
