@@ -1,5 +1,6 @@
 import { VariableExtractionService, VariableExtractionInput } from '../../services/variable-extraction';
 import { LLMProvider } from '../llm';
+import { BatchExtractor } from './batch-extraction';
 
 export interface ExtractionRule {
   type: 'string' | 'number' | 'boolean' | 'array';
@@ -54,6 +55,17 @@ export class ExtractionProcessor {
     rules: Record<string, ExtractionRule>,
     context?: ExtractionContext
   ): Promise<ExtractionResult[]> {
+    // Check if we should use batch extraction for better performance
+    const llmEnabledFields = Object.entries(rules).filter(([_, rule]) => 
+      rule.preferLLM !== false && context?.enableLLMFallback === true
+    );
+    
+    // If we have multiple LLM-enabled fields, use batch extraction
+    if (llmEnabledFields.length > 1) {
+      return this.extractFromMessageBatch(message, rules, context);
+    }
+    
+    // Otherwise, fall back to individual extraction
     const results: ExtractionResult[] = [];
 
     for (const [fieldName, rule] of Object.entries(rules)) {
@@ -576,5 +588,55 @@ Do not include any explanation or additional text.`;
     }
 
     return { extracted: cleanExtracted, results };
+  }
+  
+  /**
+   * Extract multiple fields using batch LLM extraction for better performance
+   */
+  private static async extractFromMessageBatch(
+    message: string,
+    rules: Record<string, ExtractionRule>,
+    context?: ExtractionContext
+  ): Promise<ExtractionResult[]> {
+    const results: ExtractionResult[] = [];
+    
+    // Separate fields into LLM and regex groups
+    const llmFields: Record<string, ExtractionRule> = {};
+    const regexOnlyFields: Record<string, ExtractionRule> = {};
+    
+    for (const [fieldName, rule] of Object.entries(rules)) {
+      if (rule.preferLLM !== false && context?.enableLLMFallback === true) {
+        llmFields[fieldName] = rule;
+      } else {
+        regexOnlyFields[fieldName] = rule;
+      }
+    }
+    
+    // Batch extract LLM fields
+    if (Object.keys(llmFields).length > 0) {
+      console.log(`[Extraction] Batch extracting ${Object.keys(llmFields).length} fields with LLM`);
+      const startTime = Date.now();
+      
+      const batchResults = await BatchExtractor.extractBatch({
+        message,
+        fields: llmFields
+      });
+      
+      const duration = Date.now() - startTime;
+      console.log(`[Extraction] Batch extraction completed in ${duration}ms`);
+      
+      // Add batch results to results array
+      for (const [fieldName, result] of Object.entries(batchResults)) {
+        results.push(result);
+      }
+    }
+    
+    // Extract regex-only fields individually
+    for (const [fieldName, rule] of Object.entries(regexOnlyFields)) {
+      const result = this.extractField(message, fieldName, rule);
+      results.push(result);
+    }
+    
+    return results;
   }
 }

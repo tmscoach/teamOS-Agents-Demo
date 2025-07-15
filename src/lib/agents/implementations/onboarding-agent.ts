@@ -443,10 +443,6 @@ Required fields are determined by extraction rules configuration.`;
 
     // Check if response is asking about a field with suggested values
     const suggestedValues = await this.getSuggestedValuesForCurrentContext(message, response.message || '', metadata);
-    console.log('[OnboardingAgent] Suggested values check:', {
-      agentResponse: response.message?.substring(0, 100),
-      suggestedValues: suggestedValues
-    });
     if (suggestedValues) {
       response.metadata = {
         ...response.metadata,
@@ -778,11 +774,8 @@ Required fields are determined by extraction rules configuration.`;
       
       // Find which field the agent is asking about
       let currentField: string | null = null;
-      console.log('[OnboardingAgent] Checking field patterns against:', agentResponse);
       for (const [field, patterns] of Object.entries(fieldPatterns)) {
-        const matched = patterns.some(pattern => pattern.test(agentResponse));
-        console.log(`[OnboardingAgent] Field ${field}: ${matched ? 'MATCHED' : 'no match'}`);
-        if (matched) {
+        if (patterns.some(pattern => pattern.test(agentResponse))) {
           currentField = field;
           break;
         }
