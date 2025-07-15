@@ -60,8 +60,12 @@ export class ExtractionProcessor {
       rule.preferLLM !== false && context?.enableLLMFallback === true
     );
     
+    // Temporarily disable batch extraction due to hanging issues
+    // TODO: Re-enable after fixing JSON parsing
+    const USE_BATCH_EXTRACTION = false;
+    
     // If we have multiple LLM-enabled fields, use batch extraction
-    if (llmEnabledFields.length > 1) {
+    if (USE_BATCH_EXTRACTION && llmEnabledFields.length > 1) {
       return this.extractFromMessageBatch(message, rules, context);
     }
     

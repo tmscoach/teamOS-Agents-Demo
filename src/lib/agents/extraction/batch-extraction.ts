@@ -51,21 +51,36 @@ export class BatchExtractor {
       const prompt = this.createBatchExtractionPrompt(message, llmFields);
       
       const llm = this.getLLMProvider();
-      const response = await llm.generateResponse([
+      
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Batch extraction timeout')), 5000);
+      });
+      
+      const responsePromise = llm.generateResponse([
         {
           role: 'system',
-          content: 'You are a precise information extraction assistant. Extract the requested information from the given text and return it in the specified JSON format. If information is not present, use null for that field.'
+          content: 'You are a precise information extraction assistant. Extract the requested information from the given text and return it in the specified JSON format. If information is not present, use null for that field. Return ONLY valid JSON.'
         },
         { role: 'user', content: prompt }
       ], {
         temperature: 0.1,
-        maxTokens: 500,
-        responseFormat: { type: 'json_object' }
+        maxTokens: 500
+        // Temporarily disable JSON mode as it may be causing issues
+        // responseFormat: { type: 'json_object' }
       });
       
-      const extractedData = JSON.parse(
-        response.completion.choices[0]?.message?.content || '{}'
-      ) as BatchExtractionResponse;
+      const response = await Promise.race([responsePromise, timeoutPromise]);
+      
+      const content = response.completion.choices[0]?.message?.content || '{}';
+      let extractedData: BatchExtractionResponse;
+      
+      try {
+        extractedData = JSON.parse(content);
+      } catch (parseError) {
+        console.error('[BatchExtractor] Failed to parse JSON response:', content);
+        throw new Error('Invalid JSON response from LLM');
+      }
       
       // Convert batch response to ExtractionResult format
       for (const [fieldName, rule] of llmFields) {
