@@ -4,6 +4,7 @@
  */
 
 import { ENHANCED_EXTRACTION_PATTERNS, convertToStandardRules } from '../extraction/enhanced-patterns';
+import { mergeSuggestedValues } from '../extraction/merge-suggestions';
 
 export interface AgentDefaultConfig {
   prompts: Record<string, string>;
@@ -87,23 +88,25 @@ IMPORTANT INSTRUCTIONS:
         'leader_commitment'
       ]
     },
-    // Use enhanced extraction patterns for better coverage
-    extractionRules: convertToStandardRules({
-      manager_name: ENHANCED_EXTRACTION_PATTERNS.manager_name,
-      team_size: ENHANCED_EXTRACTION_PATTERNS.team_size,
-      team_tenure: ENHANCED_EXTRACTION_PATTERNS.team_tenure,
-      primary_challenge: ENHANCED_EXTRACTION_PATTERNS.primary_challenge,
-      success_metrics: ENHANCED_EXTRACTION_PATTERNS.success_metrics,
-      timeline_preference: ENHANCED_EXTRACTION_PATTERNS.timeline_preference,
-      budget_range: ENHANCED_EXTRACTION_PATTERNS.budget_range,
-      leader_commitment: ENHANCED_EXTRACTION_PATTERNS.leader_commitment,
-      // Additional fields for richer context
-      company_name: ENHANCED_EXTRACTION_PATTERNS.company_name,
-      department: ENHANCED_EXTRACTION_PATTERNS.department,
-      team_distribution: ENHANCED_EXTRACTION_PATTERNS.team_distribution,
-      urgency_level: ENHANCED_EXTRACTION_PATTERNS.urgency_level,
-      previous_initiatives: ENHANCED_EXTRACTION_PATTERNS.previous_initiatives
-    }),
+    // Use enhanced extraction patterns with suggested values merged in
+    extractionRules: mergeSuggestedValues(
+      convertToStandardRules({
+        manager_name: ENHANCED_EXTRACTION_PATTERNS.manager_name,
+        team_size: ENHANCED_EXTRACTION_PATTERNS.team_size,
+        team_tenure: ENHANCED_EXTRACTION_PATTERNS.team_tenure,
+        primary_challenge: ENHANCED_EXTRACTION_PATTERNS.primary_challenge,
+        success_metrics: ENHANCED_EXTRACTION_PATTERNS.success_metrics,
+        timeline_preference: ENHANCED_EXTRACTION_PATTERNS.timeline_preference,
+        budget_range: ENHANCED_EXTRACTION_PATTERNS.budget_range,
+        leader_commitment: ENHANCED_EXTRACTION_PATTERNS.leader_commitment,
+        // Additional fields for richer context
+        company_name: ENHANCED_EXTRACTION_PATTERNS.company_name,
+        department: ENHANCED_EXTRACTION_PATTERNS.department,
+        team_distribution: ENHANCED_EXTRACTION_PATTERNS.team_distribution,
+        urgency_level: ENHANCED_EXTRACTION_PATTERNS.urgency_level,
+        previous_initiatives: ENHANCED_EXTRACTION_PATTERNS.previous_initiatives
+      })
+    ),
     guardrailConfig: {
       minMessageLength: 1,
       maxMessageLength: 1000,
