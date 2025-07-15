@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { JourneyDetails } from "@/components/admin/journey-details";
 import { UserRole } from "@/lib/orchestrator/journey-phases";
+import { ExtractionRuleWithMetadata } from "@/src/lib/services/agent-configuration";
 
 interface Message {
   id: string;
@@ -82,6 +83,7 @@ export default function ConversationDetailPage() {
   const [conversation, setConversation] = useState<ConversationDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'captured' | 'required'>('captured');
+  const [extractionRules, setExtractionRules] = useState<ExtractionRuleWithMetadata[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -106,10 +108,27 @@ export default function ConversationDetailPage() {
       console.log('Fetched conversation data:', data);
       console.log('Messages:', data.messages);
       setConversation(data);
+      
+      // Fetch extraction rules if this is an onboarding conversation
+      if (data.currentAgent === 'OnboardingAgent') {
+        await fetchExtractionRules('OnboardingAgent');
+      }
     } catch (error) {
       console.error('Failed to fetch conversation:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchExtractionRules = async (agentName: string) => {
+    try {
+      const response = await fetch(`/api/admin/agents/extraction-rules?agent=${agentName}`);
+      if (response.ok) {
+        const rules = await response.json();
+        setExtractionRules(rules);
+      }
+    } catch (error) {
+      console.error('Failed to fetch extraction rules:', error);
     }
   };
 
@@ -443,45 +462,66 @@ export default function ConversationDetailPage() {
                   {activeTab === 'captured' ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                       {Object.entries(onboardingData.capturedFields || {}).length > 0 ? (
-                        Object.entries(onboardingData.capturedFields).map(([key, value]) => (
-                          <div key={key} style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            paddingBottom: '12px',
-                            borderBottom: '1px solid #f3f4f6'
-                          }}>
-                            <span style={{ fontSize: '14px', fontWeight: '500', color: '#111827' }}>
-                              {key}:
-                            </span>
-                            <span style={{ fontSize: '14px', color: '#6b7280' }}>
-                              {String(value)}
-                            </span>
-                          </div>
-                        ))
+                        Object.entries(onboardingData.capturedFields).map(([key, value]) => {
+                          // Find the extraction rule for this field
+                          const rule = extractionRules.find(r => r.fieldName === key);
+                          const displayName = rule?.displayName || key;
+                          
+                          return (
+                            <div key={key} style={{
+                              display: 'flex',
+                              justifyContent: 'space-between',
+                              paddingBottom: '12px',
+                              borderBottom: '1px solid #f3f4f6'
+                            }}>
+                              <span style={{ fontSize: '14px', fontWeight: '500', color: '#111827' }}>
+                                {displayName}:
+                              </span>
+                              <span style={{ fontSize: '14px', color: '#6b7280' }}>
+                                {String(value)}
+                              </span>
+                            </div>
+                          );
+                        })
                       ) : (
                         <p style={{ fontSize: '14px', color: '#6b7280' }}>No variables captured yet</p>
                       )}
                     </div>
                   ) : (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                      {Object.entries(onboardingData.requiredFieldsStatus || {}).length > 0 ? (
-                        Object.entries(onboardingData.requiredFieldsStatus).map(([field, captured]) => (
-                          <div key={field} style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            padding: '8px 0'
-                          }}>
-                            <span style={{ fontSize: '14px', color: '#111827' }}>{field}</span>
-                            {captured ? (
-                              <CheckCircle style={{ width: '16px', height: '16px', color: '#10b981' }} />
-                            ) : (
-                              <AlertCircle style={{ width: '16px', height: '16px', color: '#e5e7eb' }} />
-                            )}
-                          </div>
-                        ))
+                      {extractionRules.length > 0 ? (
+                        extractionRules
+                          .filter(rule => rule.required)
+                          .map(rule => {
+                            const isCaptured = onboardingData.capturedFields?.[rule.fieldName] !== undefined;
+                            
+                            return (
+                              <div key={rule.fieldName} style={{
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between',
+                                padding: '8px 0'
+                              }}>
+                                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                                  <span style={{ fontSize: '14px', color: '#111827' }}>
+                                    {rule.displayName}
+                                  </span>
+                                  {rule.description && (
+                                    <span style={{ fontSize: '12px', color: '#6b7280' }}>
+                                      {rule.description}
+                                    </span>
+                                  )}
+                                </div>
+                                {isCaptured ? (
+                                  <CheckCircle style={{ width: '16px', height: '16px', color: '#10b981' }} />
+                                ) : (
+                                  <AlertCircle style={{ width: '16px', height: '16px', color: '#e5e7eb' }} />
+                                )}
+                              </div>
+                            );
+                          })
                       ) : (
-                        <p style={{ fontSize: '14px', color: '#6b7280' }}>No required fields defined</p>
+                        <p style={{ fontSize: '14px', color: '#6b7280' }}>Loading extraction rules...</p>
                       )}
                     </div>
                   )}

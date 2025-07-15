@@ -14,8 +14,8 @@ import Link from "next/link"
 export default function SignUpPage() {
   const [mounted, setMounted] = useState(false)
   const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [emailSent, setEmailSent] = useState(false)
   const { isLoaded, signUp, setActive } = useSignUp()
   const router = useRouter()
 
@@ -33,34 +33,22 @@ export default function SignUpPage() {
 
     setIsLoading(true)
     try {
-      // Try to create the sign-up with password to potentially bypass CAPTCHA
-      const result = await signUp.create({
+      // Create sign-up with just email
+      await signUp.create({
         emailAddress: email,
-        password: password,
       })
 
-      if (result.status === "complete") {
-        await setActive({ session: result.createdSessionId })
-        // Redirect directly to chat for new managers
-        router.push("/chat?agent=OnboardingAgent&step=welcome&new=true")
-      } else if (result.status === "missing_requirements") {
-        // Send verification email if needed
-        await signUp.prepareEmailAddressVerification({ 
-          strategy: "email_link",
-          redirectUrl: window.location.origin + "/sign-up/verify-email"
-        })
-        router.push("/sign-up/verify-email?email=" + encodeURIComponent(email))
-      }
+      // Send magic link email
+      await signUp.prepareEmailAddressVerification({ 
+        strategy: "email_code"
+      })
+      
+      setEmailSent(true)
+      // Redirect to verification page
+      router.push("/sign-up/verify-email?email=" + encodeURIComponent(email))
     } catch (err: any) {
       console.error("Error signing up with email:", err)
-      
-      // Check if it's a CAPTCHA error
-      if (err.errors?.[0]?.message?.includes("CAPTCHA")) {
-        // Suggest using OAuth as a workaround
-        alert("CAPTCHA verification failed. Please try signing up with Google or Microsoft instead, or try a different browser.")
-      } else {
-        alert(err.errors?.[0]?.message || "Error signing up. Please try again.")
-      }
+      alert(err.errors?.[0]?.message || "Error sending magic link. Please try again.")
     } finally {
       setIsLoading(false)
     }
@@ -140,7 +128,7 @@ export default function SignUpPage() {
             <div className="flex flex-col items-center gap-3 self-stretch w-full px-0 lg:px-6">
               <h1 className="text-2xl font-semibold tracking-tight">Create an account</h1>
               <p className="text-sm text-muted-foreground text-center">
-                Enter your work email below to create your account
+                Enter your email and we'll send you a magic link to sign in
               </p>
             </div>
             
@@ -162,28 +150,12 @@ export default function SignUpPage() {
                   </div>
                 </div>
 
-                <div className="flex flex-col items-start gap-1.5 relative self-stretch w-full flex-[0_0_auto]">
-                  <div className="flex h-9 items-center gap-2 relative self-stretch w-full">
-                    <div className="flex flex-col items-start gap-1.5 relative flex-1 grow">
-                      <input
-                        className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                        placeholder="Password"
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                        disabled={isLoading}
-                      />
-                    </div>
-                  </div>
-                </div>
-
                 <Button
                   className="w-full"
                   type="submit"
-                  disabled={isLoading}
+                  disabled={isLoading || !email}
                 >
-                  {isLoading ? "Creating account..." : "Sign Up with Email"}
+                  {isLoading ? "Sending magic link..." : "Continue with Email"}
                 </Button>
                 
                 {/* Clerk CAPTCHA container */}

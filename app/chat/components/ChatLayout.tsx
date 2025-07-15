@@ -7,6 +7,10 @@ import { ArrowRightCircle1 } from "./icons/ArrowRightCircle1";
 import { parseMessageWithAgentName } from "../utils/messageParser";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2 } from "lucide-react";
+import ProfileDisplay from "./ProfileDisplay";
+import TeamVisualization from "./TeamVisualization";
+import OnboardingCompletion from "./OnboardingCompletion";
+import SuggestedValues from "./SuggestedValues";
 
 interface Message {
   id: string;
@@ -24,6 +28,18 @@ interface ChatLayoutProps {
   userName?: string;
   agentName?: string;
   onNewConversation?: () => void;
+  extractedData?: Record<string, any>;
+  onboardingState?: {
+    isComplete: boolean;
+    requiredFieldsCount: number;
+    capturedFieldsCount: number;
+  };
+  isOnboarding?: boolean;
+  suggestedValues?: {
+    field: string;
+    values: string[];
+    helpText?: string;
+  };
 }
 
 export default function ChatLayout({
@@ -34,7 +50,15 @@ export default function ChatLayout({
   loading,
   userName,
   agentName = "OSmos",
-  onNewConversation
+  onNewConversation,
+  extractedData = {},
+  onboardingState = {
+    isComplete: false,
+    requiredFieldsCount: 0,
+    capturedFieldsCount: 0
+  },
+  isOnboarding = false,
+  suggestedValues
 }: ChatLayoutProps) {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -56,6 +80,13 @@ export default function ChatLayout({
     onSendMessage();
   };
 
+  const handleSelectSuggestedValue = (value: string) => {
+    setInput(value);
+    // Focus the input field after setting the value
+    const inputElement = document.querySelector('input[placeholder="Type your message..."]') as HTMLInputElement;
+    inputElement?.focus();
+  };
+
   return (
     <div className="bg-white h-screen w-full flex overflow-hidden">
       <div className="flex flex-col lg:flex-row w-full max-w-[1280px] mx-auto h-full">
@@ -73,7 +104,7 @@ export default function ChatLayout({
 
             {/* Chat content area */}
             <div className="relative flex-1">
-              {/* Messages scroll area - with padding for input */}
+              {/* Messages scroll area - with padding for input and suggested values */}
               <div className="absolute inset-0 px-[27px] pt-0 pb-[80px]">
                 <ScrollArea className="h-full">
                   <div className="space-y-6 w-full pr-2 pb-4">
@@ -103,6 +134,16 @@ export default function ChatLayout({
                         <span className="text-sm">{agentName} is typing...</span>
                       </div>
                     )}
+                    {/* Suggested values */}
+                    {suggestedValues && !loading && (
+                      <SuggestedValues
+                        field={suggestedValues.field}
+                        values={suggestedValues.values}
+                        helpText={suggestedValues.helpText}
+                        onSelect={handleSelectSuggestedValue}
+                      />
+                    )}
+                    
                     {/* Invisible element to scroll to */}
                     <div ref={messagesEndRef} />
                   </div>
@@ -141,39 +182,62 @@ export default function ChatLayout({
 
         {/* Right content area */}
         <div className="flex-1 flex items-center justify-center py-16 lg:py-0">
-          <div className="flex flex-col items-center">
-            {/* User button and New Conversation */}
-            <div className="absolute top-4 right-4 flex items-center gap-3">
-              {onNewConversation && (
-                <button
-                  onClick={onNewConversation}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-                >
-                  New Chat
-                </button>
-              )}
-              <UserButton afterSignOutUrl="/sign-in" />
-            </div>
-            
-            {/* Avatar */}
-            <div className="w-[118px] h-[118px] items-center justify-center bg-[color:var(--radix-colours-slate-4)] rounded-[100px] overflow-hidden border border-dashed border-[color:var(--shadcn-ui-border)] shadow-[var(--shadow-md)] flex">
-              <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-                <svg className="w-14 h-14 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
-                </svg>
-              </div>
-            </div>
-
-            {/* User name */}
-            <div className="mt-8 text-center">
-              <div className="font-bold text-black text-2xl text-center tracking-[-0.48px] leading-6">
-                {userName || "Team Manager"}
-              </div>
-              <div className="mt-2 font-normal text-[color:var(--shadcn-ui-muted-foreground)] text-sm text-center tracking-[-0.28px] leading-6 whitespace-nowrap">
-                Getting started with teamOS
-              </div>
-            </div>
+          {/* User button and New Conversation */}
+          <div className="absolute top-4 right-4 flex items-center gap-3">
+            {onNewConversation && (
+              <button
+                onClick={onNewConversation}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+              >
+                New Chat
+              </button>
+            )}
+            <UserButton afterSignOutUrl="/sign-in" />
           </div>
+
+          {/* Dynamic content based on onboarding state and extracted data */}
+          {isOnboarding ? (
+            <>
+              {/* Show different components based on what data has been extracted */}
+              {extractedData.team_size ? (
+                // If we have team size, show the completion component (which handles both states)
+                <OnboardingCompletion
+                  managerName={extractedData.manager_name}
+                  managerRole={extractedData.manager_role}
+                  teamSize={extractedData.team_size}
+                  onboardingState={onboardingState}
+                />
+              ) : (
+                // Otherwise show the profile display
+                <ProfileDisplay
+                  userName={extractedData.manager_name}
+                  userRole={extractedData.manager_role}
+                />
+              )}
+            </>
+          ) : (
+            // Non-onboarding chat - show default profile
+            <div className="flex flex-col items-center">
+              {/* Avatar */}
+              <div className="w-[118px] h-[118px] items-center justify-center bg-[color:var(--radix-colours-slate-4)] rounded-[100px] overflow-hidden border border-dashed border-[color:var(--shadcn-ui-border)] shadow-[var(--shadow-md)] flex">
+                <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                  <svg className="w-14 h-14 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/>
+                  </svg>
+                </div>
+              </div>
+
+              {/* User name */}
+              <div className="mt-8 text-center">
+                <div className="font-bold text-black text-2xl text-center tracking-[-0.48px] leading-6">
+                  {userName || "Team Manager"}
+                </div>
+                <div className="mt-2 font-normal text-[color:var(--shadcn-ui-muted-foreground)] text-sm text-center tracking-[-0.28px] leading-6 whitespace-nowrap">
+                  Getting started with teamOS
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

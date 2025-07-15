@@ -7,14 +7,22 @@ import { knowledgeBaseTools } from '../../knowledge-base';
  * This demonstrates how to integrate the knowledge base tools into any agent
  */
 export class KnowledgeEnabledAgent extends OpenAIAgent {
-  constructor(config: Omit<AgentConfig, 'tools'> & { tools?: AgentConfig['tools'] }) {
-    // Merge knowledge base tools with any custom tools
+  protected knowledgeEnabled: boolean = true;
+  
+  constructor(config: Omit<AgentConfig, 'tools'> & { tools?: AgentConfig['tools']; knowledgeEnabled?: boolean }) {
+    // Store knowledge enabled state
+    const knowledgeEnabled = config.knowledgeEnabled !== false;
+    
+    // Merge knowledge base tools with any custom tools if knowledge is enabled
     const enhancedConfig: AgentConfig = {
       ...config,
-      tools: [...knowledgeBaseTools, ...(config.tools || [])]
+      tools: knowledgeEnabled 
+        ? [...knowledgeBaseTools, ...(config.tools || [])]
+        : (config.tools || [])
     };
     
     super(enhancedConfig);
+    this.knowledgeEnabled = knowledgeEnabled;
   }
   
   /**
@@ -22,6 +30,10 @@ export class KnowledgeEnabledAgent extends OpenAIAgent {
    */
   protected getInstructions(context: AgentContext): string {
     const baseInstructions = super.getInstructions(context);
+    
+    if (!this.knowledgeEnabled) {
+      return baseInstructions;
+    }
     
     return `${baseInstructions}
 
