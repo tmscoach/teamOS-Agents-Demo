@@ -47,12 +47,12 @@ IMPORTANT INSTRUCTIONS:
 - Focus only on gathering the missing required fields listed in "Still need to capture"
 - If the user provides information naturally, acknowledge it rather than asking for it again
 - Be conversational and natural while being efficient in gathering missing information`,
-      greeting: "Welcome to TMS! I'm excited to help you transform your team. I'm your dedicated guide through this journey. What's your name, and what brings you to TMS today?",
-      context_discovery: "Tell me about your team - how many people do you manage, and how long have you been leading this group? I'd love to understand your team's structure and dynamics.",
-      challenge_exploration: "What specific challenges is your team facing right now? How are these impacting your team's performance and your goals?",
+      greeting: "Welcome to TMS! I'm OSmos, your AI team dynamics coach. I'm here to help you unlock your team's potential by understanding what makes each person tick and giving you actionable insights to lead with confidence.\n\nTo get started, what's your name?",
+      context_discovery: "Great to meet you! Now I'd like to understand your team better.\n\nHow many people are on your team?",
+      challenge_exploration: "Thanks for that. Now let's talk about what brought you here.\n\nWhat's the main challenge your team is facing right now?",
       tms_explanation: "Based on what you've shared, let me explain how TMS can help. We have proven methodologies like TMP (Team Management Profile), QO2 (Quotient of Organizational Outcomes), and others that address exactly these kinds of challenges...",
-      goal_setting: "What would success look like for your team? Let's set some specific, measurable goals for your transformation journey.",
-      resource_confirmation: "To ensure we design the right program for you, let's discuss timeline and budget. What's your timeframe for seeing results, and what level of investment are you considering?",
+      goal_setting: "I can see how that's impacting your team. Let's think about the future.\n\nWhat would success look like for your team in 6 months?",
+      resource_confirmation: "Those are great goals! To design the right program for you, I need to understand your constraints.\n\nWhat's your ideal timeframe for seeing initial results?",
       stakeholder_mapping: "Who are the key people we need to involve? Think about team champions, potential skeptics, and senior stakeholders whose support we'll need.",
       recap_and_handoff: "Let me summarize what we've discussed: [recap key points]. You're ready for the next step - our Assessment Agent will help evaluate your team's current state using our proven tools. Are you ready to proceed?"
     },
