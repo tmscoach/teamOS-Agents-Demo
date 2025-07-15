@@ -3,7 +3,7 @@
  * This ensures existing configurations get the suggested values without losing customizations
  */
 
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '../lib/generated/prisma';
 import { FIELD_SUGGESTIONS } from '../src/lib/agents/extraction/suggested-options';
 
 const prisma = new PrismaClient();
