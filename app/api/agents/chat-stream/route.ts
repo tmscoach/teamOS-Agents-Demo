@@ -208,18 +208,7 @@ export async function POST(req: NextRequest) {
         })();
 
         // Route message to agent (this would need to be modified to support streaming)
-        const response = await router.routeMessage(
-          {
-            conversationId: context.conversationId,
-            message: {
-              role: 'user',
-              content: messageContent,
-            },
-            currentAgent: agentName || context.currentAgent,
-            metadata: context.metadata,
-          },
-          context
-        );
+        const response = await router.routeMessage(messageContent, context);
 
         // Wait for extraction to complete
         await extractionPromise;

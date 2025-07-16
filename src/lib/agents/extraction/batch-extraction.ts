@@ -95,7 +95,7 @@ export class BatchExtractor {
             successful: true,
             extractedValue: this.convertValue(fieldData.value, rule.type),
             confidence: 0.8,
-            extractionMethod: 'batch_llm'
+            extractionMethod: 'llm' as const
           };
         } else {
           results[fieldName] = {
@@ -103,7 +103,7 @@ export class BatchExtractor {
             attempted: true,
             successful: false,
             confidence: 0,
-            extractionMethod: 'batch_llm'
+            extractionMethod: 'llm' as const
           };
         }
       }
@@ -122,7 +122,7 @@ export class BatchExtractor {
           attempted: true,
           successful: false,
           confidence: 0,
-          extractionMethod: 'batch_llm'
+          extractionMethod: 'llm' as const
         };
       }
       
