@@ -60,7 +60,7 @@ export class BatchExtractor {
       const responsePromise = llm.generateResponse([
         {
           role: 'system',
-          content: 'You are a precise information extraction assistant. Extract the requested information from the given text and return it in the specified JSON format. If information is not present, use null for that field. Return ONLY valid JSON.'
+          content: 'You are a precise information extraction assistant. Extract the requested information from the given text and return it in the specified JSON format. If information is not present, use null for that field. Return ONLY valid JSON. Be aware that messages can be very short (like a single number "2" or a single word) and these are valid responses that should be extracted.'
         },
         { role: 'user', content: prompt }
       ], {
@@ -73,6 +73,8 @@ export class BatchExtractor {
       const response = await Promise.race([responsePromise, timeoutPromise]);
       
       const content = response.completion.choices[0]?.message?.content || '{}';
+      console.log('[BatchExtractor] LLM Response:', content);
+      
       let extractedData: BatchExtractionResponse;
       
       try {
@@ -110,6 +112,8 @@ export class BatchExtractor {
       
     } catch (error) {
       console.error('[BatchExtractor] Batch extraction failed:', error);
+      console.error('[BatchExtractor] Fields being extracted:', llmFields.map(f => f[0]));
+      console.error('[BatchExtractor] Message:', message);
       
       // Return empty results for all fields on error
       for (const [fieldName] of llmFields) {
@@ -135,7 +139,18 @@ export class BatchExtractor {
   ): string {
     const fieldDescriptions = fields.map(([fieldName, rule]) => {
       const typeHint = this.getTypeHint(rule.type);
-      return `- ${fieldName}: ${rule.description || fieldName} (${typeHint})`;
+      let description = rule.description || fieldName;
+      
+      // Add context hints for specific fields
+      if (fieldName === 'team_size') {
+        description += ' - can be a single number';
+      } else if (fieldName === 'user_name') {
+        description += ' - the person introducing themselves';
+      } else if (fieldName === 'user_role' || fieldName === 'manager_role') {
+        description += ' - their job title/position';
+      }
+      
+      return `- ${fieldName}: ${description} (${typeHint})`;
     }).join('\n');
     
     const exampleResponse: BatchExtractionResponse = {};
@@ -154,16 +169,18 @@ ${fieldDescriptions}
 
 User Message: "${message}"
 
-Return a JSON object with the following structure:
+Return EXACTLY this JSON structure (no other text):
 ${JSON.stringify(exampleResponse, null, 2)}
 
-For each field:
-- Set "found" to true if the information is present, false otherwise
-- Set "value" to the extracted value if found, null if not found
-- For person names, only extract if they are introducing themselves (not general greetings like "I'm fine")
-- For roles/titles, extract the job title only, not the company name
+Rules:
+- "found": true if info exists, false if not
+- "value": the extracted value or null
+- Names: only if introducing themselves
+- Roles: job title only, not company
+- Numbers: extract single digits/numbers (e.g., "2" → 2)
+- Short answers are valid (e.g., "2" for team size)
 
-IMPORTANT: Return ONLY valid JSON, no additional text.`;
+Start your response with { and end with }`;
   }
   
   /**

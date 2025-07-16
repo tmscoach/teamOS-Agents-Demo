@@ -289,7 +289,49 @@ Required fields are determined by extraction rules configuration.`;
     // Add captured fields to context
     const metadata = context.metadata.onboarding as OnboardingMetadata;
     
-    // Check if onboarding is complete
+    // Debug logging
+    console.log(`[OnboardingAgent.buildContextPrompt] Current state: ${metadata?.state}, isComplete: ${metadata?.isComplete}`);
+    if (metadata?.requiredFieldsStatus) {
+      console.log(`[OnboardingAgent.buildContextPrompt] Required fields status:`, JSON.stringify(metadata.requiredFieldsStatus));
+    }
+    
+    // Check if we have missing required fields
+    const missingFields = metadata?.requiredFieldsStatus ? 
+      Object.entries(metadata.requiredFieldsStatus)
+        .filter(([_, captured]) => !captured)
+        .map(([field, _]) => field) : [];
+    
+    // If we're in RECAP_AND_HANDOFF state but still missing fields, handle retry
+    if (metadata?.state === ConversationState.RECAP_AND_HANDOFF && missingFields.length > 0) {
+      console.log(`[OnboardingAgent] RETRY LOGIC ACTIVATED - Will ask for: ${missingFields[0]}`);
+      prompt += '\n\n⚠️ MISSING REQUIRED INFORMATION\n';
+      prompt += 'You are almost done with onboarding, but some required information is missing.\n';
+      prompt += '\nYour response should:\n';
+      prompt += '1. Apologize politely for needing to ask again\n';
+      prompt += '2. Explain that you need just a bit more information to complete their profile\n';
+      prompt += '3. Ask for the FIRST missing field from the list below using the alternative phrasing\n';
+      prompt += '4. Ask ONLY ONE question at a time\n\n';
+      
+      // Provide alternative phrasings for missing fields
+      const retryPhrasings: Record<string, string> = {
+        'user_name': "I don't think I caught your name earlier. What should I call you?",
+        'user_role': "I may have missed your job title. What's your current role in the organization?",
+        'team_size': "I didn't quite catch how many people are on your team. How many team members do you have? (Enter 0 if you're working solo for now)",
+        'organization': "Could you remind me which company or organization you work for?",
+        'primary_challenge': "Let me make sure I understand - what's the main challenge you're facing with your team right now?"
+      };
+      
+      prompt += 'Missing fields and how to ask:\n';
+      missingFields.forEach(field => {
+        const phrasing = retryPhrasings[field] || `Please provide your ${field.replace(/_/g, ' ')}`;
+        prompt += `- ${field}: "${phrasing}"\n`;
+      });
+      
+      prompt += '\nIMPORTANT: Only ask for the FIRST missing field. Be warm and conversational.\n';
+      return prompt;
+    }
+    
+    // Check if onboarding is complete (all fields captured)
     if (metadata?.isComplete) {
       prompt += '\n\n🎉 ONBOARDING COMPLETE! All required information has been captured.\n';
       prompt += '\nCaptured information:\n';
@@ -312,10 +354,29 @@ Required fields are determined by extraction rules configuration.`;
     if (metadata?.capturedFields && Object.keys(metadata.capturedFields).length > 0) {
       prompt += '\n\nAlready captured information:\n';
       for (const [field, value] of Object.entries(metadata.capturedFields)) {
-        // Format field name for display (e.g., team_size -> Team Size)
-        const displayName = field.split('_').map(word => 
+        // Format field name for display with special handling for common fields
+        let displayName = field;
+        
+        // Map field names to user-friendly display names
+        const fieldDisplayMap: Record<string, string> = {
+          'user_name': 'Name',
+          'manager_name': 'Name',
+          'user_role': 'Role',
+          'manager_role': 'Role',
+          'team_size': 'Team Size',
+          'primary_challenge': 'Primary Challenge',
+          'team_tenure': 'Team Tenure',
+          'budget_range': 'Budget Range',
+          'leader_commitment': 'Leader Commitment',
+          'success_metrics': 'Success Metrics',
+          'timeline_preference': 'Timeline Preference',
+          'key_stakeholders': 'Key Stakeholders'
+        };
+        
+        displayName = fieldDisplayMap[field] || field.split('_').map(word => 
           word.charAt(0).toUpperCase() + word.slice(1)
         ).join(' ');
+        
         prompt += `- ${displayName}: ${value}\n`;
       }
       prompt += '\nIMPORTANT: Do not ask for information that has already been captured above. ';
@@ -331,7 +392,23 @@ Required fields are determined by extraction rules configuration.`;
       if (missingFields.length > 0) {
         prompt += '\nStill need to capture:\n';
         missingFields.forEach(field => {
-          const displayName = field.split('_').map(word => 
+          // Use the same field display map for consistency
+          const fieldDisplayMap: Record<string, string> = {
+            'user_name': 'Name',
+            'manager_name': 'Name',
+            'user_role': 'Role',
+            'manager_role': 'Role',
+            'team_size': 'Team Size',
+            'primary_challenge': 'Primary Challenge',
+            'team_tenure': 'Team Tenure',
+            'budget_range': 'Budget Range',
+            'leader_commitment': 'Leader Commitment',
+            'success_metrics': 'Success Metrics',
+            'timeline_preference': 'Timeline Preference',
+            'key_stakeholders': 'Key Stakeholders'
+          };
+          
+          const displayName = fieldDisplayMap[field] || field.split('_').map(word => 
             word.charAt(0).toUpperCase() + word.slice(1)
           ).join(' ');
           prompt += `- ${displayName}\n`;
@@ -532,26 +609,23 @@ Required fields are determined by extraction rules configuration.`;
     rules: Record<string, ExtractionRule>, 
     userRole: UserRole
   ): Record<string, ExtractionRule> {
-    // Define which fields are relevant for each role
-    const managerFields = [
-      'manager_name', 'team_size', 'team_tenure', 'industry_context', 
-      'primary_challenge', 'budget_range', 'leader_commitment', 
-      'success_metrics', 'timeline_preference', 'key_stakeholders'
-    ];
+    // For managers, we should only include manager-specific fields
+    // Filter out duplicate fields (e.g., if both user_name and manager_name exist)
+    const filtered: Record<string, ExtractionRule> = {};
     
-    const teamMemberFields = [
-      'name', 'role_title', 'role_tenure', 'work_preference',
-      'communication_style', 'motivation_factors', 'growth_areas'
-    ];
+    for (const [fieldName, rule] of Object.entries(rules)) {
+      // Skip duplicate manager_name if user_name is already present
+      if (fieldName === 'manager_name' && rules['user_name']) {
+        continue;
+      }
+      // Skip duplicate manager_role if user_role is already present
+      if (fieldName === 'manager_role' && rules['user_role']) {
+        continue;
+      }
+      filtered[fieldName] = rule;
+    }
     
-    const relevantFields = userRole === UserRole.MANAGER ? managerFields : teamMemberFields;
-    
-    // Filter rules to only include relevant fields
-    return Object.fromEntries(
-      Object.entries(rules).filter(([fieldName]) => 
-        relevantFields.includes(fieldName)
-      )
-    );
+    return filtered;
   }
 
   private async extractInformation(message: string, context: AgentContext): Promise<Record<string, any>> {
@@ -581,8 +655,8 @@ Required fields are determined by extraction rules configuration.`;
       }
 
       // Use ExtractionProcessor to extract and track
-      const enableLLM = process.env.ENABLE_LLM_EXTRACTION_FALLBACK === 'true';
-      console.log(`[OnboardingAgent] LLM extraction enabled: ${enableLLM} (env var: ${process.env.ENABLE_LLM_EXTRACTION_FALLBACK})`);
+      const enableLLM = true; // Always use LLM extraction for consistency with streaming route
+      console.log(`[OnboardingAgent] LLM extraction enabled: ${enableLLM}`);
       
       const extractionContext = {
         conversationId: context.conversationId,
@@ -620,15 +694,35 @@ Required fields are determined by extraction rules configuration.`;
   }
 
   private async updateCapturedFields(metadata: OnboardingMetadata, extractedData: Record<string, any>) {
-    // Update captured fields
-    Object.assign(metadata.capturedFields, extractedData);
+    // Handle field aliases - normalize to consistent names
+    const normalizedData: Record<string, any> = {};
+    for (const [field, value] of Object.entries(extractedData)) {
+      // Normalize manager_name to user_name
+      if (field === 'manager_name' && !extractedData['user_name']) {
+        normalizedData['user_name'] = value;
+      }
+      // Normalize manager_role to user_role
+      else if (field === 'manager_role' && !extractedData['user_role']) {
+        normalizedData['user_role'] = value;
+      }
+      else {
+        normalizedData[field] = value;
+      }
+    }
+    
+    // Update captured fields with normalized data
+    Object.assign(metadata.capturedFields, normalizedData);
 
     // Get required fields from extraction rules based on user role
     const requiredFields = await this.getRequiredFields(metadata.userRole);
 
-    // Update required fields status
+    // Update required fields status - check both field name and any aliases
     requiredFields.forEach(field => {
-      if (metadata.capturedFields[field]) {
+      if (field === 'user_name' && (metadata.capturedFields['user_name'] || metadata.capturedFields['manager_name'])) {
+        metadata.requiredFieldsStatus[field] = true;
+      } else if (field === 'user_role' && (metadata.capturedFields['user_role'] || metadata.capturedFields['manager_role'])) {
+        metadata.requiredFieldsStatus[field] = true;
+      } else if (metadata.capturedFields[field]) {
         metadata.requiredFieldsStatus[field] = true;
       }
     });
@@ -652,17 +746,53 @@ Required fields are determined by extraction rules configuration.`;
     // Map captured fields to conversation data format
     const conversationData = this.mapToConversationData(metadata.capturedFields);
     
-    // Check if we should force progression based on missing fields
+    // Get missing required fields
     const missingFields = await this.getMissingRequiredFields(metadata.capturedFields, metadata.userRole);
+    
+    // If all required fields are captured and we're not in RECAP_AND_HANDOFF, force transition
+    if (missingFields.length === 0 && metadata.state !== ConversationState.RECAP_AND_HANDOFF) {
+      const requiredFields = await this.getRequiredFields(metadata.userRole);
+      if (requiredFields.length > 0) {
+        console.log('[OnboardingAgent] All required fields captured, forcing transition to RECAP_AND_HANDOFF');
+        this.stateMachine.setState(ConversationState.RECAP_AND_HANDOFF);
+        return ConversationState.RECAP_AND_HANDOFF;
+      }
+    }
+    
+    // Check if we should force progression based on missing fields
     if (missingFields.length > 0 && metadata.state === ConversationState.GREETING) {
       // Force move to basic info collection
       this.stateMachine.setState(ConversationState.CONTEXT_DISCOVERY);
       return ConversationState.CONTEXT_DISCOVERY;
     }
     
-    // Attempt state transition
+    // Special handling: If we're in STAKEHOLDER_MAPPING and have been here for a while,
+    // allow transition to RECAP_AND_HANDOFF even with missing fields so retry logic can trigger
+    if (metadata.state === ConversationState.STAKEHOLDER_MAPPING) {
+      const messageCount = context.messageHistory.filter(m => m.role === 'user').length;
+      if (messageCount > 10) { // After reasonable conversation length
+        console.log(`[OnboardingAgent] Forcing transition to RECAP_AND_HANDOFF after ${messageCount} messages to trigger retry logic`);
+        this.stateMachine.setState(ConversationState.RECAP_AND_HANDOFF);
+        return ConversationState.RECAP_AND_HANDOFF;
+      }
+    }
+    
+    // Attempt state transition normally
     if (this.stateMachine.attemptTransition(conversationData)) {
-      return this.stateMachine.getState();
+      const newState = this.stateMachine.getState();
+      console.log(`[OnboardingAgent] State transition: ${metadata.state} → ${newState}`);
+      return newState;
+    }
+    
+    // If no transition possible but we've gone through many states, force RECAP_AND_HANDOFF
+    // This ensures the retry logic can eventually trigger
+    const stateProgression = ['GREETING', 'CONTEXT_DISCOVERY', 'CHALLENGE_EXPLORATION', 'TMS_EXPLANATION', 
+                              'GOAL_SETTING', 'RESOURCE_CONFIRMATION', 'STAKEHOLDER_MAPPING'];
+    const currentIndex = stateProgression.indexOf(metadata.state);
+    if (currentIndex >= 5 && missingFields.length > 0) { // If we're past RESOURCE_CONFIRMATION
+      console.log(`[OnboardingAgent] Forcing RECAP_AND_HANDOFF to allow retry logic (missing: ${missingFields.join(', ')})`);
+      this.stateMachine.setState(ConversationState.RECAP_AND_HANDOFF);
+      return ConversationState.RECAP_AND_HANDOFF;
     }
     
     return metadata.state;
@@ -675,7 +805,8 @@ Required fields are determined by extraction rules configuration.`;
   
   private mapToConversationData(capturedFields: Record<string, any>): any {
     return {
-      managerName: capturedFields.name,
+      managerName: capturedFields.user_name || capturedFields.manager_name || capturedFields.name,
+      managerRole: capturedFields.user_role || capturedFields.manager_role,
       teamSize: capturedFields.team_size,
       teamStructure: capturedFields.team_tenure,
       primaryChallenge: capturedFields.primary_challenge,
@@ -717,6 +848,15 @@ Required fields are determined by extraction rules configuration.`;
   }
 
   private isReadyForHandoff(metadata: OnboardingMetadata): boolean {
+    // First check if all required fields are captured
+    const allFieldsCaptured = metadata.requiredFieldsStatus ? 
+      Object.values(metadata.requiredFieldsStatus).every(status => status === true) : false;
+    
+    if (!allFieldsCaptured) {
+      console.log('[OnboardingAgent] Not ready for handoff - missing required fields');
+      return false;
+    }
+    
     const conversationData = this.mapToConversationData(metadata.capturedFields);
     const metrics: QualityMetrics = {
       completionPercentage: metadata.qualityMetrics.completionPercentage,
@@ -726,7 +866,8 @@ Required fields are determined by extraction rules configuration.`;
     };
     
     return this.qualityCalculator.isReadyForHandoff(conversationData, metrics) && 
-           metadata.state === ConversationState.RECAP_AND_HANDOFF;
+           metadata.state === ConversationState.RECAP_AND_HANDOFF &&
+           metadata.isComplete === true;
   }
 
   private async getSuggestedValuesForCurrentContext(

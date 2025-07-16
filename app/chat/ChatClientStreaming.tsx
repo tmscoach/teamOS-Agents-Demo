@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useUser } from "@clerk/nextjs";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
@@ -11,6 +11,7 @@ interface Message {
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
+  isStreaming?: boolean;
 }
 
 interface ExtractedData {
@@ -25,7 +26,7 @@ interface OnboardingState {
 
 const CONVERSATION_STORAGE_KEY = 'teamOS_activeConversationId';
 
-export default function ChatClient() {
+export default function ChatClientStreaming() {
   const { user, isLoaded } = useUser();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -48,10 +49,19 @@ export default function ChatClient() {
   } | null>(null);
   const [devAuthChecked, setDevAuthChecked] = useState(false);
   const [autoStarted, setAutoStarted] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
   
   // Get agent from URL params
   const agentName = searchParams.get('agent') || 'OrchestratorAgent';
   const isNewConversation = searchParams.get('new') === 'true';
+
+  // Enable streaming via environment variable
+  const ENABLE_STREAMING = process.env.NEXT_PUBLIC_ENABLE_STREAMING === 'true';
+  
+  // Log for debugging
+  useEffect(() => {
+    console.log('[ChatClientStreaming] Component loaded, streaming enabled:', ENABLE_STREAMING);
+  }, []);
 
   useEffect(() => {
     if (isLoaded && !user && !devAuthChecked) {
@@ -74,7 +84,6 @@ export default function ChatClient() {
       }
     }
   }, [isLoaded, user, router, devAuthChecked]);
-
 
   // Load existing conversation on mount
   useEffect(() => {
@@ -154,96 +163,187 @@ export default function ChatClient() {
     }
   }, [isLoaded, user, isNewConversation, agentName, devAuthChecked]);
 
-  // Auto-start conversation ONLY for explicitly new chats
-  useEffect(() => {
-    const hasAuth = user || (devAuthChecked && (process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_ENV === 'development'));
-    if (isLoaded && hasAuth && isNewConversation && !autoStarted && messages.length === 0 && !loading && !loadingConversation) {
-      // Clear any existing conversation from localStorage when starting new
-      localStorage.removeItem(CONVERSATION_STORAGE_KEY);
-      // Send an initial empty message to trigger the agent's greeting
-      const autoStart = async () => {
-        setAutoStarted(true); // Set flag immediately to prevent duplicate calls
-        setLoading(true);
-        try {
-          const response = await fetch("/api/agents/chat-simple", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              message: " ", // Single space to pass validation but prevent extraction
-              conversationId: null,
-              agentName: agentName
-            })
-          });
+  const sendMessageStreaming = useCallback(async (messageContent: string) => {
+    console.log('[sendMessageStreaming] Called with:', messageContent, 'loading:', loading);
+    if (!messageContent.trim() || loading) return;
 
-          if (!response.ok) {
-            throw new Error(`Failed to start conversation: ${response.statusText}`);
-          }
-
-          const data = await response.json();
-
-          if (data.conversationId) {
-            setConversationId(data.conversationId);
-            // Store in localStorage
-            localStorage.setItem(CONVERSATION_STORAGE_KEY, data.conversationId);
-          }
-
-          if (data.message) {
-            const assistantMessage: Message = {
-              id: `assistant-${Date.now()}`,
-              role: "assistant",
-              content: data.message,
-              timestamp: new Date()
-            };
-            setMessages([assistantMessage]);
-          }
-
-          // Handle extracted data and onboarding state
-          if (data.extractedData) {
-            setExtractedData(data.extractedData);
-          }
-          if (data.onboardingState) {
-            setOnboardingState(data.onboardingState);
-          }
-          
-          // Handle suggested values from initial greeting
-          if (data.metadata?.suggestedValues) {
-            setSuggestedValues(data.metadata.suggestedValues);
-          }
-        } catch (error) {
-          console.error("Failed to auto-start conversation:", error);
-        } finally {
-          setLoading(false);
-        }
-      };
-
-      autoStart();
+    // Cancel any ongoing requests
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
     }
-  }, [isLoaded, user, isNewConversation, agentName, autoStarted, loading, loadingConversation, devAuthChecked]);
+    abortControllerRef.current = new AbortController();
 
-  const sendMessage = async () => {
-    if (!input.trim() || loading) return;
+    setLoading(true);
+    setSuggestedValues(null);
 
-    const messageContent = input.trim();  // Store the input value before clearing
-    
+    // Add user message
     const userMessage: Message = {
       id: `user-${Date.now()}`,
       role: "user",
       content: messageContent,
       timestamp: new Date()
     };
-
     setMessages(prev => [...prev, userMessage]);
-    setInput("");
+
+    // Add placeholder for assistant message
+    const assistantMessageId = `assistant-${Date.now()}`;
+    const assistantMessage: Message = {
+      id: assistantMessageId,
+      role: "assistant",
+      content: "",
+      timestamp: new Date(),
+      isStreaming: true
+    };
+    setMessages(prev => [...prev, assistantMessage]);
+
+    try {
+      console.log('[sendMessageStreaming] Sending request to /api/agents/chat-stream');
+      
+      // Add timeout for initial connection
+      const timeoutId = setTimeout(() => {
+        console.error('[sendMessageStreaming] Request timeout after 30s');
+        abortControllerRef.current?.abort();
+      }, 30000);
+      
+      const response = await fetch("/api/agents/chat-stream", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          message: messageContent,
+          conversationId,
+          agentName
+        }),
+        signal: abortControllerRef.current.signal
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+
+      if (!reader) {
+        throw new Error("No response body");
+      }
+
+      console.log('[sendMessageStreaming] Starting to read stream');
+      let buffer = '';
+      
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) {
+          console.log('[sendMessageStreaming] Stream reading complete');
+          break;
+        }
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        
+        // Keep the last incomplete line in the buffer
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6);
+            console.log('[sendMessageStreaming] Received data:', data);
+            
+            if (data === '[DONE]') {
+              // Mark streaming as complete
+              setMessages(prev => prev.map(msg => 
+                msg.id === assistantMessageId 
+                  ? { ...msg, isStreaming: false }
+                  : msg
+              ));
+              continue;
+            }
+
+            try {
+              const parsed = JSON.parse(data);
+              
+              switch (parsed.type) {
+                case 'metadata':
+                  if (parsed.conversationId) {
+                    setConversationId(parsed.conversationId);
+                    localStorage.setItem(CONVERSATION_STORAGE_KEY, parsed.conversationId);
+                  }
+                  break;
+                  
+                case 'extraction':
+                  if (parsed.extractedData) {
+                    setExtractedData(prev => ({ ...prev, ...parsed.extractedData }));
+                  }
+                  break;
+                  
+                case 'message':
+                  // Update the assistant message content
+                  setMessages(prev => prev.map(msg => 
+                    msg.id === assistantMessageId 
+                      ? { ...msg, content: parsed.content }
+                      : msg
+                  ));
+                  
+                  // Handle metadata like suggested values
+                  if (parsed.metadata?.suggestedValues) {
+                    setSuggestedValues(parsed.metadata.suggestedValues);
+                  }
+                  break;
+                  
+                case 'error':
+                  throw new Error(parsed.error);
+              }
+            } catch (e) {
+              console.error('Failed to parse SSE data:', e);
+            }
+          }
+        }
+      }
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        console.log('Request was aborted');
+        // Remove the placeholder message on abort
+        setMessages(prev => prev.filter(msg => msg.id !== assistantMessageId));
+      } else {
+        console.error('Streaming chat error:', error);
+        // Update the message with error
+        setMessages(prev => prev.map(msg => 
+          msg.id === assistantMessageId 
+            ? { ...msg, content: "Sorry, I encountered an error. Please try again.", isStreaming: false }
+            : msg
+        ));
+      }
+    } finally {
+      setLoading(false);
+      abortControllerRef.current = null;
+    }
+  }, [conversationId, agentName, loading]);
+
+  const sendMessageNonStreaming = useCallback(async (messageContent: string) => {
+    if (!messageContent.trim() || loading) return;
+
     setLoading(true);
+    setSuggestedValues(null);
+
+    const userMessage: Message = {
+      id: `user-${Date.now()}`,
+      role: "user",
+      content: messageContent,
+      timestamp: new Date()
+    };
+    setMessages(prev => [...prev, userMessage]);
 
     try {
       const response = await fetch("/api/agents/chat-simple", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          message: messageContent,  // Use the stored value
-          conversationId: conversationId,
-          agentName: agentName
+          message: messageContent,
+          conversationId,
+          agentName
         })
       });
 
@@ -253,9 +353,8 @@ export default function ChatClient() {
 
       const data = await response.json();
 
-      if (data.conversationId && !conversationId) {
+      if (data.conversationId) {
         setConversationId(data.conversationId);
-        // Store in localStorage
         localStorage.setItem(CONVERSATION_STORAGE_KEY, data.conversationId);
       }
 
@@ -275,15 +374,6 @@ export default function ChatClient() {
       }
       if (data.onboardingState) {
         setOnboardingState(data.onboardingState);
-        
-        // Auto-redirect to dashboard when onboarding completes
-        if (data.onboardingState.isComplete && data.currentAgent === 'OnboardingAgent') {
-          console.log('[ChatClient] Onboarding complete, redirecting to dashboard...');
-          // Show completion message briefly before redirect
-          setTimeout(() => {
-            router.push('/dashboard');
-          }, 2000); // 2 second delay to show completion message
-        }
       }
       
       // Handle suggested values from metadata
@@ -304,7 +394,42 @@ export default function ChatClient() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [conversationId, agentName, loading]);
+
+  // Use streaming or non-streaming based on feature flag
+  const sendMessage = ENABLE_STREAMING ? sendMessageStreaming : sendMessageNonStreaming;
+
+  // Auto-start conversation ONLY for explicitly new chats
+  useEffect(() => {
+    const hasAuth = user || (devAuthChecked && (process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_ENV === 'development'));
+    console.log('[Auto-start] Checking conditions:', {
+      isLoaded,
+      hasAuth,
+      isNewConversation,
+      autoStarted,
+      messagesLength: messages.length,
+      loading,
+      loadingConversation
+    });
+    
+    if (isLoaded && hasAuth && isNewConversation && !autoStarted && messages.length === 0 && !loading && !loadingConversation) {
+      console.log('[Auto-start] Starting new conversation...');
+      localStorage.removeItem(CONVERSATION_STORAGE_KEY);
+      setAutoStarted(true);
+      // Send an initial empty message to trigger the agent's greeting
+      sendMessage(" "); // Single space to pass validation
+    }
+  }, [isLoaded, user, isNewConversation, autoStarted, messages.length, loading, loadingConversation, devAuthChecked, sendMessage]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      // Abort any ongoing requests when component unmounts
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, []);
 
   // Show loading while checking auth or loading conversation
   const isCheckingAuth = !isLoaded || (!user && !devAuthChecked && (process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_ENV === 'development'));
@@ -326,6 +451,13 @@ export default function ChatClient() {
     // Redirect to new conversation
     router.push(`/chat?agent=${agentName}&new=true`);
   };
+
+  console.log('[ChatClientStreaming] Rendering with state:', {
+    messagesCount: messages.length,
+    loading,
+    conversationId,
+    ENABLE_STREAMING
+  });
 
   return (
     <>

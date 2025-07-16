@@ -38,12 +38,8 @@ export class AgentConfigLoader {
         // Handle both new format (systemPrompt) and old format (prompts)
         let systemPrompt = '';
         
-        // Check if config has systemPrompt directly
-        if ('systemPrompt' in config && config.systemPrompt) {
-          systemPrompt = config.systemPrompt as string;
-        } 
-        // Fall back to prompts.system if available
-        else if (config.prompts && typeof config.prompts === 'object') {
+        // The systemPrompt is stored in prompts.system in the database
+        if (config.prompts && typeof config.prompts === 'object') {
           const prompts = config.prompts as Record<string, string>;
           systemPrompt = prompts.system || '';
         }

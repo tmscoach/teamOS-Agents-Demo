@@ -201,7 +201,10 @@ export class OnboardingGuardrails {
           'team', 'manage', 'leader', 'challenge', 'goal', 'transform', 
           'improve', 'culture', 'communication', 'performance', 'work',
           'employee', 'staff', 'department', 'company', 'organization',
-          'problem', 'issue', 'help', 'better', 'change', 'growth'
+          'problem', 'issue', 'help', 'better', 'change', 'growth',
+          'skill', 'gap', 'development', 'need', 'training', 'capability',
+          'collaboration', 'conflict', 'morale', 'engagement', 'productivity',
+          'alignment', 'process', 'efficiency', 'innovation', 'talent'
         ];
 
         const hasRelevantContent = relevantKeywords.some(keyword => 
@@ -217,6 +220,29 @@ export class OnboardingGuardrails {
         const isPersonalGreeting = personalKeywords.some(keyword => 
           lowerInput.includes(keyword)
         );
+
+        // Check if the assistant just asked a specific question
+        const lastAssistantMessage = context.messageHistory
+          .filter(m => m.role === 'assistant')
+          .slice(-1)[0];
+          
+        if (lastAssistantMessage && lastAssistantMessage.content) {
+          const lowerAssistantMessage = lastAssistantMessage.content.toLowerCase();
+          
+          // If assistant asked about challenges, accept any reasonable response
+          if (lowerAssistantMessage.includes('challenge') || 
+              lowerAssistantMessage.includes('problem') ||
+              lowerAssistantMessage.includes('issue') ||
+              lowerAssistantMessage.includes('facing') ||
+              lowerAssistantMessage.includes('struggling')) {
+            return { passed: true };
+          }
+          
+          // If assistant asked a direct question, be more lenient
+          if (lowerAssistantMessage.includes('?')) {
+            return { passed: true };
+          }
+        }
 
         // After initial exchanges, require relevance
         if (messageCount > 1 && !hasRelevantContent && !isPersonalGreeting && input.length > 20) {

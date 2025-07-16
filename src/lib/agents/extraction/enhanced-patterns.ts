@@ -43,6 +43,10 @@ export const ENHANCED_EXTRACTION_PATTERNS: Record<string, EnhancedExtractionRule
       "^([A-Z][a-z]+(?:\\s+[A-Z][a-z]+)?)\\s+(?:from|at|with)\\s+",
       // Handle possessive introductions
       "(?:It's|It is)\\s+([A-Z][a-z]+)(?:\\s*[,.])?",
+      // Handle standalone full names (first and last name)
+      "^([A-Z][a-z]+(?:['-][A-Z][a-z]+)?\\s+[A-Z][a-z]+(?:['-][A-Z][a-z]+)?)$",
+      // Handle just first name as standalone response
+      "^([A-Za-z]+)$"
     ],
     useLLMFallback: true,
     examples: [
@@ -110,6 +114,7 @@ export const ENHANCED_EXTRACTION_PATTERNS: Record<string, EnhancedExtractionRule
   team_tenure: {
     type: 'string',
     description: 'How long the manager has been with this team',
+    required: true,
     patterns: [
       // Standard duration patterns
       "(\\d+(?:\\.\\d+)?)\\s*(?:years?|months?|weeks?|days?)\\s*(?:managing|leading|with|on|in)?",
@@ -195,6 +200,7 @@ export const ENHANCED_EXTRACTION_PATTERNS: Record<string, EnhancedExtractionRule
   budget_range: {
     type: 'string',
     description: 'Budget or investment range for the initiative',
+    required: true,
     patterns: [
       // Currency with amount
       "(?:\\$|€|£|¥)\\s*([0-9]{1,3}(?:,[0-9]{3})*(?:\\.[0-9]{2})?)\\s*(?:k|K|m|M|thousand|million|mil)?",
@@ -225,6 +231,7 @@ export const ENHANCED_EXTRACTION_PATTERNS: Record<string, EnhancedExtractionRule
   timeline_preference: {
     type: 'string',
     description: 'Preferred timeline for seeing results',
+    required: true,
     patterns: [
       // Standard duration
       "(\\d+)\\s*(?:weeks?|months?|quarters?|years?)\\s*(?:timeline|timeframe)?",
@@ -257,6 +264,7 @@ export const ENHANCED_EXTRACTION_PATTERNS: Record<string, EnhancedExtractionRule
   primary_challenge: {
     type: 'string',
     description: 'Main challenge or problem the team is facing',
+    required: true,
     patterns: [
       // Challenge/problem patterns
       "(?:main|primary|biggest|key)?\\s*(?:challenge|problem|issue|struggle|difficulty|pain point)\\s+(?:is|are|we have|I have)\\s+(.+?)(?:\\.|$)",
@@ -287,6 +295,7 @@ export const ENHANCED_EXTRACTION_PATTERNS: Record<string, EnhancedExtractionRule
   success_metrics: {
     type: 'string',
     description: 'How success will be measured',
+    required: true,
     patterns: [
       // Success definition patterns
       "(?:success|win|victory)\\s+(?:would be|is|means|looks like)\\s+(.+?)(?:\\.|$)",
@@ -400,6 +409,7 @@ export const ENHANCED_EXTRACTION_PATTERNS: Record<string, EnhancedExtractionRule
   leader_commitment: {
     type: 'string',
     description: 'Leader commitment level and availability',
+    required: true,
     patterns: [
       // Commitment level
       "(?:fully|very|highly|somewhat|not very)?\\s*committed",
@@ -425,11 +435,63 @@ export const ENHANCED_EXTRACTION_PATTERNS: Record<string, EnhancedExtractionRule
   }
 };
 
+// Add aliases for alternative field names to support both naming conventions
+export const FIELD_ALIASES: Record<string, string> = {
+  'user_name': 'manager_name',
+  'manager_role': 'manager_role', // This field doesn't exist in patterns yet
+  'user_role': 'user_role' // This field doesn't exist in patterns yet
+};
+
+// Role patterns for the new fields
+export const ADDITIONAL_PATTERNS: Record<string, EnhancedExtractionRule> = {
+  manager_role: {
+    type: 'string',
+    description: 'Extract the manager or leader role/title',
+    required: true,
+    patterns: [
+      // Direct role statements
+      "(?:I'm|I am|My role is|My title is|My position is)\\s+(?:a\\s+)?([A-Za-z\\s]+(?:Manager|Director|Lead|Head|VP|President|Chief|Officer))",
+      // Title patterns
+      "([A-Za-z\\s]+(?:Manager|Director|Lead|Head|VP|President|Chief|Officer))\\s+(?:of|for|at)\\s+",
+      // Work as patterns
+      "work(?:ing)?\\s+as\\s+(?:a\\s+)?([A-Za-z\\s]+(?:Manager|Director|Lead|Head))",
+      // Department head patterns
+      "(?:head|director|manager)\\s+of\\s+([A-Za-z\\s]+)",
+      // Simple role declaration
+      "^([A-Za-z\\s]+(?:Manager|Director|Lead|Head|VP|President))$"
+    ],
+    useLLMFallback: true,
+    examples: [
+      "I'm the Engineering Manager",
+      "My role is VP of Sales",
+      "Product Director",
+      "Head of Marketing",
+      "Working as a Team Lead"
+    ]
+  },
+  user_role: {
+    type: 'string',
+    description: 'Alias for manager_role',
+    required: true,
+    patterns: [], // Will use manager_role patterns via alias
+    useLLMFallback: true
+  }
+};
+
 /**
  * Helper function to get patterns for a specific field
  */
 export function getEnhancedPatterns(fieldName: string): string[] {
-  const rule = ENHANCED_EXTRACTION_PATTERNS[fieldName];
+  // Check if this is an aliased field
+  const actualFieldName = FIELD_ALIASES[fieldName] || fieldName;
+  
+  // First check additional patterns
+  if (ADDITIONAL_PATTERNS[actualFieldName]) {
+    return ADDITIONAL_PATTERNS[actualFieldName].patterns;
+  }
+  
+  // Then check main patterns
+  const rule = ENHANCED_EXTRACTION_PATTERNS[actualFieldName];
   return rule ? rule.patterns : [];
 }
 

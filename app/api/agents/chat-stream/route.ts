@@ -1,11 +1,81 @@
 import { NextRequest } from 'next/server';
-import { currentUser } from '@clerk/nextjs/server';
+import { currentUser } from '@/src/lib/auth/clerk-dev-wrapper';
 import { ConversationStore, PersistentContextManager, AgentRouter } from '@/src/lib/agents/conversation';
-import { prisma } from '@/lib/prisma';
-import { initializeChatServices } from '../chat-simple/route';
+import prisma from '@/lib/db';
+import { 
+  createOnboardingAgent,
+  createOrchestratorAgent,
+  createDiscoveryAgent,
+  createAssessmentAgent,
+  createAlignmentAgent,
+  createLearningAgent,
+  createNudgeAgent,
+  createProgressMonitor,
+  createRecognitionAgent
+} from '@/src/lib/agents/implementations';
+
+// Import PersistentContextManager class directly
+class StreamPersistentContextManager extends PersistentContextManager {
+  private conversationStore: ConversationStore;
+  
+  constructor(conversationStore: ConversationStore) {
+    super();
+    this.conversationStore = conversationStore;
+  }
+
+  async getContext(conversationId: string): Promise<any> {
+    const conversation = await this.conversationStore.loadConversation(conversationId);
+    if (!conversation) {
+      throw new Error(`Conversation ${conversationId} not found`);
+    }
+    return conversation.context;
+  }
+
+  async setContext(conversationId: string, context: any): Promise<void> {
+    await this.conversationStore.updateContext(conversationId, context);
+  }
+
+  async addMessage(conversationId: string, message: any): Promise<void> {
+    const conversation = await this.conversationStore.loadConversation(conversationId);
+    if (!conversation) {
+      throw new Error(`Conversation ${conversationId} not found`);
+    }
+    await this.conversationStore.addMessage(conversationId, message);
+  }
+}
 
 // Services initialization
-const { conversationStore, contextManager, router } = initializeChatServices();
+let conversationStore: ConversationStore;
+let contextManager: StreamPersistentContextManager;
+let router: AgentRouter;
+
+try {
+  conversationStore = new ConversationStore(prisma);
+  contextManager = new StreamPersistentContextManager(conversationStore);
+  router = new AgentRouter({ contextManager });
+
+  // Register all agents
+  const agents = [
+    createOrchestratorAgent(),
+    createOnboardingAgent(),
+    createDiscoveryAgent(),
+    createAssessmentAgent(),
+    createAlignmentAgent(),
+    createLearningAgent(),
+    createNudgeAgent(),
+    createProgressMonitor(),
+    createRecognitionAgent()
+  ];
+
+  agents.forEach(agent => {
+    if (agent) {
+      router.registerAgent(agent);
+      console.log(`Successfully registered ${agent.name}`);
+    }
+  });
+} catch (error) {
+  console.error('Failed to initialize chat services:', error);
+}
 
 export async function POST(req: NextRequest) {
   try {
