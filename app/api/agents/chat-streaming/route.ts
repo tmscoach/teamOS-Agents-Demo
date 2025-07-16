@@ -295,6 +295,28 @@ export async function POST(req: NextRequest) {
           
           if (capturedCount === requiredCount && requiredCount > 0) {
             metadata.isComplete = true;
+            
+            // Update journey status when onboarding completes
+            if (!context.metadata?.journeyUpdated) {
+              try {
+                console.log('[Journey] Onboarding complete, updating journey status for user:', dbUser.id);
+                const { JourneyTracker } = await import('@/lib/orchestrator/journey-tracker');
+                const journeyTracker = new JourneyTracker(dbUser.id);
+                await journeyTracker.completeOnboarding();
+                
+                // Update onboarding data with captured fields
+                await journeyTracker.updateJourneyProgress('onboarding_complete', {
+                  capturedFields: metadata.capturedFields,
+                  completedAt: new Date()
+                });
+                
+                // Mark journey as updated to prevent duplicate updates
+                context.metadata.journeyUpdated = true;
+                console.log('[Journey] Journey status updated to Assessment phase');
+              } catch (error) {
+                console.error('[Journey] Failed to update journey status:', error);
+              }
+            }
           }
           
           context.metadata.onboarding = metadata;
