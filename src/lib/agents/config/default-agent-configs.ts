@@ -19,6 +19,8 @@ export interface AgentDefaultConfig {
     required?: boolean;
     description?: string;
     useLLMFallback?: boolean;
+    preferLLM?: boolean;
+    suggestedValues?: string[];
   }>;
   guardrailConfig?: Record<string, any>;
 }
