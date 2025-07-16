@@ -42,7 +42,7 @@ export default async function DashboardPage() {
       }
     }
   }).catch((error) => {
-    console.error('Database connection error:', error)
+    // Database connection error - return null to handle gracefully
     return null
   })
   
@@ -69,10 +69,8 @@ export default async function DashboardPage() {
 
     // Only add new=true if this is truly their first conversation
     if (existingConversation) {
-      console.log('[Dashboard] Found existing conversation:', existingConversation.id)
       redirect('/chat?agent=OnboardingAgent')
     } else {
-      console.log('[Dashboard] No existing conversation, creating new')
       redirect('/chat?agent=OnboardingAgent&new=true')
     }
   }
