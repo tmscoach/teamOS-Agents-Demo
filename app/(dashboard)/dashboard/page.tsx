@@ -1,4 +1,4 @@
-import { currentUser } from '@clerk/nextjs/server'
+import { currentUser } from '@/lib/auth/clerk-dev-wrapper'
 import { redirect } from 'next/navigation'
 import { getCurrentUserWithJourney } from '@/lib/auth/roles'
 import { prisma } from '@/lib/db/prisma'
@@ -13,8 +13,13 @@ export default async function DashboardPage() {
   }
 
   // Get user with journey info including phase
+  // For dev auth, use email to find user instead of clerkId
+  const userQuery = clerkUser.emailAddresses?.[0]?.emailAddress 
+    ? { email: clerkUser.emailAddresses[0].emailAddress }
+    : { clerkId: clerkUser.id };
+    
   const user = clerkUser ? await prisma.user.findUnique({
-    where: { clerkId: clerkUser.id },
+    where: userQuery,
     select: {
       id: true,
       email: true,
