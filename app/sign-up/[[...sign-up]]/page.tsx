@@ -10,12 +10,15 @@ import { CardHeader } from "@/components/ui/card-header"
 import { Separator } from "@/components/ui/separator"
 import Image from "next/image"
 import Link from "next/link"
+import { DevModeNotice } from "./dev-mode-notice"
 
 export default function SignUpPage() {
   const [mounted, setMounted] = useState(false)
   const [email, setEmail] = useState("")
+  const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [emailSent, setEmailSent] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
   const { isLoaded, signUp, setActive } = useSignUp()
   const router = useRouter()
 
@@ -33,22 +36,67 @@ export default function SignUpPage() {
 
     setIsLoading(true)
     try {
-      // Create sign-up with just email
-      await signUp.create({
+      // Check if password is required first
+      if (!password && signUp.status === "missing_requirements") {
+        setShowPassword(true)
+        alert("Password is required for sign-up. Please enter a password.")
+        setIsLoading(false)
+        return
+      }
+
+      // Create sign-up with email and password
+      const signUpAttempt = await signUp.create({
         emailAddress: email,
+        ...(password && { password })
       })
 
-      // Send magic link email
-      await signUp.prepareEmailAddressVerification({ 
-        strategy: "email_code"
-      })
+      // Check the status to see what's next
+      console.log("Sign-up status after create:", signUpAttempt.status)
+      
+      if (signUpAttempt.status === "complete") {
+        // No verification needed
+        await setActive({ session: signUpAttempt.createdSessionId })
+        router.push("/chat?agent=OnboardingAgent&new=true")
+        return
+      }
+
+      // Only try verification if it's needed and we have missing_requirements status
+      if (signUpAttempt.status === "missing_requirements") {
+        try {
+          // Try to prepare email verification
+          await signUp.prepareEmailAddressVerification({ 
+            strategy: "email_code"
+          })
+        } catch (verifyErr: any) {
+          console.error("Verification strategy error:", verifyErr)
+          // If email_code doesn't work, the account might already be created
+          // Just redirect to sign-in
+          alert("Account created! Please sign in with your email and password.")
+          router.push("/sign-in")
+          return
+        }
+      }
       
       setEmailSent(true)
       // Redirect to verification page
       router.push("/sign-up/verify-email?email=" + encodeURIComponent(email))
     } catch (err: any) {
       console.error("Error signing up with email:", err)
-      alert(err.errors?.[0]?.message || "Error sending magic link. Please try again.")
+      console.error("Error details:", {
+        code: err.errors?.[0]?.code,
+        message: err.errors?.[0]?.message,
+        longMessage: err.errors?.[0]?.longMessage,
+        meta: err.errors?.[0]?.meta
+      })
+      
+      if (err.errors?.[0]?.code === "form_param_format_invalid" || 
+          err.errors?.[0]?.message?.includes("is invalid")) {
+        alert("Email verification is not properly configured in Clerk.\n\nTo test sign-up:\n1. Use /dev-login for quick testing\n2. Enable 'Email verification code' or 'Email verification link' in Clerk dashboard\n3. Make sure your Clerk instance is properly configured")
+      } else if (err.errors?.[0]?.code === "form_identifier_exists") {
+        alert("An account with this email already exists. Please sign in instead.")
+      } else {
+        alert(err.errors?.[0]?.message || "Error creating account. Please check your Clerk configuration.")
+      }
     } finally {
       setIsLoading(false)
     }
@@ -128,7 +176,7 @@ export default function SignUpPage() {
             <div className="flex flex-col items-center gap-3 self-stretch w-full px-0 lg:px-6">
               <h1 className="text-2xl font-semibold tracking-tight">Create an account</h1>
               <p className="text-sm text-muted-foreground text-center">
-                Enter your email and we'll send you a magic link to sign in
+                Enter your email and we'll send you a verification code
               </p>
             </div>
             
@@ -148,6 +196,23 @@ export default function SignUpPage() {
                       />
                     </div>
                   </div>
+                  {(showPassword || password) && (
+                    <div className="flex h-9 items-center gap-2 relative self-stretch w-full">
+                      <div className="flex flex-col items-start gap-1.5 relative flex-1 grow">
+                        <input
+                          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                          placeholder="Password"
+                          type="password"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          disabled={isLoading}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Password may be required by your Clerk configuration
+                        </p>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <Button
@@ -155,11 +220,11 @@ export default function SignUpPage() {
                   type="submit"
                   disabled={isLoading || !email}
                 >
-                  {isLoading ? "Sending magic link..." : "Continue with Email"}
+                  {isLoading ? "Creating account..." : "Continue with Email"}
                 </Button>
                 
-                {/* Clerk CAPTCHA container */}
-                <div id="clerk-captcha" style={{ minHeight: "65px" }}></div>
+                {/* Clerk CAPTCHA container - MUST have this ID */}
+                <div id="clerk-captcha"></div>
               </div>
 
               <div className="items-center gap-3 flex relative self-stretch w-full flex-[0_0_auto]">
@@ -244,6 +309,8 @@ export default function SignUpPage() {
                   </span>
                 </p>
               </div>
+              
+              <DevModeNotice />
             </form>
           </div>
         </div>

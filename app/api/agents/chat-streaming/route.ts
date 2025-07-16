@@ -320,12 +320,6 @@ export async function POST(req: NextRequest) {
                 });
                 console.log('[Journey] User after update:', updatedUser);
                 
-                // Update onboarding data with captured fields
-                await journeyTracker.updateJourneyProgress('onboarding_complete', {
-                  capturedFields: metadata.capturedFields,
-                  completedAt: new Date()
-                });
-                
                 // Mark journey as updated to prevent duplicate updates
                 context.metadata.journeyUpdated = true;
                 console.log('[Journey] Journey status updated to Assessment phase');

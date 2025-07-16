@@ -2,9 +2,10 @@ import { currentUser } from '@/src/lib/auth/clerk-dev-wrapper'
 import { redirect } from 'next/navigation'
 import { getCurrentUserWithJourney } from '@/lib/auth/roles'
 import { prisma } from '@/lib/db/prisma'
-import { Bell, Users, Pencil, Book, Settings, Focus, Plus, Coins, ChevronDown, User, CheckCircle } from 'lucide-react'
+import { Bell, Users, Pencil, Book, Settings, Focus, Plus, Coins, CheckCircle, User } from 'lucide-react'
 import { Oscar1 } from '@/app/chat/components/icons/Oscar1'
 import Link from 'next/link'
+import { UserDropdown } from '@/components/ui/user-dropdown'
 
 export default async function DashboardPage() {
   const clerkUser = await currentUser()
@@ -198,12 +199,11 @@ export default async function DashboardPage() {
                   </div>
 
                   {/* Avatar Dropdown */}
-                  <button className="inline-flex items-center gap-2 h-10 px-1.5 rounded-lg border border-solid border-gray-200 shadow-sm bg-white">
-                    <div className="flex w-7 h-7 items-center justify-center bg-gray-200 rounded-full">
-                      <User className="w-4 h-4 text-gray-400" />
-                    </div>
-                    <ChevronDown className="w-3 h-3" />
-                  </button>
+                  <UserDropdown 
+                    userName={user?.name || clerkUser?.firstName || userName}
+                    userEmail={user?.email || clerkUser?.emailAddresses?.[0]?.emailAddress}
+                    isAdmin={user?.role === 'ADMIN'}
+                  />
                 </div>
               </div>
 
