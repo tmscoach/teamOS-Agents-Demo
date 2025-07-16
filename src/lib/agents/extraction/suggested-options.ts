@@ -32,6 +32,40 @@ export function detectsUncertainty(message: string): boolean {
  * Suggested options for each field that commonly needs help
  */
 export const FIELD_SUGGESTIONS: Record<string, FieldSuggestions> = {
+  manager_role: {
+    options: [
+      "Engineering Manager",
+      "Product Manager",
+      "Sales Manager",
+      "Marketing Manager",
+      "Operations Manager",
+      "HR Manager",
+      "Finance Manager",
+      "General Manager",
+      "Team Lead",
+      "Department Head",
+      "Director",
+      "VP/Vice President"
+    ],
+    helpText: "Select your role or enter a custom one"
+  },
+  user_role: {
+    options: [
+      "Engineering Manager",
+      "Product Manager",
+      "Sales Manager",
+      "Marketing Manager",
+      "Operations Manager",
+      "HR Manager",
+      "Finance Manager",
+      "General Manager",
+      "Team Lead",
+      "Department Head",
+      "Director",
+      "VP/Vice President"
+    ],
+    helpText: "Select your role or enter a custom one"
+  },
   primary_challenge: {
     options: [
       "Communication and collaboration issues",

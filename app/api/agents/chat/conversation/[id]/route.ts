@@ -3,9 +3,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { currentUser } from '@clerk/nextjs/server';
+import { currentUser } from '@/src/lib/auth/clerk-dev-wrapper';
 import { ConversationStore } from '@/src/lib/agents';
-import { prisma } from '@/lib/db/prisma';
+import prisma from '@/lib/db';
 
 const conversationStore = new ConversationStore(prisma);
 
@@ -73,6 +73,17 @@ export async function GET(
       );
     }
 
+    // Extract onboarding data if present
+    const onboardingMetadata = conversationData.context.metadata?.onboarding || {};
+    const extractedData = onboardingMetadata.capturedFields || {};
+    const requiredFieldsStatus = onboardingMetadata.requiredFieldsStatus || {};
+    
+    const onboardingState = {
+      isComplete: onboardingMetadata.isComplete || false,
+      requiredFieldsCount: Object.keys(requiredFieldsStatus).length,
+      capturedFieldsCount: Object.values(requiredFieldsStatus).filter(Boolean).length
+    };
+
     // Return conversation data
     return NextResponse.json({
       id: conversationData.context.conversationId,
@@ -87,7 +98,9 @@ export async function GET(
         metadata: msg.metadata
       })),
       events: conversationData.events,
-      metadata: conversationData.context.metadata
+      metadata: conversationData.context.metadata,
+      extractedData,
+      onboardingState
     });
   } catch (error) {
     console.error('Conversation GET API error:', error);

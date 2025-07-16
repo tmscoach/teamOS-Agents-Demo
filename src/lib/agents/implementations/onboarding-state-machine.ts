@@ -18,37 +18,37 @@ export class OnboardingStateMachine {
     {
       from: ConversationState.GREETING,
       to: ConversationState.CONTEXT_DISCOVERY,
-      condition: (data) => !!data.managerName
+      condition: (data) => !!data.user_name || !!data.managerName
     },
     {
       from: ConversationState.CONTEXT_DISCOVERY,
       to: ConversationState.CHALLENGE_EXPLORATION,
-      condition: (data) => !!data.teamSize && !!data.teamStructure
+      condition: (data) => !!data.user_role || !!data.manager_role || !!data.teamSize
     },
     {
       from: ConversationState.CHALLENGE_EXPLORATION,
       to: ConversationState.TMS_EXPLANATION,
-      condition: (data) => !!data.primaryChallenge
+      condition: (data) => !!data.primary_challenge || !!data.primaryChallenge
     },
     {
       from: ConversationState.TMS_EXPLANATION,
       to: ConversationState.GOAL_SETTING,
-      condition: (data) => !!data.tmsUnderstanding
+      condition: (data) => true // Always allow progression to continue the conversation
     },
     {
       from: ConversationState.GOAL_SETTING,
       to: ConversationState.RESOURCE_CONFIRMATION,
-      condition: (data) => !!(data.goals && data.goals.length > 0)
+      condition: (data) => true // Always allow progression
     },
     {
       from: ConversationState.RESOURCE_CONFIRMATION,
       to: ConversationState.STAKEHOLDER_MAPPING,
-      condition: (data) => data.resources !== undefined
+      condition: (data) => true // Always allow progression
     },
     {
       from: ConversationState.STAKEHOLDER_MAPPING,
       to: ConversationState.RECAP_AND_HANDOFF,
-      condition: (data) => data.stakeholders && data.stakeholders.length > 0
+      condition: (data) => true // Always allow progression to ensure retry logic can trigger
     }
   ];
 

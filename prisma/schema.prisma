@@ -11,31 +11,31 @@ datasource db {
 }
 
 model User {
-  id                    String        @id @default(cuid())
-  clerkId               String        @unique
-  email                 String        @unique
-  name                  String?
-  imageUrl              String?
-  role                  UserRole      @default(MANAGER)
-  journeyStatus         JourneyStatus @default(ONBOARDING) // Legacy field - to be removed
-  journeyPhase          JourneyPhase  @default(ONBOARDING)
-  currentAgent          String?
-  completedSteps        String[]      @default([])
-  completedAssessments  Json?         @default("{}") // Track completed assessment types and timestamps
-  viewedDebriefs        Json?         @default("{}") // Track which debrief reports have been viewed
-  teamSignalsEligible   Boolean       @default(false) // Whether user is eligible for Team Signals
-  lastActivity          DateTime      @default(now())
-  onboardingData        Json?
-  teamId                String?
-  department            String?
-  profileData           Json?
-  engagementMetrics     Json?
-  assessmentStatus      Json?         // Legacy field - use completedAssessments instead
-  deletedAt             DateTime?
-  createdAt             DateTime      @default(now())
-  updatedAt             DateTime      @updatedAt
-  managedTeams          Team[]        @relation("TeamManager")
-  team                  Team?         @relation(fields: [teamId], references: [id])
+  id                   String        @id @default(cuid())
+  clerkId              String        @unique
+  email                String        @unique
+  name                 String?
+  role                 UserRole      @default(MANAGER)
+  teamId               String?
+  department           String?
+  profileData          Json?
+  engagementMetrics    Json?
+  assessmentStatus     Json?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+  imageUrl             String?
+  currentAgent         String?
+  completedSteps       String[]      @default([])
+  lastActivity         DateTime      @default(now())
+  onboardingData       Json?
+  deletedAt            DateTime?
+  journeyStatus        JourneyStatus @default(ONBOARDING)
+  journeyPhase         JourneyPhase  @default(ONBOARDING)
+  completedAssessments Json?         @default("{}")
+  viewedDebriefs       Json?         @default("{}")
+  teamSignalsEligible  Boolean       @default(false)
+  managedTeams         Team[]        @relation("TeamManager")
+  team                 Team?         @relation(fields: [teamId], references: [id])
 
   @@index([teamId])
   @@index([clerkId])
@@ -135,8 +135,8 @@ model VariableExtraction {
   successful       Boolean
   extractedValue   String?
   confidence       Float?
-  extractionMethod String?      // 'regex' or 'llm'
   timestamp        DateTime     @default(now())
+  extractionMethod String?
   conversation     Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
   @@index([conversationId])
@@ -152,12 +152,12 @@ model AgentConfiguration {
   prompts         Json
   flowConfig      Json
   extractionRules Json
-  guardrailConfig Json?
-  knowledgeConfig Json?    // Stores { enabled: boolean, tools?: string[] }
   active          Boolean  @default(false)
   createdBy       String
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+  guardrailConfig Json?
+  knowledgeConfig Json?
 
   @@unique([agentName, version])
   @@index([agentName, active])

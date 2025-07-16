@@ -453,6 +453,7 @@ export async function POST(req: NextRequest) {
       handoff: response.handoff,
       extractedData,
       onboardingState,
+      metadata: response.metadata, // Include response metadata (contains suggestedValues)
       events: response.events.map(event => ({
         ...event,
         timestamp: event.timestamp.toISOString(),

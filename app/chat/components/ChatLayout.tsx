@@ -202,16 +202,16 @@ export default function ChatLayout({
               {extractedData.team_size ? (
                 // If we have team size, show the completion component (which handles both states)
                 <OnboardingCompletion
-                  managerName={extractedData.manager_name}
-                  managerRole={extractedData.manager_role}
+                  managerName={extractedData.user_name || extractedData.manager_name}
+                  managerRole={extractedData.user_role || extractedData.manager_role}
                   teamSize={extractedData.team_size}
                   onboardingState={onboardingState}
                 />
               ) : (
                 // Otherwise show the profile display
                 <ProfileDisplay
-                  userName={extractedData.manager_name}
-                  userRole={extractedData.manager_role}
+                  userName={extractedData.user_name || extractedData.manager_name}
+                  userRole={extractedData.user_role || extractedData.manager_role}
                 />
               )}
             </>

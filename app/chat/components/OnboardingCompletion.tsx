@@ -16,14 +16,14 @@ interface OnboardingCompletionProps {
 
 export default function OnboardingCompletion({ 
   managerName, 
-  managerRole = "Manager", 
+  managerRole, 
   teamSize = 0,
   onboardingState
 }: OnboardingCompletionProps) {
   const router = useRouter();
   
   // Extract first name if full name is provided
-  const displayName = managerName ? managerName.split(' ')[0] : "Manager";
+  const displayName = managerName ? managerName.split(' ')[0] : "";
   
   // Define team member colors from the mockups
   const memberColors = ['#f8dcb8', '#edbbd2', '#cfbcd9', '#a7c0e3'];
@@ -53,10 +53,10 @@ export default function OnboardingCompletion({
           </div>
           <div className="mt-6 text-center">
             <div className="font-bold text-black text-2xl text-center tracking-[-0.48px] leading-6">
-              {displayName}
+              {displayName || "..."}
             </div>
             <div className="mt-1 font-normal text-[color:var(--shadcn-ui-muted-foreground)] text-sm text-center tracking-[-0.28px] leading-6">
-              {managerRole}
+              {managerRole || "..."}
             </div>
           </div>
         </div>
@@ -129,10 +129,10 @@ export default function OnboardingCompletion({
         </div>
         <div className="mt-6 text-center">
           <div className="font-bold text-black text-2xl text-center tracking-[-0.48px] leading-6">
-            {displayName}
+            {displayName || "..."}
           </div>
           <div className="mt-1 font-normal text-[color:var(--shadcn-ui-muted-foreground)] text-sm text-center tracking-[-0.28px] leading-6">
-            {managerRole}
+            {managerRole || "..."}
           </div>
         </div>
       </div>

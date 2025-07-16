@@ -1,5 +1,6 @@
 import { VariableExtractionService, VariableExtractionInput } from '../../services/variable-extraction';
 import { LLMProvider } from '../llm';
+import { BatchExtractor } from './batch-extraction';
 
 export interface ExtractionRule {
   type: 'string' | 'number' | 'boolean' | 'array';
@@ -54,6 +55,25 @@ export class ExtractionProcessor {
     rules: Record<string, ExtractionRule>,
     context?: ExtractionContext
   ): Promise<ExtractionResult[]> {
+    // Check if we should use batch extraction for better performance
+    const llmEnabledFields = Object.entries(rules).filter(([_, rule]) => 
+      rule.preferLLM !== false && context?.enableLLMFallback === true
+    );
+    
+    // Batch extraction is now enabled - single digit issue has been resolved
+    const USE_BATCH_EXTRACTION = true;
+    
+    // If we have multiple LLM-enabled fields, use batch extraction
+    if (USE_BATCH_EXTRACTION && llmEnabledFields.length > 1) {
+      try {
+        return await this.extractFromMessageBatch(message, rules, context);
+      } catch (error) {
+        console.error('[Extraction] Batch extraction failed, falling back to individual extraction:', error);
+        // Fall through to individual extraction
+      }
+    }
+    
+    // Otherwise, fall back to individual extraction
     const results: ExtractionResult[] = [];
 
     for (const [fieldName, rule] of Object.entries(rules)) {
@@ -229,6 +249,20 @@ export class ExtractionProcessor {
     rule: ExtractionRule
   ): Promise<ExtractionResult> {
     try {
+      // Special handling for numeric fields with bare number responses
+      if (rule.type === 'number' && /^\d+$/.test(message.trim())) {
+        const numValue = parseInt(message.trim(), 10);
+        console.log(`[LLM Extraction] Detected bare number for ${fieldName}: ${numValue}`);
+        return {
+          fieldName,
+          attempted: true,
+          successful: true,
+          extractedValue: numValue,
+          confidence: 0.9,
+          extractionMethod: 'llm'
+        };
+      }
+      
       const llm = this.getLLMProvider();
       
       // Check if LLM is properly configured
@@ -374,6 +408,7 @@ IMPORTANT RULES:
    - "Call me [NAME]"
    - "[NAME] here"
    - "This is [NAME]"
+   - Just "[NAME]" (a single word that appears to be a name)
 
 User Message: "${message}"
 
@@ -390,13 +425,17 @@ Examples:
 - "We have 10 team members" → "NOT_FOUND"
 - "I'm john and i manage a team" → "John"
 - "i'm sarah" → "Sarah"
+- "rowan" → "Rowan"
+- "john" → "John"
+- "Sarah" → "Sarah"
 
 CRITICAL: 
 - If someone says "Hi I'm [NAME]" or "Hello I'm [NAME]", extract the NAME
 - Common names like Rowan, Sarah, John, etc. should be recognized
-- Names may be written in lowercase - capitalize them properly (e.g., "john" → "John", "sarah" → "Sarah")
+- Names may be written in lowercase - capitalize them properly (e.g., "john" → "John", "sarah" → "Sarah", "rowan" → "Rowan")
 - If the message contains "I'm [name] and..." where [name] is a common first name, extract it
-- If the message is about team size, roles, or work information WITHOUT a name introduction, respond with "NOT_FOUND"`;
+- If the message is about team size, roles, or work information WITHOUT a name introduction, respond with "NOT_FOUND"
+- IMPORTANT: If the message is just a single word that could be a name (like "john", "rowan", "sarah"), extract it as a name and capitalize it properly`;
     }
     
     if (isRoleField) {
@@ -451,8 +490,16 @@ Common patterns:
 - "[NUMBER] people/members/employees"
 - "manage [NUMBER]"
 - "have [NUMBER] direct reports"
+- "it's just me" or "just me" = 1
+- "I work alone" or "solo" = 1
+- "myself" or "only me" = 1
+- "no team" or "don't have a team yet" = 1
+- A bare number (e.g., "0", "5", "10") when asked about team size
 
-Extract only the number. If a range is given (e.g., "10-15"), extract the average.`;
+IMPORTANT: If the message is just a single number (like "0", "1", "5", etc.), extract that number.
+Extract only the number. If a range is given (e.g., "10-15"), extract the average.
+If they indicate they work alone or it's just them, extract "1".
+Zero (0) is a valid team size (meaning no team members yet).`;
     } else if (fieldName.includes('challenge')) {
       fieldGuidance = `
 Look for:
@@ -576,5 +623,55 @@ Do not include any explanation or additional text.`;
     }
 
     return { extracted: cleanExtracted, results };
+  }
+  
+  /**
+   * Extract multiple fields using batch LLM extraction for better performance
+   */
+  private static async extractFromMessageBatch(
+    message: string,
+    rules: Record<string, ExtractionRule>,
+    context?: ExtractionContext
+  ): Promise<ExtractionResult[]> {
+    const results: ExtractionResult[] = [];
+    
+    // Separate fields into LLM and regex groups
+    const llmFields: Record<string, ExtractionRule> = {};
+    const regexOnlyFields: Record<string, ExtractionRule> = {};
+    
+    for (const [fieldName, rule] of Object.entries(rules)) {
+      if (rule.preferLLM !== false && context?.enableLLMFallback === true) {
+        llmFields[fieldName] = rule;
+      } else {
+        regexOnlyFields[fieldName] = rule;
+      }
+    }
+    
+    // Batch extract LLM fields
+    if (Object.keys(llmFields).length > 0) {
+      console.log(`[Extraction] Batch extracting ${Object.keys(llmFields).length} fields with LLM`);
+      const startTime = Date.now();
+      
+      const batchResults = await BatchExtractor.extractBatch({
+        message,
+        fields: llmFields
+      });
+      
+      const duration = Date.now() - startTime;
+      console.log(`[Extraction] Batch extraction completed in ${duration}ms`);
+      
+      // Add batch results to results array
+      for (const [fieldName, result] of Object.entries(batchResults)) {
+        results.push(result);
+      }
+    }
+    
+    // Extract regex-only fields individually
+    for (const [fieldName, rule] of Object.entries(regexOnlyFields)) {
+      const result = this.extractField(message, fieldName, rule);
+      results.push(result);
+    }
+    
+    return results;
   }
 }

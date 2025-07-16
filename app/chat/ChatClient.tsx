@@ -340,7 +340,7 @@ export default function ChatClient() {
         setInput={setInput}
         onSendMessage={sendMessage}
         loading={loading}
-        userName={user?.firstName || undefined}
+        userName={user?.firstName || extractedData.user_name || undefined}
         agentName={agentName === 'OnboardingAgent' ? 'OSmos' : agentName}
         onNewConversation={conversationId ? startNewConversation : undefined}
         extractedData={extractedData}

@@ -3,7 +3,8 @@
  * These serve as templates when no database configuration exists
  */
 
-import { ENHANCED_EXTRACTION_PATTERNS, convertToStandardRules } from '../extraction/enhanced-patterns';
+import { ENHANCED_EXTRACTION_PATTERNS, ADDITIONAL_PATTERNS, convertToStandardRules } from '../extraction/enhanced-patterns';
+import { mergeSuggestedValues } from '../extraction/merge-suggestions';
 
 export interface AgentDefaultConfig {
   prompts: Record<string, string>;
@@ -18,6 +19,8 @@ export interface AgentDefaultConfig {
     required?: boolean;
     description?: string;
     useLLMFallback?: boolean;
+    preferLLM?: boolean;
+    suggestedValues?: string[];
   }>;
   guardrailConfig?: Record<string, any>;
 }
@@ -31,6 +34,7 @@ You have access to the TMS knowledge base containing 40+ years of intellectual p
 
 Your objectives:
 - Build rapport and trust with the manager
+- Confirm their specific role/title (don't assume they're just a "Manager")
 - Understand their team context and challenges
 - Explore their primary challenges in depth
 - Explain how TMS can help based on their specific needs
@@ -45,13 +49,14 @@ IMPORTANT INSTRUCTIONS:
 - NEVER ask for information that has already been captured
 - Focus only on gathering the missing required fields listed in "Still need to capture"
 - If the user provides information naturally, acknowledge it rather than asking for it again
-- Be conversational and natural while being efficient in gathering missing information`,
-      greeting: "Welcome to TMS! I'm excited to help you transform your team. I'm your dedicated guide through this journey. What's your name, and what brings you to TMS today?",
-      context_discovery: "Tell me about your team - how many people do you manage, and how long have you been leading this group? I'd love to understand your team's structure and dynamics.",
-      challenge_exploration: "What specific challenges is your team facing right now? How are these impacting your team's performance and your goals?",
+- Be conversational and natural while being efficient in gathering missing information
+- CRITICAL: Ask for their specific role/title (e.g., "Engineering Manager", "VP of Sales", "Team Lead") - do NOT default to generic "Manager"`,
+      greeting: "Welcome to TMS! I'm OSmos, your AI team dynamics coach. I'm here to help you unlock your team's potential by understanding what makes each person tick and giving you actionable insights to lead with confidence.\n\nTo get started, what's your name?",
+      context_discovery: "Great to meet you! Now I'd like to understand your role and team better.\n\nWhat's your specific role or title in the organization?",
+      challenge_exploration: "Thanks for that. Now let's talk about what brought you here.\n\nWhat's the main challenge your team is facing right now?",
       tms_explanation: "Based on what you've shared, let me explain how TMS can help. We have proven methodologies like TMP (Team Management Profile), QO2 (Quotient of Organizational Outcomes), and others that address exactly these kinds of challenges...",
-      goal_setting: "What would success look like for your team? Let's set some specific, measurable goals for your transformation journey.",
-      resource_confirmation: "To ensure we design the right program for you, let's discuss timeline and budget. What's your timeframe for seeing results, and what level of investment are you considering?",
+      goal_setting: "I can see how that's impacting your team. Let's think about the future.\n\nWhat would success look like for your team in 6 months?",
+      resource_confirmation: "Those are great goals! To design the right program for you, I need to understand your constraints.\n\nWhat's your ideal timeframe for seeing initial results?",
       stakeholder_mapping: "Who are the key people we need to involve? Think about team champions, potential skeptics, and senior stakeholders whose support we'll need.",
       recap_and_handoff: "Let me summarize what we've discussed: [recap key points]. You're ready for the next step - our Assessment Agent will help evaluate your team's current state using our proven tools. Are you ready to proceed?"
     },
@@ -77,33 +82,37 @@ IMPORTANT INSTRUCTIONS:
         recap_and_handoff: []
       },
       requiredFields: [
-        'manager_name',
+        'user_name',  // Updated to use consistent field name
+        'user_role',  // Added to confirm role
         'team_size',
-        'team_tenure',
-        'primary_challenge',
-        'success_metrics',
-        'timeline_preference',
-        'budget_range',
-        'leader_commitment'
+        'organization',  // Required field
+        'primary_challenge'
       ]
     },
-    // Use enhanced extraction patterns for better coverage
-    extractionRules: convertToStandardRules({
-      manager_name: ENHANCED_EXTRACTION_PATTERNS.manager_name,
-      team_size: ENHANCED_EXTRACTION_PATTERNS.team_size,
-      team_tenure: ENHANCED_EXTRACTION_PATTERNS.team_tenure,
-      primary_challenge: ENHANCED_EXTRACTION_PATTERNS.primary_challenge,
-      success_metrics: ENHANCED_EXTRACTION_PATTERNS.success_metrics,
-      timeline_preference: ENHANCED_EXTRACTION_PATTERNS.timeline_preference,
-      budget_range: ENHANCED_EXTRACTION_PATTERNS.budget_range,
-      leader_commitment: ENHANCED_EXTRACTION_PATTERNS.leader_commitment,
-      // Additional fields for richer context
-      company_name: ENHANCED_EXTRACTION_PATTERNS.company_name,
-      department: ENHANCED_EXTRACTION_PATTERNS.department,
-      team_distribution: ENHANCED_EXTRACTION_PATTERNS.team_distribution,
-      urgency_level: ENHANCED_EXTRACTION_PATTERNS.urgency_level,
-      previous_initiatives: ENHANCED_EXTRACTION_PATTERNS.previous_initiatives
-    }),
+    // Use enhanced extraction patterns with suggested values merged in
+    extractionRules: mergeSuggestedValues(
+      convertToStandardRules({
+        // Core fields with both naming conventions
+        manager_name: { ...ENHANCED_EXTRACTION_PATTERNS.manager_name, required: true },
+        user_name: { ...ENHANCED_EXTRACTION_PATTERNS.manager_name, required: true }, // Alias for manager_name
+        manager_role: { ...ADDITIONAL_PATTERNS.manager_role, required: true },
+        user_role: { ...ADDITIONAL_PATTERNS.manager_role, required: true }, // Alias for manager_role
+        team_size: { ...ENHANCED_EXTRACTION_PATTERNS.team_size, required: true },
+        team_tenure: { ...ENHANCED_EXTRACTION_PATTERNS.team_tenure, required: false },
+        primary_challenge: { ...ENHANCED_EXTRACTION_PATTERNS.primary_challenge, required: true },
+        organization: { ...ENHANCED_EXTRACTION_PATTERNS.company_name, required: true }, // Organization is required
+        success_metrics: { ...ENHANCED_EXTRACTION_PATTERNS.success_metrics, required: false },
+        timeline_preference: { ...ENHANCED_EXTRACTION_PATTERNS.timeline_preference, required: false },
+        budget_range: { ...ENHANCED_EXTRACTION_PATTERNS.budget_range, required: false },
+        leader_commitment: { ...ENHANCED_EXTRACTION_PATTERNS.leader_commitment, required: false },
+        // Additional fields for richer context (not required)
+        company_name: ENHANCED_EXTRACTION_PATTERNS.company_name,
+        department: ENHANCED_EXTRACTION_PATTERNS.department,
+        team_distribution: ENHANCED_EXTRACTION_PATTERNS.team_distribution,
+        urgency_level: ENHANCED_EXTRACTION_PATTERNS.urgency_level,
+        previous_initiatives: ENHANCED_EXTRACTION_PATTERNS.previous_initiatives
+      })
+    ),
     guardrailConfig: {
       minMessageLength: 1,
       maxMessageLength: 1000,
