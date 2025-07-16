@@ -72,18 +72,36 @@ export async function POST(req: NextRequest) {
     const message = messages?.[messages.length - 1]?.content || '';
 
     // Get or create user
-    let dbUser = await prisma.user.findUnique({
-      where: { clerkId: user.id },
-      include: { managedTeams: true }
-    });
+    // For dev auth, use email to find/create user
+    const userEmail = user.emailAddresses?.[0]?.emailAddress;
+    let dbUser;
+    
+    if (userEmail) {
+      // Try to find by email first (for dev auth users)
+      dbUser = await prisma.user.findUnique({
+        where: { email: userEmail },
+        include: { managedTeams: true }
+      });
+    }
+    
+    if (!dbUser) {
+      // Try by clerkId
+      dbUser = await prisma.user.findUnique({
+        where: { clerkId: user.id },
+        include: { managedTeams: true }
+      });
+    }
 
     if (!dbUser) {
+      // Create new user
       dbUser = await prisma.user.create({
         data: {
           clerkId: user.id,
-          email: user.emailAddresses?.[0]?.emailAddress || `${user.id}@demo.com`,
-          name: user.fullName || user.firstName || 'Demo User',
+          email: userEmail || `${user.id}@demo.com`,
+          name: user.fullName || user.firstName || userEmail?.split('@')[0] || 'Demo User',
           role: 'MANAGER',
+          journeyStatus: 'ONBOARDING',
+          journeyPhase: 'ONBOARDING'
         },
         include: { managedTeams: true }
       });
@@ -277,6 +295,38 @@ export async function POST(req: NextRequest) {
           
           if (capturedCount === requiredCount && requiredCount > 0) {
             metadata.isComplete = true;
+            
+            // Update journey status when onboarding completes
+            if (!context.metadata?.journeyUpdated) {
+              try {
+                console.log('[Journey] Onboarding complete, updating journey status for user:', dbUser.id);
+                
+                // Direct database update to ensure it happens
+                await prisma.user.update({
+                  where: { id: dbUser.id },
+                  data: {
+                    journeyPhase: 'ASSESSMENT',
+                    journeyStatus: 'ACTIVE',
+                    currentAgent: 'AssessmentAgent',
+                    lastActivity: new Date()
+                  }
+                });
+                console.log('[Journey] Direct database update completed');
+                
+                // Verify the update
+                const updatedUser = await prisma.user.findUnique({
+                  where: { id: dbUser.id },
+                  select: { journeyPhase: true, journeyStatus: true }
+                });
+                console.log('[Journey] User after update:', updatedUser);
+                
+                // Mark journey as updated to prevent duplicate updates
+                context.metadata.journeyUpdated = true;
+                console.log('[Journey] Journey status updated to Assessment phase');
+              } catch (error) {
+                console.error('[Journey] Failed to update journey status:', error);
+              }
+            }
           }
           
           context.metadata.onboarding = metadata;
@@ -341,8 +391,22 @@ async function extractInformation(
       return {};
     }
     
+    // Get the last assistant message for context
+    let messageWithContext = message;
+    const lastAssistantMessage = context.messageHistory
+      .slice(-2)
+      .find(msg => msg.role === 'assistant');
+    
+    if (lastAssistantMessage) {
+      // If the user message is very short (like a single number), provide context
+      if (message.length < 20 && /^\d+$/.test(message.trim())) {
+        messageWithContext = `Assistant asked: "${lastAssistantMessage.content.substring(0, 200)}..."\nUser replied: "${message}"`;
+        console.log('[Extraction] Enhanced message with context for better extraction');
+      }
+    }
+    
     const { extracted } = await ExtractionProcessor.extractAndTrack(
-      message,
+      messageWithContext,
       fieldsToExtract,
       {
         conversationId: context.conversationId,

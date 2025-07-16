@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useEffect, useState } from "react"
-import { useSignIn } from "@clerk/nextjs"
+import { useSignIn, useClerk } from "@clerk/nextjs"
 import { useRouter } from "next/navigation"
 import { BlocksDashboard } from "@/components/blocks/blocks-dashboard"
 import { Button } from "@/components/ui/anima-button"
@@ -9,21 +9,54 @@ import { CardHeader } from "@/components/ui/card-header"
 import { Separator } from "@/components/ui/separator"
 import Image from "next/image"
 import Link from "next/link"
+import { DevModeNotice } from "./dev-mode-notice"
+import { AlreadySignedIn } from "./already-signed-in"
 
 export default function SignInPage() {
   const [mounted, setMounted] = useState(false)
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [isLoading, setIsLoading] = useState(false)
+  const [verificationPending, setVerificationPending] = useState(false)
+  const [usePasswordAuth, setUsePasswordAuth] = useState(false)
   const { isLoaded, signIn, setActive } = useSignIn()
+  const clerk = useClerk()
   const router = useRouter()
 
   useEffect(() => {
     setMounted(true)
-  }, [])
+    
+    // Check if user is already signed in
+    if (isLoaded && clerk.user) {
+      // User is already signed in, redirect to dashboard
+      router.push("/dashboard")
+      return
+    }
+    
+    // Check if email_link is available
+    if (isLoaded && clerk.client) {
+      const signInConfig = clerk.client.signIn?.supportedFirstFactors || []
+      const hasEmailLink = signInConfig.some((factor: any) => 
+        factor.strategy === 'email_link'
+      )
+      const hasPassword = signInConfig.some((factor: any) => 
+        factor.strategy === 'password'
+      )
+      
+      // If email_link is not available but password is, use password auth
+      if (!hasEmailLink && hasPassword) {
+        setUsePasswordAuth(true)
+      }
+    }
+  }, [isLoaded, clerk.client, clerk.user, router])
 
   if (!mounted || !isLoaded) {
     return null
+  }
+  
+  // Show already signed in component if user is authenticated
+  if (clerk.user) {
+    return <AlreadySignedIn email={clerk.user.primaryEmailAddress?.emailAddress} />
   }
 
   const handleEmailSignIn = async (e: React.FormEvent) => {
@@ -32,22 +65,66 @@ export default function SignInPage() {
 
     setIsLoading(true)
     try {
-      // For email/password sign in
-      const result = await signIn.create({
-        identifier: email,
-        password: password,
-      })
+      if (usePasswordAuth) {
+        // Use password authentication
+        const result = await signIn.create({
+          identifier: email,
+          password: password,
+        })
 
-      if (result.status === "complete") {
-        await setActive({ session: result.createdSessionId })
-        router.push("/dashboard")
+        if (result.status === "complete") {
+          await setActive({ session: result.createdSessionId })
+          router.push("/dashboard")
+        } else {
+          console.log("Sign in requires additional steps", result)
+        }
       } else {
-        // Handle other statuses like 2FA
-        console.log("Sign in requires additional steps", result)
+        // Try magic link authentication
+        const result = await signIn.create({
+          identifier: email,
+          strategy: "email_link",
+          redirectUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/dashboard`,
+        })
+
+        if (result.status === "needs_first_factor") {
+          // Email link has been sent
+          setVerificationPending(true)
+          
+          // Check for verification completion
+          const checkVerification = setInterval(async () => {
+            try {
+              const updatedSignIn = await signIn.reload()
+              if (updatedSignIn.status === "complete") {
+                clearInterval(checkVerification)
+                await setActive({ session: updatedSignIn.createdSessionId })
+                router.push("/dashboard")
+              }
+            } catch (error) {
+              console.error("Error checking verification:", error)
+            }
+          }, 1000)
+
+          // Clear interval after 5 minutes
+          setTimeout(() => clearInterval(checkVerification), 5 * 60 * 1000)
+          
+          // Redirect to verification page
+          router.push(`/sign-in/verify-email?email=${encodeURIComponent(email)}`)
+        }
       }
     } catch (err: any) {
       console.error("Error signing in:", err)
-      alert(err.errors?.[0]?.message || "Invalid email or password")
+      
+      // Check if error is due to email link not being enabled
+      if (err.errors?.[0]?.code === "strategy_not_allowed" || 
+          err.message?.includes("email_link does not match")) {
+        // Fallback to password auth
+        setUsePasswordAuth(true)
+        alert("Email link authentication is not configured in Clerk.\n\nOptions:\n1. Use the dev login at /dev-login for testing\n2. Enable email links in your Clerk dashboard\n3. Enable password authentication in Clerk\n4. Use Google/Microsoft sign-in if configured")
+      } else if (err.errors?.[0]?.code === "form_identifier_not_found") {
+        alert("No account found with this email. Please sign up first at /sign-up")
+      } else {
+        alert(err.errors?.[0]?.message || "Failed to sign in. Please try again.")
+      }
     } finally {
       setIsLoading(false)
     }
@@ -118,14 +195,19 @@ export default function SignInPage() {
       {/* Right Column - Light Section (appears first on mobile) */}
       <div className="flex flex-col min-h-[400px] h-[50vh] lg:min-h-[600px] lg:h-screen items-start relative w-full lg:w-1/2 bg-white lg:bg-[color:var(--shadcn-ui-card)] shadow-[0px_1px_2px_#0000000d] overflow-y-auto">
         <div className="items-end gap-1.5 p-6 lg:p-9 pb-0 flex flex-col relative self-stretch w-full">
-          {/* Sign Up link temporarily disabled */}
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span>Don't have an account?</span>
+            <Link href="/sign-up" className="font-medium text-primary hover:underline">
+              Sign up
+            </Link>
+          </div>
         </div>
 
         <div className="items-center justify-center gap-4 px-6 lg:px-16 pt-4 pb-6 flex-1 grow flex flex-col relative self-stretch w-full">
           <div className="flex flex-col w-full max-w-[440px] items-center justify-center relative flex-1 grow min-h-0">
             <CardHeader
               cardDescriptionDivClassName="!text-center"
-              cardDescriptionText="Enter your email below to sign in to your account"
+              cardDescriptionText={usePasswordAuth ? "Enter your email and password to sign in" : "Enter your email below to receive a sign-in link"}
               cardTitleText="Sign In"
               className="!self-stretch !gap-3 !flex-[0_0_auto] !items-center !w-full !px-0 lg:!px-6"
             />
@@ -141,32 +223,34 @@ export default function SignInPage() {
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         required
-                        disabled={isLoading}
+                        disabled={isLoading || verificationPending}
                       />
                     </div>
                   </div>
-                  <div className="flex h-9 items-center gap-2 relative self-stretch w-full">
-                    <div className="flex flex-col items-start gap-1.5 relative flex-1 grow">
-                      <input
-                        className="pl-3 pr-3 lg:pr-14 py-2 relative self-stretch w-full rounded-[var(--shadcn-ui-radius-md)] border border-solid border-shadcn-ui-input [background:none] [font-family:'Inter-Regular',Helvetica] font-normal text-[color:var(--shadcn-ui-foreground)] placeholder:text-[color:var(--shadcn-ui-muted-foreground)] text-sm tracking-[0] leading-5"
-                        placeholder="Password"
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                        disabled={isLoading}
-                      />
+                  {usePasswordAuth && (
+                    <div className="flex h-9 items-center gap-2 relative self-stretch w-full">
+                      <div className="flex flex-col items-start gap-1.5 relative flex-1 grow">
+                        <input
+                          className="pl-3 pr-3 lg:pr-14 py-2 relative self-stretch w-full rounded-[var(--shadcn-ui-radius-md)] border border-solid border-shadcn-ui-input [background:none] [font-family:'Inter-Regular',Helvetica] font-normal text-[color:var(--shadcn-ui-foreground)] placeholder:text-[color:var(--shadcn-ui-muted-foreground)] text-sm tracking-[0] leading-5"
+                          placeholder="Password"
+                          type="password"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          required={usePasswordAuth}
+                          disabled={isLoading}
+                        />
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
 
                 <Button
                   className="!self-stretch !h-10 !flex !w-full"
                   size="sm"
                   state="default_1"
-                  text1={isLoading ? "Signing in..." : "Sign In with Email"}
+                  text1={isLoading ? (usePasswordAuth ? "Signing in..." : "Sending link...") : verificationPending ? "Check your email" : (usePasswordAuth ? "Sign In" : "Send Sign-In Link")}
                   type="default"
-                  disabled={isLoading}
+                  disabled={isLoading || verificationPending}
                 />
               </div>
 
@@ -257,6 +341,8 @@ export default function SignInPage() {
                   </span>
                 </p>
               </div>
+              
+              <DevModeNotice />
             </form>
           </div>
         </div>

@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { currentUser } from '@/src/lib/auth/clerk-dev-wrapper';
-import { ConversationStore, PersistentContextManager, AgentRouter } from '@/src/lib/agents/conversation';
+import { ConversationStore, ContextManager, AgentRouter } from '@/src/lib/agents';
 import prisma from '@/lib/db';
 import { 
   createOnboardingAgent,
@@ -14,8 +14,8 @@ import {
   createRecognitionAgent
 } from '@/src/lib/agents/implementations';
 
-// Import PersistentContextManager class directly
-class StreamPersistentContextManager extends PersistentContextManager {
+// Custom context manager for streaming
+class StreamPersistentContextManager extends ContextManager {
   private conversationStore: ConversationStore;
   
   constructor(conversationStore: ConversationStore) {
