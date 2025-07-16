@@ -341,8 +341,22 @@ async function extractInformation(
       return {};
     }
     
+    // Get the last assistant message for context
+    let messageWithContext = message;
+    const lastAssistantMessage = context.messageHistory
+      .slice(-2)
+      .find(msg => msg.role === 'assistant');
+    
+    if (lastAssistantMessage) {
+      // If the user message is very short (like a single number), provide context
+      if (message.length < 20 && /^\d+$/.test(message.trim())) {
+        messageWithContext = `Assistant asked: "${lastAssistantMessage.content.substring(0, 200)}..."\nUser replied: "${message}"`;
+        console.log('[Extraction] Enhanced message with context for better extraction');
+      }
+    }
+    
     const { extracted } = await ExtractionProcessor.extractAndTrack(
-      message,
+      messageWithContext,
       fieldsToExtract,
       {
         conversationId: context.conversationId,
