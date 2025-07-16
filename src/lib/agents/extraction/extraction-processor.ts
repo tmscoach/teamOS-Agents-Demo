@@ -97,14 +97,16 @@ export class ExtractionProcessor {
           console.log(`[Extraction] LLM result for ${fieldName}: ${llmResult.successful ? llmResult.extractedValue : 'NOT_FOUND'}`);
         }
         
-        // Optional: Fall back to regex if LLM fails and fallback is explicitly requested
-        if (!result.successful && rule.useRegexFallback === true) {
-          const regexResult = this.extractField(message, fieldName, rule);
-          if (regexResult.successful) {
-            result = regexResult;
-            console.log(`[Extraction] Regex fallback succeeded for ${fieldName}: ${result.extractedValue}`);
-          }
-        }
+        // Optional: Fall back to regex if LLM fails
+        // Note: useRegexFallback property needs to be added to ExtractionRule interface if needed
+        // Commented out until interface is updated
+        // if (!result.successful && rule.useRegexFallback === true) {
+        //   const regexResult = this.extractField(message, fieldName, rule);
+        //   if (regexResult.successful) {
+        //     result = regexResult;
+        //     console.log(`[Extraction] Regex fallback succeeded for ${fieldName}: ${result.extractedValue}`);
+        //   }
+        // }
       } else {
         // Use regex extraction only when LLM is explicitly disabled
         result = this.extractField(message, fieldName, rule);

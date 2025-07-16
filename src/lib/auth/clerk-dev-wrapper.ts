@@ -16,8 +16,8 @@ export async function currentUser(): Promise<MockUser | null> {
         emailAddresses: clerkUser.emailAddresses.map(email => ({ 
           emailAddress: email.emailAddress 
         })),
-        fullName: clerkUser.fullName || undefined,
-        firstName: clerkUser.firstName || undefined
+        fullName: clerkUser.fullName || '',
+        firstName: clerkUser.firstName || ''
       }
     }
   } catch (error) {

@@ -19,7 +19,7 @@ import {
 } from '@/src/lib/agents/implementations';
 import prisma from '@/lib/db';
 import { JourneyTracker } from '@/lib/orchestrator/journey-tracker';
-import { User as PrismaUser, Team as PrismaTeam } from '@prisma/client';
+import { User as PrismaUser, Team as PrismaTeam } from '@/lib/generated/prisma';
 
 // Type definitions
 interface AuthUser {
@@ -440,7 +440,7 @@ export async function POST(req: NextRequest) {
     });
 
     // Save guardrail checks for admin visibility
-    await saveGuardrailChecks(response.events, context, messageContent);
+    await saveGuardrailChecks(response.events as RouteEvent[], context, messageContent);
 
     // Extract onboarding data and update journey if needed
     const { extractedData, onboardingState } = await extractOnboardingData(context, dbUser, contextManager);

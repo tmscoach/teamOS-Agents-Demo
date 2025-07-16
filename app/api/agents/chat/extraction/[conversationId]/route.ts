@@ -4,7 +4,7 @@ import prisma from '@/lib/db';
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: Promise<{ conversationId: string }> | { conversationId: string } }
+  { params }: { params: Promise<{ conversationId: string }> }
 ) {
   let conversationId: string | undefined;
   
@@ -27,7 +27,8 @@ export async function GET(
         id: true,
         contextData: true,
         metadata: true,
-        managerId: true
+        managerId: true,
+        currentAgent: true
       }
     });
 

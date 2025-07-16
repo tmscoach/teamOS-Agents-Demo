@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Button } from '@/src/components/ui/button';
+import { Button } from '@/components/ui/button';
 
 const CONVERSATION_STORAGE_KEY = 'teamOS_activeConversationId';
 

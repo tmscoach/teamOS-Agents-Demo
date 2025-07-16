@@ -470,7 +470,7 @@ export default function ChatClientStreaming() {
         messages={messages}
         input={input}
         setInput={setInput}
-        onSendMessage={sendMessage}
+        onSendMessage={() => sendMessage(input)}
         loading={loading}
         userName={user?.firstName || extractedData.user_name || undefined}
         agentName={agentName === 'OnboardingAgent' ? 'OSmos' : agentName}

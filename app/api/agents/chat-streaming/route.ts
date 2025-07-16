@@ -184,14 +184,16 @@ export async function POST(req: NextRequest) {
     AgentConfigLoader.clearCache(context.currentAgent);
 
     // Force reload configuration
-    // @ts-expect-error - accessing protected method for streaming
+    // @ts-ignore - accessing protected method for streaming
     if (agent.loadConfiguration) {
+      // @ts-ignore - accessing protected method for streaming
       await agent.loadConfiguration();
     }
 
     // Ensure the agent's configuration is loaded
-    // @ts-expect-error - accessing protected method for streaming
+    // @ts-ignore - accessing protected method for streaming
     if (agent.ensureConfigLoaded) {
+      // @ts-ignore - accessing protected method for streaming
       await agent.ensureConfigLoaded();
     }
 
@@ -200,11 +202,15 @@ export async function POST(req: NextRequest) {
     console.log(`[${context.currentAgent}] Loaded config:`, agent.loadedConfig?.systemPrompt ? 'Has system prompt' : 'No system prompt');
 
     // Build system prompt using the agent's method which includes loaded configuration
-    // @ts-expect-error - accessing protected method for streaming
+    // @ts-ignore - accessing protected method for streaming
     const systemPrompt = agent.buildSystemMessage ? 
+      // @ts-ignore - accessing protected method for streaming
       agent.buildSystemMessage(context) : 
+      // @ts-ignore - accessing protected property for streaming
       (typeof agent.instructions === 'function' 
+        // @ts-ignore - accessing protected property for streaming
         ? agent.instructions(context) 
+        // @ts-ignore - accessing protected property for streaming
         : agent.instructions);
 
     console.log(`[${context.currentAgent}] System prompt preview:`, systemPrompt.substring(0, 200) + '...');
