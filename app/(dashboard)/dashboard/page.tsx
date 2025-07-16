@@ -1,4 +1,4 @@
-import { currentUser } from '@/lib/auth/clerk-dev-wrapper'
+import { currentUser } from '@/src/lib/auth/clerk-dev-wrapper'
 import { redirect } from 'next/navigation'
 import { getCurrentUserWithJourney } from '@/lib/auth/roles'
 import { prisma } from '@/lib/db/prisma'
