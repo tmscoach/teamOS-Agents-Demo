@@ -8,7 +8,10 @@ import Link from 'next/link'
 
 export default async function DashboardPage() {
   const clerkUser = await currentUser()
+  console.log('[Dashboard] Current user:', clerkUser ? { id: clerkUser.id, email: clerkUser.emailAddresses?.[0]?.emailAddress } : null)
+  
   if (!clerkUser) {
+    console.log('[Dashboard] No user found, redirecting to sign-in')
     redirect('/sign-in')
   }
 
@@ -18,6 +21,8 @@ export default async function DashboardPage() {
     ? { email: clerkUser.emailAddresses[0].emailAddress }
     : { clerkId: clerkUser.id };
     
+  console.log('[Dashboard] User query:', userQuery)
+  
   const user = clerkUser ? await prisma.user.findUnique({
     where: userQuery,
     select: {
@@ -48,11 +53,15 @@ export default async function DashboardPage() {
     }
   }).catch((error) => {
     // Database connection error - return null to handle gracefully
+    console.error('[Dashboard] Database error:', error)
     return null
   }) : null
   
+  console.log('[Dashboard] Database user:', user ? { id: user.id, email: user.email, journeyPhase: user.journeyPhase, journeyStatus: user.journeyStatus } : null)
+  
   // Redirect admin users to admin dashboard
   if (user && user.role === 'ADMIN') {
+    console.log('[Dashboard] Admin user, redirecting to /admin')
     redirect('/admin')
   }
   
@@ -60,6 +69,8 @@ export default async function DashboardPage() {
   // Note: The NEXT_REDIRECT error in dev console is expected behavior - it's how Next.js handles redirects
   const isInOnboarding = user?.journeyPhase === 'ONBOARDING' || 
     (!user?.journeyPhase && user?.journeyStatus === 'ONBOARDING')
+  
+  console.log('[Dashboard] Is in onboarding:', isInOnboarding, 'Journey phase:', user?.journeyPhase, 'Journey status:', user?.journeyStatus)
   
   if (user && isInOnboarding && user.role === 'MANAGER') {
     // Check if user has any existing conversations
@@ -74,8 +85,10 @@ export default async function DashboardPage() {
 
     // Only add new=true if this is truly their first conversation
     if (existingConversation) {
+      console.log('[Dashboard] Redirecting to existing onboarding conversation')
       redirect('/chat?agent=OnboardingAgent')
     } else {
+      console.log('[Dashboard] Redirecting to new onboarding conversation')
       redirect('/chat?agent=OnboardingAgent&new=true')
     }
   }
