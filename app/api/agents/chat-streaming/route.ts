@@ -300,9 +300,25 @@ export async function POST(req: NextRequest) {
             if (!context.metadata?.journeyUpdated) {
               try {
                 console.log('[Journey] Onboarding complete, updating journey status for user:', dbUser.id);
-                const { JourneyTracker } = await import('@/lib/orchestrator/journey-tracker');
-                const journeyTracker = new JourneyTracker(dbUser.id);
-                await journeyTracker.completeOnboarding();
+                
+                // Direct database update to ensure it happens
+                await prisma.user.update({
+                  where: { id: dbUser.id },
+                  data: {
+                    journeyPhase: 'ASSESSMENT',
+                    journeyStatus: 'ACTIVE',
+                    currentAgent: 'AssessmentAgent',
+                    lastActivity: new Date()
+                  }
+                });
+                console.log('[Journey] Direct database update completed');
+                
+                // Verify the update
+                const updatedUser = await prisma.user.findUnique({
+                  where: { id: dbUser.id },
+                  select: { journeyPhase: true, journeyStatus: true }
+                });
+                console.log('[Journey] User after update:', updatedUser);
                 
                 // Update onboarding data with captured fields
                 await journeyTracker.updateJourneyProgress('onboarding_complete', {

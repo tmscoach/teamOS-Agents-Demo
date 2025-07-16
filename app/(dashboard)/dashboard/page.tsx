@@ -65,6 +65,12 @@ export default async function DashboardPage() {
     redirect('/admin')
   }
   
+  // If no user found in database, redirect to sign-in
+  if (!user) {
+    console.log('[Dashboard] No database user found for:', userQuery);
+    redirect('/sign-in');
+  }
+  
   // Check if user needs onboarding (use journeyPhase if available, fallback to journeyStatus)
   // Note: The NEXT_REDIRECT error in dev console is expected behavior - it's how Next.js handles redirects
   const isInOnboarding = user?.journeyPhase === 'ONBOARDING' || 
