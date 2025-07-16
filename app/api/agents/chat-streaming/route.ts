@@ -72,18 +72,36 @@ export async function POST(req: NextRequest) {
     const message = messages?.[messages.length - 1]?.content || '';
 
     // Get or create user
-    let dbUser = await prisma.user.findUnique({
-      where: { clerkId: user.id },
-      include: { managedTeams: true }
-    });
+    // For dev auth, use email to find/create user
+    const userEmail = user.emailAddresses?.[0]?.emailAddress;
+    let dbUser;
+    
+    if (userEmail) {
+      // Try to find by email first (for dev auth users)
+      dbUser = await prisma.user.findUnique({
+        where: { email: userEmail },
+        include: { managedTeams: true }
+      });
+    }
+    
+    if (!dbUser) {
+      // Try by clerkId
+      dbUser = await prisma.user.findUnique({
+        where: { clerkId: user.id },
+        include: { managedTeams: true }
+      });
+    }
 
     if (!dbUser) {
+      // Create new user
       dbUser = await prisma.user.create({
         data: {
           clerkId: user.id,
-          email: user.emailAddresses?.[0]?.emailAddress || `${user.id}@demo.com`,
-          name: user.fullName || user.firstName || 'Demo User',
+          email: userEmail || `${user.id}@demo.com`,
+          name: user.fullName || user.firstName || userEmail?.split('@')[0] || 'Demo User',
           role: 'MANAGER',
+          journeyStatus: 'ONBOARDING',
+          journeyPhase: 'ONBOARDING'
         },
         include: { managedTeams: true }
       });
