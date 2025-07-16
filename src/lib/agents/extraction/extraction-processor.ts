@@ -60,8 +60,8 @@ export class ExtractionProcessor {
       rule.preferLLM !== false && context?.enableLLMFallback === true
     );
     
-    // Temporarily disable batch extraction to debug single digit issue
-    const USE_BATCH_EXTRACTION = false;
+    // Batch extraction is now enabled - single digit issue has been resolved
+    const USE_BATCH_EXTRACTION = true;
     
     // If we have multiple LLM-enabled fields, use batch extraction
     if (USE_BATCH_EXTRACTION && llmEnabledFields.length > 1) {
