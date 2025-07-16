@@ -13,7 +13,7 @@ export default async function DashboardPage() {
   }
 
   // Get user with journey info including phase
-  const user = await prisma.user.findUnique({
+  const user = clerkUser ? await prisma.user.findUnique({
     where: { clerkId: clerkUser.id },
     select: {
       id: true,
@@ -44,7 +44,7 @@ export default async function DashboardPage() {
   }).catch((error) => {
     // Database connection error - return null to handle gracefully
     return null
-  })
+  }) : null
   
   // Redirect admin users to admin dashboard
   if (user && user.role === 'ADMIN') {

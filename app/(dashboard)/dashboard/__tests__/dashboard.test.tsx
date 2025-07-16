@@ -117,8 +117,8 @@ describe('DashboardPage', () => {
   it('displays dashboard for users in assessment phase', async () => {
     const { container } = render(await DashboardPage())
 
-    // Check main structure
-    expect(screen.getByText('Team Dashboard')).toBeInTheDocument()
+    // Check main structure - use heading for title to avoid confusion with sidebar
+    expect(screen.getByRole('heading', { name: 'Team Dashboard' })).toBeInTheDocument()
     expect(screen.getByText('Assessment Phase')).toBeInTheDocument()
     
     // Check user data from onboarding
@@ -142,10 +142,13 @@ describe('DashboardPage', () => {
   it('shows sidebar navigation items', async () => {
     render(await DashboardPage())
 
-    expect(screen.getByText('Team Dashboard')).toBeInTheDocument()
+    // Check for navigation items in the sidebar
+    const sidebar = screen.getByRole('button', { name: /Team Dashboard/i }).closest('div')
+    expect(sidebar).toBeInTheDocument()
     expect(screen.getByText('Craft Messages')).toBeInTheDocument()
     expect(screen.getByText('Learning Pathways')).toBeInTheDocument()
-    expect(screen.getByText('Settings')).toBeInTheDocument()
+    // Settings appears twice (icon name and menu item), use getAllByText
+    expect(screen.getAllByText('Settings')).toHaveLength(2)
   })
 
   it('displays credits and user avatar', async () => {
