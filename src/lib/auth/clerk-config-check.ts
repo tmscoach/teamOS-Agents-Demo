@@ -48,6 +48,10 @@ export function useClerkConfig(): ClerkConfigStatus {
         factor.strategy === 'password'
       )
       
+      // Also check if password is required during sign-up
+      const signUpRequirements = client.signUp?.requiredFields || []
+      const passwordRequiredForSignUp = signUpRequirements.includes('password')
+      
       // Check OAuth providers
       const hasGoogle = signUpConfig.includes('oauth_google')
       const hasMicrosoft = signUpConfig.includes('oauth_microsoft')

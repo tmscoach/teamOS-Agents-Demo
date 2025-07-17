@@ -32,8 +32,10 @@ export default function SignUpPage() {
   }, [])
 
   useEffect(() => {
-    // ALWAYS show password field if Clerk has password authentication enabled
-    if (clerkConfig.isLoaded && clerkConfig.hasPasswordAuth) {
+    // Only show password field if Clerk has password authentication enabled
+    // AND email verification is not available
+    if (clerkConfig.isLoaded && clerkConfig.hasPasswordAuth && 
+        !clerkConfig.hasEmailVerificationCode && !clerkConfig.hasEmailVerificationLink) {
       setShowPassword(true)
     }
   }, [clerkConfig])
@@ -50,8 +52,9 @@ export default function SignUpPage() {
     setError(null)
     
     try {
-      // If Clerk has password auth enabled, password is ALWAYS required
-      if (clerkConfig.hasPasswordAuth && !password) {
+      // Only require password if email verification is NOT available
+      if (clerkConfig.hasPasswordAuth && !clerkConfig.hasEmailVerificationCode && 
+          !clerkConfig.hasEmailVerificationLink && !password) {
         setShowPassword(true)
         setError({
           message: "Password is required. Please enter a password to create your account.",
@@ -61,14 +64,29 @@ export default function SignUpPage() {
         return
       }
 
-      // Create sign-up with email and password (password is required if Clerk has it enabled)
-      const signUpAttempt = await signUp.create({
-        emailAddress: email,
-        ...(password && { password })
+      // Create sign-up - only include password if needed
+      const signUpData: any = { emailAddress: email }
+      
+      // Only add password if email verification is not available
+      if (password && !clerkConfig.hasEmailVerificationCode && !clerkConfig.hasEmailVerificationLink) {
+        signUpData.password = password
+      }
+      
+      console.log("Creating sign-up with:", { 
+        emailAddress: email, 
+        hasPassword: !!signUpData.password,
+        hasEmailVerification: clerkConfig.hasEmailVerificationCode || clerkConfig.hasEmailVerificationLink
       })
+      
+      const signUpAttempt = await signUp.create(signUpData)
 
       // Check the status to see what's next
       console.log("Sign-up status after create:", signUpAttempt.status)
+      console.log("Sign-up details:", {
+        status: signUpAttempt.status,
+        missingFields: signUpAttempt.missingFields,
+        unverifiedFields: signUpAttempt.unverifiedFields
+      })
       
       if (signUpAttempt.status === "complete") {
         // No verification needed
@@ -212,7 +230,7 @@ export default function SignUpPage() {
             <div className="flex flex-col items-center gap-3 self-stretch w-full px-0 lg:px-6">
               <h1 className="text-2xl font-semibold tracking-tight">Create an account</h1>
               <p className="text-sm text-muted-foreground text-center">
-                {showPassword || clerkConfig.hasPasswordAuth ? 
+                {showPassword ? 
                   "Enter your email and password to create an account" : 
                   "Enter your email and we'll send you a verification code"}
               </p>
@@ -254,7 +272,7 @@ export default function SignUpPage() {
                       />
                     </div>
                   </div>
-                  {(showPassword || password || clerkConfig.hasPasswordAuth) && (
+                  {(showPassword || password) && (
                     <div className="flex h-9 items-center gap-2 relative self-stretch w-full mt-2">
                       <div className="flex flex-col items-start gap-1.5 relative flex-1 grow">
                         <input
