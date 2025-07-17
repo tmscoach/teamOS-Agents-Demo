@@ -24,17 +24,45 @@ function VerifySignUpEmailContent() {
     setError("")
 
     try {
+      console.log("Current sign-up status before verification:", signUp.status)
+      console.log("Current sign-up object:", {
+        status: signUp.status,
+        missingFields: signUp.missingFields,
+        unverifiedFields: signUp.unverifiedFields,
+      })
+
       const completeSignUp = await signUp.attemptEmailAddressVerification({
         code,
       })
 
+      console.log("Sign-up status after verification:", completeSignUp.status)
+
       if (completeSignUp.status === "complete") {
         await setActive({ session: completeSignUp.createdSessionId })
         router.push("/chat?agent=OnboardingAgent&new=true")
+      } else if (completeSignUp.status === "missing_requirements") {
+        // Check if password is missing
+        const missingPassword = completeSignUp.missingFields?.includes("password")
+        if (missingPassword) {
+          setError("Password is required. Redirecting to sign-in...")
+          // User needs to sign in with password
+          setTimeout(() => {
+            router.push(`/sign-in?email=${encodeURIComponent(email)}&verified=true`)
+          }, 2000)
+        } else {
+          setError("Additional information required. Please contact support.")
+        }
       } else {
         setError("Verification failed. Please try again.")
       }
     } catch (err: any) {
+      console.error("Verification error:", err)
+      console.error("Error details:", {
+        code: err.errors?.[0]?.code,
+        message: err.errors?.[0]?.message,
+        longMessage: err.errors?.[0]?.longMessage,
+      })
+
       // Check if already verified
       if (err.errors?.[0]?.code === "verification_already_verified") {
         // Try to complete the sign-up process
@@ -43,7 +71,15 @@ function VerifySignUpEmailContent() {
           router.push("/chat?agent=OnboardingAgent&new=true")
         } else {
           setError("Your email is already verified. Please sign in instead.")
+          setTimeout(() => {
+            router.push(`/sign-in?email=${encodeURIComponent(email)}`)
+          }, 2000)
         }
+      } else if (err.errors?.[0]?.code === "form_identifier_exists") {
+        setError("This email is already registered. Redirecting to sign-in...")
+        setTimeout(() => {
+          router.push(`/sign-in?email=${encodeURIComponent(email)}`)
+        }, 2000)
       } else {
         setError(err.errors?.[0]?.message || "Invalid verification code")
       }
