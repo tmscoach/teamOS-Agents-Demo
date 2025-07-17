@@ -147,8 +147,17 @@ export async function POST(req: NextRequest) {
           requiredFieldsStatus[field] = false;
         }
         
+        // Pre-populate name from SSO if available
+        const capturedFields: Record<string, any> = {};
+        if (user.fullName || user.firstName) {
+          const userName = user.fullName || user.firstName;
+          capturedFields.user_name = userName;
+          requiredFieldsStatus.user_name = true;
+          console.log(`[Streaming] Pre-populated user_name from SSO: ${userName}`);
+        }
+        
         context.metadata.onboarding = {
-          capturedFields: {},
+          capturedFields,
           requiredFieldsStatus,
           isComplete: false
         };
@@ -173,6 +182,25 @@ export async function POST(req: NextRequest) {
 
     // Extract information in parallel while streaming response
     const extractionPromise = extractInformation(message, context, dbUser.id);
+
+    // Update onboarding completion status BEFORE agent processes message
+    if (context.currentAgent === 'OnboardingAgent' && context.metadata.onboarding) {
+      const metadata = context.metadata.onboarding;
+      const requiredFields = await getRequiredFields('OnboardingAgent');
+      
+      // Check current completion status
+      const capturedCount = Object.values(metadata.requiredFieldsStatus || {}).filter(Boolean).length;
+      const requiredCount = requiredFields.length;
+      
+      if (capturedCount === requiredCount && requiredCount > 0 && !metadata.isComplete) {
+        console.log('[Streaming] Setting isComplete=true BEFORE agent response generation');
+        metadata.isComplete = true;
+        context.metadata.onboarding = metadata;
+        await conversationStore.updateContext(context.conversationId, {
+          metadata: context.metadata
+        });
+      }
+    }
 
     // Get the current agent
     const agent = router.getAgent(context.currentAgent);
@@ -257,6 +285,66 @@ export async function POST(req: NextRequest) {
         // Wait for extraction to complete
         const extractedData = await extractionPromise;
         
+        // Check if OnboardingAgent is completing and ready for handoff
+        // Note: We check the text content to detect when the agent is performing handoff
+        const isHandoffMessage = text.includes("Let's begin building something amazing together") || 
+             text.includes("Let's begin building something amazing together") || // Check with different quotes
+             text.includes("ready to begin your transformation journey") ||
+             text.includes("ready for the next step - our Assessment Agent") ||
+             text.includes("You're ready for the next step") ||
+             text.includes("begin building something amazing together") || // Without "Let's"
+             text.includes("transformation journey") && text.includes("ready");
+        
+        if (context.currentAgent === 'OnboardingAgent') {
+          console.log('[Journey] Checking for handoff:', {
+            currentAgent: context.currentAgent,
+            journeyUpdated: context.metadata?.journeyUpdated,
+            isHandoffMessage,
+            textSnippet: text.substring(text.length - 100) // Last 100 chars
+          });
+        }
+        
+        if (context.currentAgent === 'OnboardingAgent' && 
+            !context.metadata?.journeyUpdated &&
+            isHandoffMessage) {
+          // Double-check that onboarding is actually complete before handoff
+          const currentOnboardingMetadata = context.metadata?.onboarding || {};
+          if (currentOnboardingMetadata.isComplete) {
+            try {
+              console.log('[Journey] OnboardingAgent handoff detected, updating journey status for user:', dbUser.id);
+              
+              // Update journey status to move to Assessment phase
+              await prisma.user.update({
+              where: { id: dbUser.id },
+              data: {
+                journeyPhase: 'ASSESSMENT',
+                journeyStatus: 'ACTIVE',
+                currentAgent: 'AssessmentAgent',
+                lastActivity: new Date()
+              }
+            });
+            
+            // Update conversation to reflect the new agent
+            await prisma.conversation.update({
+              where: { id: context.conversationId },
+              data: { currentAgent: 'AssessmentAgent' }
+            });
+            
+            console.log('[Journey] Journey status updated to Assessment phase after OnboardingAgent handoff');
+            
+            // Mark journey as updated to prevent duplicate updates
+            context.metadata.journeyUpdated = true;
+            await conversationStore.updateContext(context.conversationId, {
+              metadata: context.metadata
+            });
+            } catch (error) {
+              console.error('[Journey] Failed to update journey status on handoff:', error);
+            }
+          } else {
+            console.log('[Journey] Handoff message detected but onboarding not yet complete');
+          }
+        }
+        
         // Special handling: If the agent greets the user by name in the response,
         // and we haven't captured it yet, extract it from the agent's response
         const metadata = context.metadata.onboarding || {};
@@ -301,38 +389,13 @@ export async function POST(req: NextRequest) {
           
           if (capturedCount === requiredCount && requiredCount > 0) {
             metadata.isComplete = true;
+            console.log('[Journey] All required fields captured, but waiting for conversation completion before updating journey status');
             
-            // Update journey status when onboarding completes
-            if (!context.metadata?.journeyUpdated) {
-              try {
-                console.log('[Journey] Onboarding complete, updating journey status for user:', dbUser.id);
-                
-                // Direct database update to ensure it happens
-                await prisma.user.update({
-                  where: { id: dbUser.id },
-                  data: {
-                    journeyPhase: 'ASSESSMENT',
-                    journeyStatus: 'ACTIVE',
-                    currentAgent: 'AssessmentAgent',
-                    lastActivity: new Date()
-                  }
-                });
-                console.log('[Journey] Direct database update completed');
-                
-                // Verify the update
-                const updatedUser = await prisma.user.findUnique({
-                  where: { id: dbUser.id },
-                  select: { journeyPhase: true, journeyStatus: true }
-                });
-                console.log('[Journey] User after update:', updatedUser);
-                
-                // Mark journey as updated to prevent duplicate updates
-                context.metadata.journeyUpdated = true;
-                console.log('[Journey] Journey status updated to Assessment phase');
-              } catch (error) {
-                console.error('[Journey] Failed to update journey status:', error);
-              }
-            }
+            // DO NOT update journey status here - wait for agent handoff
+            // The journey should only transition to ASSESSMENT when:
+            // 1. All fields are captured AND
+            // 2. The OnboardingAgent has completed the full conversation flow
+            // 3. The user has confirmed they're ready to proceed
           }
           
           context.metadata.onboarding = metadata;
@@ -341,20 +404,32 @@ export async function POST(req: NextRequest) {
           });
         }
 
-        // Check for suggested values
-        const suggestedValues = await getSuggestedValuesForMessage(message, text, context);
-        console.log('[Streaming] Suggested values check:', {
-          found: !!suggestedValues,
-          field: suggestedValues?.field,
-          count: suggestedValues?.values?.length
-        });
-        
-        if (suggestedValues) {
-          context.metadata.onboarding = context.metadata.onboarding || {};
-          context.metadata.onboarding.suggestedValues = suggestedValues;
-          await conversationStore.updateContext(context.conversationId, {
-            metadata: context.metadata
+        // Check for suggested values only if onboarding is not complete
+        const onboardingMetadata = context.metadata.onboarding || {};
+        if (!onboardingMetadata.isComplete && context.currentAgent === 'OnboardingAgent') {
+          const suggestedValues = await getSuggestedValuesForMessage(message, text, context);
+          console.log('[Streaming] Suggested values check:', {
+            found: !!suggestedValues,
+            field: suggestedValues?.field,
+            count: suggestedValues?.values?.length
           });
+          
+          if (suggestedValues) {
+            context.metadata.onboarding = context.metadata.onboarding || {};
+            context.metadata.onboarding.suggestedValues = suggestedValues;
+            await conversationStore.updateContext(context.conversationId, {
+              metadata: context.metadata
+            });
+          }
+        } else {
+          // Clear any existing suggested values when onboarding is complete or not in OnboardingAgent
+          if (onboardingMetadata.suggestedValues) {
+            delete onboardingMetadata.suggestedValues;
+            context.metadata.onboarding = onboardingMetadata;
+            await conversationStore.updateContext(context.conversationId, {
+              metadata: context.metadata
+            });
+          }
         }
       },
     });

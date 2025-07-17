@@ -90,7 +90,7 @@ export default function ChatLayoutStreaming({
                 messages={messages} 
                 agentName={agentName} 
                 loading={isLoading}
-                suggestedValues={suggestedValues}
+                suggestedValues={onboardingState.isComplete ? undefined : suggestedValues}
                 onSuggestedValueClick={(value) => {
                   onInputChange({ target: { value } } as React.ChangeEvent<HTMLInputElement>);
                 }}

@@ -223,16 +223,21 @@ export default function ChatClientOptimized() {
           
           // Auto-redirect when onboarding completes
           if (data.onboardingState.isComplete && agentName === 'OnboardingAgent') {
+            // Clear suggested values before redirecting
+            setSuggestedValues(null);
             setTimeout(() => {
               router.push('/dashboard');
             }, 2000);
           }
         }
         
-        // Handle suggested values
-        if (data.metadata?.suggestedValues) {
+        // Handle suggested values only if onboarding is not complete
+        if (data.metadata?.suggestedValues && !data.onboardingState?.isComplete) {
           console.log('Setting suggested values:', data.metadata.suggestedValues);
           setSuggestedValues(data.metadata.suggestedValues);
+        } else if (data.onboardingState?.isComplete) {
+          // Clear any existing suggested values when onboarding is complete
+          setSuggestedValues(null);
         }
       } else {
         const errorData = await response.text();
