@@ -29,24 +29,75 @@ function VerifySignUpEmailContent() {
         status: signUp.status,
         missingFields: signUp.missingFields,
         unverifiedFields: signUp.unverifiedFields,
+        requiredFields: signUp.requiredFields,
+        optionalFields: signUp.optionalFields,
       })
 
-      const completeSignUp = await signUp.attemptEmailAddressVerification({
+      // First attempt verification
+      let completeSignUp = await signUp.attemptEmailAddressVerification({
         code,
       })
+      
+      // If there are missing requirements, try to handle them
+      if (completeSignUp.status === "missing_requirements" && completeSignUp.missingFields) {
+        console.log("Attempting to handle missing fields:", completeSignUp.missingFields)
+        
+        // Try to update with common missing fields
+        const updateData: any = {}
+        
+        if (completeSignUp.missingFields.includes("username")) {
+          // Generate username from email
+          updateData.username = email.split('@')[0]
+        }
+        
+        if (completeSignUp.missingFields.includes("first_name")) {
+          updateData.firstName = email.split('@')[0]
+        }
+        
+        if (completeSignUp.missingFields.includes("last_name")) {
+          updateData.lastName = "User"
+        }
+        
+        if (Object.keys(updateData).length > 0) {
+          console.log("Updating sign-up with:", updateData)
+          try {
+            completeSignUp = await signUp.update(updateData)
+          } catch (updateErr) {
+            console.error("Failed to update sign-up:", updateErr)
+          }
+        }
+      }
 
       console.log("Sign-up status after verification:", completeSignUp.status)
+      console.log("Complete sign-up object:", {
+        status: completeSignUp.status,
+        missingFields: completeSignUp.missingFields,
+        unverifiedFields: completeSignUp.unverifiedFields,
+        requiredFields: completeSignUp.requiredFields,
+        optionalFields: completeSignUp.optionalFields,
+      })
 
       if (completeSignUp.status === "complete") {
         await setActive({ session: completeSignUp.createdSessionId })
         router.push("/chat?agent=OnboardingAgent&new=true")
       } else if (completeSignUp.status === "missing_requirements") {
-        // This should not happen if we properly collected password during sign-up
+        // Log detailed information about what's missing
         console.error("Missing requirements after verification:", completeSignUp.missingFields)
-        setError("Account setup incomplete. Please try signing up again with all required information.")
-        setTimeout(() => {
-          router.push("/sign-up")
-        }, 3000)
+        console.error("All missing fields:", completeSignUp.missingFields)
+        console.error("Required fields:", completeSignUp.requiredFields)
+        
+        // Check if specific fields are missing
+        if (completeSignUp.missingFields?.includes("username")) {
+          setError("Username is required. This appears to be a Clerk configuration issue.")
+        } else if (completeSignUp.missingFields?.includes("first_name") || 
+                   completeSignUp.missingFields?.includes("last_name")) {
+          setError("Name is required. This appears to be a Clerk configuration issue.")
+        } else {
+          setError(`Missing required information: ${completeSignUp.missingFields?.join(", ")}`)
+        }
+        
+        // Don't redirect, let user see the error
+        console.error("Cannot complete sign-up due to missing fields")
       } else {
         console.error("Unexpected status after verification:", completeSignUp.status)
         setError("Verification failed. Please try again.")

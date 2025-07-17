@@ -85,8 +85,15 @@ export default function SignUpPage() {
       console.log("Sign-up details:", {
         status: signUpAttempt.status,
         missingFields: signUpAttempt.missingFields,
-        unverifiedFields: signUpAttempt.unverifiedFields
+        unverifiedFields: signUpAttempt.unverifiedFields,
+        requiredFields: signUpAttempt.requiredFields,
+        optionalFields: signUpAttempt.optionalFields
       })
+      
+      // If there are missing fields already, show them
+      if (signUpAttempt.missingFields && signUpAttempt.missingFields.length > 0) {
+        console.warn("Missing fields detected during sign-up:", signUpAttempt.missingFields)
+      }
       
       if (signUpAttempt.status === "complete") {
         // No verification needed
