@@ -37,15 +37,32 @@ export async function GET(
     }
 
     // Check access - verify user owns this conversation
-    const dbUser = await prisma.user.findUnique({
+    let dbUser = await prisma.user.findUnique({
       where: { clerkId: user.id },
       select: { id: true }
     });
     
-    if (!dbUser || conversation.managerId !== dbUser.id) {
+    // If user doesn't exist in database, create them (for new sign-ups)
+    if (!dbUser) {
+      const userEmail = user.emailAddresses?.[0]?.emailAddress || `${user.id}@demo.com`;
+      dbUser = await prisma.user.create({
+        data: {
+          clerkId: user.id,
+          email: userEmail,
+          name: user.fullName || user.firstName || userEmail.split('@')[0] || 'Demo User',
+          role: 'MANAGER',
+          journeyStatus: 'ONBOARDING',
+          journeyPhase: 'ONBOARDING'
+        },
+        select: { id: true }
+      });
+      console.log('Created new user in database:', dbUser.id);
+    }
+    
+    if (conversation.managerId !== dbUser.id) {
       console.error('Access denied:', {
         managerId: conversation.managerId,
-        userId: dbUser?.id
+        userId: dbUser.id
       });
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
