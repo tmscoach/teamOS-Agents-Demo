@@ -32,15 +32,9 @@ export default function SignUpPage() {
   }, [])
 
   useEffect(() => {
-    // Show password field if password auth is available and email verification is not
-    // OR if password auth is required by Clerk configuration
-    if (clerkConfig.isLoaded) {
-      const needsPassword = clerkConfig.hasPasswordAuth && 
-        (!clerkConfig.hasEmailVerificationCode && !clerkConfig.hasEmailVerificationLink)
-      
-      if (needsPassword) {
-        setShowPassword(true)
-      }
+    // ALWAYS show password field if Clerk has password authentication enabled
+    if (clerkConfig.isLoaded && clerkConfig.hasPasswordAuth) {
+      setShowPassword(true)
     }
   }, [clerkConfig])
 
@@ -56,19 +50,18 @@ export default function SignUpPage() {
     setError(null)
     
     try {
-      // If no email verification is configured but password is, require password
-      if (!clerkConfig.hasEmailVerificationCode && !clerkConfig.hasEmailVerificationLink && 
-          clerkConfig.hasPasswordAuth && !password) {
+      // If Clerk has password auth enabled, password is ALWAYS required
+      if (clerkConfig.hasPasswordAuth && !password) {
         setShowPassword(true)
         setError({
-          message: "Password is required for sign-up. Please enter a password.",
+          message: "Password is required. Please enter a password to create your account.",
           isConfig: false
         })
         setIsLoading(false)
         return
       }
 
-      // Create sign-up with email and password
+      // Create sign-up with email and password (password is required if Clerk has it enabled)
       const signUpAttempt = await signUp.create({
         emailAddress: email,
         ...(password && { password })
@@ -103,17 +96,8 @@ export default function SignUpPage() {
         }
         
         if (!verificationPrepared) {
-          // No email verification available, account might be created
-          if (clerkConfig.hasPasswordAuth) {
-            setError({
-              message: "Account created! Please sign in with your email and password.",
-              isConfig: false
-            })
-            setTimeout(() => router.push("/sign-in"), 2000)
-            return
-          } else {
-            throw new Error("No verification method available")
-          }
+          // No email verification available
+          throw new Error("Email verification is not configured. Please contact support.")
         }
       }
       

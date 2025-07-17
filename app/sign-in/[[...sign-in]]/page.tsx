@@ -49,10 +49,10 @@ export default function SignInPage() {
       }
       
       if (verified === 'true') {
-        // User was redirected after verification, force password auth
+        // This shouldn't happen with the fixed flow, but handle it gracefully
         setUsePasswordAuth(true)
         setError({
-          message: "Email verified! Please enter your password to sign in.",
+          message: "Please sign in with your email and password.",
           isConfig: false
         })
       }

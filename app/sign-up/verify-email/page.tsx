@@ -41,18 +41,14 @@ function VerifySignUpEmailContent() {
         await setActive({ session: completeSignUp.createdSessionId })
         router.push("/chat?agent=OnboardingAgent&new=true")
       } else if (completeSignUp.status === "missing_requirements") {
-        // Check if password is missing
-        const missingPassword = completeSignUp.missingFields?.includes("password")
-        if (missingPassword) {
-          setError("Password is required. Redirecting to sign-in...")
-          // User needs to sign in with password
-          setTimeout(() => {
-            router.push(`/sign-in?email=${encodeURIComponent(email)}&verified=true`)
-          }, 2000)
-        } else {
-          setError("Additional information required. Please contact support.")
-        }
+        // This should not happen if we properly collected password during sign-up
+        console.error("Missing requirements after verification:", completeSignUp.missingFields)
+        setError("Account setup incomplete. Please try signing up again with all required information.")
+        setTimeout(() => {
+          router.push("/sign-up")
+        }, 3000)
       } else {
+        console.error("Unexpected status after verification:", completeSignUp.status)
         setError("Verification failed. Please try again.")
       }
     } catch (err: any) {
