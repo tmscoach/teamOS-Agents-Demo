@@ -32,13 +32,9 @@ export default function SignUpPage() {
   }, [])
 
   useEffect(() => {
-    // Only show password field if Clerk has password authentication enabled
-    // AND email verification is not available
-    if (clerkConfig.isLoaded && clerkConfig.hasPasswordAuth && 
-        !clerkConfig.hasEmailVerificationCode && !clerkConfig.hasEmailVerificationLink) {
-      setShowPassword(true)
-    }
-  }, [clerkConfig])
+    // Don't show password field for passwordless flow
+    setShowPassword(false)
+  }, [])
 
   if (!mounted || !isLoaded) {
     return null
@@ -52,23 +48,13 @@ export default function SignUpPage() {
     setError(null)
     
     try {
-      // Only require password if email verification is NOT available
-      if (clerkConfig.hasPasswordAuth && !clerkConfig.hasEmailVerificationCode && 
-          !clerkConfig.hasEmailVerificationLink && !password) {
-        setShowPassword(true)
-        setError({
-          message: "Password is required. Please enter a password to create your account.",
-          isConfig: false
-        })
-        setIsLoading(false)
-        return
+      // Create sign-up with just email for passwordless flow
+      const signUpData: any = { 
+        emailAddress: email
       }
-
-      // Create sign-up - only include password if needed
-      const signUpData: any = { emailAddress: email }
       
-      // Only add password if email verification is not available
-      if (password && !clerkConfig.hasEmailVerificationCode && !clerkConfig.hasEmailVerificationLink) {
+      // Only include password if user provided one (shouldn't happen in passwordless flow)
+      if (password) {
         signUpData.password = password
       }
       
@@ -237,9 +223,7 @@ export default function SignUpPage() {
             <div className="flex flex-col items-center gap-3 self-stretch w-full px-0 lg:px-6">
               <h1 className="text-2xl font-semibold tracking-tight">Create an account</h1>
               <p className="text-sm text-muted-foreground text-center">
-                {showPassword ? 
-                  "Enter your email and password to create an account" : 
-                  "Enter your email and we'll send you a verification code"}
+                Enter your email and we'll send you a verification code
               </p>
             </div>
             
@@ -279,7 +263,8 @@ export default function SignUpPage() {
                       />
                     </div>
                   </div>
-                  {(showPassword || password) && (
+                  {/* Only show password field if explicitly needed */}
+                  {showPassword && (
                     <div className="flex h-9 items-center gap-2 relative self-stretch w-full mt-2">
                       <div className="flex flex-col items-start gap-1.5 relative flex-1 grow">
                         <input
@@ -289,10 +274,9 @@ export default function SignUpPage() {
                           value={password}
                           onChange={(e) => setPassword(e.target.value)}
                           disabled={isLoading}
-                          required={clerkConfig.hasPasswordAuth}
                         />
                         <p className="text-xs text-muted-foreground">
-                          {clerkConfig.hasPasswordAuth ? "Password is required" : "Password may be required by your Clerk configuration"}
+                          Password field shown for compatibility
                         </p>
                       </div>
                     </div>

@@ -58,6 +58,14 @@ function VerifySignUpEmailContent() {
           updateData.lastName = "User"
         }
         
+        if (completeSignUp.missingFields.includes("password")) {
+          // For passwordless flow, generate a secure random password
+          // User won't need to know this - they'll use magic links
+          const randomPassword = crypto.randomUUID() + "Aa1!" // Ensures complexity requirements
+          updateData.password = randomPassword
+          console.log("Generating automatic password for passwordless flow")
+        }
+        
         if (Object.keys(updateData).length > 0) {
           console.log("Updating sign-up with:", updateData)
           try {
