@@ -24,17 +24,100 @@ function VerifySignUpEmailContent() {
     setError("")
 
     try {
-      const completeSignUp = await signUp.attemptEmailAddressVerification({
+      console.log("Current sign-up status before verification:", signUp.status)
+      console.log("Current sign-up object:", {
+        status: signUp.status,
+        missingFields: signUp.missingFields,
+        unverifiedFields: signUp.unverifiedFields,
+        requiredFields: signUp.requiredFields,
+        optionalFields: signUp.optionalFields,
+      })
+
+      // First attempt verification
+      let completeSignUp = await signUp.attemptEmailAddressVerification({
         code,
+      })
+      
+      // If there are missing requirements, try to handle them
+      if (completeSignUp.status === "missing_requirements" && completeSignUp.missingFields) {
+        console.log("Attempting to handle missing fields:", completeSignUp.missingFields)
+        
+        // Try to update with common missing fields
+        const updateData: any = {}
+        
+        if (completeSignUp.missingFields.includes("username")) {
+          // Generate username from email
+          updateData.username = email.split('@')[0]
+        }
+        
+        if (completeSignUp.missingFields.includes("first_name")) {
+          updateData.firstName = email.split('@')[0]
+        }
+        
+        if (completeSignUp.missingFields.includes("last_name")) {
+          updateData.lastName = "User"
+        }
+        
+        if (completeSignUp.missingFields.includes("password")) {
+          // For passwordless flow, generate a secure random password
+          // User won't need to know this - they'll use magic links
+          const randomPassword = crypto.randomUUID() + "Aa1!" // Ensures complexity requirements
+          updateData.password = randomPassword
+          console.log("Generating automatic password for passwordless flow")
+        }
+        
+        if (Object.keys(updateData).length > 0) {
+          console.log("Updating sign-up with:", updateData)
+          try {
+            completeSignUp = await signUp.update(updateData)
+          } catch (updateErr) {
+            console.error("Failed to update sign-up:", updateErr)
+          }
+        }
+      }
+
+      console.log("Sign-up status after verification:", completeSignUp.status)
+      console.log("Complete sign-up object:", {
+        status: completeSignUp.status,
+        missingFields: completeSignUp.missingFields,
+        unverifiedFields: completeSignUp.unverifiedFields,
+        requiredFields: completeSignUp.requiredFields,
+        optionalFields: completeSignUp.optionalFields,
       })
 
       if (completeSignUp.status === "complete") {
         await setActive({ session: completeSignUp.createdSessionId })
         router.push("/chat?agent=OnboardingAgent&new=true")
+      } else if (completeSignUp.status === "missing_requirements") {
+        // Log detailed information about what's missing
+        console.error("Missing requirements after verification:", completeSignUp.missingFields)
+        console.error("All missing fields:", completeSignUp.missingFields)
+        console.error("Required fields:", completeSignUp.requiredFields)
+        
+        // Check if specific fields are missing
+        if (completeSignUp.missingFields?.includes("username")) {
+          setError("Username is required. This appears to be a Clerk configuration issue.")
+        } else if (completeSignUp.missingFields?.includes("first_name") || 
+                   completeSignUp.missingFields?.includes("last_name")) {
+          setError("Name is required. This appears to be a Clerk configuration issue.")
+        } else {
+          setError(`Missing required information: ${completeSignUp.missingFields?.join(", ")}`)
+        }
+        
+        // Don't redirect, let user see the error
+        console.error("Cannot complete sign-up due to missing fields")
       } else {
+        console.error("Unexpected status after verification:", completeSignUp.status)
         setError("Verification failed. Please try again.")
       }
     } catch (err: any) {
+      console.error("Verification error:", err)
+      console.error("Error details:", {
+        code: err.errors?.[0]?.code,
+        message: err.errors?.[0]?.message,
+        longMessage: err.errors?.[0]?.longMessage,
+      })
+
       // Check if already verified
       if (err.errors?.[0]?.code === "verification_already_verified") {
         // Try to complete the sign-up process
@@ -43,7 +126,15 @@ function VerifySignUpEmailContent() {
           router.push("/chat?agent=OnboardingAgent&new=true")
         } else {
           setError("Your email is already verified. Please sign in instead.")
+          setTimeout(() => {
+            router.push(`/sign-in?email=${encodeURIComponent(email)}`)
+          }, 2000)
         }
+      } else if (err.errors?.[0]?.code === "form_identifier_exists") {
+        setError("This email is already registered. Redirecting to sign-in...")
+        setTimeout(() => {
+          router.push(`/sign-in?email=${encodeURIComponent(email)}`)
+        }, 2000)
       } else {
         setError(err.errors?.[0]?.message || "Invalid verification code")
       }

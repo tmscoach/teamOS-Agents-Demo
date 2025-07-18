@@ -11,6 +11,9 @@ import Image from "next/image"
 import Link from "next/link"
 import { DevModeNotice } from "./dev-mode-notice"
 import { AlreadySignedIn } from "./already-signed-in"
+import { useClerkConfig, getClerkErrorInfo } from "@/src/lib/auth/clerk-config-check"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { AlertCircle } from "lucide-react"
 
 export default function SignInPage() {
   const [mounted, setMounted] = useState(false)
@@ -19,9 +22,11 @@ export default function SignInPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [verificationPending, setVerificationPending] = useState(false)
   const [usePasswordAuth, setUsePasswordAuth] = useState(false)
+  const [error, setError] = useState<{ message: string; isConfig: boolean } | null>(null)
   const { isLoaded, signIn, setActive } = useSignIn()
   const clerk = useClerk()
   const router = useRouter()
+  const clerkConfig = useClerkConfig()
 
   useEffect(() => {
     setMounted(true)
@@ -33,22 +38,36 @@ export default function SignInPage() {
       return
     }
     
-    // Check if email_link is available
-    if (isLoaded && clerk.client) {
-      const signInConfig = clerk.client.signIn?.supportedFirstFactors || []
-      const hasEmailLink = signInConfig.some((factor: any) => 
-        factor.strategy === 'email_link'
-      )
-      const hasPassword = signInConfig.some((factor: any) => 
-        factor.strategy === 'password'
-      )
+    // Check for URL parameters (e.g., from verification redirect)
+    if (typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search)
+      const emailParam = urlParams.get('email')
+      const verified = urlParams.get('verified')
       
+      if (emailParam) {
+        setEmail(decodeURIComponent(emailParam))
+      }
+      
+      if (verified === 'true') {
+        // This shouldn't happen with the fixed flow, but handle it gracefully
+        setUsePasswordAuth(true)
+        setError({
+          message: "Please sign in with your email and password.",
+          isConfig: false
+        })
+      }
+    }
+  }, [isLoaded, clerk.user, router])
+
+  useEffect(() => {
+    // Use configuration check to determine auth method
+    if (clerkConfig.isLoaded) {
       // If email_link is not available but password is, use password auth
-      if (!hasEmailLink && hasPassword) {
+      if (!clerkConfig.hasEmailVerificationLink && clerkConfig.hasPasswordAuth) {
         setUsePasswordAuth(true)
       }
     }
-  }, [isLoaded, clerk.client, clerk.user, router])
+  }, [clerkConfig])
 
   if (!mounted || !isLoaded) {
     return null
@@ -64,9 +83,20 @@ export default function SignInPage() {
     if (!signIn) return
 
     setIsLoading(true)
+    setError(null)
+    
     try {
       if (usePasswordAuth) {
         // Use password authentication
+        if (!password) {
+          setError({
+            message: "Please enter your password",
+            isConfig: false
+          })
+          setIsLoading(false)
+          return
+        }
+        
         const result = await signIn.create({
           identifier: email,
           password: password,
@@ -77,6 +107,10 @@ export default function SignInPage() {
           router.push("/dashboard")
         } else {
           console.log("Sign in requires additional steps", result)
+          setError({
+            message: "Sign in requires additional steps. Please contact support.",
+            isConfig: false
+          })
         }
       } else {
         // Try magic link authentication
@@ -114,16 +148,35 @@ export default function SignInPage() {
     } catch (err: any) {
       console.error("Error signing in:", err)
       
+      const errorInfo = getClerkErrorInfo(err)
+      
       // Check if error is due to email link not being enabled
-      if (err.errors?.[0]?.code === "strategy_not_allowed" || 
-          err.message?.includes("email_link does not match")) {
-        // Fallback to password auth
+      if (errorInfo.code === "strategy_not_allowed" || 
+          err.message?.includes("email_link does not match") ||
+          err.message?.includes("is invalid")) {
+        // This error often means the user exists but email link isn't available
+        // Let's try password auth
         setUsePasswordAuth(true)
-        alert("Email link authentication is not configured in Clerk.\n\nOptions:\n1. Use the dev login at /dev-login for testing\n2. Enable email links in your Clerk dashboard\n3. Enable password authentication in Clerk\n4. Use Google/Microsoft sign-in if configured")
-      } else if (err.errors?.[0]?.code === "form_identifier_not_found") {
-        alert("No account found with this email. Please sign up first at /sign-up")
+        setError({
+          message: "Please enter your password to sign in.",
+          isConfig: false
+        })
+      } else if (errorInfo.code === "form_identifier_not_found") {
+        setError({
+          message: "No account found with this email.",
+          isConfig: false
+        })
+        setTimeout(() => router.push("/sign-up"), 2000)
+      } else if (errorInfo.code === "form_password_incorrect") {
+        setError({
+          message: "Incorrect password. Please try again.",
+          isConfig: false
+        })
       } else {
-        alert(err.errors?.[0]?.message || "Failed to sign in. Please try again.")
+        setError({
+          message: errorInfo.suggestedAction || errorInfo.message,
+          isConfig: errorInfo.isConfigurationError
+        })
       }
     } finally {
       setIsLoading(false)
@@ -133,6 +186,8 @@ export default function SignInPage() {
   const handleOAuthSignIn = async (strategy: "oauth_google" | "oauth_microsoft") => {
     if (!signIn) return
 
+    setError(null)
+    
     try {
       await signIn.authenticateWithRedirect({
         strategy,
@@ -141,7 +196,12 @@ export default function SignInPage() {
       })
     } catch (err: any) {
       console.error(`Error signing in with ${strategy}:`, err)
-      alert(`Error signing in with ${strategy}. Please try again.`)
+      const errorInfo = getClerkErrorInfo(err)
+      
+      setError({
+        message: errorInfo.suggestedAction || `Unable to sign in with ${strategy.replace('oauth_', '')}. ${errorInfo.message}`,
+        isConfig: errorInfo.isConfigurationError
+      })
     }
   }
 
@@ -213,6 +273,26 @@ export default function SignInPage() {
             />
             <form onSubmit={handleEmailSignIn} className="items-start gap-6 pt-0 pb-6 px-0 lg:px-6 flex-[0_0_auto] flex flex-col relative self-stretch w-full">
               <div className="flex-col items-start gap-2 flex relative self-stretch w-full flex-[0_0_auto]">
+                {error && (
+                  <Alert className={error.isConfig ? "border-orange-500" : "border-red-500"}>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      {error.message}
+                      {error.isConfig && (
+                        <div className="mt-2">
+                          <Link href="/auth-config-status" className="text-sm underline">
+                            Check configuration status
+                          </Link>
+                          {" | "}
+                          <Link href="/dev-login" className="text-sm underline">
+                            Use dev login
+                          </Link>
+                        </div>
+                      )}
+                    </AlertDescription>
+                  </Alert>
+                )}
+                
                 <div className="flex flex-col items-start gap-1.5 relative self-stretch w-full flex-[0_0_auto]">
                   <div className="flex h-9 items-center gap-2 relative self-stretch w-full">
                     <div className="flex flex-col items-start gap-1.5 relative flex-1 grow">

@@ -11,6 +11,9 @@ import { Separator } from "@/components/ui/separator"
 import Image from "next/image"
 import Link from "next/link"
 import { DevModeNotice } from "./dev-mode-notice"
+import { useClerkConfig, getClerkErrorInfo } from "@/src/lib/auth/clerk-config-check"
+import { Alert, AlertDescription } from "@/components/ui/alert"
+import { AlertCircle } from "lucide-react"
 
 export default function SignUpPage() {
   const [mounted, setMounted] = useState(false)
@@ -19,11 +22,18 @@ export default function SignUpPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [emailSent, setEmailSent] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [error, setError] = useState<{ message: string; isConfig: boolean } | null>(null)
   const { isLoaded, signUp, setActive } = useSignUp()
   const router = useRouter()
+  const clerkConfig = useClerkConfig()
 
   useEffect(() => {
     setMounted(true)
+  }, [])
+
+  useEffect(() => {
+    // Don't show password field for passwordless flow
+    setShowPassword(false)
   }, [])
 
   if (!mounted || !isLoaded) {
@@ -35,23 +45,41 @@ export default function SignUpPage() {
     if (!signUp) return
 
     setIsLoading(true)
+    setError(null)
+    
     try {
-      // Check if password is required first
-      if (!password && signUp.status === "missing_requirements") {
-        setShowPassword(true)
-        alert("Password is required for sign-up. Please enter a password.")
-        setIsLoading(false)
-        return
+      // Create sign-up with just email for passwordless flow
+      const signUpData: any = { 
+        emailAddress: email
       }
-
-      // Create sign-up with email and password
-      const signUpAttempt = await signUp.create({
-        emailAddress: email,
-        ...(password && { password })
+      
+      // Only include password if user provided one (shouldn't happen in passwordless flow)
+      if (password) {
+        signUpData.password = password
+      }
+      
+      console.log("Creating sign-up with:", { 
+        emailAddress: email, 
+        hasPassword: !!signUpData.password,
+        hasEmailVerification: clerkConfig.hasEmailVerificationCode || clerkConfig.hasEmailVerificationLink
       })
+      
+      const signUpAttempt = await signUp.create(signUpData)
 
       // Check the status to see what's next
       console.log("Sign-up status after create:", signUpAttempt.status)
+      console.log("Sign-up details:", {
+        status: signUpAttempt.status,
+        missingFields: signUpAttempt.missingFields,
+        unverifiedFields: signUpAttempt.unverifiedFields,
+        requiredFields: signUpAttempt.requiredFields,
+        optionalFields: signUpAttempt.optionalFields
+      })
+      
+      // If there are missing fields already, show them
+      if (signUpAttempt.missingFields && signUpAttempt.missingFields.length > 0) {
+        console.warn("Missing fields detected during sign-up:", signUpAttempt.missingFields)
+      }
       
       if (signUpAttempt.status === "complete") {
         // No verification needed
@@ -62,18 +90,32 @@ export default function SignUpPage() {
 
       // Only try verification if it's needed and we have missing_requirements status
       if (signUpAttempt.status === "missing_requirements") {
-        try {
-          // Try to prepare email verification
-          await signUp.prepareEmailAddressVerification({ 
-            strategy: "email_code"
-          })
-        } catch (verifyErr: any) {
-          console.error("Verification strategy error:", verifyErr)
-          // If email_code doesn't work, the account might already be created
-          // Just redirect to sign-in
-          alert("Account created! Please sign in with your email and password.")
-          router.push("/sign-in")
-          return
+        // Try email_code first, then email_link
+        const strategies = ['email_code', 'email_link']
+        let verificationPrepared = false
+        
+        for (const strategy of strategies) {
+          try {
+            if (strategy === 'email_link') {
+              await signUp.prepareEmailAddressVerification({ 
+                strategy: 'email_link',
+                redirectUrl: `${window.location.origin}/sign-up/verify-email`
+              })
+            } else {
+              await signUp.prepareEmailAddressVerification({ 
+                strategy: 'email_code'
+              })
+            }
+            verificationPrepared = true
+            break
+          } catch (verifyErr: any) {
+            console.log(`Strategy ${strategy} not available:`, verifyErr.message)
+          }
+        }
+        
+        if (!verificationPrepared) {
+          // No email verification available
+          throw new Error("Email verification is not configured. Please contact support.")
         }
       }
       
@@ -82,20 +124,25 @@ export default function SignUpPage() {
       router.push("/sign-up/verify-email?email=" + encodeURIComponent(email))
     } catch (err: any) {
       console.error("Error signing up with email:", err)
-      console.error("Error details:", {
-        code: err.errors?.[0]?.code,
-        message: err.errors?.[0]?.message,
-        longMessage: err.errors?.[0]?.longMessage,
-        meta: err.errors?.[0]?.meta
-      })
       
-      if (err.errors?.[0]?.code === "form_param_format_invalid" || 
-          err.errors?.[0]?.message?.includes("is invalid")) {
-        alert("Email verification is not properly configured in Clerk.\n\nTo test sign-up:\n1. Use /dev-login for quick testing\n2. Enable 'Email verification code' or 'Email verification link' in Clerk dashboard\n3. Make sure your Clerk instance is properly configured")
-      } else if (err.errors?.[0]?.code === "form_identifier_exists") {
-        alert("An account with this email already exists. Please sign in instead.")
+      const errorInfo = getClerkErrorInfo(err)
+      
+      if (errorInfo.isConfigurationError) {
+        setError({
+          message: errorInfo.suggestedAction || "Email verification is not properly configured in Clerk. Please check the Clerk dashboard or use the dev login for testing.",
+          isConfig: true
+        })
+      } else if (errorInfo.code === "form_identifier_exists") {
+        setError({
+          message: "An account with this email already exists.",
+          isConfig: false
+        })
+        setTimeout(() => router.push("/sign-in"), 2000)
       } else {
-        alert(err.errors?.[0]?.message || "Error creating account. Please check your Clerk configuration.")
+        setError({
+          message: errorInfo.suggestedAction || errorInfo.message,
+          isConfig: false
+        })
       }
     } finally {
       setIsLoading(false)
@@ -105,6 +152,8 @@ export default function SignUpPage() {
   const handleOAuthSignUp = async (strategy: "oauth_google" | "oauth_microsoft") => {
     if (!signUp) return
 
+    setError(null)
+    
     try {
       await signUp.authenticateWithRedirect({
         strategy,
@@ -113,7 +162,12 @@ export default function SignUpPage() {
       })
     } catch (err: any) {
       console.error(`Error signing up with ${strategy}:`, err)
-      alert(`Error signing up with ${strategy}. Please try again.`)
+      const errorInfo = getClerkErrorInfo(err)
+      
+      setError({
+        message: errorInfo.suggestedAction || `Unable to sign up with ${strategy.replace('oauth_', '')}. ${errorInfo.message}`,
+        isConfig: errorInfo.isConfigurationError
+      })
     }
   }
 
@@ -182,6 +236,26 @@ export default function SignUpPage() {
             
             <form onSubmit={handleEmailSignUp} className="items-start gap-6 pt-6 pb-6 px-0 lg:px-6 flex-[0_0_auto] flex flex-col relative self-stretch w-full">
               <div className="flex-col items-start gap-2 flex relative self-stretch w-full flex-[0_0_auto]">
+                {error && (
+                  <Alert className={error.isConfig ? "border-orange-500" : "border-red-500"}>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>
+                      {error.message}
+                      {error.isConfig && (
+                        <div className="mt-2">
+                          <Link href="/auth-config-status" className="text-sm underline">
+                            Check configuration status
+                          </Link>
+                          {" | "}
+                          <Link href="/dev-login" className="text-sm underline">
+                            Use dev login
+                          </Link>
+                        </div>
+                      )}
+                    </AlertDescription>
+                  </Alert>
+                )}
+                
                 <div className="flex flex-col items-start gap-1.5 relative self-stretch w-full flex-[0_0_auto]">
                   <div className="flex h-9 items-center gap-2 relative self-stretch w-full">
                     <div className="flex flex-col items-start gap-1.5 relative flex-1 grow">
@@ -196,8 +270,9 @@ export default function SignUpPage() {
                       />
                     </div>
                   </div>
-                  {(showPassword || password) && (
-                    <div className="flex h-9 items-center gap-2 relative self-stretch w-full">
+                  {/* Only show password field if explicitly needed */}
+                  {showPassword && (
+                    <div className="flex h-9 items-center gap-2 relative self-stretch w-full mt-2">
                       <div className="flex flex-col items-start gap-1.5 relative flex-1 grow">
                         <input
                           className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
@@ -208,7 +283,7 @@ export default function SignUpPage() {
                           disabled={isLoading}
                         />
                         <p className="text-xs text-muted-foreground">
-                          Password may be required by your Clerk configuration
+                          Password field shown for compatibility
                         </p>
                       </div>
                     </div>

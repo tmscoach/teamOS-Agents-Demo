@@ -37,15 +37,54 @@ export async function GET(
     }
 
     // Check access - verify user owns this conversation
-    const dbUser = await prisma.user.findUnique({
+    let dbUser = await prisma.user.findUnique({
       where: { clerkId: user.id },
       select: { id: true }
     });
     
-    if (!dbUser || conversation.managerId !== dbUser.id) {
+    // If user doesn't exist in database, create them (for new sign-ups)
+    if (!dbUser) {
+      const userEmail = user.emailAddresses?.[0]?.emailAddress || `${user.id}@demo.com`;
+      
+      // First check if a user with this email already exists
+      const existingUserByEmail = await prisma.user.findUnique({
+        where: { email: userEmail },
+        select: { id: true, clerkId: true }
+      });
+      
+      if (existingUserByEmail) {
+        // Update the existing user with the new clerkId if it's different
+        if (existingUserByEmail.clerkId !== user.id) {
+          dbUser = await prisma.user.update({
+            where: { id: existingUserByEmail.id },
+            data: { clerkId: user.id },
+            select: { id: true }
+          });
+          console.log('Updated existing user with new clerkId:', dbUser.id);
+        } else {
+          dbUser = existingUserByEmail;
+        }
+      } else {
+        // Create new user
+        dbUser = await prisma.user.create({
+          data: {
+            clerkId: user.id,
+            email: userEmail,
+            name: user.fullName || user.firstName || userEmail.split('@')[0] || 'Demo User',
+            role: 'MANAGER',
+            journeyStatus: 'ONBOARDING',
+            journeyPhase: 'ONBOARDING'
+          },
+          select: { id: true }
+        });
+        console.log('Created new user in database:', dbUser.id);
+      }
+    }
+    
+    if (conversation.managerId !== dbUser.id) {
       console.error('Access denied:', {
         managerId: conversation.managerId,
-        userId: dbUser?.id
+        userId: dbUser.id
       });
       return NextResponse.json({ error: 'Access denied' }, { status: 403 });
     }
@@ -124,7 +163,10 @@ export async function GET(
         }
         
         // If a field was identified and it has suggested values, include them
-        if (currentField && extractionRules[currentField]) {
+        // BUT only if onboarding is not complete AND we're in OnboardingAgent
+        const onboardingMetadata = context?.metadata?.onboarding || {};
+        const currentAgent = conversation.currentAgent || context?.currentAgent;
+        if (!onboardingMetadata.isComplete && currentAgent === 'OnboardingAgent' && currentField && extractionRules[currentField]) {
           const rule = extractionRules[currentField];
           if (rule.suggestedValues && rule.suggestedValues.length > 0) {
             suggestedValues = {

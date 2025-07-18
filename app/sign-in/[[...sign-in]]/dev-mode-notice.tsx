@@ -2,11 +2,16 @@
 
 import Link from "next/link"
 import { AlertCircle, ArrowRight } from "lucide-react"
+import { useClerkConfig } from "@/src/lib/auth/clerk-config-check"
 
 export function DevModeNotice() {
+  const clerkConfig = useClerkConfig()
+  
   if (process.env.NODE_ENV !== "development") {
     return null
   }
+
+  const hasEmailAuth = clerkConfig.hasEmailVerificationCode || clerkConfig.hasEmailVerificationLink
 
   return (
     <div className="mt-6 space-y-3">
@@ -15,8 +20,13 @@ export function DevModeNotice() {
           <AlertCircle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
           <div className="text-sm text-yellow-800">
             <p className="font-medium mb-1">Development Mode - Quick Access</p>
+            {clerkConfig.isLoaded && !hasEmailAuth && !clerkConfig.hasPasswordAuth && (
+              <p className="mb-2 text-red-700 font-medium">
+                ⚠️ No authentication methods configured in Clerk
+              </p>
+            )}
             <p className="mb-3">
-              For testing new users without email configuration:
+              For testing without email configuration:
             </p>
             <Link 
               href="/dev-login" 
@@ -31,7 +41,15 @@ export function DevModeNotice() {
       
       <div className="p-3 bg-gray-50 border border-gray-200 rounded-md">
         <p className="text-xs text-gray-600">
-          <strong>Note:</strong> To use production authentication, enable email links or password authentication in your{" "}
+          <strong>Quick Links:</strong>{" "}
+          <Link href="/auth-config-status" className="underline hover:text-gray-800">
+            Check auth status
+          </Link>
+          {" • "}
+          <Link href="/docs/CLERK_MAGIC_LINK_SETUP.md" className="underline hover:text-gray-800">
+            Setup guide
+          </Link>
+          {" • "}
           <a 
             href="https://dashboard.clerk.com" 
             target="_blank" 
@@ -40,11 +58,10 @@ export function DevModeNotice() {
           >
             Clerk dashboard
           </a>
-          . For new users, use{" "}
+          {" • "}
           <Link href="/sign-up" className="underline hover:text-gray-800">
-            sign up
+            Sign up
           </Link>
-          {" "}first.
         </p>
       </div>
     </div>

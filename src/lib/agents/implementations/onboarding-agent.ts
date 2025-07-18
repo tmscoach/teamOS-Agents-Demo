@@ -280,6 +280,42 @@ Required fields are determined by extraction rules configuration.`;
   }
 
   /**
+   * Override buildSystemMessage to handle completion state properly
+   */
+  protected buildSystemMessage(context: AgentContext): string {
+    const metadata = context.metadata.onboarding as OnboardingMetadata;
+    
+    // If onboarding is complete, use a special system prompt
+    if (metadata?.isComplete) {
+      let systemMessage = '🎉 CRITICAL: ONBOARDING IS NOW COMPLETE! 🎉\n\n';
+      systemMessage += 'You are the OnboardingAgent and you have SUCCESSFULLY collected all required information.\n\n';
+      systemMessage += 'You MUST follow these instructions EXACTLY:\n';
+      systemMessage += '1. DO NOT greet the user\n';
+      systemMessage += '2. DO NOT introduce yourself\n';
+      systemMessage += '3. DO NOT ask any questions\n';
+      systemMessage += '4. Acknowledge that you have all the information needed\n';
+      systemMessage += '5. Briefly summarize what you\'ve learned about them and their team\n';
+      systemMessage += '6. Express excitement about helping them transform their team\n';
+      systemMessage += '7. Let them know they\'re ready to begin their transformation journey\n';
+      systemMessage += '8. YOUR LAST SENTENCE MUST BE EXACTLY: "Let\'s begin building something amazing together."\n\n';
+      
+      systemMessage += 'Here\'s what you\'ve captured:\n';
+      for (const [field, value] of Object.entries(metadata.capturedFields)) {
+        const displayName = field.split('_').map(word => 
+          word.charAt(0).toUpperCase() + word.slice(1)
+        ).join(' ');
+        systemMessage += `- ${displayName}: ${value}\n`;
+      }
+      systemMessage += '\nGenerate your completion message now.';
+      
+      return systemMessage;
+    }
+    
+    // Otherwise use the parent implementation
+    return super.buildSystemMessage(context);
+  }
+
+  /**
    * Override buildContextPrompt to include captured fields information
    * This ensures the LLM is aware of what information has already been extracted
    */
@@ -331,24 +367,9 @@ Required fields are determined by extraction rules configuration.`;
       return prompt;
     }
     
-    // Check if onboarding is complete (all fields captured)
+    // Skip adding context info if onboarding is complete (handled in buildSystemMessage)
     if (metadata?.isComplete) {
-      prompt += '\n\n🎉 ONBOARDING COMPLETE! All required information has been captured.\n';
-      prompt += '\nCaptured information:\n';
-      for (const [field, value] of Object.entries(metadata.capturedFields)) {
-        const displayName = field.split('_').map(word => 
-          word.charAt(0).toUpperCase() + word.slice(1)
-        ).join(' ');
-        prompt += `- ${displayName}: ${value}\n`;
-      }
-      prompt += '\nYour response should:\n';
-      prompt += '1. Acknowledge that you have all the information needed\n';
-      prompt += '2. Briefly summarize what you\'ve learned about them and their team\n';
-      prompt += '3. Express excitement about helping them transform their team\n';
-      prompt += '4. Let them know they\'re ready to begin their transformation journey\n';
-      prompt += '5. End with: "Let\'s begin building something amazing together."\n';
-      prompt += '\nDO NOT ask any more questions. Keep the response positive and forward-looking.\n';
-      return prompt;
+      return '';
     }
     
     if (metadata?.capturedFields && Object.keys(metadata.capturedFields).length > 0) {
@@ -499,6 +520,9 @@ Required fields are determined by extraction rules configuration.`;
     if (newState !== metadata.state) {
       this.transitionState(metadata, newState);
     }
+
+    // Ensure metadata is saved to context before generating response
+    context.metadata.onboarding = metadata;
 
     // Generate response using parent class
     const response = await super.processMessage(message, context);
@@ -736,6 +760,7 @@ Required fields are determined by extraction rules configuration.`;
     // Check if all required fields are now captured
     if (completedFields === totalRequiredFields && totalRequiredFields > 0) {
       metadata.isComplete = true;
+      console.log('[OnboardingAgent] All required fields captured, setting isComplete=true in metadata');
     }
   }
 
