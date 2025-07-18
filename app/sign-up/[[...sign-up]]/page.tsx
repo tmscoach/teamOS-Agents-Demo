@@ -96,9 +96,16 @@ export default function SignUpPage() {
         
         for (const strategy of strategies) {
           try {
-            await signUp.prepareEmailAddressVerification({ 
-              strategy: strategy as "email_code" | "email_link"
-            })
+            if (strategy === 'email_link') {
+              await signUp.prepareEmailAddressVerification({ 
+                strategy: 'email_link',
+                redirectUrl: `${window.location.origin}/sign-up/verify-email`
+              })
+            } else {
+              await signUp.prepareEmailAddressVerification({ 
+                strategy: 'email_code'
+              })
+            }
             verificationPrepared = true
             break
           } catch (verifyErr: any) {

@@ -15,7 +15,7 @@ export interface ClerkConfigStatus {
 }
 
 export function useClerkConfig(): ClerkConfigStatus {
-  const { isLoaded, client } = useClerk()
+  const clerk = useClerk()
   const [configStatus, setConfigStatus] = useState<ClerkConfigStatus>({
     isLoaded: false,
     hasEmailVerificationLink: false,
@@ -28,14 +28,13 @@ export function useClerkConfig(): ClerkConfigStatus {
   })
 
   useEffect(() => {
-    if (!isLoaded || !client) {
+    if (!clerk.loaded) {
       return
     }
 
     try {
       // Get available sign-in strategies
-      const signInConfig = client.signIn?.supportedFirstFactors || []
-      const signUpConfig = client.signUp?.supportedExternalAccounts || []
+      const signInConfig = clerk.client?.signIn?.supportedFirstFactors || []
       
       // Check for each authentication method
       const hasEmailLink = signInConfig.some((factor: any) => 
@@ -48,13 +47,17 @@ export function useClerkConfig(): ClerkConfigStatus {
         factor.strategy === 'password'
       )
       
-      // Also check if password is required during sign-up
-      const signUpRequirements = client.signUp?.requiredFields || []
-      const passwordRequiredForSignUp = signUpRequirements.includes('password')
+      // Check OAuth providers by looking at sign-in factors
+      const hasGoogle = signInConfig.some((factor: any) => 
+        factor.strategy === 'oauth_google'
+      )
+      const hasMicrosoft = signInConfig.some((factor: any) => 
+        factor.strategy === 'oauth_microsoft'
+      )
       
-      // Check OAuth providers
-      const hasGoogle = signUpConfig.includes('oauth_google')
-      const hasMicrosoft = signUpConfig.includes('oauth_microsoft')
+      // Also check if password is required during sign-up
+      const signUpRequirements = clerk.client?.signUp?.requiredFields || []
+      const passwordRequiredForSignUp = signUpRequirements.includes('password')
       
       // Collect all available strategies
       const strategies: string[] = []
@@ -84,7 +87,7 @@ export function useClerkConfig(): ClerkConfigStatus {
         isConfigured: false
       }))
     }
-  }, [isLoaded, client])
+  }, [clerk])
 
   return configStatus
 }
