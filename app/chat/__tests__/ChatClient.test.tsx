@@ -257,7 +257,7 @@ describe('ChatClient - Conversation Persistence', () => {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            message: "Hello, let's start",
+            message: " ",
             conversationId: null,
             agentName: 'OnboardingAgent',
           }),
