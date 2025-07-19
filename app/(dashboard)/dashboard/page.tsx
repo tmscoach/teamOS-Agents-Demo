@@ -7,6 +7,8 @@ import { Oscar1 } from '@/app/chat/components/icons/Oscar1'
 import Link from 'next/link'
 import { UserDropdown } from '@/components/ui/user-dropdown'
 import { AskOskarInput } from '@/components/dashboard/AskOskarInput'
+import { AskOskarWidget } from '@/components/dashboard/AskOskarWidget'
+import { DashboardWrapper } from '@/components/dashboard/DashboardWrapper'
 
 export default async function DashboardPage() {
   const clerkUser = await currentUser()
@@ -112,10 +114,11 @@ export default async function DashboardPage() {
     (user?.journeyStatus === 'ACTIVE' && !user?.journeyPhase)
 
   return (
-    <div className="bg-white min-h-screen w-full flex justify-center">
-      <div className="bg-white w-full max-w-[1280px] h-[800px]">
-        <div className="relative h-[800px]">
-          {/* Main Container */}
+    <DashboardWrapper>
+      <div className="bg-white min-h-screen w-full flex justify-center">
+        <div className="bg-white w-full max-w-[1280px] h-[800px]">
+          <div className="relative h-[800px]">
+            {/* Main Container */}
           <div className="flex w-full h-[800px] items-start border border-solid border-gray-200">
             {/* Left Sidebar */}
             <div className="flex flex-col w-[280px] items-start justify-between relative self-stretch bg-gray-50/30 border-r border-solid border-gray-200">
@@ -352,6 +355,10 @@ export default async function DashboardPage() {
           </div>
         </div>
       </div>
+      
+      {/* Ask Oskar Chat Widget */}
+      <AskOskarWidget />
     </div>
+    </DashboardWrapper>
   )
 }
