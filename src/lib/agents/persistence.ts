@@ -27,6 +27,7 @@ export class ConversationStore {
       initialAgent?: string;
       phase?: TransformationPhase;
       metadata?: Record<string, any>;
+      organizationId?: string;
     }
   ): Promise<string> {
     const context: AgentContext = {
@@ -50,6 +51,7 @@ export class ConversationStore {
           phase: context.transformationPhase,
           contextData: context,
           metadata: options?.metadata || {},
+          organizationId: options?.organizationId,
         },
       });
     } catch (error: any) {
@@ -63,6 +65,7 @@ export class ConversationStore {
             currentAgent: context.currentAgent,
             phase: context.transformationPhase,
             contextData: context,
+            organizationId: options?.organizationId,
           },
         });
       } else {
@@ -335,6 +338,8 @@ export class ConversationStore {
     options?: {
       limit?: number;
       offset?: number;
+      organizationId?: string;
+      skipOrgFilter?: boolean; // For super admin access
     }
   ): Promise<Array<{
     id: string;
@@ -345,8 +350,15 @@ export class ConversationStore {
     updatedAt: Date;
     messageCount: number;
   }>> {
+    const where: any = { teamId };
+    
+    // Add organization filter unless explicitly skipped (for super admin)
+    if (!options?.skipOrgFilter && options?.organizationId) {
+      where.organizationId = options.organizationId;
+    }
+    
     const conversations = await this.prisma.conversation.findMany({
-      where: { teamId },
+      where,
       include: {
         _count: {
           select: { messages: true },
@@ -433,6 +445,8 @@ export class ConversationStore {
       agent?: string;
       phase?: string;
       limit?: number;
+      organizationId?: string;
+      skipOrgFilter?: boolean; // For super admin access
     }
   ): Promise<string[]> {
     const where: any = {};
@@ -441,6 +455,11 @@ export class ConversationStore {
     if (options?.managerId) where.managerId = options.managerId;
     if (options?.agent) where.currentAgent = options.agent;
     if (options?.phase) where.phase = options.phase;
+    
+    // Add organization filter unless explicitly skipped (for super admin)
+    if (!options?.skipOrgFilter && options?.organizationId) {
+      where.organizationId = options.organizationId;
+    }
 
     // Search in messages
     const messages = await this.prisma.message.findMany({

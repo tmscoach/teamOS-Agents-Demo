@@ -202,6 +202,7 @@ export async function POST(req: NextRequest) {
             initiatedBy: dbUser.id,
             userRole: dbUser.role,
           },
+          organizationId: dbUser.organizationId || undefined,
         }
       );
 

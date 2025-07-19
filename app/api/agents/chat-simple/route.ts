@@ -166,6 +166,7 @@ async function findOrCreateUser(user: AuthUser): Promise<DatabaseUser> {
           collaborationScore: 4.0,
           trustScore: 3.8
         },
+        organizationId: dbUser.organizationId,
       },
     });
 
@@ -194,6 +195,7 @@ async function findOrCreateTeamId(dbUser: DatabaseUser): Promise<string> {
           department: 'General',
           managerId: dbUser.id,
           transformationStatus: 'active',
+          organizationId: dbUser.organizationId,
         },
       });
       teamId = newTeam.id;

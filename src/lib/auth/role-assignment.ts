@@ -6,10 +6,22 @@ interface RoleAssignment {
   journeyStatus: JourneyStatus
 }
 
-export function getRoleAssignment(email: string): RoleAssignment {
+interface RoleAssignmentOptions {
+  email: string
+  organizationRole?: string | null
+  isFirstUserInOrg?: boolean
+}
+
+export function getRoleAssignment(options: RoleAssignmentOptions | string): RoleAssignment {
+  // Handle legacy string parameter for backward compatibility
+  if (typeof options === 'string') {
+    options = { email: options }
+  }
+  
+  const { email, organizationRole, isFirstUserInOrg } = options
   const adminEmail = process.env.ADMIN_EMAIL || 'rowan@teammanagementsystems.com'
   
-  // Admin user
+  // Super admin user
   if (email === adminEmail) {
     return {
       role: 'ADMIN',
@@ -17,11 +29,14 @@ export function getRoleAssignment(email: string): RoleAssignment {
     }
   }
   
-  // Manager for bythelight.band domain
-  if (email.endsWith('@bythelight.band')) {
-    return {
-      role: 'MANAGER', 
-      journeyStatus: 'ONBOARDING'
+  // Organization-based role assignment
+  if (organizationRole) {
+    // First user in organization becomes manager
+    if (isFirstUserInOrg || organizationRole === 'org:admin') {
+      return {
+        role: 'MANAGER',
+        journeyStatus: 'ONBOARDING'
+      }
     }
   }
   

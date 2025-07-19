@@ -34,6 +34,8 @@ model User {
   completedAssessments Json?         @default("{}")
   viewedDebriefs       Json?         @default("{}")
   teamSignalsEligible  Boolean       @default(false)
+  organizationId       String?       // Clerk organization ID
+  organizationRole     String?       // Clerk organization role (org:admin, org:member)
   managedTeams         Team[]        @relation("TeamManager")
   team                 Team?         @relation(fields: [teamId], references: [id])
 
@@ -41,6 +43,7 @@ model User {
   @@index([clerkId])
   @@index([journeyStatus])
   @@index([journeyPhase])
+  @@index([organizationId])
 }
 
 model Team {
@@ -56,10 +59,12 @@ model Team {
   programEndDate       DateTime?
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
+  organizationId       String?   // Organization this team belongs to
   manager              User      @relation("TeamManager", fields: [managerId], references: [id])
   members              User[]
 
   @@index([managerId])
+  @@index([organizationId])
 }
 
 model Conversation {
@@ -72,6 +77,7 @@ model Conversation {
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
   metadata            Json?
+  organizationId      String?              // Organization this conversation belongs to
   events              AgentEvent[]
   flowCheckpoints     FlowCheckpoint[]
   guardrailChecks     GuardrailCheck[]
@@ -80,6 +86,7 @@ model Conversation {
 
   @@index([teamId])
   @@index([managerId])
+  @@index([organizationId])
 }
 
 model Message {

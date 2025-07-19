@@ -349,7 +349,9 @@ export async function POST(req: NextRequest) {
              text.includes("ready for the next step - our Assessment Agent") ||
              text.includes("You're ready for the next step") ||
              text.includes("begin building something amazing together") || // Without "Let's"
-             text.includes("transformation journey") && text.includes("ready");
+             text.includes("transformation journey") && text.includes("ready") ||
+             text.includes("Welcome to TMS") && text.includes("excited to support you") ||
+             text.includes("Enjoy your journey with TMS");
         
         if (context.currentAgent === 'OnboardingAgent') {
           console.log('[Journey] Checking for handoff:', {
@@ -360,9 +362,14 @@ export async function POST(req: NextRequest) {
           });
         }
         
+        // Also check if this appears to be a completion message based on metadata
+        const isOnboardingComplete = context.metadata?.onboarding?.isComplete === true;
+        const appearsToBeCompletionMessage = isOnboardingComplete && 
+          (isHandoffMessage || text.includes("journey") || text.includes("welcome") || text.includes("excited"));
+        
         if (context.currentAgent === 'OnboardingAgent' && 
             !context.metadata?.journeyUpdated &&
-            isHandoffMessage) {
+            (isHandoffMessage || appearsToBeCompletionMessage)) {
           // Double-check that onboarding is actually complete before handoff
           const currentOnboardingMetadata = context.metadata?.onboarding || {};
           if (currentOnboardingMetadata.isComplete) {
@@ -391,6 +398,48 @@ export async function POST(req: NextRequest) {
             });
             
             console.log('[Journey] Journey status updated to Assessment phase after OnboardingAgent handoff');
+            
+            // Create organization in Clerk if user is a manager and has organization name
+            if (dbUser.role === 'MANAGER' && !dbUser.organizationId) {
+              const orgName = context.metadata.onboarding?.capturedFields?.organization;
+              
+              if (orgName) {
+                try {
+                  const { clerkClient } = await import('@clerk/nextjs/server');
+                  
+                  // Create organization in Clerk
+                  const organization = await clerkClient.organizations.createOrganization({
+                    name: orgName,
+                    slug: orgName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
+                    createdBy: user.id, // Clerk user ID
+                  });
+                  
+                  // Add user as admin of the organization
+                  await clerkClient.organizations.createOrganizationMembership({
+                    organizationId: organization.id,
+                    userId: user.id,
+                    role: 'org:admin'
+                  });
+                  
+                  // Update user in database with organizationId
+                  await prisma.user.update({
+                    where: { id: dbUser.id },
+                    data: {
+                      organizationId: organization.id,
+                      organizationRole: 'org:admin'
+                    }
+                  });
+                  
+                  console.log('[Organization] Created organization for user:', {
+                    userId: dbUser.id,
+                    organizationId: organization.id,
+                    organizationName: orgName
+                  });
+                } catch (error) {
+                  console.error('[Organization] Failed to create organization:', error);
+                }
+              }
+            }
             
             // Mark journey as updated to prevent duplicate updates
             context.metadata.journeyUpdated = true;

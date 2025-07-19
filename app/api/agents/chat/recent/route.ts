@@ -27,7 +27,11 @@ export async function GET(req: NextRequest) {
     // Get user from database
     const dbUser = await prisma.user.findUnique({
       where: { clerkId: user.id },
-      select: { id: true }
+      select: { 
+        id: true,
+        organizationId: true,
+        role: true
+      }
     });
 
     if (!dbUser) {
@@ -37,12 +41,20 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    // Build where clause with organization filtering
+    const where: any = {
+      managerId: dbUser.id,
+      currentAgent: agentName
+    };
+
+    // Add organization filter unless user is super admin
+    if (dbUser.role !== 'ADMIN' && dbUser.organizationId) {
+      where.organizationId = dbUser.organizationId;
+    }
+
     // Find the most recent conversation for this user and agent
     const recentConversation = await prisma.conversation.findFirst({
-      where: {
-        managerId: dbUser.id,
-        currentAgent: agentName
-      },
+      where,
       orderBy: { updatedAt: 'desc' },
       select: { id: true }
     });
