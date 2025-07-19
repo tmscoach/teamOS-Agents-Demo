@@ -392,6 +392,48 @@ export async function POST(req: NextRequest) {
             
             console.log('[Journey] Journey status updated to Assessment phase after OnboardingAgent handoff');
             
+            // Create organization in Clerk if user is a manager and has organization name
+            if (dbUser.role === 'MANAGER' && !dbUser.organizationId) {
+              const orgName = context.metadata.onboarding?.capturedFields?.organization;
+              
+              if (orgName) {
+                try {
+                  const { clerkClient } = await import('@clerk/nextjs/server');
+                  
+                  // Create organization in Clerk
+                  const organization = await clerkClient.organizations.createOrganization({
+                    name: orgName,
+                    slug: orgName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
+                    createdBy: user.id, // Clerk user ID
+                  });
+                  
+                  // Add user as admin of the organization
+                  await clerkClient.organizations.createOrganizationMembership({
+                    organizationId: organization.id,
+                    userId: user.id,
+                    role: 'org:admin'
+                  });
+                  
+                  // Update user in database with organizationId
+                  await prisma.user.update({
+                    where: { id: dbUser.id },
+                    data: {
+                      organizationId: organization.id,
+                      organizationRole: 'org:admin'
+                    }
+                  });
+                  
+                  console.log('[Organization] Created organization for user:', {
+                    userId: dbUser.id,
+                    organizationId: organization.id,
+                    organizationName: orgName
+                  });
+                } catch (error) {
+                  console.error('[Organization] Failed to create organization:', error);
+                }
+              }
+            }
+            
             // Mark journey as updated to prevent duplicate updates
             context.metadata.journeyUpdated = true;
             await conversationStore.updateContext(context.conversationId, {
