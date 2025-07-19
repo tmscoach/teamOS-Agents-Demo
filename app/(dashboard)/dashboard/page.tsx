@@ -6,6 +6,9 @@ import { Bell, Users, Pencil, Book, Settings, Focus, Plus, Coins, CheckCircle, U
 import { Oscar1 } from '@/app/chat/components/icons/Oscar1'
 import Link from 'next/link'
 import { UserDropdown } from '@/components/ui/user-dropdown'
+import { AskOskarInput } from '@/components/dashboard/AskOskarInput'
+import { AskOskarWidget } from '@/components/dashboard/AskOskarWidget'
+import { DashboardWrapper } from '@/components/dashboard/DashboardWrapper'
 
 export default async function DashboardPage() {
   const clerkUser = await currentUser()
@@ -111,10 +114,11 @@ export default async function DashboardPage() {
     (user?.journeyStatus === 'ACTIVE' && !user?.journeyPhase)
 
   return (
-    <div className="bg-white min-h-screen w-full flex justify-center">
-      <div className="bg-white w-full max-w-[1280px] h-[800px]">
-        <div className="relative h-[800px]">
-          {/* Main Container */}
+    <DashboardWrapper>
+      <div className="bg-white min-h-screen w-full flex justify-center">
+        <div className="bg-white w-full max-w-[1280px] h-[800px]">
+          <div className="relative h-[800px]">
+            {/* Main Container */}
           <div className="flex w-full h-[800px] items-start border border-solid border-gray-200">
             {/* Left Sidebar */}
             <div className="flex flex-col w-[280px] items-start justify-between relative self-stretch bg-gray-50/30 border-r border-solid border-gray-200">
@@ -175,19 +179,8 @@ export default async function DashboardPage() {
             <div className="flex flex-col items-start relative flex-1 self-stretch grow">
               {/* Header */}
               <div className="flex h-[60px] items-center justify-between px-6 relative self-stretch w-full border-b border-solid border-gray-200 backdrop-blur-[15px] backdrop-brightness-[100%] [-webkit-backdrop-filter:blur(15px)_brightness(100%)] bg-[linear-gradient(156deg,rgba(255,243,3,0.05)_0%,rgba(251,169,61,0.05)_15%,rgba(237,1,145,0.05)_30%,rgba(167,99,173,0.05)_45%,rgba(1,133,198,0.05)_60%,rgba(2,181,230,0.05)_75%,rgba(1,161,114,0.05)_90%,rgba(162,211,111,0.05)_100%)]">
-                {/* Search Bar */}
-                <div className="flex w-96 items-center gap-2">
-                  <div className="flex flex-col items-start gap-1.5 flex-1 grow">
-                    <div className="flex items-center gap-2 pl-3 pr-14 py-2 self-stretch w-full bg-white rounded-md border border-solid border-gray-300">
-                      <Oscar1 className="w-5 h-5" />
-                      <input
-                        type="text"
-                        placeholder="Ask Oskar"
-                        className="flex-1 bg-transparent outline-none font-normal text-gray-500 text-sm leading-6"
-                      />
-                    </div>
-                  </div>
-                </div>
+                {/* Ask Oskar Input */}
+                <AskOskarInput />
 
                 {/* Right side - Credits and Avatar */}
                 <div className="inline-flex items-center justify-end gap-5">
@@ -362,6 +355,10 @@ export default async function DashboardPage() {
           </div>
         </div>
       </div>
+      
+      {/* Ask Oskar Chat Widget */}
+      <AskOskarWidget />
     </div>
+    </DashboardWrapper>
   )
 }

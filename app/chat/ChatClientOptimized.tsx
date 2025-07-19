@@ -31,6 +31,7 @@ export default function ChatClientOptimized() {
   const searchParams = useSearchParams();
   const agentName = searchParams.get('agent') || 'OnboardingAgent';
   const isNewConversation = searchParams.get('new') === 'true';
+  const initialMessage = searchParams.get('message');
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [conversationRestored, setConversationRestored] = useState(false);
   const [shouldLoadExisting, setShouldLoadExisting] = useState(false);
@@ -43,6 +44,7 @@ export default function ChatClientOptimized() {
   const [suggestedValues, setSuggestedValues] = useState<SuggestedValues | null>(null);
   const [devAuthChecked, setDevAuthChecked] = useState(false);
   const currentConversationIdRef = useRef<string | null>(null);
+  const [initialMessageSent, setInitialMessageSent] = useState(false);
 
   // Use the useChat hook for streaming
   const { messages, input, handleInputChange, handleSubmit, isLoading, append, setMessages } = useChat({
@@ -113,14 +115,21 @@ export default function ChatClientOptimized() {
   // Check for existing conversation on mount
   useEffect(() => {
     const hasAuth = user || (devAuthChecked && (process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_ENV === 'development'));
-    console.log('[ChatClient] Mount check:', { isLoaded, hasAuth, isNewConversation });
+    console.log('[ChatClient] Mount check:', { isLoaded, hasAuth, isNewConversation, hasInitialMessage: !!initialMessage });
     
     if (isLoaded && hasAuth) {
       const storedConversationId = localStorage.getItem(CONVERSATION_STORAGE_KEY);
       console.log('[ChatClient] Stored conversation ID:', storedConversationId);
       
-      // If we have a stored conversation and no explicit "new" parameter
-      if (storedConversationId && !isNewConversation) {
+      // If we have an initial message from URL, always start a new conversation
+      if (initialMessage) {
+        console.log('[ChatClient] Initial message detected, starting new conversation');
+        setShouldLoadExisting(false);
+        localStorage.removeItem(CONVERSATION_STORAGE_KEY);
+        setConversationId(null);
+      }
+      // If we have a stored conversation and no explicit "new" parameter and no initial message
+      else if (storedConversationId && !isNewConversation) {
         console.log('[ChatClient] Loading existing conversation:', storedConversationId);
         setConversationId(storedConversationId);
         currentConversationIdRef.current = storedConversationId;
@@ -143,7 +152,7 @@ export default function ChatClientOptimized() {
         }
       }
     }
-  }, [isLoaded, user, devAuthChecked, isNewConversation]);
+  }, [isLoaded, user, devAuthChecked, isNewConversation, initialMessage]);
 
   // Track if we've sent the initial greeting
   const [greetingSent, setGreetingSent] = useState(false);
@@ -151,7 +160,7 @@ export default function ChatClientOptimized() {
   // Send initial empty message for greeting when starting new conversation
   useEffect(() => {
     const hasAuth = user || (devAuthChecked && (process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_ENV === 'development'));
-    const shouldSendGreeting = isLoaded && hasAuth && !shouldLoadExisting && messages.length === 0 && !greetingSent;
+    const shouldSendGreeting = isLoaded && hasAuth && !shouldLoadExisting && messages.length === 0 && !greetingSent && !initialMessage;
     
     if (shouldSendGreeting) {
       const storedId = localStorage.getItem(CONVERSATION_STORAGE_KEY);
@@ -162,7 +171,24 @@ export default function ChatClientOptimized() {
         append({ role: 'user', content: '' });
       }
     }
-  }, [isLoaded, user, devAuthChecked, isNewConversation, messages.length, append, shouldLoadExisting, greetingSent]);
+  }, [isLoaded, user, devAuthChecked, isNewConversation, messages.length, append, shouldLoadExisting, greetingSent, initialMessage]);
+
+  // Send initial message from URL parameter if present
+  useEffect(() => {
+    const hasAuth = user || (devAuthChecked && (process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_ENV === 'development'));
+    
+    if (isLoaded && hasAuth && initialMessage && !initialMessageSent && !shouldLoadExisting) {
+      // Decode the message from URL
+      const decodedMessage = decodeURIComponent(initialMessage);
+      console.log('[ChatClient] Sending initial message from URL:', decodedMessage);
+      
+      // Small delay to ensure the component is fully mounted
+      setTimeout(() => {
+        setInitialMessageSent(true);
+        append({ role: 'user', content: decodedMessage });
+      }, 100);
+    }
+  }, [isLoaded, user, devAuthChecked, initialMessage, initialMessageSent, append, shouldLoadExisting]);
 
   const loadConversation = async (convId: string) => {
     try {

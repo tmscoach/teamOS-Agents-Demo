@@ -127,6 +127,12 @@ export async function POST(req: NextRequest) {
           metadata: {
             initiatedBy: dbUser.id,
             userRole: dbUser.role,
+            userName: dbUser.name,
+            userEmail: dbUser.email,
+            journeyPhase: dbUser.journeyPhase,
+            journeyStatus: dbUser.journeyStatus,
+            onboardingCompleted: dbUser.journeyPhase !== 'ONBOARDING',
+            completedAssessments: dbUser.completedAssessments || {},
           },
         }
       );
@@ -229,6 +235,56 @@ export async function POST(req: NextRequest) {
     // @ts-ignore - accessing protected property
     console.log(`[${context.currentAgent}] Loaded config:`, agent.loadedConfig?.systemPrompt ? 'Has system prompt' : 'No system prompt');
 
+    // For OrchestratorAgent, load user data into context
+    if (context.currentAgent === 'OrchestratorAgent' && dbUser && !context.metadata?.userDataLoaded) {
+      console.log('[Streaming] Loading user data for OrchestratorAgent');
+      try {
+        const user = await prisma.user.findUnique({
+          where: { id: dbUser.id },
+          select: {
+            name: true,
+            email: true,
+            journeyPhase: true,
+            journeyStatus: true,
+            onboardingData: true,
+            completedAssessments: true,
+            viewedDebriefs: true,
+            teamSignalsEligible: true
+          }
+        });
+
+        if (user) {
+          console.log('[Streaming] User onboarding data:', user.onboardingData);
+          // Merge user data into context metadata
+          context.metadata = {
+            ...context.metadata,
+            userName: user.name,
+            userEmail: user.email,
+            journeyPhase: user.journeyPhase,
+            journeyStatus: user.journeyStatus,
+            onboardingCompleted: user.journeyPhase !== 'ONBOARDING',
+            completedAssessments: user.completedAssessments || {},
+            viewedDebriefs: user.viewedDebriefs || {},
+            teamSignalsEligible: user.teamSignalsEligible,
+            userDataLoaded: true
+          };
+
+          // If onboarding data exists, extract it
+          if (user.onboardingData && typeof user.onboardingData === 'object') {
+            const onboardingData = user.onboardingData as any;
+            if (onboardingData.extractedFields) {
+              context.metadata.onboarding = {
+                extractedFields: onboardingData.extractedFields
+              };
+              console.log('[Streaming] Extracted onboarding fields:', onboardingData.extractedFields);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('[Streaming] Error loading user data:', error);
+      }
+    }
+
     // Build system prompt using the agent's method which includes loaded configuration
     // @ts-ignore - accessing protected method for streaming
     const systemPrompt = agent.buildSystemMessage ? 
@@ -313,14 +369,18 @@ export async function POST(req: NextRequest) {
             try {
               console.log('[Journey] OnboardingAgent handoff detected, updating journey status for user:', dbUser.id);
               
-              // Update journey status to move to Assessment phase
+              // Update journey status to move to Assessment phase and save onboarding data
               await prisma.user.update({
               where: { id: dbUser.id },
               data: {
                 journeyPhase: 'ASSESSMENT',
                 journeyStatus: 'ACTIVE',
                 currentAgent: 'AssessmentAgent',
-                lastActivity: new Date()
+                lastActivity: new Date(),
+                onboardingData: {
+                  extractedFields: context.metadata.onboarding?.capturedFields || {},
+                  completedAt: new Date().toISOString()
+                }
               }
             });
             
