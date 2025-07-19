@@ -158,7 +158,6 @@ model AgentConfiguration {
   updatedAt       DateTime @updatedAt
   guardrailConfig Json?
   knowledgeConfig Json?
-  capabilities    Json?
 
   @@unique([agentName, version])
   @@index([agentName, active])
