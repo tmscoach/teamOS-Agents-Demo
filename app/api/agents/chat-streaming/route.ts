@@ -349,7 +349,9 @@ export async function POST(req: NextRequest) {
              text.includes("ready for the next step - our Assessment Agent") ||
              text.includes("You're ready for the next step") ||
              text.includes("begin building something amazing together") || // Without "Let's"
-             text.includes("transformation journey") && text.includes("ready");
+             text.includes("transformation journey") && text.includes("ready") ||
+             text.includes("Welcome to TMS") && text.includes("excited to support you") ||
+             text.includes("Enjoy your journey with TMS");
         
         if (context.currentAgent === 'OnboardingAgent') {
           console.log('[Journey] Checking for handoff:', {
@@ -360,9 +362,14 @@ export async function POST(req: NextRequest) {
           });
         }
         
+        // Also check if this appears to be a completion message based on metadata
+        const isOnboardingComplete = context.metadata?.onboarding?.isComplete === true;
+        const appearsToBeCompletionMessage = isOnboardingComplete && 
+          (isHandoffMessage || text.includes("journey") || text.includes("welcome") || text.includes("excited"));
+        
         if (context.currentAgent === 'OnboardingAgent' && 
             !context.metadata?.journeyUpdated &&
-            isHandoffMessage) {
+            (isHandoffMessage || appearsToBeCompletionMessage)) {
           // Double-check that onboarding is actually complete before handoff
           const currentOnboardingMetadata = context.metadata?.onboarding || {};
           if (currentOnboardingMetadata.isComplete) {
