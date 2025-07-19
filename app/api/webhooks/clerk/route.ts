@@ -55,15 +55,40 @@ export async function POST(req: Request) {
   const eventType = evt.type;
 
   if (eventType === 'user.created' || eventType === 'user.updated') {
-    const { id, email_addresses, first_name, last_name, image_url } = evt.data;
+    const { id, email_addresses, first_name, last_name, image_url, organization_memberships } = evt.data as any;
     
     const email = email_addresses[0]?.email_address;
     if (!email) {
       return new Response('No email found', { status: 400 });
     }
 
-    // Get role assignment based on email
-    const { role, journeyStatus } = getRoleAssignment(email);
+    // Extract organization information
+    let organizationId: string | null = null;
+    let organizationRole: string | null = null;
+    let isFirstUserInOrg = false;
+
+    if (organization_memberships && organization_memberships.length > 0) {
+      // Use the first organization membership (users might belong to multiple orgs in future)
+      const membership = organization_memberships[0];
+      organizationId = membership.organization.id;
+      organizationRole = membership.role;
+      
+      // Check if this is the first user in the organization
+      const existingOrgUsers = await prisma.user.count({
+        where: { 
+          organizationId,
+          clerkId: { not: id } // Don't count the current user
+        }
+      });
+      isFirstUserInOrg = existingOrgUsers === 0;
+    }
+
+    // Get role assignment based on email and organization context
+    const { role, journeyStatus } = getRoleAssignment({
+      email,
+      organizationRole,
+      isFirstUserInOrg
+    });
 
     try {
       await prisma.user.upsert({
@@ -72,7 +97,10 @@ export async function POST(req: Request) {
           email,
           name: `${first_name || ''} ${last_name || ''}`.trim() || email,
           imageUrl: image_url || null,
-          // Don't update role for existing users
+          organizationId,
+          organizationRole,
+          // Don't update role for existing users unless they're super admin
+          ...(email === (process.env.ADMIN_EMAIL || 'rowan@teammanagementsystems.com') ? { role } : {})
         },
         create: {
           clerkId: id,
@@ -82,10 +110,12 @@ export async function POST(req: Request) {
           role,
           journeyStatus,
           completedSteps: [],
+          organizationId,
+          organizationRole,
         },
       });
 
-      console.log(`User ${id} synced to database`);
+      console.log(`User ${id} synced to database with organization ${organizationId || 'none'}`);
     } catch (error) {
       console.error('Error syncing user to database:', error);
       return new Response('Database error', { status: 500 });
