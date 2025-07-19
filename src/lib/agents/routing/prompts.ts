@@ -57,7 +57,7 @@ User Context:
 - Current Journey Phase: ${journeyPhase}
 - Current Agent: ${currentAgent}
 - Has Team: ${context.teamId ? 'Yes' : 'No'}
-- Message Count: ${context.messages?.length || 0}
+- Message Count: ${context.messageHistory?.length || 0}
 
 Available Agents and Their Capabilities:
 ${capabilityDescriptions}
