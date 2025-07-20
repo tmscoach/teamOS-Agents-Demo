@@ -423,3 +423,6 @@ export function createDataQueryTools(): AgentTool[] {
     }
   ];
 }
+
+// Export the tools array for direct use
+export const dataQueryTools = createDataQueryTools();

@@ -203,6 +203,12 @@ Remember to:
 
   async processMessage(message: string, context: AgentContext): Promise<AgentResponse> {
     console.log('[OrchestratorAgent] Processing message with managerId:', context.managerId);
+    console.log('[OrchestratorAgent] Organization context:', {
+      organizationId: context.organizationId,
+      organizationRole: context.organizationRole,
+      userRole: context.userRole
+    });
+    console.log('[OrchestratorAgent] Available tools:', this.tools.map(t => t.name));
     
     // Initialize metadata if not present
     if (!context.metadata.orchestrator) {
