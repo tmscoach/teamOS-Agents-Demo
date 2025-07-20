@@ -116,6 +116,20 @@ export async function POST(req: NextRequest) {
         return new Response('Conversation not found', { status: 404 });
       }
       context = conversationData.context;
+      
+      // Ensure organization context is present (for older conversations)
+      if (!context.organizationId && dbUser.organizationId) {
+        context.organizationId = dbUser.organizationId;
+        context.organizationRole = dbUser.organizationRole;
+        context.userRole = dbUser.role;
+        
+        // Update context in metadata as well
+        context.metadata.organizationId = dbUser.organizationId;
+        context.metadata.organizationRole = dbUser.organizationRole;
+        
+        // Save updated context
+        await conversationStore.updateContext(conversationId, context);
+      }
     } else {
       // Create new conversation
       const teamId = dbUser.managedTeams[0]?.id || dbUser.teamId || '';
@@ -124,6 +138,7 @@ export async function POST(req: NextRequest) {
         dbUser.id,
         {
           initialAgent: agentName || 'OnboardingAgent',
+          organizationId: dbUser.organizationId,
           metadata: {
             initiatedBy: dbUser.id,
             userRole: dbUser.role,
@@ -133,6 +148,9 @@ export async function POST(req: NextRequest) {
             journeyStatus: dbUser.journeyStatus,
             onboardingCompleted: dbUser.journeyPhase !== 'ONBOARDING',
             completedAssessments: dbUser.completedAssessments || {},
+            // Add organization context for data access
+            organizationId: dbUser.organizationId,
+            organizationRole: dbUser.organizationRole,
           },
         }
       );

@@ -3,7 +3,23 @@ import {
   organizationDataService,
   OrganizationDataService 
 } from '../services/organization-data-service';
-import { getOrganizationContext } from '@/src/lib/auth/organization';
+import { OrganizationContext } from '@/src/lib/auth/organization';
+
+/**
+ * Build organization context from agent context
+ */
+function buildOrganizationContext(context: AgentContext): OrganizationContext | null {
+  if (!context.organizationId) {
+    return null;
+  }
+  
+  return {
+    userId: context.managerId,
+    organizationId: context.organizationId,
+    userRole: context.userRole || 'TEAM_MEMBER',
+    teamIds: context.teamId ? [context.teamId] : []
+  };
+}
 
 /**
  * Create data query tools for agents to access organization data
@@ -20,13 +36,13 @@ export function createDataQueryTools(): AgentTool[] {
       },
       execute: async (params: any, context: AgentContext): Promise<ToolResult> => {
         try {
-          const orgContext = await getOrganizationContext();
+          const orgContext = buildOrganizationContext(context);
           
           if (!orgContext) {
             return {
               success: false,
               output: null,
-              error: 'Unable to determine organization context'
+              error: 'No organization context available. User may not belong to an organization.'
             };
           }
 
@@ -85,13 +101,13 @@ export function createDataQueryTools(): AgentTool[] {
       },
       execute: async (params: any, context: AgentContext): Promise<ToolResult> => {
         try {
-          const orgContext = await getOrganizationContext();
+          const orgContext = buildOrganizationContext(context);
           
           if (!orgContext) {
             return {
               success: false,
               output: null,
-              error: 'Unable to determine organization context'
+              error: 'No organization context available. User may not belong to an organization.'
             };
           }
 
@@ -180,13 +196,13 @@ export function createDataQueryTools(): AgentTool[] {
       },
       execute: async (params: any, context: AgentContext): Promise<ToolResult> => {
         try {
-          const orgContext = await getOrganizationContext();
+          const orgContext = buildOrganizationContext(context);
           
           if (!orgContext) {
             return {
               success: false,
               output: null,
-              error: 'Unable to determine organization context'
+              error: 'No organization context available. User may not belong to an organization.'
             };
           }
 
@@ -268,13 +284,13 @@ export function createDataQueryTools(): AgentTool[] {
       },
       execute: async (params: any, context: AgentContext): Promise<ToolResult> => {
         try {
-          const orgContext = await getOrganizationContext();
+          const orgContext = buildOrganizationContext(context);
           
           if (!orgContext) {
             return {
               success: false,
               output: null,
-              error: 'Unable to determine organization context'
+              error: 'No organization context available. User may not belong to an organization.'
             };
           }
 
@@ -364,13 +380,13 @@ export function createDataQueryTools(): AgentTool[] {
       },
       execute: async (params: any, context: AgentContext): Promise<ToolResult> => {
         try {
-          const orgContext = await getOrganizationContext();
+          const orgContext = buildOrganizationContext(context);
           
           if (!orgContext) {
             return {
               success: false,
               output: null,
-              error: 'Unable to determine organization context'
+              error: 'No organization context available. User may not belong to an organization.'
             };
           }
 

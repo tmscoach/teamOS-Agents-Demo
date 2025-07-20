@@ -37,6 +37,10 @@ export class ConversationStore {
       currentAgent: options?.initialAgent || 'OnboardingAgent',
       conversationId: '', // Will be set after creation
       messageHistory: [],
+      // Add organization context from metadata
+      organizationId: options?.metadata?.organizationId || options?.organizationId || null,
+      organizationRole: options?.metadata?.organizationRole || null,
+      userRole: options?.metadata?.userRole || null,
       metadata: options?.metadata || {},
     };
 

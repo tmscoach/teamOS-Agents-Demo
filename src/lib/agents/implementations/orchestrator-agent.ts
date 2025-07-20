@@ -1,6 +1,7 @@
 import { KnowledgeEnabledAgent } from './knowledge-enabled-agent';
 import { AgentContext, AgentResponse } from '../types';
 import { PrismaClient } from '@/lib/generated/prisma';
+import { dataQueryTools } from '../tools/data-query-tools';
 
 export enum OrchestratorState {
   INITIALIZATION = "initialization",
@@ -94,7 +95,7 @@ Remember to:
 - Ensure smooth handoffs between agents
 - Keep stakeholders informed of progress`;
       },
-      tools: [],
+      tools: dataQueryTools,
       handoffs: [
         {
           targetAgent: 'DiscoveryAgent',
