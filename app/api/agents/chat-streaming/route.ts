@@ -320,7 +320,6 @@ export async function POST(req: NextRequest) {
 
     // Add extraction context to prompt
     const extractionContext = await buildExtractionContext(context);
-    const enhancedPrompt = `${systemPrompt}\n\n${extractionContext}`;
 
     // Build messages for the conversation
     const conversationMessages = context.messageHistory.slice(-10).map(msg => ({
@@ -371,7 +370,32 @@ export async function POST(req: NextRequest) {
             try {
               const result = await agentTool.execute(params, context);
               console.log(`[${context.currentAgent}] Tool result:`, result);
-              return result.output || result.error || 'Tool execution completed';
+              
+              // Extract the appropriate string response from the tool result
+              if (result.success && result.output) {
+                // If output has naturalLanguage, use that
+                if (result.output.naturalLanguage) {
+                  return result.output.naturalLanguage;
+                }
+                // If output has summary, use that
+                if (result.output.summary) {
+                  return result.output.summary;
+                }
+                // If output is a string, use it directly
+                if (typeof result.output === 'string') {
+                  return result.output;
+                }
+                // Otherwise, stringify the output
+                return JSON.stringify(result.output);
+              }
+              
+              // If there's an error, return it
+              if (result.error) {
+                return result.error;
+              }
+              
+              // Default fallback
+              return 'Tool execution completed';
             } catch (error) {
               console.error(`[${context.currentAgent}] Tool execution error:`, error);
               return `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`;
@@ -381,6 +405,13 @@ export async function POST(req: NextRequest) {
       }
       console.log(`[${context.currentAgent}] Available tools:`, Object.keys(tools));
     }
+    
+    // Add explicit instruction for tool usage
+    const toolInstructions = tools && Object.keys(tools).length > 0 
+      ? '\n\nCRITICAL INSTRUCTION: You MUST ALWAYS provide a complete natural language response to the user. If you use tools, explain what you found in a conversational way. Never end your response after just calling a tool. After using any tool, you must interpret and present the results to the user in a helpful manner.'
+      : '';
+    
+    const enhancedPrompt = `${systemPrompt}${toolInstructions}\n\n${extractionContext}`;
 
     // Use the new AI SDK streaming approach
     try {
@@ -393,26 +424,89 @@ export async function POST(req: NextRequest) {
           { role: 'user', content: userMessageContent }
         ],
         temperature: 0.7,
-        maxTokens: 500,
+        maxTokens: 1000, // Increase token limit
       };
       
       // Only add tools if we have them
       if (tools && Object.keys(tools).length > 0) {
         streamConfig.tools = tools;
+        // Don't force tool choice - let the model decide naturally
+        // streamConfig.toolChoice = 'auto';
         console.log('[Streaming] Tools added to stream config');
+        console.log('[Streaming] Tool count:', Object.keys(tools).length);
       }
       
       const result = await streamText({
         ...streamConfig,
-        onFinish: async ({ text }) => {
+        experimental_toolCallStreaming: true, // Enable tool streaming
+        maxSteps: 3, // Allow multiple steps for tool calls and responses
+        experimental_continueSteps: true, // Continue after tool calls
+        onToolCall: ({ toolCall }) => {
+          console.log('[Streaming] Tool call initiated:', toolCall.toolName, toolCall.args);
+        },
+        onStepFinish: ({ stepType, toolCalls, toolResults, finishReason, usage }) => {
+          console.log('[Streaming] Step finished:', { 
+            stepType, 
+            toolCallCount: toolCalls?.length,
+            toolResultCount: toolResults?.length,
+            finishReason 
+          });
+          if (toolResults && toolResults.length > 0) {
+            console.log('[Streaming] Tool results:', toolResults);
+          }
+        },
+        onFinish: async ({ text, toolCalls, toolResults, finishReason, usage }) => {
+        console.log('[Streaming] Stream finished:', { 
+          hasText: !!text, 
+          textLength: text?.length,
+          toolCallCount: toolCalls?.length,
+          toolResultCount: toolResults?.length,
+          finishReason
+        });
+        
+        // If we have tool results but no text, create a fallback message
+        let finalContent = text;
+        if (!text && toolResults && toolResults.length > 0) {
+          console.log('[Streaming] No text response but have tool results, creating fallback');
+          console.log('[Streaming] Tool results structure:', JSON.stringify(toolResults, null, 2));
+          
+          // Extract the tool result content
+          const toolResult = toolResults[0];
+          console.log('[Streaming] First tool result:', toolResult);
+          
+          if (toolResult && toolResult.result) {
+            if (typeof toolResult.result === 'string') {
+              finalContent = toolResult.result;
+              console.log('[Streaming] Using tool result string:', finalContent);
+            } else if (toolResult.result.naturalLanguage) {
+              finalContent = toolResult.result.naturalLanguage;
+              console.log('[Streaming] Using naturalLanguage from result');
+            } else if (toolResult.result.summary) {
+              finalContent = toolResult.result.summary;
+              console.log('[Streaming] Using summary from result');
+            }
+          }
+          
+          if (!finalContent) {
+            finalContent = 'I found the information you requested. The tool execution completed successfully.';
+            console.log('[Streaming] Using default fallback message');
+          }
+        }
+        
         // Save the complete message after streaming is done
         const assistantMessage = {
           id: `msg-${Date.now()}`,
           role: 'assistant' as const,
-          content: text,
+          content: finalContent || 'I encountered an issue generating a response.',
           agent: context.currentAgent,
           timestamp: new Date()
         };
+        
+        console.log('[Streaming] Saving assistant message:', {
+          hasContent: !!assistantMessage.content,
+          contentLength: assistantMessage.content?.length,
+          contentPreview: assistantMessage.content?.substring(0, 100)
+        });
         
         await contextManager.addMessage(context.conversationId, assistantMessage);
         await conversationStore.addMessage(context.conversationId, assistantMessage);
