@@ -1,6 +1,7 @@
 import { KnowledgeEnabledAgent } from './knowledge-enabled-agent';
 import { AgentContext, AgentResponse } from '../types';
 import { PrismaClient } from '@/lib/generated/prisma';
+import { dataQueryTools } from '../tools/data-query-tools';
 
 export enum OrchestratorState {
   INITIALIZATION = "initialization",
@@ -94,7 +95,7 @@ Remember to:
 - Ensure smooth handoffs between agents
 - Keep stakeholders informed of progress`;
       },
-      tools: [],
+      tools: dataQueryTools,
       handoffs: [
         {
           targetAgent: 'DiscoveryAgent',
@@ -202,6 +203,12 @@ Remember to:
 
   async processMessage(message: string, context: AgentContext): Promise<AgentResponse> {
     console.log('[OrchestratorAgent] Processing message with managerId:', context.managerId);
+    console.log('[OrchestratorAgent] Organization context:', {
+      organizationId: context.organizationId,
+      organizationRole: context.organizationRole,
+      userRole: context.userRole
+    });
+    console.log('[OrchestratorAgent] Available tools:', this.tools.map(t => t.name));
     
     // Initialize metadata if not present
     if (!context.metadata.orchestrator) {
@@ -260,6 +267,11 @@ Remember to:
       }
     }
 
+    // Debug logging before calling parent
+    console.log('[OrchestratorAgent] About to call super.processMessage');
+    console.log('[OrchestratorAgent] Tool count:', this.tools.length);
+    console.log('[OrchestratorAgent] Tool names:', this.tools.map(t => t.name));
+    
     // Process message using parent class
     const response = await super.processMessage(message, context);
     return response;

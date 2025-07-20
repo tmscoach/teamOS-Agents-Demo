@@ -513,6 +513,22 @@ Look for:
 Extract the main challenge or problem, not the entire explanation.`;
     } else if (fieldName.includes('organization') || fieldName.includes('company')) {
       fieldGuidance = `
+Extract the company or organization name from the message.
+
+IMPORTANT:
+- When asked "What's the name of your organization?" or similar, the user's response IS the organization name
+- Extract whatever the user provides as their answer, even if it sounds like a person's name
+- Company names can be unusual, creative, or sound like personal names (e.g., "Allen Ovary", "Morgan Stanley", "Goldman Sachs")
+- If the user provides a single word or phrase in response to an organization question, that IS the organization name
+- Do NOT evaluate whether it "sounds like" a company - trust the user's response
+
+Examples:
+- Question: "What's your organization?" → Answer: "Google" → Extract: "Google"
+- Question: "Company name?" → Answer: "Allen Ovary" → Extract: "Allen Ovary"  
+- Question: "Where do you work?" → Answer: "Microsoft" → Extract: "Microsoft"
+- Question: "Organization?" → Answer: "John Lewis" → Extract: "John Lewis"
+- Question: "What's the name of your organization?" → Answer: "Facebook" → Extract: "Facebook"
+
 Extract only the company/organization name, not descriptions or additional context.`;
     }
     

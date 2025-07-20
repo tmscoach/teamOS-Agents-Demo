@@ -60,7 +60,7 @@ export class BatchExtractor {
       const responsePromise = llm.generateResponse([
         {
           role: 'system',
-          content: 'You are a precise information extraction assistant. Extract the requested information from the given text and return it in the specified JSON format. If information is not present, use null for that field. Return ONLY valid JSON. Be aware that messages can be very short (like a single number "2" or a single word) and these are valid responses that should be extracted.'
+          content: 'You are a precise information extraction assistant. Extract the requested information from the given text and return it in the specified JSON format. If information is not present, use null for that field. Return ONLY valid JSON. Be aware that messages can be very short (like a single number "2" or a single word) and these are valid responses that should be extracted. For organization names, accept whatever the user provides - even names that sound like person names (e.g., "Allen Ovary", "Morgan Stanley", "John Lewis") are valid organization names.'
         },
         { role: 'user', content: prompt }
       ], {
@@ -148,6 +148,8 @@ export class BatchExtractor {
         description += ' - the person introducing themselves';
       } else if (fieldName === 'user_role' || fieldName === 'manager_role') {
         description += ' - their job title/position';
+      } else if (fieldName === 'organization' || fieldName === 'company') {
+        description += ' - their company/organization name (can be unusual names like "Allen Ovary", "Morgan Stanley", etc.)';
       }
       
       return `- ${fieldName}: ${description} (${typeHint})`;
@@ -179,6 +181,7 @@ Rules:
 - Roles: job title only, not company
 - Numbers: extract single digits/numbers (e.g., "2" → 2)
 - Short answers are valid (e.g., "2" for team size)
+- Organizations: extract whatever the user provides as their organization name, even if it sounds like a person's name (e.g., "Allen Ovary", "John Lewis")
 
 Start your response with { and end with }`;
   }

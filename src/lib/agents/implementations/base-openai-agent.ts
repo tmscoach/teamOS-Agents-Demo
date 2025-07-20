@@ -107,8 +107,23 @@ export class OpenAIAgent extends Agent {
       // Build conversation messages
       const messages = this.buildMessages(message, context);
       
+      // Log system message for debugging
+      const systemMessage = messages.find(m => m.role === 'system');
+      if (systemMessage && typeof systemMessage.content === 'string') {
+        console.log(`[${this.name}] System message includes tools:`, systemMessage.content.includes('Available tools:'));
+        if (systemMessage.content.includes('get_organization_overview')) {
+          console.log(`[${this.name}] System message includes get_organization_overview tool`);
+        }
+      }
+      
       // Convert tools to OpenAI format
       const openAITools = this.buildOpenAITools();
+      console.log(`[${this.name}] Available tools:`, openAITools.map(t => t.function.name));
+      console.log(`[${this.name}] Organization context:`, {
+        organizationId: context.organizationId,
+        organizationRole: context.organizationRole,
+        userRole: context.userRole
+      });
 
       // Get LLM response
       console.log(`[${this.name}] Calling OpenAI with model: ${this.model}`);

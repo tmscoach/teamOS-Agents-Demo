@@ -197,7 +197,7 @@ export default function ChatClientStreaming() {
     setMessages(prev => [...prev, assistantMessage]);
 
     try {
-      console.log('[sendMessageStreaming] Sending request to /api/agents/chat-stream');
+      console.log('[sendMessageStreaming] Sending request to /api/agents/chat-streaming');
       
       // Add timeout for initial connection
       const timeoutId = setTimeout(() => {
@@ -205,7 +205,7 @@ export default function ChatClientStreaming() {
         abortControllerRef.current?.abort();
       }, 30000);
       
-      const response = await fetch("/api/agents/chat-stream", {
+      const response = await fetch("/api/agents/chat-streaming", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

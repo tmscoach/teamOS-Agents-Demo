@@ -13,7 +13,8 @@ import {
   createRecognitionAgent
 } from '@/src/lib/agents/implementations';
 import prisma from '@/lib/db';
-import { streamText } from 'ai';
+import { streamText, tool } from 'ai';
+import { z } from 'zod';
 import { openai as aiOpenai } from '@ai-sdk/openai';
 import OpenAI from 'openai';
 import { ExtractionProcessor } from '@/src/lib/agents/extraction/extraction-processor';
@@ -116,6 +117,20 @@ export async function POST(req: NextRequest) {
         return new Response('Conversation not found', { status: 404 });
       }
       context = conversationData.context;
+      
+      // Ensure organization context is present (for older conversations)
+      if (!context.organizationId && dbUser.organizationId) {
+        context.organizationId = dbUser.organizationId;
+        context.organizationRole = dbUser.organizationRole;
+        context.userRole = dbUser.role;
+        
+        // Update context in metadata as well
+        context.metadata.organizationId = dbUser.organizationId;
+        context.metadata.organizationRole = dbUser.organizationRole;
+        
+        // Save updated context
+        await conversationStore.updateContext(conversationId, context);
+      }
     } else {
       // Create new conversation
       const teamId = dbUser.managedTeams[0]?.id || dbUser.teamId || '';
@@ -124,6 +139,7 @@ export async function POST(req: NextRequest) {
         dbUser.id,
         {
           initialAgent: agentName || 'OnboardingAgent',
+          organizationId: dbUser.organizationId,
           metadata: {
             initiatedBy: dbUser.id,
             userRole: dbUser.role,
@@ -133,6 +149,9 @@ export async function POST(req: NextRequest) {
             journeyStatus: dbUser.journeyStatus,
             onboardingCompleted: dbUser.journeyPhase !== 'ONBOARDING',
             completedAssessments: dbUser.completedAssessments || {},
+            // Add organization context for data access
+            organizationId: dbUser.organizationId,
+            organizationRole: dbUser.organizationRole,
           },
         }
       );
@@ -301,7 +320,6 @@ export async function POST(req: NextRequest) {
 
     // Add extraction context to prompt
     const extractionContext = await buildExtractionContext(context);
-    const enhancedPrompt = `${systemPrompt}\n\n${extractionContext}`;
 
     // Build messages for the conversation
     const conversationMessages = context.messageHistory.slice(-10).map(msg => ({
@@ -315,25 +333,180 @@ export async function POST(req: NextRequest) {
     console.log(`[${context.currentAgent}] Message history:`, conversationMessages.length, 'messages');
     console.log(`[${context.currentAgent}] User message:`, userMessageContent);
 
+    // Get the agent's tools if available
+    let tools = undefined;
+    if (agent && 'tools' in agent && Array.isArray(agent.tools)) {
+      // Convert agent tools to AI SDK format
+      tools = {};
+      for (const agentTool of agent.tools) {
+        // Convert JSON schema to Zod schema (simplified conversion)
+        const createZodSchema = (jsonSchema: any): any => {
+          if (jsonSchema.type === 'object') {
+            const shape: any = {};
+            if (jsonSchema.properties) {
+              for (const [key, value] of Object.entries(jsonSchema.properties)) {
+                const prop = value as any;
+                if (prop.type === 'string') {
+                  shape[key] = prop.required ? z.string() : z.string().optional();
+                } else if (prop.type === 'number') {
+                  shape[key] = prop.required ? z.number() : z.number().optional();
+                } else if (prop.type === 'boolean') {
+                  shape[key] = prop.required ? z.boolean() : z.boolean().optional();
+                } else if (prop.type === 'object') {
+                  shape[key] = z.object({});
+                }
+              }
+            }
+            return z.object(shape);
+          }
+          return z.object({});
+        };
+
+        tools[agentTool.name] = tool({
+          description: agentTool.description,
+          parameters: createZodSchema(agentTool.parameters),
+          execute: async (params: any) => {
+            console.log(`[${context.currentAgent}] Executing tool: ${agentTool.name}`, params);
+            try {
+              const result = await agentTool.execute(params, context);
+              console.log(`[${context.currentAgent}] Tool result:`, result);
+              
+              // Extract the appropriate string response from the tool result
+              if (result.success && result.output) {
+                // If output has naturalLanguage, use that
+                if (result.output.naturalLanguage) {
+                  return result.output.naturalLanguage;
+                }
+                // If output has summary, use that
+                if (result.output.summary) {
+                  return result.output.summary;
+                }
+                // If output is a string, use it directly
+                if (typeof result.output === 'string') {
+                  return result.output;
+                }
+                // Otherwise, stringify the output
+                return JSON.stringify(result.output);
+              }
+              
+              // If there's an error, return it
+              if (result.error) {
+                return result.error;
+              }
+              
+              // Default fallback
+              return 'Tool execution completed';
+            } catch (error) {
+              console.error(`[${context.currentAgent}] Tool execution error:`, error);
+              return `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`;
+            }
+          }
+        });
+      }
+      console.log(`[${context.currentAgent}] Available tools:`, Object.keys(tools));
+    }
+    
+    // Add explicit instruction for tool usage
+    const toolInstructions = tools && Object.keys(tools).length > 0 
+      ? '\n\nCRITICAL INSTRUCTION: You MUST ALWAYS provide a complete natural language response to the user. If you use tools, explain what you found in a conversational way. Never end your response after just calling a tool. After using any tool, you must interpret and present the results to the user in a helpful manner.'
+      : '';
+    
+    const enhancedPrompt = `${systemPrompt}${toolInstructions}\n\n${extractionContext}`;
+
     // Use the new AI SDK streaming approach
-    const result = await streamText({
-      model: aiOpenai('gpt-4o-mini'),
-      system: enhancedPrompt,
-      messages: [
-        ...conversationMessages,
-        { role: 'user', content: userMessageContent }
-      ],
-      temperature: 0.7,
-      maxTokens: 500,
-      onFinish: async ({ text }) => {
+    try {
+      // Temporarily disable tools if they're causing issues
+      const streamConfig: any = {
+        model: aiOpenai('gpt-4o-mini'),
+        system: enhancedPrompt,
+        messages: [
+          ...conversationMessages,
+          { role: 'user', content: userMessageContent }
+        ],
+        temperature: 0.7,
+        maxTokens: 1000, // Increase token limit
+      };
+      
+      // Only add tools if we have them
+      if (tools && Object.keys(tools).length > 0) {
+        streamConfig.tools = tools;
+        // Don't force tool choice - let the model decide naturally
+        // streamConfig.toolChoice = 'auto';
+        console.log('[Streaming] Tools added to stream config');
+        console.log('[Streaming] Tool count:', Object.keys(tools).length);
+      }
+      
+      const result = await streamText({
+        ...streamConfig,
+        experimental_toolCallStreaming: true, // Enable tool streaming
+        maxSteps: 3, // Allow multiple steps for tool calls and responses
+        experimental_continueSteps: true, // Continue after tool calls
+        onToolCall: ({ toolCall }) => {
+          console.log('[Streaming] Tool call initiated:', toolCall.toolName, toolCall.args);
+        },
+        onStepFinish: ({ stepType, toolCalls, toolResults, finishReason, usage }) => {
+          console.log('[Streaming] Step finished:', { 
+            stepType, 
+            toolCallCount: toolCalls?.length,
+            toolResultCount: toolResults?.length,
+            finishReason 
+          });
+          if (toolResults && toolResults.length > 0) {
+            console.log('[Streaming] Tool results:', toolResults);
+          }
+        },
+        onFinish: async ({ text, toolCalls, toolResults, finishReason, usage }) => {
+        console.log('[Streaming] Stream finished:', { 
+          hasText: !!text, 
+          textLength: text?.length,
+          toolCallCount: toolCalls?.length,
+          toolResultCount: toolResults?.length,
+          finishReason
+        });
+        
+        // If we have tool results but no text, create a fallback message
+        let finalContent = text;
+        if (!text && toolResults && toolResults.length > 0) {
+          console.log('[Streaming] No text response but have tool results, creating fallback');
+          console.log('[Streaming] Tool results structure:', JSON.stringify(toolResults, null, 2));
+          
+          // Extract the tool result content
+          const toolResult = toolResults[0];
+          console.log('[Streaming] First tool result:', toolResult);
+          
+          if (toolResult && toolResult.result) {
+            if (typeof toolResult.result === 'string') {
+              finalContent = toolResult.result;
+              console.log('[Streaming] Using tool result string:', finalContent);
+            } else if (toolResult.result.naturalLanguage) {
+              finalContent = toolResult.result.naturalLanguage;
+              console.log('[Streaming] Using naturalLanguage from result');
+            } else if (toolResult.result.summary) {
+              finalContent = toolResult.result.summary;
+              console.log('[Streaming] Using summary from result');
+            }
+          }
+          
+          if (!finalContent) {
+            finalContent = 'I found the information you requested. The tool execution completed successfully.';
+            console.log('[Streaming] Using default fallback message');
+          }
+        }
+        
         // Save the complete message after streaming is done
         const assistantMessage = {
           id: `msg-${Date.now()}`,
           role: 'assistant' as const,
-          content: text,
+          content: finalContent || 'I encountered an issue generating a response.',
           agent: context.currentAgent,
           timestamp: new Date()
         };
+        
+        console.log('[Streaming] Saving assistant message:', {
+          hasContent: !!assistantMessage.content,
+          contentLength: assistantMessage.content?.length,
+          contentPreview: assistantMessage.content?.substring(0, 100)
+        });
         
         await contextManager.addMessage(context.conversationId, assistantMessage);
         await conversationStore.addMessage(context.conversationId, assistantMessage);
@@ -351,7 +524,9 @@ export async function POST(req: NextRequest) {
              text.includes("begin building something amazing together") || // Without "Let's"
              text.includes("transformation journey") && text.includes("ready") ||
              text.includes("Welcome to TMS") && text.includes("excited to support you") ||
-             text.includes("Enjoy your journey with TMS");
+             text.includes("Enjoy your journey with TMS") ||
+             text.includes("Enjoy exploring the platform") ||
+             text.includes("transforming your team's dynamics");
         
         if (context.currentAgent === 'OnboardingAgent') {
           console.log('[Journey] Checking for handoff:', {
@@ -367,92 +542,8 @@ export async function POST(req: NextRequest) {
         const appearsToBeCompletionMessage = isOnboardingComplete && 
           (isHandoffMessage || text.includes("journey") || text.includes("welcome") || text.includes("excited"));
         
-        if (context.currentAgent === 'OnboardingAgent' && 
-            !context.metadata?.journeyUpdated &&
-            (isHandoffMessage || appearsToBeCompletionMessage)) {
-          // Double-check that onboarding is actually complete before handoff
-          const currentOnboardingMetadata = context.metadata?.onboarding || {};
-          if (currentOnboardingMetadata.isComplete) {
-            try {
-              console.log('[Journey] OnboardingAgent handoff detected, updating journey status for user:', dbUser.id);
-              
-              // Update journey status to move to Assessment phase and save onboarding data
-              await prisma.user.update({
-              where: { id: dbUser.id },
-              data: {
-                journeyPhase: 'ASSESSMENT',
-                journeyStatus: 'ACTIVE',
-                currentAgent: 'AssessmentAgent',
-                lastActivity: new Date(),
-                onboardingData: {
-                  extractedFields: context.metadata.onboarding?.capturedFields || {},
-                  completedAt: new Date().toISOString()
-                }
-              }
-            });
-            
-            // Update conversation to reflect the new agent
-            await prisma.conversation.update({
-              where: { id: context.conversationId },
-              data: { currentAgent: 'AssessmentAgent' }
-            });
-            
-            console.log('[Journey] Journey status updated to Assessment phase after OnboardingAgent handoff');
-            
-            // Create organization in Clerk if user is a manager and has organization name
-            if (dbUser.role === 'MANAGER' && !dbUser.organizationId) {
-              const orgName = context.metadata.onboarding?.capturedFields?.organization;
-              
-              if (orgName) {
-                try {
-                  const { clerkClient } = await import('@clerk/nextjs/server');
-                  
-                  // Create organization in Clerk
-                  const organization = await clerkClient.organizations.createOrganization({
-                    name: orgName,
-                    slug: orgName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
-                    createdBy: user.id, // Clerk user ID
-                  });
-                  
-                  // Add user as admin of the organization
-                  await clerkClient.organizations.createOrganizationMembership({
-                    organizationId: organization.id,
-                    userId: user.id,
-                    role: 'org:admin'
-                  });
-                  
-                  // Update user in database with organizationId
-                  await prisma.user.update({
-                    where: { id: dbUser.id },
-                    data: {
-                      organizationId: organization.id,
-                      organizationRole: 'org:admin'
-                    }
-                  });
-                  
-                  console.log('[Organization] Created organization for user:', {
-                    userId: dbUser.id,
-                    organizationId: organization.id,
-                    organizationName: orgName
-                  });
-                } catch (error) {
-                  console.error('[Organization] Failed to create organization:', error);
-                }
-              }
-            }
-            
-            // Mark journey as updated to prevent duplicate updates
-            context.metadata.journeyUpdated = true;
-            await conversationStore.updateContext(context.conversationId, {
-              metadata: context.metadata
-            });
-            } catch (error) {
-              console.error('[Journey] Failed to update journey status on handoff:', error);
-            }
-          } else {
-            console.log('[Journey] Handoff message detected but onboarding not yet complete');
-          }
-        }
+        // This block is no longer needed since we handle journey update immediately
+        // when all fields are captured (see line 520)
         
         // Special handling: If the agent greets the user by name in the response,
         // and we haven't captured it yet, extract it from the agent's response
@@ -496,15 +587,163 @@ export async function POST(req: NextRequest) {
           const capturedCount = Object.values(metadata.requiredFieldsStatus).filter(Boolean).length;
           const requiredCount = requiredFields.length;
           
-          if (capturedCount === requiredCount && requiredCount > 0) {
+          if (capturedCount === requiredCount && requiredCount > 0 && !metadata.isComplete) {
             metadata.isComplete = true;
-            console.log('[Journey] All required fields captured, but waiting for conversation completion before updating journey status');
+            console.log('[Journey] All required fields captured, marking onboarding as complete');
+            console.log('[Journey] Captured fields:', metadata.capturedFields);
             
-            // DO NOT update journey status here - wait for agent handoff
-            // The journey should only transition to ASSESSMENT when:
-            // 1. All fields are captured AND
-            // 2. The OnboardingAgent has completed the full conversation flow
-            // 3. The user has confirmed they're ready to proceed
+            // Update journey status immediately when all fields are captured
+            if (context.currentAgent === 'OnboardingAgent' && !context.metadata?.journeyUpdated) {
+              try {
+                console.log('[Journey] Updating journey status to ASSESSMENT phase');
+                
+                // Update journey status to move to Assessment phase and save onboarding data
+                const updatedUser = await prisma.user.update({
+                  where: { id: dbUser.id },
+                  data: {
+                    journeyPhase: 'ASSESSMENT',
+                    journeyStatus: 'ACTIVE',
+                    currentAgent: 'AssessmentAgent',
+                    lastActivity: new Date(),
+                    onboardingData: {
+                      extractedFields: metadata.capturedFields || {},
+                      completedAt: new Date().toISOString()
+                    }
+                  }
+                });
+                
+                // Create organization in Clerk when onboarding completes for managers
+                if (dbUser.role === 'MANAGER' && !dbUser.organizationId) {
+                  const orgName = metadata.capturedFields?.organization;
+                  
+                  if (orgName) {
+                    let organizationId: string;
+                    let organizationRole = 'org:admin';
+                    
+                    try {
+                      // Check if we're in dev mode or if Clerk is not fully configured
+                      const isDevMode = process.env.NODE_ENV === 'development' && 
+                        (user.id.startsWith('dev_user_') || !process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
+                      
+                      if (isDevMode) {
+                        // In dev mode, create a mock organization ID
+                        organizationId = `org_dev_${orgName.toLowerCase().replace(/\s+/g, '_')}_${Date.now()}`;
+                        
+                        console.log('[Organization] Dev mode: Creating mock organization:', {
+                          userId: dbUser.id,
+                          organizationName: orgName,
+                          mockOrgId: organizationId
+                        });
+                      } else {
+                        // Production mode: Use Clerk API
+                        const { clerkClient } = await import('@clerk/nextjs/server');
+                        const clerk = await clerkClient();
+                        
+                        console.log('[Organization] Creating organization in Clerk:', {
+                          userId: dbUser.id,
+                          organizationName: orgName,
+                          clerkUserId: user.id
+                        });
+                        
+                        // Create organization in Clerk
+                        const organization = await clerk.organizations.createOrganization({
+                          name: orgName,
+                          slug: orgName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
+                          createdBy: user.id, // Clerk user ID
+                        });
+                        
+                        // Add user as admin of the organization
+                        await clerk.organizations.createOrganizationMembership({
+                          organizationId: organization.id,
+                          userId: user.id,
+                          role: 'org:admin'
+                        });
+                        
+                        organizationId = organization.id;
+                      }
+                      
+                      // Update user in database with organizationId
+                      await prisma.user.update({
+                        where: { id: dbUser.id },
+                        data: {
+                          organizationId: organizationId,
+                          organizationRole: organizationRole
+                        }
+                      });
+                      
+                      // Update all teams managed by this user
+                      await prisma.team.updateMany({
+                        where: { 
+                          managerId: dbUser.id,
+                          organizationId: null // Only update teams without an org
+                        },
+                        data: { 
+                          organizationId: organizationId 
+                        }
+                      });
+                      
+                      console.log('[Organization] Successfully created organization:', {
+                        userId: dbUser.id,
+                        organizationId: organizationId,
+                        organizationName: orgName,
+                        isDevMode: isDevMode
+                      });
+                    } catch (error: any) {
+                      console.error('[Organization] Failed to create organization:', {
+                        error: error.message || error,
+                        orgName,
+                        userId: dbUser.id,
+                        stack: error.stack
+                      });
+                      
+                      // Even if Clerk fails, create a fallback organization ID to not block the user
+                      if (process.env.NODE_ENV === 'development') {
+                        try {
+                          const fallbackOrgId = `org_fallback_${orgName.toLowerCase().replace(/\s+/g, '_')}_${Date.now()}`;
+                          
+                          await prisma.user.update({
+                            where: { id: dbUser.id },
+                            data: {
+                              organizationId: fallbackOrgId,
+                              organizationRole: 'org:admin'
+                            }
+                          });
+                          
+                          await prisma.team.updateMany({
+                            where: { 
+                              managerId: dbUser.id,
+                              organizationId: null
+                            },
+                            data: { 
+                              organizationId: fallbackOrgId 
+                            }
+                          });
+                          
+                          console.log('[Organization] Created fallback organization in dev mode:', fallbackOrgId);
+                        } catch (fallbackError) {
+                          console.error('[Organization] Failed to create fallback organization:', fallbackError);
+                        }
+                      }
+                    }
+                  } else {
+                    console.log('[Organization] No organization name found in onboarding data');
+                  }
+                }
+                
+                // Update conversation to reflect the new agent
+                await prisma.conversation.update({
+                  where: { id: context.conversationId },
+                  data: { currentAgent: 'AssessmentAgent' }
+                });
+                
+                console.log('[Journey] Journey status updated to Assessment phase');
+                
+                // Mark journey as updated to prevent duplicate updates
+                context.metadata.journeyUpdated = true;
+              } catch (error) {
+                console.error('[Journey] Failed to update journey status:', error);
+              }
+            }
           }
           
           context.metadata.onboarding = metadata;
@@ -543,12 +782,21 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Return streaming response with metadata headers
-    const headers = new Headers();
-    headers.set('X-Conversation-ID', context.conversationId);
-    headers.set('X-Current-Agent', context.currentAgent);
-    
-    return result.toDataStreamResponse({ headers });
+      // Return streaming response with metadata headers
+      const headers = new Headers();
+      headers.set('X-Conversation-ID', context.conversationId);
+      headers.set('X-Current-Agent', context.currentAgent);
+      
+      console.log('[Streaming] Returning stream response');
+      return result.toDataStreamResponse({ headers });
+    } catch (toolError) {
+      console.error('[Streaming] Tool error:', toolError);
+      console.error('[Streaming] Tool error details:', {
+        message: toolError instanceof Error ? toolError.message : 'Unknown error',
+        stack: toolError instanceof Error ? toolError.stack : undefined
+      });
+      throw toolError;
+    }
   } catch (error) {
     console.error('Streaming chat error:', error);
     return new Response('Internal server error', { status: 500 });

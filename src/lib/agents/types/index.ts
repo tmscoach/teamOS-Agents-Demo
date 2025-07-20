@@ -31,6 +31,11 @@ export interface AgentContext {
   managerId: string;
   transformationPhase: TransformationPhase;
   
+  // Organization context (for data access)
+  organizationId?: string | null;
+  organizationRole?: string | null;
+  userRole?: 'MANAGER' | 'TEAM_MEMBER' | null;
+  
   // Assessment data
   assessmentResults?: {
     tmp?: TMPResults;
