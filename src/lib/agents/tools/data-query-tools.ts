@@ -3,7 +3,7 @@ import {
   organizationDataService,
   OrganizationDataService 
 } from '../services/organization-data-service';
-import { getOrganizationContext } from '@/lib/auth/organization';
+import { getOrganizationContext } from '@/src/lib/auth/organization';
 
 /**
  * Create data query tools for agents to access organization data

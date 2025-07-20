@@ -3,7 +3,7 @@ import {
   OrganizationContext, 
   buildOrganizationWhere,
   canAccessResource 
-} from '@/lib/auth/organization';
+} from '@/src/lib/auth/organization';
 
 // Initialize Prisma client
 const prisma = new PrismaClient();

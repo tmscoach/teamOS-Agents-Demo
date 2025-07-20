@@ -444,50 +444,113 @@ export async function POST(req: NextRequest) {
                   const orgName = metadata.capturedFields?.organization;
                   
                   if (orgName) {
+                    let organizationId: string;
+                    let organizationRole = 'org:admin';
+                    
                     try {
-                      const { clerkClient } = await import('@clerk/nextjs/server');
-                      const clerk = await clerkClient();
+                      // Check if we're in dev mode or if Clerk is not fully configured
+                      const isDevMode = process.env.NODE_ENV === 'development' && 
+                        (user.id.startsWith('dev_user_') || !process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY);
                       
-                      console.log('[Organization] Creating organization for manager:', {
-                        userId: dbUser.id,
-                        organizationName: orgName,
-                        clerkUserId: user.id
-                      });
-                      
-                      // Create organization in Clerk
-                      const organization = await clerk.organizations.createOrganization({
-                        name: orgName,
-                        slug: orgName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
-                        createdBy: user.id, // Clerk user ID
-                      });
-                      
-                      // Add user as admin of the organization
-                      await clerk.organizations.createOrganizationMembership({
-                        organizationId: organization.id,
-                        userId: user.id,
-                        role: 'org:admin'
-                      });
+                      if (isDevMode) {
+                        // In dev mode, create a mock organization ID
+                        organizationId = `org_dev_${orgName.toLowerCase().replace(/\s+/g, '_')}_${Date.now()}`;
+                        
+                        console.log('[Organization] Dev mode: Creating mock organization:', {
+                          userId: dbUser.id,
+                          organizationName: orgName,
+                          mockOrgId: organizationId
+                        });
+                      } else {
+                        // Production mode: Use Clerk API
+                        const { clerkClient } = await import('@clerk/nextjs/server');
+                        const clerk = await clerkClient();
+                        
+                        console.log('[Organization] Creating organization in Clerk:', {
+                          userId: dbUser.id,
+                          organizationName: orgName,
+                          clerkUserId: user.id
+                        });
+                        
+                        // Create organization in Clerk
+                        const organization = await clerk.organizations.createOrganization({
+                          name: orgName,
+                          slug: orgName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
+                          createdBy: user.id, // Clerk user ID
+                        });
+                        
+                        // Add user as admin of the organization
+                        await clerk.organizations.createOrganizationMembership({
+                          organizationId: organization.id,
+                          userId: user.id,
+                          role: 'org:admin'
+                        });
+                        
+                        organizationId = organization.id;
+                      }
                       
                       // Update user in database with organizationId
                       await prisma.user.update({
                         where: { id: dbUser.id },
                         data: {
-                          organizationId: organization.id,
-                          organizationRole: 'org:admin'
+                          organizationId: organizationId,
+                          organizationRole: organizationRole
+                        }
+                      });
+                      
+                      // Update all teams managed by this user
+                      await prisma.team.updateMany({
+                        where: { 
+                          managerId: dbUser.id,
+                          organizationId: null // Only update teams without an org
+                        },
+                        data: { 
+                          organizationId: organizationId 
                         }
                       });
                       
                       console.log('[Organization] Successfully created organization:', {
                         userId: dbUser.id,
-                        organizationId: organization.id,
-                        organizationName: orgName
+                        organizationId: organizationId,
+                        organizationName: orgName,
+                        isDevMode: isDevMode
                       });
                     } catch (error: any) {
                       console.error('[Organization] Failed to create organization:', {
                         error: error.message || error,
                         orgName,
-                        userId: dbUser.id
+                        userId: dbUser.id,
+                        stack: error.stack
                       });
+                      
+                      // Even if Clerk fails, create a fallback organization ID to not block the user
+                      if (process.env.NODE_ENV === 'development') {
+                        try {
+                          const fallbackOrgId = `org_fallback_${orgName.toLowerCase().replace(/\s+/g, '_')}_${Date.now()}`;
+                          
+                          await prisma.user.update({
+                            where: { id: dbUser.id },
+                            data: {
+                              organizationId: fallbackOrgId,
+                              organizationRole: 'org:admin'
+                            }
+                          });
+                          
+                          await prisma.team.updateMany({
+                            where: { 
+                              managerId: dbUser.id,
+                              organizationId: null
+                            },
+                            data: { 
+                              organizationId: fallbackOrgId 
+                            }
+                          });
+                          
+                          console.log('[Organization] Created fallback organization in dev mode:', fallbackOrgId);
+                        } catch (fallbackError) {
+                          console.error('[Organization] Failed to create fallback organization:', fallbackError);
+                        }
+                      }
                     }
                   } else {
                     console.log('[Organization] No organization name found in onboarding data');
