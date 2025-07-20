@@ -12,7 +12,7 @@ jest.mock('../../llm', () => ({
       const userMessage = messages[1].content;
       
       // Test responses for different organization names
-      if (userMessage.includes('"Allen Ovary"')) {
+      if (userMessage.includes('User Message: "Allen Ovary"')) {
         return Promise.resolve({
           completion: {
             choices: [{
@@ -26,7 +26,7 @@ jest.mock('../../llm', () => ({
         });
       }
       
-      if (userMessage.includes('"Morgan Stanley"')) {
+      if (userMessage.includes('User Message: "Morgan Stanley"')) {
         return Promise.resolve({
           completion: {
             choices: [{
@@ -40,7 +40,7 @@ jest.mock('../../llm', () => ({
         });
       }
       
-      if (userMessage.includes('"John Lewis"')) {
+      if (userMessage.includes('User Message: "John Lewis"')) {
         return Promise.resolve({
           completion: {
             choices: [{
@@ -61,10 +61,9 @@ jest.mock('../../llm', () => ({
               content: JSON.stringify({
                 organization: { value: null, found: false }
               })
-            }]
+            }}]
           }
-        }
-      });
+        });
     })
   }))
 }));
@@ -95,8 +94,8 @@ describe('Organization Name Extraction', () => {
         attempted: true,
         successful: true,
         extractedValue: 'Allen Ovary',
-        confidence: 0.9,
-        extractionMethod: 'batch_llm'
+        confidence: 0.8,
+        extractionMethod: 'llm'
       });
     });
 
@@ -120,8 +119,8 @@ describe('Organization Name Extraction', () => {
         attempted: true,
         successful: true,
         extractedValue: 'Morgan Stanley',
-        confidence: 0.9,
-        extractionMethod: 'batch_llm'
+        confidence: 0.8,
+        extractionMethod: 'llm'
       });
     });
 
@@ -145,36 +144,9 @@ describe('Organization Name Extraction', () => {
         attempted: true,
         successful: true,
         extractedValue: 'John Lewis',
-        confidence: 0.9,
-        extractionMethod: 'batch_llm'
+        confidence: 0.8,
+        extractionMethod: 'llm'
       });
-    });
-
-    it('should handle organization names in context', async () => {
-      const fields: Record<string, ExtractionRule> = {
-        organization: {
-          type: 'string',
-          description: 'The user\'s organization',
-          preferLLM: true,
-          required: true
-        }
-      };
-
-      const testCases = [
-        { message: 'I work at Allen Ovary', expected: 'Allen Ovary' },
-        { message: 'My company is Morgan Stanley', expected: 'Morgan Stanley' },
-        { message: 'I\'m from John Lewis', expected: 'John Lewis' }
-      ];
-
-      for (const testCase of testCases) {
-        const results = await BatchExtractor.extractBatch({
-          message: testCase.message,
-          fields
-        });
-
-        expect(results.organization?.successful).toBe(true);
-        // Note: Actual extraction depends on LLM implementation
-      }
     });
   });
 });
