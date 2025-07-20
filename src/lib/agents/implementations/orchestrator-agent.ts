@@ -267,6 +267,11 @@ Remember to:
       }
     }
 
+    // Debug logging before calling parent
+    console.log('[OrchestratorAgent] About to call super.processMessage');
+    console.log('[OrchestratorAgent] Tool count:', this.tools.length);
+    console.log('[OrchestratorAgent] Tool names:', this.tools.map(t => t.name));
+    
     // Process message using parent class
     const response = await super.processMessage(message, context);
     return response;

@@ -333,6 +333,26 @@ export async function POST(req: NextRequest) {
     console.log(`[${context.currentAgent}] Message history:`, conversationMessages.length, 'messages');
     console.log(`[${context.currentAgent}] User message:`, userMessageContent);
 
+    // Get the agent's tools if available
+    let tools = undefined;
+    if (agent && 'tools' in agent && Array.isArray(agent.tools)) {
+      // Convert agent tools to AI SDK format
+      tools = {};
+      for (const tool of agent.tools) {
+        tools[tool.name] = {
+          description: tool.description,
+          parameters: tool.parameters,
+          execute: async (params: any) => {
+            console.log(`[${context.currentAgent}] Executing tool: ${tool.name}`, params);
+            const result = await tool.execute(params, context);
+            console.log(`[${context.currentAgent}] Tool result:`, result);
+            return result.output || result.error || 'Tool execution completed';
+          }
+        };
+      }
+      console.log(`[${context.currentAgent}] Available tools:`, Object.keys(tools));
+    }
+
     // Use the new AI SDK streaming approach
     const result = await streamText({
       model: aiOpenai('gpt-4o-mini'),
@@ -343,6 +363,7 @@ export async function POST(req: NextRequest) {
       ],
       temperature: 0.7,
       maxTokens: 500,
+      tools,
       onFinish: async ({ text }) => {
         // Save the complete message after streaming is done
         const assistantMessage = {
