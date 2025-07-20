@@ -351,7 +351,9 @@ export async function POST(req: NextRequest) {
              text.includes("begin building something amazing together") || // Without "Let's"
              text.includes("transformation journey") && text.includes("ready") ||
              text.includes("Welcome to TMS") && text.includes("excited to support you") ||
-             text.includes("Enjoy your journey with TMS");
+             text.includes("Enjoy your journey with TMS") ||
+             text.includes("Enjoy exploring the platform") ||
+             text.includes("transforming your team's dynamics");
         
         if (context.currentAgent === 'OnboardingAgent') {
           console.log('[Journey] Checking for handoff:', {
@@ -367,92 +369,8 @@ export async function POST(req: NextRequest) {
         const appearsToBeCompletionMessage = isOnboardingComplete && 
           (isHandoffMessage || text.includes("journey") || text.includes("welcome") || text.includes("excited"));
         
-        if (context.currentAgent === 'OnboardingAgent' && 
-            !context.metadata?.journeyUpdated &&
-            (isHandoffMessage || appearsToBeCompletionMessage)) {
-          // Double-check that onboarding is actually complete before handoff
-          const currentOnboardingMetadata = context.metadata?.onboarding || {};
-          if (currentOnboardingMetadata.isComplete) {
-            try {
-              console.log('[Journey] OnboardingAgent handoff detected, updating journey status for user:', dbUser.id);
-              
-              // Update journey status to move to Assessment phase and save onboarding data
-              await prisma.user.update({
-              where: { id: dbUser.id },
-              data: {
-                journeyPhase: 'ASSESSMENT',
-                journeyStatus: 'ACTIVE',
-                currentAgent: 'AssessmentAgent',
-                lastActivity: new Date(),
-                onboardingData: {
-                  extractedFields: context.metadata.onboarding?.capturedFields || {},
-                  completedAt: new Date().toISOString()
-                }
-              }
-            });
-            
-            // Update conversation to reflect the new agent
-            await prisma.conversation.update({
-              where: { id: context.conversationId },
-              data: { currentAgent: 'AssessmentAgent' }
-            });
-            
-            console.log('[Journey] Journey status updated to Assessment phase after OnboardingAgent handoff');
-            
-            // Create organization in Clerk if user is a manager and has organization name
-            if (dbUser.role === 'MANAGER' && !dbUser.organizationId) {
-              const orgName = context.metadata.onboarding?.capturedFields?.organization;
-              
-              if (orgName) {
-                try {
-                  const { clerkClient } = await import('@clerk/nextjs/server');
-                  
-                  // Create organization in Clerk
-                  const organization = await clerkClient.organizations.createOrganization({
-                    name: orgName,
-                    slug: orgName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
-                    createdBy: user.id, // Clerk user ID
-                  });
-                  
-                  // Add user as admin of the organization
-                  await clerkClient.organizations.createOrganizationMembership({
-                    organizationId: organization.id,
-                    userId: user.id,
-                    role: 'org:admin'
-                  });
-                  
-                  // Update user in database with organizationId
-                  await prisma.user.update({
-                    where: { id: dbUser.id },
-                    data: {
-                      organizationId: organization.id,
-                      organizationRole: 'org:admin'
-                    }
-                  });
-                  
-                  console.log('[Organization] Created organization for user:', {
-                    userId: dbUser.id,
-                    organizationId: organization.id,
-                    organizationName: orgName
-                  });
-                } catch (error) {
-                  console.error('[Organization] Failed to create organization:', error);
-                }
-              }
-            }
-            
-            // Mark journey as updated to prevent duplicate updates
-            context.metadata.journeyUpdated = true;
-            await conversationStore.updateContext(context.conversationId, {
-              metadata: context.metadata
-            });
-            } catch (error) {
-              console.error('[Journey] Failed to update journey status on handoff:', error);
-            }
-          } else {
-            console.log('[Journey] Handoff message detected but onboarding not yet complete');
-          }
-        }
+        // This block is no longer needed since we handle journey update immediately
+        // when all fields are captured (see line 520)
         
         // Special handling: If the agent greets the user by name in the response,
         // and we haven't captured it yet, extract it from the agent's response
@@ -496,15 +414,100 @@ export async function POST(req: NextRequest) {
           const capturedCount = Object.values(metadata.requiredFieldsStatus).filter(Boolean).length;
           const requiredCount = requiredFields.length;
           
-          if (capturedCount === requiredCount && requiredCount > 0) {
+          if (capturedCount === requiredCount && requiredCount > 0 && !metadata.isComplete) {
             metadata.isComplete = true;
-            console.log('[Journey] All required fields captured, but waiting for conversation completion before updating journey status');
+            console.log('[Journey] All required fields captured, marking onboarding as complete');
+            console.log('[Journey] Captured fields:', metadata.capturedFields);
             
-            // DO NOT update journey status here - wait for agent handoff
-            // The journey should only transition to ASSESSMENT when:
-            // 1. All fields are captured AND
-            // 2. The OnboardingAgent has completed the full conversation flow
-            // 3. The user has confirmed they're ready to proceed
+            // Update journey status immediately when all fields are captured
+            if (context.currentAgent === 'OnboardingAgent' && !context.metadata?.journeyUpdated) {
+              try {
+                console.log('[Journey] Updating journey status to ASSESSMENT phase');
+                
+                // Update journey status to move to Assessment phase and save onboarding data
+                const updatedUser = await prisma.user.update({
+                  where: { id: dbUser.id },
+                  data: {
+                    journeyPhase: 'ASSESSMENT',
+                    journeyStatus: 'ACTIVE',
+                    currentAgent: 'AssessmentAgent',
+                    lastActivity: new Date(),
+                    onboardingData: {
+                      extractedFields: metadata.capturedFields || {},
+                      completedAt: new Date().toISOString()
+                    }
+                  }
+                });
+                
+                // Create organization in Clerk when onboarding completes for managers
+                if (dbUser.role === 'MANAGER' && !dbUser.organizationId) {
+                  const orgName = metadata.capturedFields?.organization;
+                  
+                  if (orgName) {
+                    try {
+                      const { clerkClient } = await import('@clerk/nextjs/server');
+                      const clerk = await clerkClient();
+                      
+                      console.log('[Organization] Creating organization for manager:', {
+                        userId: dbUser.id,
+                        organizationName: orgName,
+                        clerkUserId: user.id
+                      });
+                      
+                      // Create organization in Clerk
+                      const organization = await clerk.organizations.createOrganization({
+                        name: orgName,
+                        slug: orgName.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, ''),
+                        createdBy: user.id, // Clerk user ID
+                      });
+                      
+                      // Add user as admin of the organization
+                      await clerk.organizations.createOrganizationMembership({
+                        organizationId: organization.id,
+                        userId: user.id,
+                        role: 'org:admin'
+                      });
+                      
+                      // Update user in database with organizationId
+                      await prisma.user.update({
+                        where: { id: dbUser.id },
+                        data: {
+                          organizationId: organization.id,
+                          organizationRole: 'org:admin'
+                        }
+                      });
+                      
+                      console.log('[Organization] Successfully created organization:', {
+                        userId: dbUser.id,
+                        organizationId: organization.id,
+                        organizationName: orgName
+                      });
+                    } catch (error: any) {
+                      console.error('[Organization] Failed to create organization:', {
+                        error: error.message || error,
+                        orgName,
+                        userId: dbUser.id
+                      });
+                    }
+                  } else {
+                    console.log('[Organization] No organization name found in onboarding data');
+                  }
+                }
+                
+                // Update conversation to reflect the new agent
+                await prisma.conversation.update({
+                  where: { id: context.conversationId },
+                  data: { currentAgent: 'AssessmentAgent' }
+                });
+                
+                console.log('[Journey] Journey status updated to Assessment phase');
+                
+                // Mark journey as updated to prevent duplicate updates
+                context.metadata.journeyUpdated = true;
+              } catch (error) {
+                console.error('[Journey] Failed to update journey status:', error);
+              }
+            }
           }
           
           context.metadata.onboarding = metadata;
