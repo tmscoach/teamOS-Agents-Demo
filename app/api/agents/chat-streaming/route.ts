@@ -13,7 +13,8 @@ import {
   createRecognitionAgent
 } from '@/src/lib/agents/implementations';
 import prisma from '@/lib/db';
-import { streamText } from 'ai';
+import { streamText, tool } from 'ai';
+import { z } from 'zod';
 import { openai as aiOpenai } from '@ai-sdk/openai';
 import OpenAI from 'openai';
 import { ExtractionProcessor } from '@/src/lib/agents/extraction/extraction-processor';
@@ -338,33 +339,72 @@ export async function POST(req: NextRequest) {
     if (agent && 'tools' in agent && Array.isArray(agent.tools)) {
       // Convert agent tools to AI SDK format
       tools = {};
-      for (const tool of agent.tools) {
-        tools[tool.name] = {
-          description: tool.description,
-          parameters: tool.parameters,
-          execute: async (params: any) => {
-            console.log(`[${context.currentAgent}] Executing tool: ${tool.name}`, params);
-            const result = await tool.execute(params, context);
-            console.log(`[${context.currentAgent}] Tool result:`, result);
-            return result.output || result.error || 'Tool execution completed';
+      for (const agentTool of agent.tools) {
+        // Convert JSON schema to Zod schema (simplified conversion)
+        const createZodSchema = (jsonSchema: any): any => {
+          if (jsonSchema.type === 'object') {
+            const shape: any = {};
+            if (jsonSchema.properties) {
+              for (const [key, value] of Object.entries(jsonSchema.properties)) {
+                const prop = value as any;
+                if (prop.type === 'string') {
+                  shape[key] = prop.required ? z.string() : z.string().optional();
+                } else if (prop.type === 'number') {
+                  shape[key] = prop.required ? z.number() : z.number().optional();
+                } else if (prop.type === 'boolean') {
+                  shape[key] = prop.required ? z.boolean() : z.boolean().optional();
+                } else if (prop.type === 'object') {
+                  shape[key] = z.object({});
+                }
+              }
+            }
+            return z.object(shape);
           }
+          return z.object({});
         };
+
+        tools[agentTool.name] = tool({
+          description: agentTool.description,
+          parameters: createZodSchema(agentTool.parameters),
+          execute: async (params: any) => {
+            console.log(`[${context.currentAgent}] Executing tool: ${agentTool.name}`, params);
+            try {
+              const result = await agentTool.execute(params, context);
+              console.log(`[${context.currentAgent}] Tool result:`, result);
+              return result.output || result.error || 'Tool execution completed';
+            } catch (error) {
+              console.error(`[${context.currentAgent}] Tool execution error:`, error);
+              return `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`;
+            }
+          }
+        });
       }
       console.log(`[${context.currentAgent}] Available tools:`, Object.keys(tools));
     }
 
     // Use the new AI SDK streaming approach
-    const result = await streamText({
-      model: aiOpenai('gpt-4o-mini'),
-      system: enhancedPrompt,
-      messages: [
-        ...conversationMessages,
-        { role: 'user', content: userMessageContent }
-      ],
-      temperature: 0.7,
-      maxTokens: 500,
-      tools,
-      onFinish: async ({ text }) => {
+    try {
+      // Temporarily disable tools if they're causing issues
+      const streamConfig: any = {
+        model: aiOpenai('gpt-4o-mini'),
+        system: enhancedPrompt,
+        messages: [
+          ...conversationMessages,
+          { role: 'user', content: userMessageContent }
+        ],
+        temperature: 0.7,
+        maxTokens: 500,
+      };
+      
+      // Only add tools if we have them
+      if (tools && Object.keys(tools).length > 0) {
+        streamConfig.tools = tools;
+        console.log('[Streaming] Tools added to stream config');
+      }
+      
+      const result = await streamText({
+        ...streamConfig,
+        onFinish: async ({ text }) => {
         // Save the complete message after streaming is done
         const assistantMessage = {
           id: `msg-${Date.now()}`,
@@ -648,12 +688,21 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Return streaming response with metadata headers
-    const headers = new Headers();
-    headers.set('X-Conversation-ID', context.conversationId);
-    headers.set('X-Current-Agent', context.currentAgent);
-    
-    return result.toDataStreamResponse({ headers });
+      // Return streaming response with metadata headers
+      const headers = new Headers();
+      headers.set('X-Conversation-ID', context.conversationId);
+      headers.set('X-Current-Agent', context.currentAgent);
+      
+      console.log('[Streaming] Returning stream response');
+      return result.toDataStreamResponse({ headers });
+    } catch (toolError) {
+      console.error('[Streaming] Tool error:', toolError);
+      console.error('[Streaming] Tool error details:', {
+        message: toolError instanceof Error ? toolError.message : 'Unknown error',
+        stack: toolError instanceof Error ? toolError.stack : undefined
+      });
+      throw toolError;
+    }
   } catch (error) {
     console.error('Streaming chat error:', error);
     return new Response('Internal server error', { status: 500 });
