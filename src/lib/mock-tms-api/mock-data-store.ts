@@ -26,6 +26,7 @@ interface MockOrganization {
 interface MockSubscription {
   subscriptionId: string;
   userId: string;
+  organizationId: string;
   workflowId: string;
   workflowName: string;
   assessmentType: 'TMP' | 'QO2' | 'WOW' | 'LLP' | 'TeamSignals';
@@ -182,7 +183,7 @@ class MockDataStore {
   }
 
   // Subscription Management
-  createSubscription(userId: string, workflowId: string): MockSubscription {
+  createSubscription(userId: string, workflowId: string, organizationId: string): MockSubscription {
     const workflow = this.workflows.get(workflowId);
     if (!workflow) throw new Error('Workflow not found');
 
@@ -190,6 +191,7 @@ class MockDataStore {
     const subscription: MockSubscription = {
       subscriptionId,
       userId,
+      organizationId,
       workflowId,
       workflowName: workflow.name,
       assessmentType: workflow.assessmentType,
