@@ -1,4 +1,4 @@
-import { KnowledgeEnabledAgent } from './knowledge-enabled-agent';
+import { TMSEnabledAgent } from './tms-enabled-agent';
 import { AgentContext, Message, AgentResponse, ToolCall, AgentTool } from '../types';
 import { createOnboardingTools } from '../tools/onboarding-tools';
 import { OnboardingGuardrails, GuardrailConfig } from '../guardrails/onboarding-guardrails';
@@ -33,7 +33,7 @@ export interface OnboardingMetadata {
   }>;
 }
 
-export class OnboardingAgent extends KnowledgeEnabledAgent {
+export class OnboardingAgent extends TMSEnabledAgent {
   private stateMachine: OnboardingStateMachine;
   private qualityCalculator: OnboardingQualityCalculator;
   private configuredPrompts: Record<string, string> | null = null;
@@ -205,7 +205,10 @@ Remember to:
 
 Required fields are determined by extraction rules configuration.`;
       },
-      tools,
+      tools, // Keep existing onboarding tools
+      knowledgeEnabled: true,
+      tmsToolsEnabled: true, // OnboardingAgent uses TMS auth tools
+      loadFromConfig: true,
       handoffs: [{
         targetAgent: 'AssessmentAgent',
         condition: (context: AgentContext) => {
@@ -1035,6 +1038,8 @@ Required fields are determined by extraction rules configuration.`;
   }
 }
 
-export function createOnboardingAgent(): OnboardingAgent {
-  return new OnboardingAgent();
+export async function createOnboardingAgent(): Promise<OnboardingAgent> {
+  const agent = new OnboardingAgent();
+  await agent.initialize();
+  return agent;
 }
