@@ -491,11 +491,15 @@ export async function generateSubscriptionReport(options: {
 
   // Validate template
   const templates = ReportGenerator.getReportTemplates(subscription.assessmentType);
+  console.log('Available templates:', templates.map(t => t.id));
+  console.log('Requested template:', options.data.templateId);
+  console.log('Assessment type:', subscription.assessmentType);
+  
   const template = templates.find(t => t.id === options.data.templateId);
   if (!template) {
     throw {
       error: 'INVALID_TEMPLATE',
-      message: 'Invalid template ID for this assessment type'
+      message: `Invalid template ID for this assessment type. Available: ${templates.map(t => t.id).join(', ')}`
     } as TMSErrorResponse;
   }
 

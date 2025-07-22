@@ -251,7 +251,7 @@ class MockDataStore {
   // Generate mock report data
   generateMockReport(subscriptionId: string): any {
     const subscription = this.subscriptions.get(subscriptionId);
-    if (!subscription || subscription.status !== 'completed') {
+    if (!subscription) {
       return null;
     }
 
