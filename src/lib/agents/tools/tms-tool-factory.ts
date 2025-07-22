@@ -6,7 +6,8 @@
 import { AgentTool, AgentContext, ToolResult } from '../types';
 import { TMS_TOOL_REGISTRY, TMSToolDefinition } from './tms-tool-registry';
 import { tmsAuthService } from './tms-auth-service';
-import { mockTMSClient } from '@/src/lib/mock-tms-api/mock-api-client';
+import { unifiedTMSClient } from '@/src/lib/tms-api/unified-client';
+import { apiModeManager } from '@/src/lib/mock-tms-api/api-mode-config';
 
 /**
  * Format tool result for natural language output
@@ -158,8 +159,8 @@ export function createTMSTool(toolName: string): AgentTool | null {
           ? convertParameters(toolDef, params)
           : undefined;
 
-        // Make API request
-        const result = await mockTMSClient.request({
+        // Make API request using unified client
+        const result = await unifiedTMSClient.request({
           method: toolDef.method,
           endpoint,
           data: requestData,
@@ -178,7 +179,8 @@ export function createTMSTool(toolName: string): AgentTool | null {
           metadata: {
             source: 'TMS_API',
             tool: toolDef.name,
-            category: toolDef.category
+            category: toolDef.category,
+            apiMode: apiModeManager.getMode()
           }
         };
       } catch (error: any) {
