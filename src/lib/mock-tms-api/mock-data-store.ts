@@ -4,6 +4,8 @@
  */
 
 import { TMSAuthResponse, TMSDashboardSubscription, TMSQuestion } from './types';
+import { workflowStateManager } from './workflow-state-manager';
+import { getAssessmentByWorkflow, ASSESSMENT_DEFINITIONS } from './assessment-definitions';
 
 interface MockUser {
   id: string;
@@ -34,116 +36,85 @@ interface MockSubscription {
   completionPercentage: number;
   assignedDate: Date;
   completedDate?: Date;
-  answers: Record<string, any>;
-  currentPageId?: string;
-}
-
-interface MockWorkflow {
-  workflowId: string;
-  name: string;
-  assessmentType: 'TMP' | 'QO2' | 'WOW' | 'LLP' | 'TeamSignals';
-  pages: MockWorkflowPage[];
-}
-
-interface MockWorkflowPage {
-  pageId: string;
-  baseContentId: string;
-  sectionId: string;
-  pageNumber: number;
-  questions: TMSQuestion[];
+  currentPageId?: number;
+  baseContentId?: number;
 }
 
 class MockDataStore {
-  private users: Map<string, MockUser> = new Map();
-  private organizations: Map<string, MockOrganization> = new Map();
-  private subscriptions: Map<string, MockSubscription> = new Map();
-  private workflows: Map<string, MockWorkflow> = new Map();
-  private tokenToUser: Map<string, string> = new Map();
+  users: Map<string, MockUser> = new Map();
+  organizations: Map<string, MockOrganization> = new Map();
+  subscriptions: Map<string, MockSubscription> = new Map();
+  tokenToUser: Map<string, string> = new Map();
 
   constructor() {
     this.initializeMockData();
   }
 
   private initializeMockData() {
-    // Initialize with some mock workflows based on TMS assessments
-    this.initializeWorkflows();
+    // Initialize with test data matching recorded API patterns
+    this.initializeTestSubscriptions();
   }
 
-  private initializeWorkflows() {
-    // Team Management Profile (TMP)
-    this.workflows.set('tmp-workflow', {
+  private initializeTestSubscriptions() {
+    // Create test organization and user
+    const testOrg = this.createOrganization('Test Organization', 'facilitator-1');
+    const testUser = this.createUser({
+      email: 'facilitator@example.com',
+      password: 'TestPassword123!',
+      firstName: 'Test',
+      lastName: 'Facilitator',
+      userType: 'Facilitator',
+      organizationId: testOrg.id
+    });
+
+    // Create test subscriptions matching recorded IDs
+    // TMP Subscription (from recorded data)
+    const tmpSub: MockSubscription = {
+      subscriptionId: '21989',
+      userId: testUser.id,
+      organizationId: testOrg.id,
       workflowId: 'tmp-workflow',
-      name: 'Team Management Profile',
+      workflowName: 'Team Management Profile',
       assessmentType: 'TMP',
-      pages: [
-        {
-          pageId: 'tmp-page-1',
-          baseContentId: 'tmp-base',
-          sectionId: 'tmp-section-1',
-          pageNumber: 1,
-          questions: [
-            {
-              questionId: 'tmp-q1',
-              questionText: 'How would you describe your team\'s current performance level?',
-              questionType: 'Scale',
-              responseOptions: ['1', '2', '3', '4', '5'],
-              required: true,
-              conditionalLogic: false
-            },
-            {
-              questionId: 'tmp-q2',
-              questionText: 'What are your team\'s primary strengths?',
-              questionType: 'Text',
-              required: true,
-              conditionalLogic: false
-            }
-          ]
-        },
-        {
-          pageId: 'tmp-page-2',
-          baseContentId: 'tmp-base',
-          sectionId: 'tmp-section-1',
-          pageNumber: 2,
-          questions: [
-            {
-              questionId: 'tmp-q3',
-              questionText: 'How effectively does your team communicate?',
-              questionType: 'SingleChoice',
-              responseOptions: ['Very Effectively', 'Effectively', 'Somewhat Effectively', 'Ineffectively', 'Very Ineffectively'],
-              required: true,
-              conditionalLogic: false
-            }
-          ]
-        }
-      ]
-    });
+      status: 'not_started',
+      completionPercentage: 0,
+      assignedDate: new Date('2024-01-15'),
+      baseContentId: 3,
+      currentPageId: 2
+    };
+    this.subscriptions.set('21989', tmpSub);
 
-    // Quality of Output 2 (QO2)
-    this.workflows.set('qo2-workflow', {
+    // QO2 Subscription (from recorded data)
+    const qo2Sub: MockSubscription = {
+      subscriptionId: '21983',
+      userId: testUser.id,
+      organizationId: testOrg.id,
       workflowId: 'qo2-workflow',
-      name: 'Quality of Output Assessment',
+      workflowName: 'Opportunities-Obstacles Quotient',
       assessmentType: 'QO2',
-      pages: [
-        {
-          pageId: 'qo2-page-1',
-          baseContentId: 'qo2-base',
-          sectionId: 'qo2-section-1',
-          pageNumber: 1,
-          questions: [
-            {
-              questionId: 'qo2-q1',
-              questionText: 'How would you rate the quality of your team\'s deliverables?',
-              questionType: 'Scale',
-              responseOptions: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10'],
-              required: true,
-              conditionalLogic: false
-            }
-          ]
-        }
-      ]
-    });
+      status: 'not_started',
+      completionPercentage: 0,
+      assignedDate: new Date('2024-01-15'),
+      baseContentId: 5,
+      currentPageId: 408
+    };
+    this.subscriptions.set('21983', qo2Sub);
 
-    // Add more mock workflows as needed
+    // Team Signals Subscription (from recorded data)
+    const teamSignalsSub: MockSubscription = {
+      subscriptionId: '21988',
+      userId: testUser.id,
+      organizationId: testOrg.id,
+      workflowId: 'team-signals-workflow',
+      workflowName: 'Team Signals',
+      assessmentType: 'TeamSignals',
+      status: 'not_started',
+      completionPercentage: 0,
+      assignedDate: new Date('2024-01-15'),
+      baseContentId: 12,
+      currentPageId: 97
+    };
+    this.subscriptions.set('21988', teamSignalsSub);
   }
 
   // User Management
@@ -184,24 +155,34 @@ class MockDataStore {
 
   // Subscription Management
   createSubscription(userId: string, workflowId: string, organizationId: string): MockSubscription {
-    const workflow = this.workflows.get(workflowId);
-    if (!workflow) throw new Error('Workflow not found');
+    const assessment = getAssessmentByWorkflow(workflowId);
+    if (!assessment) throw new Error('Workflow not found');
 
     const subscriptionId = `sub-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const firstPage = assessment.sections?.[0]?.pages[0] || 1;
+    
     const subscription: MockSubscription = {
       subscriptionId,
       userId,
       organizationId,
       workflowId,
-      workflowName: workflow.name,
-      assessmentType: workflow.assessmentType,
+      workflowName: assessment.name,
+      assessmentType: assessment.assessmentType,
       status: 'not_started',
       completionPercentage: 0,
       assignedDate: new Date(),
-      answers: {},
-      currentPageId: workflow.pages[0]?.pageId
+      baseContentId: assessment.baseContentId,
+      currentPageId: firstPage
     };
     this.subscriptions.set(subscriptionId, subscription);
+    
+    // Initialize workflow state
+    workflowStateManager.getOrCreateWorkflowState(
+      subscriptionId,
+      workflowId,
+      assessment.baseContentId
+    );
+    
     return subscription;
   }
 
@@ -213,25 +194,24 @@ class MockDataStore {
     return Array.from(this.subscriptions.values()).filter(s => s.userId === userId);
   }
 
-  updateSubscriptionProgress(subscriptionId: string, pageId: string, answers: Record<string, any>) {
+  updateSubscriptionProgress(subscriptionId: string, pageId: number, answers: Record<string, any>) {
     const subscription = this.subscriptions.get(subscriptionId);
     if (!subscription) return;
-
-    const workflow = this.workflows.get(subscription.workflowId);
-    if (!workflow) return;
-
-    // Update answers
-    Object.assign(subscription.answers, answers);
 
     // Update current page
     subscription.currentPageId = pageId;
 
-    // Calculate completion percentage
-    const totalQuestions = workflow.pages.reduce((sum, page) => sum + page.questions.length, 0);
-    const answeredQuestions = Object.keys(subscription.answers).length;
-    subscription.completionPercentage = Math.round((answeredQuestions / totalQuestions) * 100);
+    // Get workflow state from state manager
+    const state = workflowStateManager.getOrCreateWorkflowState(
+      subscriptionId,
+      subscription.workflowId,
+      subscription.baseContentId
+    );
 
-    // Update status
+    // Update completion percentage from state manager
+    subscription.completionPercentage = state.completionPercentage;
+
+    // Update status based on completion
     if (subscription.completionPercentage === 0) {
       subscription.status = 'not_started';
     } else if (subscription.completionPercentage < 100) {
@@ -242,18 +222,14 @@ class MockDataStore {
     }
   }
 
-  // Workflow Management
-  getWorkflow(workflowId: string): MockWorkflow | undefined {
-    return this.workflows.get(workflowId);
+  // Workflow Management (using assessment definitions)
+  getAvailableWorkflows(): string[] {
+    return Object.keys(ASSESSMENT_DEFINITIONS);
   }
 
-  getWorkflowPage(workflowId: string, pageId: string): MockWorkflowPage | undefined {
-    const workflow = this.workflows.get(workflowId);
-    return workflow?.pages.find(p => p.pageId === pageId);
-  }
-
-  getAllWorkflows(): MockWorkflow[] {
-    return Array.from(this.workflows.values());
+  getWorkflowName(workflowId: string): string {
+    const assessment = getAssessmentByWorkflow(workflowId);
+    return assessment?.name || workflowId;
   }
 
   // Generate mock report data
@@ -290,3 +266,25 @@ class MockDataStore {
 
 // Export singleton instance
 export const mockDataStore = new MockDataStore();
+
+// Export helper function to get the data store
+export function getMockDataStore(): MockDataStore {
+  return mockDataStore;
+}
+
+// Export reset function
+export function resetMockDataStore(): void {
+  // Clear all data
+  mockDataStore.users.clear();
+  mockDataStore.organizations.clear();
+  mockDataStore.subscriptions.clear();
+  mockDataStore.tokenToUser.clear();
+  
+  // Clear workflow states
+  mockDataStore.subscriptions.forEach((sub) => {
+    workflowStateManager.clearState(sub.subscriptionId);
+  });
+  
+  // Re-initialize with mock data
+  (mockDataStore as any).initializeMockData();
+}

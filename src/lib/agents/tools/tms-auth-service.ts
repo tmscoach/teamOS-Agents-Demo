@@ -3,7 +3,7 @@
  * Manages TMS JWT tokens for agents
  */
 
-import { prisma } from '@/src/lib/db/prisma';
+import { prisma } from '@/lib/db/prisma';
 import { mockTMSClient } from '@/src/lib/mock-tms-api/mock-api-client';
 import { TMSAuthResponse } from '@/src/lib/mock-tms-api/types';
 
