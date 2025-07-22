@@ -289,6 +289,34 @@ export class AgentRegistry {
       keywords: ['help', 'guide', 'orchestrate', 'coordinate', 'manage']
     });
     
+    defaults.set('DebriefAgent', {
+      name: 'DebriefAgent',
+      description: 'Provides assessment debriefs and generates reports for completed assessments',
+      examples: [
+        "Show me assessment results",
+        "Generate assessment report",
+        "Debrief my assessment",
+        "What do my results mean?"
+      ],
+      prerequisites: ['assessment_started'],
+      relevantPhases: [JourneyPhase.DEBRIEF],
+      keywords: ['debrief', 'results', 'report', 'feedback', 'insights', 'assessment results']
+    });
+    
+    defaults.set('ReportingAgent', {
+      name: 'ReportingAgent',
+      description: 'Generates organization-wide reports and analytics',
+      examples: [
+        "Generate organization report",
+        "Show usage analytics",
+        "Team transformation metrics",
+        "Executive summary"
+      ],
+      prerequisites: ['onboarding_complete'],
+      relevantPhases: [JourneyPhase.CONTINUOUS_ENGAGEMENT],
+      keywords: ['report', 'analytics', 'metrics', 'usage', 'organization report', 'executive']
+    });
+    
     return defaults;
   }
 }

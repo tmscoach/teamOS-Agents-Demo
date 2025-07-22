@@ -10,7 +10,9 @@ import {
   createLearningAgent,
   createNudgeAgent,
   createProgressMonitor,
-  createRecognitionAgent
+  createRecognitionAgent,
+  createDebriefAgent,
+  createReportingAgent
 } from '@/src/lib/agents/implementations';
 import prisma from '@/lib/db';
 import { streamText, tool } from 'ai';
@@ -28,39 +30,52 @@ const openai = new OpenAI({
 let conversationStore: ConversationStore;
 let contextManager: ContextManager;
 let router: AgentRouter;
+let initialized = false;
 
-try {
-  conversationStore = new ConversationStore(prisma);
-  contextManager = new ContextManager();
-  router = new AgentRouter({ contextManager });
+async function initializeServices() {
+  if (initialized) return;
+  
+  try {
+    conversationStore = new ConversationStore(prisma);
+    contextManager = new ContextManager();
+    router = new AgentRouter({ contextManager });
 
-  // Register all agents
-  const agents = [
-    { name: 'OrchestratorAgent', create: createOrchestratorAgent },
-    { name: 'OnboardingAgent', create: createOnboardingAgent },
-    { name: 'DiscoveryAgent', create: createDiscoveryAgent },
-    { name: 'AssessmentAgent', create: createAssessmentAgent },
-    { name: 'AlignmentAgent', create: createAlignmentAgent },
-    { name: 'LearningAgent', create: createLearningAgent },
-    { name: 'NudgeAgent', create: createNudgeAgent },
-    { name: 'ProgressMonitor', create: createProgressMonitor },
-    { name: 'RecognitionAgent', create: createRecognitionAgent }
-  ];
+    // Register all agents
+    const agents = [
+      { name: 'OrchestratorAgent', create: createOrchestratorAgent },
+      { name: 'OnboardingAgent', create: createOnboardingAgent },
+      { name: 'DiscoveryAgent', create: createDiscoveryAgent },
+      { name: 'AssessmentAgent', create: createAssessmentAgent },
+      { name: 'AlignmentAgent', create: createAlignmentAgent },
+      { name: 'LearningAgent', create: createLearningAgent },
+      { name: 'NudgeAgent', create: createNudgeAgent },
+      { name: 'ProgressMonitor', create: createProgressMonitor },
+      { name: 'RecognitionAgent', create: createRecognitionAgent },
+      { name: 'DebriefAgent', create: createDebriefAgent },
+      { name: 'ReportingAgent', create: createReportingAgent }
+    ];
 
-  for (const agentDef of agents) {
-    try {
-      const agent = agentDef.create();
-      router.registerAgent(agent);
-    } catch (error) {
-      console.error(`Failed to register ${agentDef.name}:`, error);
+    for (const agentDef of agents) {
+      try {
+        const agent = await agentDef.create();
+        router.registerAgent(agent);
+      } catch (error) {
+        console.error(`Failed to register ${agentDef.name}:`, error);
+      }
     }
+    
+    initialized = true;
+  } catch (error) {
+    console.error('Failed to initialize chat services:', error);
+    throw error;
   }
-} catch (error) {
-  console.error('Failed to initialize chat services:', error);
 }
 
 export async function POST(req: NextRequest) {
   try {
+    // Initialize services on first request
+    await initializeServices();
+    
     const user = await currentUser();
     if (!user) {
       return new Response('Unauthorized', { status: 401 });

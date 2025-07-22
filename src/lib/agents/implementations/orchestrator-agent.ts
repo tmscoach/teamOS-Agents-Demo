@@ -1,4 +1,4 @@
-import { KnowledgeEnabledAgent } from './knowledge-enabled-agent';
+import { TMSEnabledAgent } from './tms-enabled-agent';
 import { AgentContext, AgentResponse } from '../types';
 import { PrismaClient } from '@/lib/generated/prisma';
 import { dataQueryTools } from '../tools/data-query-tools';
@@ -22,7 +22,7 @@ export interface OrchestratorMetadata {
   pendingTasks: string[];
 }
 
-export class OrchestratorAgent extends KnowledgeEnabledAgent {
+export class OrchestratorAgent extends TMSEnabledAgent {
   private prisma: PrismaClient;
   
   // State instructions can be used as fallback or reference, but the loaded config takes precedence
@@ -96,6 +96,9 @@ Remember to:
 - Keep stakeholders informed of progress`;
       },
       tools: dataQueryTools,
+      knowledgeEnabled: true,
+      tmsToolsEnabled: false, // OrchestratorAgent doesn't use TMS tools directly
+      loadFromConfig: true,
       handoffs: [
         {
           targetAgent: 'DiscoveryAgent',
@@ -290,6 +293,8 @@ Remember to:
   }
 }
 
-export function createOrchestratorAgent(): OrchestratorAgent {
-  return new OrchestratorAgent();
+export async function createOrchestratorAgent(): Promise<OrchestratorAgent> {
+  const agent = new OrchestratorAgent();
+  await agent.initialize();
+  return agent;
 }

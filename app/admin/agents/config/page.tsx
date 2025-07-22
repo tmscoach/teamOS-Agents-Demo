@@ -43,6 +43,9 @@ interface AgentConfig {
   }>;
   guardrailConfig?: Record<string, any>;
   knowledgeConfig?: Record<string, any>;
+  toolsConfig?: {
+    enabledTools?: string[];
+  };
   active: boolean;
   createdBy: string;
   createdAt: string;
@@ -76,6 +79,7 @@ const TABS = [
   { id: "flow-designer", label: "Flow Designer" },
   { id: "extraction", label: "Extraction Rules" },
   { id: "guardrails", label: "Guardrails" },
+  { id: "tools", label: "TMS Tools" },
   { id: "knowledge", label: "Knowledge Base" },
   { id: "test", label: "Test Playground" },
   { id: "history", label: "Version History" }
@@ -184,6 +188,7 @@ export default function AgentConfigPage() {
           extractionRules: editedConfig.extractionRules,
           guardrailConfig: editedConfig.guardrailConfig,
           knowledgeConfig: editedConfig.knowledgeConfig,
+          toolsConfig: editedConfig.toolsConfig,
         }),
       });
 
@@ -701,6 +706,7 @@ export default function AgentConfigPage() {
                 {tab.id === 'flow-designer' && <Workflow style={{ width: '14px', height: '14px' }} />}
                 {tab.id === 'extraction' && <Settings style={{ width: '14px', height: '14px' }} />}
                 {tab.id === 'guardrails' && <Shield style={{ width: '14px', height: '14px' }} />}
+                {tab.id === 'tools' && <Settings style={{ width: '14px', height: '14px' }} />}
                 {tab.id === 'knowledge' && <BookOpen style={{ width: '14px', height: '14px' }} />}
                 {tab.id === 'test' && <FlaskConical style={{ width: '14px', height: '14px' }} />}
                 {tab.id === 'history' && <History style={{ width: '14px', height: '14px' }} />}
@@ -1878,6 +1884,320 @@ You are a friendly Team Development Assistant conducting a quick 5-minute intake
                       Enable profanity and inappropriate content checking
                     </span>
                   </label>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TMS Tools Tab */}
+          {activeTab === "tools" && (
+            <div>
+              <div style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '24px'
+              }}>
+                <div>
+                  <h3 style={{
+                    fontSize: '18px',
+                    fontWeight: '600',
+                    color: '#111827',
+                    marginBottom: '4px'
+                  }}>
+                    TMS Tools Configuration
+                  </h3>
+                  <p style={{
+                    fontSize: '14px',
+                    color: '#6b7280'
+                  }}>
+                    Configure which TMS Global tools this agent can access
+                  </p>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                {/* Onboarding Tools */}
+                <div style={{
+                  backgroundColor: '#f9fafb',
+                  padding: '20px',
+                  borderRadius: '8px',
+                  border: '1px solid #e5e7eb'
+                }}>
+                  <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>
+                    Onboarding Tools
+                  </h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {[
+                      { id: 'tms_create_org', name: 'Create Organization', desc: 'Create organization and facilitator account in TMS Global' },
+                      { id: 'tms_facilitator_login', name: 'Facilitator Login', desc: 'Facilitator/team manager login to TMS Global' },
+                      { id: 'tms_check_user_permissions', name: 'Check Permissions', desc: 'Validate JWT token and get user permissions' }
+                    ].map(tool => (
+                      <label key={tool.id} style={{ display: 'flex', alignItems: 'start', gap: '12px', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={editedConfig?.toolsConfig?.enabledTools?.includes(tool.id) || false}
+                          onChange={(e) => {
+                            const currentTools = editedConfig?.toolsConfig?.enabledTools || [];
+                            const newTools = e.target.checked
+                              ? [...currentTools, tool.id]
+                              : currentTools.filter(t => t !== tool.id);
+                            
+                            setEditedConfig({
+                              ...editedConfig!,
+                              toolsConfig: {
+                                ...editedConfig?.toolsConfig,
+                                enabledTools: newTools
+                              }
+                            });
+                          }}
+                          style={{ width: '16px', height: '16px', marginTop: '2px' }}
+                        />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: '14px', fontWeight: '500', color: '#111827' }}>
+                            {tool.name}
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>
+                            {tool.desc}
+                          </div>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Assessment Tools */}
+                <div style={{
+                  backgroundColor: '#f9fafb',
+                  padding: '20px',
+                  borderRadius: '8px',
+                  border: '1px solid #e5e7eb'
+                }}>
+                  <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>
+                    Assessment Tools
+                  </h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {[
+                      { id: 'tms_get_workflow_process', name: 'Get Workflow Process', desc: 'Get current workflow state with questions for an assessment' },
+                      { id: 'tms_update_workflow', name: 'Update Workflow', desc: 'Submit answers and update workflow progress' },
+                      { id: 'tms_get_question_actions', name: 'Get Question Actions', desc: 'Check conditional logic for questions based on current answers' },
+                      { id: 'tms_get_question_ids_with_actions', name: 'Get Question IDs with Actions', desc: 'Get questions that have conditional logic on a specific page' },
+                      { id: 'tms_get_dashboard_subscriptions', name: 'Get Dashboard Subscriptions', desc: 'Get user\'s assessment subscriptions (Respondent only)' },
+                      { id: 'tms_start_workflow', name: 'Start Workflow', desc: 'Start or initialize an assessment workflow' }
+                    ].map(tool => (
+                      <label key={tool.id} style={{ display: 'flex', alignItems: 'start', gap: '12px', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={editedConfig?.toolsConfig?.enabledTools?.includes(tool.id) || false}
+                          onChange={(e) => {
+                            const currentTools = editedConfig?.toolsConfig?.enabledTools || [];
+                            const newTools = e.target.checked
+                              ? [...currentTools, tool.id]
+                              : currentTools.filter(t => t !== tool.id);
+                            
+                            setEditedConfig({
+                              ...editedConfig!,
+                              toolsConfig: {
+                                ...editedConfig?.toolsConfig,
+                                enabledTools: newTools
+                              }
+                            });
+                          }}
+                          style={{ width: '16px', height: '16px', marginTop: '2px' }}
+                        />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: '14px', fontWeight: '500', color: '#111827' }}>
+                            {tool.name}
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>
+                            {tool.desc}
+                          </div>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Debrief Tools */}
+                <div style={{
+                  backgroundColor: '#f9fafb',
+                  padding: '20px',
+                  borderRadius: '8px',
+                  border: '1px solid #e5e7eb'
+                }}>
+                  <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>
+                    Debrief Tools
+                  </h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {[
+                      { id: 'tms_get_report_summary', name: 'Get Report Summary', desc: 'Get HTML report summary for a completed assessment' },
+                      { id: 'tms_get_report_templates', name: 'Get Report Templates', desc: 'Get available report templates for an assessment' },
+                      { id: 'tms_generate_subscription_report', name: 'Generate Subscription Report', desc: 'Generate PDF report for a completed assessment' }
+                    ].map(tool => (
+                      <label key={tool.id} style={{ display: 'flex', alignItems: 'start', gap: '12px', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={editedConfig?.toolsConfig?.enabledTools?.includes(tool.id) || false}
+                          onChange={(e) => {
+                            const currentTools = editedConfig?.toolsConfig?.enabledTools || [];
+                            const newTools = e.target.checked
+                              ? [...currentTools, tool.id]
+                              : currentTools.filter(t => t !== tool.id);
+                            
+                            setEditedConfig({
+                              ...editedConfig!,
+                              toolsConfig: {
+                                ...editedConfig?.toolsConfig,
+                                enabledTools: newTools
+                              }
+                            });
+                          }}
+                          style={{ width: '16px', height: '16px', marginTop: '2px' }}
+                        />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: '14px', fontWeight: '500', color: '#111827' }}>
+                            {tool.name}
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>
+                            {tool.desc}
+                          </div>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Reporting Tools */}
+                <div style={{
+                  backgroundColor: '#f9fafb',
+                  padding: '20px',
+                  borderRadius: '8px',
+                  border: '1px solid #e5e7eb'
+                }}>
+                  <h4 style={{ fontSize: '16px', fontWeight: '600', color: '#111827', marginBottom: '16px' }}>
+                    Reporting Tools
+                  </h4>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {[
+                      { id: 'tms_generate_report', name: 'Generate Report', desc: 'Generate custom organization-wide reports' },
+                      { id: 'tms_get_product_usage', name: 'Get Product Usage', desc: 'Get product usage analytics for the organization' }
+                    ].map(tool => (
+                      <label key={tool.id} style={{ display: 'flex', alignItems: 'start', gap: '12px', cursor: 'pointer' }}>
+                        <input
+                          type="checkbox"
+                          checked={editedConfig?.toolsConfig?.enabledTools?.includes(tool.id) || false}
+                          onChange={(e) => {
+                            const currentTools = editedConfig?.toolsConfig?.enabledTools || [];
+                            const newTools = e.target.checked
+                              ? [...currentTools, tool.id]
+                              : currentTools.filter(t => t !== tool.id);
+                            
+                            setEditedConfig({
+                              ...editedConfig!,
+                              toolsConfig: {
+                                ...editedConfig?.toolsConfig,
+                                enabledTools: newTools
+                              }
+                            });
+                          }}
+                          style={{ width: '16px', height: '16px', marginTop: '2px' }}
+                        />
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: '14px', fontWeight: '500', color: '#111827' }}>
+                            {tool.name}
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '2px' }}>
+                            {tool.desc}
+                          </div>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Quick Actions */}
+                <div style={{
+                  backgroundColor: '#fff3cd',
+                  padding: '16px',
+                  borderRadius: '8px',
+                  border: '1px solid #ffeaa7'
+                }}>
+                  <h5 style={{ fontSize: '14px', fontWeight: '600', color: '#856404', marginBottom: '8px' }}>
+                    Quick Actions
+                  </h5>
+                  <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                    <button
+                      onClick={() => {
+                        // Load default tools for this agent type
+                        const agentName = selectedAgent.replace(' ', '');
+                        const defaultTools = {
+                          'OnboardingAgent': ['tms_create_org', 'tms_facilitator_login', 'tms_check_user_permissions'],
+                          'AssessmentAgent': ['tms_get_workflow_process', 'tms_update_workflow', 'tms_get_question_actions', 'tms_get_question_ids_with_actions', 'tms_get_dashboard_subscriptions', 'tms_start_workflow'],
+                          'DebriefAgent': ['tms_get_report_summary', 'tms_get_report_templates', 'tms_generate_subscription_report'],
+                          'ReportingAgent': ['tms_generate_report', 'tms_get_product_usage']
+                        };
+                        
+                        const tools = defaultTools[agentName] || [];
+                        setEditedConfig({
+                          ...editedConfig!,
+                          toolsConfig: {
+                            ...editedConfig?.toolsConfig,
+                            enabledTools: tools
+                          }
+                        });
+                        
+                        toast.success(`Loaded ${tools.length} default tools for ${selectedAgent}`);
+                      }}
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: '4px',
+                        border: '1px solid #d4a574',
+                        backgroundColor: '#f9e79f',
+                        color: '#7d6608',
+                        fontSize: '13px',
+                        fontWeight: '500',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Load Default Tools
+                    </button>
+                    <button
+                      onClick={() => {
+                        setEditedConfig({
+                          ...editedConfig!,
+                          toolsConfig: {
+                            ...editedConfig?.toolsConfig,
+                            enabledTools: []
+                          }
+                        });
+                        toast.success('All tools disabled');
+                      }}
+                      style={{
+                        padding: '6px 12px',
+                        borderRadius: '4px',
+                        border: '1px solid #d4a574',
+                        backgroundColor: '#f9e79f',
+                        color: '#7d6608',
+                        fontSize: '13px',
+                        fontWeight: '500',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Clear All Tools
+                    </button>
+                  </div>
+                </div>
+
+                {/* Info Note */}
+                <div style={{
+                  backgroundColor: '#e0f2fe',
+                  padding: '16px',
+                  borderRadius: '8px',
+                  border: '1px solid #7dd3fc'
+                }}>
+                  <p style={{ fontSize: '13px', color: '#0369a1', margin: 0 }}>
+                    <strong>Note:</strong> These tools connect to TMS Global APIs. The user must have a valid TMS JWT token for authentication. Mock endpoints are currently active for testing.
+                  </p>
                 </div>
               </div>
             </div>

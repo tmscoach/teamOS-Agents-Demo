@@ -9,6 +9,7 @@ export interface LoadedAgentConfig {
   extractionRules: Record<string, any>;
   guardrailConfig?: Record<string, any>;
   knowledgeConfig?: Record<string, any>;
+  toolsConfig?: Record<string, boolean>; // Tool name -> enabled
   version: number;
 }
 
@@ -51,6 +52,7 @@ export class AgentConfigLoader {
           extractionRules: config.extractionRules as Record<string, any>,
           guardrailConfig: config.guardrailConfig as Record<string, any> | undefined,
           knowledgeConfig: config.knowledgeConfig as Record<string, any> | undefined,
+          toolsConfig: config.toolsConfig as Record<string, boolean> | undefined,
           version: config.version
         };
 

@@ -9,6 +9,7 @@ import {
   Shield,
   Database,
   Settings,
+  FlaskConical,
 } from "lucide-react";
 
 const navigation = [
@@ -17,6 +18,7 @@ const navigation = [
   { name: "Guardrails", href: "/admin/guardrails", icon: Shield },
   { name: "Variables", href: "/admin/variables", icon: Database },
   { name: "Agent Config", href: "/admin/agents/config", icon: Settings },
+  { name: "TMS API Test", href: "/admin/tms-api-test", icon: FlaskConical },
 ];
 
 export function AdminSidebar() {
