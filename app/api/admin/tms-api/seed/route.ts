@@ -102,6 +102,46 @@ export async function POST() {
     console.log('Seed: All subscriptions in store:', Array.from(mockDataStore.subscriptions.values()));
     console.log('Seed: Test user org:', testOrg.id);
 
+    // Initialize workflow states with some sample answers for testing reports
+    const { workflowStateManager } = await import("@/src/lib/mock-tms-api/workflow-state-manager");
+    
+    // Add some answers to TMP workflow
+    workflowStateManager.updateWorkflowState(
+      '21989',
+      2,
+      [
+        { questionID: 20, value: "30" },
+        { questionID: 21, value: "12" },
+        { questionID: 22, value: "21" },
+        { questionID: 23, value: "03" },
+        { questionID: 24, value: "20" }
+      ]
+    );
+
+    // Add some answers to QO2 workflow
+    workflowStateManager.updateWorkflowState(
+      '21983',
+      408,
+      [
+        { questionID: 100, value: "3" },
+        { questionID: 101, value: "4" },
+        { questionID: 102, value: "2" },
+        { questionID: 103, value: "3" }
+      ]
+    );
+
+    // Add some answers to Team Signals workflow
+    workflowStateManager.updateWorkflowState(
+      '21988',
+      97,
+      [
+        { questionID: 200, value: "5" },
+        { questionID: 201, value: "4" },
+        { questionID: 202, value: "3" },
+        { questionID: 203, value: "4" }
+      ]
+    );
+
     return NextResponse.json({
       message: "Test data created successfully",
       data: {

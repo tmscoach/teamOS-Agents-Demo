@@ -293,8 +293,8 @@ export const TMS_TOOL_REGISTRY: Record<string, TMSToolDefinition> = {
     name: 'tms_generate_subscription_report',
     description: 'Generate PDF report for a completed assessment',
     category: 'debrief',
-    endpoint: '/Subscription/GenerateReport/{subscriptionId}/{templateId}',
-    method: 'GET',
+    endpoint: '/api/v1/workflow/generate-report',
+    method: 'POST',
     requiresAuth: true,
     parameters: {
       type: 'object',
