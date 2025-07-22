@@ -105,7 +105,8 @@ export async function POST() {
     // Initialize workflow states with some sample answers for testing reports
     const { workflowStateManager } = await import("@/src/lib/mock-tms-api/workflow-state-manager");
     
-    // Add some answers to TMP workflow
+    // Initialize and add some answers to TMP workflow
+    workflowStateManager.getOrCreateWorkflowState('21989', 'tmp-workflow');
     workflowStateManager.updateWorkflowState(
       '21989',
       2,
@@ -118,7 +119,8 @@ export async function POST() {
       ]
     );
 
-    // Add some answers to QO2 workflow
+    // Initialize and add some answers to QO2 workflow
+    workflowStateManager.getOrCreateWorkflowState('21983', 'qo2-workflow');
     workflowStateManager.updateWorkflowState(
       '21983',
       408,
@@ -130,7 +132,8 @@ export async function POST() {
       ]
     );
 
-    // Add some answers to Team Signals workflow
+    // Initialize and add some answers to Team Signals workflow
+    workflowStateManager.getOrCreateWorkflowState('21988', 'team-signals-workflow');
     workflowStateManager.updateWorkflowState(
       '21988',
       97,
