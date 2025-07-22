@@ -7,10 +7,13 @@ import { mockDataStore } from '../mock-data-store';
 import { mockTMSClient } from '../mock-api-client';
 import { 
   TMSWorkflowUpdateRequest,
-  TMSErrorResponse
+  TMSErrorResponse,
+  TMSReportSummary,
+  TMSReportTemplate
 } from '../types';
 import { workflowStateManager } from '../workflow-state-manager';
 import { QuestionGenerator } from '../question-generator';
+import { ReportGenerator } from '../report-generators';
 import { getAssessmentByBaseContentId, getAssessmentByWorkflow } from '../assessment-definitions';
 
 /**
@@ -307,5 +310,203 @@ export async function startWorkflow(options: {
   return {
     success: true,
     firstPageUrl: `/Workflow/Process/${subscriptionId}/${assessment.baseContentId}/${firstSection?.sectionId}/${firstPageId}`
+  };
+}
+
+/**
+ * GET /api/v1/workflow/report-summary/{subscriptionId}
+ * Get HTML report summary for a completed assessment
+ */
+export async function getReportSummary(options: {
+  endpoint: string;
+  jwt?: string;
+}): Promise<TMSReportSummary> {
+  // Extract subscriptionId from endpoint
+  const parts = options.endpoint.split('/');
+  const subscriptionId = parts[parts.length - 1];
+  // Validate JWT
+  if (!options.jwt) {
+    throw {
+      error: 'UNAUTHORIZED',
+      message: 'Authentication required'
+    } as TMSErrorResponse;
+  }
+
+  const claims = mockTMSClient.decodeJWT(options.jwt);
+  if (!claims) {
+    throw {
+      error: 'INVALID_TOKEN',
+      message: 'Invalid authentication token'
+    } as TMSErrorResponse;
+  }
+
+  // Get subscription
+  const subscription = mockDataStore.getSubscription(subscriptionId);
+  if (!subscription) {
+    throw {
+      error: 'SUBSCRIPTION_NOT_FOUND',
+      message: 'Subscription not found'
+    } as TMSErrorResponse;
+  }
+
+  // Check access rights
+  const user = mockDataStore.getUserByToken(options.jwt);
+  if (!user) {
+    throw {
+      error: 'UNAUTHORIZED',
+      message: 'User not found'
+    } as TMSErrorResponse;
+  }
+
+  // Facilitators can see all org subscriptions, respondents only their own
+  if (claims.UserType === 'Respondent' && subscription.userId !== user.id) {
+    throw {
+      error: 'ACCESS_DENIED',
+      message: 'You can only view your own reports'
+    } as TMSErrorResponse;
+  }
+
+  if (claims.UserType === 'Facilitator' && subscription.organizationId !== user.organizationId) {
+    throw {
+      error: 'ACCESS_DENIED',
+      message: 'You can only view reports from your organization'
+    } as TMSErrorResponse;
+  }
+
+  // Get workflow state
+  const workflowState = workflowStateManager.getOrCreateWorkflowState(
+    subscriptionId,
+    subscription.workflowId
+  );
+
+  // Generate report
+  const org = mockDataStore.getOrganization(subscription.organizationId);
+  const report = ReportGenerator.generateReport(
+    subscription.assessmentType,
+    workflowState,
+    org?.name || 'Organization'
+  );
+
+  return {
+    subscriptionId: subscriptionId,
+    assessmentType: subscription.assessmentType,
+    completedDate: report.completedDate,
+    scores: report.categoryScores,
+    insights: report.insights,
+    recommendations: report.recommendations,
+    htmlContent: report.htmlContent
+  };
+}
+
+/**
+ * GET /api/v1/workflow/report-templates/{subscriptionId}
+ * Get available report templates for an assessment
+ */
+export async function getReportTemplates(options: {
+  endpoint: string;
+  jwt?: string;
+}): Promise<TMSReportTemplate[]> {
+  // Extract subscriptionId from endpoint
+  const parts = options.endpoint.split('/');
+  const subscriptionId = parts[parts.length - 1];
+  // Validate JWT
+  if (!options.jwt) {
+    throw {
+      error: 'UNAUTHORIZED',
+      message: 'Authentication required'
+    } as TMSErrorResponse;
+  }
+
+  const claims = mockTMSClient.decodeJWT(options.jwt);
+  if (!claims) {
+    throw {
+      error: 'INVALID_TOKEN',
+      message: 'Invalid authentication token'
+    } as TMSErrorResponse;
+  }
+
+  // Get subscription
+  const subscription = mockDataStore.getSubscription(subscriptionId);
+  if (!subscription) {
+    throw {
+      error: 'SUBSCRIPTION_NOT_FOUND',
+      message: 'Subscription not found'
+    } as TMSErrorResponse;
+  }
+
+  // Get templates for assessment type
+  const templates = ReportGenerator.getReportTemplates(subscription.assessmentType);
+  
+  return templates.map(template => ({
+    templateId: template.id,
+    name: template.name,
+    description: template.description,
+    format: template.format,
+    assessmentType: template.assessmentType,
+    customizable: true,
+    sections: [
+      'Executive Summary',
+      'Detailed Analysis',
+      'Recommendations',
+      'Action Plan'
+    ]
+  }));
+}
+
+/**
+ * POST /api/v1/workflow/generate-report
+ * Generate PDF report for a completed assessment
+ */
+export async function generateSubscriptionReport(options: {
+  data: {
+    subscriptionId: string;
+    templateId: string;
+  };
+  jwt?: string;
+}): Promise<{ reportId: string; reportUrl: string; status: string }> {
+  // Validate JWT
+  if (!options.jwt) {
+    throw {
+      error: 'UNAUTHORIZED',
+      message: 'Authentication required'
+    } as TMSErrorResponse;
+  }
+
+  const claims = mockTMSClient.decodeJWT(options.jwt);
+  if (!claims) {
+    throw {
+      error: 'INVALID_TOKEN',
+      message: 'Invalid authentication token'
+    } as TMSErrorResponse;
+  }
+
+  // Get subscription
+  const subscription = mockDataStore.getSubscription(options.data.subscriptionId);
+  if (!subscription) {
+    throw {
+      error: 'SUBSCRIPTION_NOT_FOUND',
+      message: 'Subscription not found'
+    } as TMSErrorResponse;
+  }
+
+  // Validate template
+  const templates = ReportGenerator.getReportTemplates(subscription.assessmentType);
+  const template = templates.find(t => t.id === options.data.templateId);
+  if (!template) {
+    throw {
+      error: 'INVALID_TEMPLATE',
+      message: 'Invalid template ID for this assessment type'
+    } as TMSErrorResponse;
+  }
+
+  // Generate mock report ID and URL
+  const reportId = `${subscription.assessmentType.toLowerCase()}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  const reportUrl = `https://mock-tms.com/reports/assessments/${reportId}.${template.format.toLowerCase()}`;
+
+  // In real implementation, this would trigger background PDF generation
+  return {
+    reportId,
+    reportUrl,
+    status: 'completed'
   };
 }

@@ -125,6 +125,9 @@ export class MockTMSAPIClient {
       'GET:/Subscription/GenerateReport/*': () => import('./endpoints/subscriptions').then(m => m.generateReport),
       'POST:/api/v1/reports/generate': () => import('./endpoints/reports').then(m => m.generateCustomReport),
       'GET:/api/v1/reports/product-usage': () => import('./endpoints/reports').then(m => m.getProductUsage),
+      'GET:/api/v1/workflow/report-summary/*': () => import('./endpoints/workflows').then(m => m.getReportSummary),
+      'GET:/api/v1/workflow/report-templates/*': () => import('./endpoints/workflows').then(m => m.getReportTemplates),
+      'POST:/api/v1/workflow/generate-report': () => import('./endpoints/workflows').then(m => m.generateSubscriptionReport),
     };
 
     // Find matching handler

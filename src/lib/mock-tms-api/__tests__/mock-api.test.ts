@@ -284,4 +284,159 @@ describe('Mock TMS API', () => {
       expect(navInfo.canGoBack).toBe(false); // First page
     });
   });
+
+  describe('Report Generation', () => {
+    let testUser: any;
+    let testOrg: any;
+    let jwtToken: string;
+    let subscription: any;
+
+    beforeEach(async () => {
+      // Setup test data
+      testOrg = mockDataStore.createOrganization('Report Test Org', '');
+      testUser = mockDataStore.createUser({
+        email: 'report@example.com',
+        password: 'Test123!',
+        firstName: 'Report',
+        lastName: 'User',
+        userType: 'Facilitator',
+        organizationId: testOrg.id
+      });
+
+      // Get JWT token
+      const loginResponse = await mockApi.request<any>({
+        method: 'POST',
+        endpoint: '/api/v1/auth/login',
+        data: {
+          Email: 'report@example.com',
+          Password: 'Test123!'
+        }
+      });
+      jwtToken = loginResponse.token;
+
+      // Create test subscription
+      subscription = mockDataStore.createSubscription(testUser.id, 'tmp-workflow', testOrg.id);
+      
+      // Add some answers to workflow state
+      workflowStateManager.updateWorkflowState(
+        subscription.subscriptionId,
+        2,
+        [
+          { questionID: 20, value: "30" },
+          { questionID: 21, value: "12" },
+          { questionID: 22, value: "21" },
+          { questionID: 23, value: "03" },
+          { questionID: 24, value: "20" }
+        ]
+      );
+    });
+
+    it('should get report summary for completed assessment', async () => {
+      const response = await mockApi.request<any>({
+        method: 'GET',
+        endpoint: `/api/v1/workflow/report-summary/${subscription.subscriptionId}`,
+        jwt: jwtToken
+      });
+
+      expect(response).toHaveProperty('subscriptionId', subscription.subscriptionId);
+      expect(response).toHaveProperty('assessmentType', 'TMP');
+      expect(response).toHaveProperty('completedDate');
+      expect(response).toHaveProperty('scores');
+      expect(response).toHaveProperty('insights');
+      expect(response).toHaveProperty('recommendations');
+      expect(response).toHaveProperty('htmlContent');
+      
+      // Check that scores are calculated
+      expect(Object.keys(response.scores).length).toBeGreaterThan(0);
+      expect(response.insights.length).toBeGreaterThan(0);
+      expect(response.recommendations.length).toBeGreaterThan(0);
+    });
+
+    it('should get available report templates', async () => {
+      const response = await mockApi.request<any>({
+        method: 'GET',
+        endpoint: `/api/v1/workflow/report-templates/${subscription.subscriptionId}`,
+        jwt: jwtToken
+      });
+
+      expect(response).toBeInstanceOf(Array);
+      expect(response.length).toBeGreaterThan(0);
+      
+      const template = response[0];
+      expect(template).toHaveProperty('templateId');
+      expect(template).toHaveProperty('name');
+      expect(template).toHaveProperty('description');
+      expect(template).toHaveProperty('format');
+      expect(template).toHaveProperty('assessmentType', 'TMP');
+      expect(template).toHaveProperty('sections');
+    });
+
+    it('should generate subscription report', async () => {
+      // First get templates
+      const templates = await mockApi.request<any>({
+        method: 'GET',
+        endpoint: `/api/v1/workflow/report-templates/${subscription.subscriptionId}`,
+        jwt: jwtToken
+      });
+
+      const templateId = templates[0].templateId;
+
+      // Generate report
+      const response = await mockApi.request<any>({
+        method: 'POST',
+        endpoint: '/api/v1/workflow/generate-report',
+        data: {
+          subscriptionId: subscription.subscriptionId,
+          templateId: templateId
+        },
+        jwt: jwtToken
+      });
+
+      expect(response).toHaveProperty('reportId');
+      expect(response).toHaveProperty('reportUrl');
+      expect(response).toHaveProperty('status', 'completed');
+      expect(response.reportUrl).toContain('tmp');
+      expect(response.reportUrl).toContain('.pdf');
+    });
+
+    it('should restrict report access for respondents', async () => {
+      // Create another user's subscription
+      const otherUser = mockDataStore.createUser({
+        email: 'other@example.com',
+        password: 'Test123!',
+        firstName: 'Other',
+        lastName: 'User',
+        userType: 'Respondent',
+        organizationId: testOrg.id
+      });
+
+      const otherSubscription = mockDataStore.createSubscription(otherUser.id, 'qo2-workflow', testOrg.id);
+
+      // Try to access another user's report as respondent
+      await expect(mockApi.request({
+        method: 'GET',
+        endpoint: `/api/v1/workflow/report-summary/${otherSubscription.subscriptionId}`,
+        jwt: jwtToken // Using facilitator token
+      })).resolves.toBeTruthy(); // Facilitator can see all org reports
+
+      // Login as respondent
+      const respondentLogin = await mockApi.request<any>({
+        method: 'POST',
+        endpoint: '/api/v1/auth/login',
+        data: {
+          Email: 'other@example.com',
+          Password: 'Test123!'
+        }
+      });
+
+      // Respondent can't see other user's report
+      await expect(mockApi.request({
+        method: 'GET',
+        endpoint: `/api/v1/workflow/report-summary/${subscription.subscriptionId}`,
+        jwt: respondentLogin.token
+      })).rejects.toMatchObject({
+        error: 'ACCESS_DENIED'
+      });
+    });
+  });
 });

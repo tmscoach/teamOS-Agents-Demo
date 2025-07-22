@@ -76,6 +76,21 @@ export default function TMSApiTestPage() {
       name: "Team Signals - Get Page 1",
       tool: "tms_get_workflow_process",
       params: { subscriptionId: "21988", baseContentId: "12", sectionId: "13", pageId: "97" }
+    },
+    {
+      name: "TMP Report Summary",
+      tool: "tms_get_report_summary",
+      params: { subscriptionId: "21989" }
+    },
+    {
+      name: "QO2 Report Templates",
+      tool: "tms_get_report_templates",
+      params: { subscriptionId: "21983" }
+    },
+    {
+      name: "Team Signals Generate Report",
+      tool: "tms_generate_subscription_report",
+      params: { subscriptionId: "21988", templateId: "teamsignals-standard-pdf" }
     }
   ]);
 
@@ -687,8 +702,8 @@ export default function TMSApiTestPage() {
                 )}
               </div>
 
-              {/* Workflow Scenarios */}
-              {selectedTool && (selectedTool.includes('workflow') || selectedTool.includes('tms_get_workflow') || selectedTool === 'tms_get_dashboard_subscriptions') && (
+              {/* Workflow and Report Scenarios */}
+              {selectedTool && (selectedTool.includes('workflow') || selectedTool.includes('tms_get_workflow') || selectedTool === 'tms_get_dashboard_subscriptions' || selectedTool.includes('report')) && (
                 <div style={{ marginBottom: '24px' }}>
                   <h4 style={{
                     fontSize: '16px',
