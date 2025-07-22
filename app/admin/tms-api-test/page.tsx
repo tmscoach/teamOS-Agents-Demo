@@ -208,7 +208,9 @@ export default function TMSApiTestPage() {
       },
       tms_generate_subscription_report: {
         subscriptionId: subscriptionId,
-        templateId: "template_1"
+        templateId: workflowId === "tmp-workflow" ? "tmp-standard-pdf" : 
+                    workflowId === "qo2-workflow" ? "qo2-standard-pdf" : 
+                    "teamsignals-standard-pdf"
       },
       tms_get_question_actions: {
         subscriptionId: subscriptionId,
