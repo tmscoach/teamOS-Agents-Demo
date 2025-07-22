@@ -82,14 +82,17 @@ export interface TMSWorkflowUpdateResponse {
 
 // Subscription Types
 export interface TMSDashboardSubscription {
-  subscriptionId: string;
-  workflowId: string;
-  workflowName: string;
-  status: 'not_started' | 'in_progress' | 'completed';
-  completionPercentage: number;
-  assignedDate: string;
-  completedDate?: string;
-  assessmentType: 'TMP' | 'QO2' | 'WOW' | 'LLP' | 'TeamSignals';
+  SubscriptionID: number;
+  WorkflowID: number;
+  WorkflowType: string;
+  Status: string;
+  Progress: number;
+  AssignmentDate: string;
+  CompletionDate: string | null;
+  OrganisationID: number;
+  OrganisationName: string;
+  AssessmentType: string;
+  AssessmentStatus: string;
 }
 
 // Report Types

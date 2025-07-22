@@ -86,10 +86,11 @@ export class MockTMSAPIClient {
     try {
       return await handler(options);
     } catch (error) {
+      console.error('Mock API error:', error);
       if (error && typeof error === 'object' && 'error' in error) {
         throw error; // Already formatted error
       }
-      throw this.createError('INTERNAL_ERROR', 'An internal error occurred');
+      throw this.createError('INTERNAL_ERROR', 'An internal error occurred', error);
     }
   }
 

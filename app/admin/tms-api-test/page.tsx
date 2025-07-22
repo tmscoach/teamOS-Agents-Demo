@@ -48,12 +48,12 @@ export default function TMSApiTestPage() {
     },
     {
       name: "TMP Workflow - Get Page 1", 
-      tool: "tms_workflow_get",
+      tool: "tms_get_workflow_process",
       params: { subscriptionId: "21989", baseContentId: "3", sectionId: "2", pageId: "2" }
     },
     {
       name: "TMP Workflow - Submit Answers",
-      tool: "tms_workflow_update",
+      tool: "tms_update_workflow",
       params: {
         subscriptionID: 21989,
         pageID: 2,
@@ -69,12 +69,12 @@ export default function TMSApiTestPage() {
     },
     {
       name: "QO2 Workflow - Get Overview",
-      tool: "tms_workflow_get",
+      tool: "tms_get_workflow_process",
       params: { subscriptionId: "21983", baseContentId: "5", sectionId: "93", pageId: "408" }
     },
     {
       name: "Team Signals - Get Page 1",
-      tool: "tms_workflow_get",
+      tool: "tms_get_workflow_process",
       params: { subscriptionId: "21988", baseContentId: "12", sectionId: "13", pageId: "97" }
     }
   ]);
@@ -126,7 +126,11 @@ export default function TMSApiTestPage() {
       if (res.ok) {
         const data = await res.json();
         setTestData(data.data);
-        toast.success("Test data created successfully");
+        // Automatically set the JWT token from seed data
+        if (data.data.user?.token) {
+          setJwtToken(data.data.user.token);
+        }
+        toast.success("Test data created successfully - JWT token updated");
         fetchMockDataStatus();
       }
     } catch (error) {
@@ -165,11 +169,11 @@ export default function TMSApiTestPage() {
         pageId: "tmp-page-1"
       },
       tms_update_workflow: {
-        subscriptionId: subscriptionId,
-        pageId: "tmp-page-1",
-        answers: [
-          { questionId: "tmp-q1", answer: "High Performance" },
-          { questionId: "tmp-q2", answer: 5 }
+        subscriptionID: parseInt(subscriptionId) || 21989,
+        pageID: 2,
+        questions: [
+          { questionID: 20, value: "20" },
+          { questionID: 21, value: "12" }
         ]
       },
       tms_get_report_summary: {
@@ -684,7 +688,7 @@ export default function TMSApiTestPage() {
               </div>
 
               {/* Workflow Scenarios */}
-              {selectedTool && (selectedTool.includes('workflow') || selectedTool === 'tms_dashboard_get_subscriptions') && (
+              {selectedTool && (selectedTool.includes('workflow') || selectedTool.includes('tms_get_workflow') || selectedTool === 'tms_get_dashboard_subscriptions') && (
                 <div style={{ marginBottom: '24px' }}>
                   <h4 style={{
                     fontSize: '16px',

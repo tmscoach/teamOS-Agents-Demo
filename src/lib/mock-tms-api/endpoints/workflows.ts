@@ -159,6 +159,15 @@ export async function updateWorkflow(options: {
   data: any;
   jwt?: string;
 }): Promise<boolean> {
+  console.log('updateWorkflow called with options:', JSON.stringify(options, null, 2));
+  
+  if (!options.data) {
+    throw {
+      error: 'INVALID_PARAMETERS',
+      message: 'Request data is required'
+    } as TMSErrorResponse;
+  }
+  
   const { subscriptionID, pageID, questions } = options.data;
 
   // Validate JWT

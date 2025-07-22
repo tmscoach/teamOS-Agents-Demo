@@ -215,7 +215,7 @@ export const TMS_TOOL_REGISTRY: Record<string, TMSToolDefinition> = {
 
   tms_get_dashboard_subscriptions: {
     name: 'tms_get_dashboard_subscriptions',
-    description: 'Get user\'s assessment subscriptions (Respondent only)',
+    description: 'Get dashboard subscriptions (all for facilitators, own for respondents)',
     category: 'assessment',
     endpoint: '/Respondent/GetDashboardSubscription',
     method: 'GET',

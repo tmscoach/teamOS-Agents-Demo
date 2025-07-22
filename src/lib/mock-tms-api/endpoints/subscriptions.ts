@@ -14,11 +14,11 @@ import {
 
 /**
  * GET /Respondent/GetDashboardSubscription
- * Get user's subscriptions (Respondent only)
+ * Get dashboard subscriptions (Facilitators see all org subscriptions, Respondents see their own)
  */
 export async function getDashboardSubscriptions(options: {
   jwt?: string;
-}): Promise<{ subscriptions: TMSDashboardSubscription[] }> {
+}): Promise<TMSDashboardSubscription[]> {
   // Validate JWT
   if (!options.jwt) {
     throw {
@@ -35,30 +35,43 @@ export async function getDashboardSubscriptions(options: {
     } as TMSErrorResponse;
   }
 
-  // This endpoint is typically for respondents
-  if (claims.UserType !== 'Respondent') {
-    throw {
-      error: 'ACCESS_DENIED',
-      message: 'This endpoint is for respondents only'
-    } as TMSErrorResponse;
+  console.log('Dashboard subscriptions - JWT claims:', claims);
+  console.log('Dashboard - mockDataStore instance:', mockDataStore);
+  console.log('All subscriptions in store:', Array.from(mockDataStore.subscriptions.values()));
+  console.log('Store subscriptions size:', mockDataStore.subscriptions.size);
+
+  // Get subscriptions based on user type
+  let userSubscriptions;
+  
+  if (claims.UserType === 'Facilitator') {
+    // Facilitators can see all subscriptions in their organization
+    const allSubscriptions = Array.from(mockDataStore.subscriptions.values());
+    userSubscriptions = allSubscriptions.filter(sub => 
+      sub.organizationId === claims.organisationId
+    );
+    console.log('Filtering for org:', claims.organisationId);
+    console.log('Found subscriptions:', userSubscriptions);
+  } else {
+    // Respondents only see their own subscriptions
+    userSubscriptions = mockDataStore.getUserSubscriptions(claims.sub);
   }
 
-  // Get user's subscriptions
-  const userSubscriptions = mockDataStore.getUserSubscriptions(claims.sub);
-
-  // Transform to dashboard format
+  // Transform to dashboard format matching the recorded API
   const subscriptions: TMSDashboardSubscription[] = userSubscriptions.map(sub => ({
-    subscriptionId: sub.subscriptionId,
-    workflowId: sub.workflowId,
-    workflowName: sub.workflowName,
-    status: sub.status,
-    completionPercentage: sub.completionPercentage,
-    assignedDate: sub.assignedDate.toISOString(),
-    completedDate: sub.completedDate?.toISOString(),
-    assessmentType: sub.assessmentType
+    SubscriptionID: parseInt(sub.subscriptionId) || 0,
+    WorkflowID: parseInt(sub.workflowId.replace(/\D/g, '')) || 0,
+    WorkflowType: sub.assessmentType,
+    Status: sub.status === 'completed' ? 'Completed' : sub.status === 'in_progress' ? 'In Progress' : 'Not Started',
+    Progress: sub.completionPercentage,
+    AssignmentDate: sub.assignedDate.toISOString().split('T')[0],
+    CompletionDate: sub.completedDate ? sub.completedDate.toISOString().split('T')[0] : null,
+    OrganisationID: 0,
+    OrganisationName: "Test Organization",
+    AssessmentType: sub.assessmentType,
+    AssessmentStatus: sub.status === 'completed' ? 'Completed' : sub.status === 'in_progress' ? 'In Progress' : 'Not Started'
   }));
 
-  return { subscriptions };
+  return subscriptions;
 }
 
 /**

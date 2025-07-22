@@ -81,6 +81,7 @@ export async function signup(options: { data: TMSSignupRequest }): Promise<TMSAu
  * Facilitator/team manager login
  */
 export async function login(options: { data: TMSLoginRequest }): Promise<TMSAuthResponse> {
+  console.log('Login function called with options:', options);
   const { Email, Password } = options.data;
 
   // Validate input
@@ -91,17 +92,29 @@ export async function login(options: { data: TMSLoginRequest }): Promise<TMSAuth
     } as TMSErrorResponse;
   }
 
+  console.log('Login attempt:', { email: Email, password: Password });
+  console.log('All users in store:', Array.from(mockDataStore.users.values()).map(u => ({ 
+    id: u.id,
+    email: u.email, 
+    password: u.password,
+    orgId: u.organizationId 
+  })));
+
   // Find user
   const user = mockDataStore.getUserByEmail(Email);
   if (!user) {
+    console.log('User not found for email:', Email);
     throw {
       error: 'INVALID_CREDENTIALS',
       message: 'Invalid email or password'
     } as TMSErrorResponse;
   }
 
+  console.log('Found user:', { id: user.id, email: user.email, password: user.password });
+
   // Check password
   if (user.password !== Password) {
+    console.log('Password mismatch:', { provided: Password, expected: user.password });
     throw {
       error: 'INVALID_CREDENTIALS',
       message: 'Invalid email or password'
@@ -117,8 +130,9 @@ export async function login(options: { data: TMSLoginRequest }): Promise<TMSAuth
     respondentID: user.userType === 'Respondent' ? user.id : undefined
   });
 
-  // Update user token
+  // Update user token and token mapping
   user.token = token;
+  mockDataStore.tokenToUser.set(token, user.id);
 
   return {
     token,

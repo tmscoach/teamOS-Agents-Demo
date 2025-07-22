@@ -40,6 +40,11 @@ interface MockSubscription {
   baseContentId?: number;
 }
 
+// Use global to ensure singleton across Next.js hot reloads
+declare global {
+  var mockDataStoreInstance: MockDataStore | undefined;
+}
+
 class MockDataStore {
   users: Map<string, MockUser> = new Map();
   organizations: Map<string, MockOrganization> = new Map();
@@ -47,25 +52,36 @@ class MockDataStore {
   tokenToUser: Map<string, string> = new Map();
 
   constructor() {
-    this.initializeMockData();
+    // Don't initialize test data automatically - let seed endpoint handle it
   }
-
-  private initializeMockData() {
-    // Initialize with test data matching recorded API patterns
-    this.initializeTestSubscriptions();
+  
+  static getInstance(): MockDataStore {
+    if (!global.mockDataStoreInstance) {
+      global.mockDataStoreInstance = new MockDataStore();
+    }
+    return global.mockDataStoreInstance;
   }
 
   private initializeTestSubscriptions() {
-    // Create test organization and user
-    const testOrg = this.createOrganization('Test Organization', 'facilitator-1');
-    const testUser = this.createUser({
-      email: 'facilitator@example.com',
-      password: 'TestPassword123!',
-      firstName: 'Test',
-      lastName: 'Facilitator',
-      userType: 'Facilitator',
-      organizationId: testOrg.id
-    });
+    // Check if test user already exists
+    let testUser = this.getUserByEmail('facilitator@example.com');
+    let testOrg;
+    
+    if (testUser) {
+      // User exists, get their organization
+      testOrg = this.organizations.get(testUser.organizationId);
+    } else {
+      // Create new test organization and user
+      testOrg = this.createOrganization('Test Organization', 'facilitator-1');
+      testUser = this.createUser({
+        email: 'facilitator@example.com',
+        password: 'TestPassword123!',
+        firstName: 'Test',
+        lastName: 'Facilitator',
+        userType: 'Facilitator',
+        organizationId: testOrg.id
+      });
+    }
 
     // Create test subscriptions matching recorded IDs
     // TMP Subscription (from recorded data)
@@ -264,27 +280,26 @@ class MockDataStore {
   }
 }
 
-// Export singleton instance
-export const mockDataStore = new MockDataStore();
+// Export singleton instance using getInstance
+export const mockDataStore = MockDataStore.getInstance();
 
 // Export helper function to get the data store
 export function getMockDataStore(): MockDataStore {
-  return mockDataStore;
+  return MockDataStore.getInstance();
 }
 
 // Export reset function
 export function resetMockDataStore(): void {
+  const store = MockDataStore.getInstance();
+  
   // Clear all data
-  mockDataStore.users.clear();
-  mockDataStore.organizations.clear();
-  mockDataStore.subscriptions.clear();
-  mockDataStore.tokenToUser.clear();
+  store.users.clear();
+  store.organizations.clear();
+  store.subscriptions.clear();
+  store.tokenToUser.clear();
   
   // Clear workflow states
-  mockDataStore.subscriptions.forEach((sub) => {
+  store.subscriptions.forEach((sub) => {
     workflowStateManager.clearState(sub.subscriptionId);
   });
-  
-  // Re-initialize with mock data
-  (mockDataStore as any).initializeMockData();
 }

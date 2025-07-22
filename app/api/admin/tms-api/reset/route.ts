@@ -21,8 +21,7 @@ export async function POST() {
         users: store.users.size,
         organizations: store.organizations.size,
         subscriptions: store.subscriptions.size,
-        workflows: store.workflows.size,
-        answers: Object.keys(store.answers).length
+        workflows: store.getAvailableWorkflows().length
       }
     });
   } catch (error) {
