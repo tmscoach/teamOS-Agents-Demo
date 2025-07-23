@@ -10,6 +10,7 @@ import {
   Database,
   Settings,
   FlaskConical,
+  ToggleLeft,
 } from "lucide-react";
 
 const navigation = [
@@ -19,6 +20,7 @@ const navigation = [
   { name: "Variables", href: "/admin/variables", icon: Database },
   { name: "Agent Config", href: "/admin/agents/config", icon: Settings },
   { name: "TMS API Test", href: "/admin/tms-api-test", icon: FlaskConical },
+  { name: "API Mode", href: "/admin/api-mode", icon: ToggleLeft },
 ];
 
 export function AdminSidebar() {

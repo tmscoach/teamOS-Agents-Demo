@@ -188,6 +188,66 @@ export async function validate(options: { jwt?: string }): Promise<TMSValidateRe
 }
 
 /**
+ * POST /Authenticate
+ * Respondent/team member login - different endpoint than facilitator
+ */
+export async function respondentLogin(options: { 
+  data: { 
+    RespondentEmail: string; 
+    RespondentPassword: string;
+    MobileAppType?: string;
+  } 
+}): Promise<{ token: string; version: string; region: string }> {
+  const { RespondentEmail, RespondentPassword, MobileAppType = 'teamOS' } = options.data;
+
+  console.log('Respondent login attempt:', { email: RespondentEmail });
+
+  // Validate input
+  if (!RespondentEmail || !RespondentPassword) {
+    throw {
+      error: 'VALIDATION_ERROR',
+      message: 'Email and password are required'
+    } as TMSErrorResponse;
+  }
+
+  // Find user by email (respondents have same email lookup)
+  const user = mockDataStore.getUserByEmail(RespondentEmail);
+  if (!user || user.userType !== 'Respondent') {
+    console.log('Respondent not found or wrong user type');
+    throw {
+      error: 'INVALID_CREDENTIALS',
+      message: 'Invalid email or password'
+    } as TMSErrorResponse;
+  }
+
+  // Check password
+  if (user.password !== RespondentPassword) {
+    throw {
+      error: 'INVALID_CREDENTIALS',
+      message: 'Invalid email or password'
+    } as TMSErrorResponse;
+  }
+
+  // Generate JWT token with respondentID claim
+  const token = mockTMSClient.generateJWT({
+    respondentID: user.id.replace('user-', ''), // Extract numeric part for compatibility
+    lastModified: Date.now().toString(),
+    mobileAppType: MobileAppType,
+    iss: 'TMS.Global',
+    aud: 'TMS.Global'
+  });
+
+  // Update token mapping
+  mockDataStore.tokenToUser.set(token, user.id);
+
+  return {
+    token,
+    version: '7',
+    region: 'AU' // Mock region, could be dynamic based on org
+  };
+}
+
+/**
  * Helper function to create a respondent user
  * This would be called by team management tools
  */

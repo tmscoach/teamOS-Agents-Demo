@@ -284,4 +284,189 @@ describe('Mock TMS API', () => {
       expect(navInfo.canGoBack).toBe(false); // First page
     });
   });
+
+  // Legacy report endpoints have been removed - see HTML Report Generation tests below
+
+  describe('HTML Report Generation', () => {
+    let testUser: any;
+    let testOrg: any;
+    let jwtToken: string;
+    let tmpSubscription: any;
+    let qo2Subscription: any;
+    let tsSubscription: any;
+
+    beforeEach(async () => {
+      // Setup test data
+      testOrg = mockDataStore.createOrganization('HTML Report Test Org', '');
+      testUser = mockDataStore.createUser({
+        email: 'htmlreport@example.com',
+        password: 'Test123!',
+        firstName: 'HTML',
+        lastName: 'Reporter',
+        userType: 'Facilitator',
+        organizationId: testOrg.id,
+        respondentName: 'HTML Test User'
+      });
+
+      // Get JWT token
+      const loginResponse = await mockApi.request<any>({
+        method: 'POST',
+        endpoint: '/api/v1/auth/login',
+        data: {
+          Email: 'htmlreport@example.com',
+          Password: 'Test123!'
+        }
+      });
+      jwtToken = loginResponse.token;
+
+      // Create test subscriptions for each assessment type
+      tmpSubscription = mockDataStore.createSubscription(testUser.id, 'tmp-workflow', testOrg.id);
+      qo2Subscription = mockDataStore.createSubscription(testUser.id, 'qo2-workflow', testOrg.id);
+      tsSubscription = mockDataStore.createSubscription(testUser.id, 'team-signals-workflow', testOrg.id);
+    });
+
+    it('should generate TMP HTML report with embedded graphs', async () => {
+      const response = await mockApi.request<any>({
+        method: 'POST',
+        endpoint: '/api/v1/tms/generate-html-report',
+        data: {
+          subscriptionId: tmpSubscription.subscriptionId,
+          templateId: '1'
+        },
+        jwt: jwtToken
+      });
+
+      expect(response).toHaveProperty('html');
+      expect(response.html).toContain('Team Management Profile');
+      expect(response.html).toContain('HTML Test User');
+      expect(response.html).toContain('HTML Report Test Org');
+      
+      // Check for embedded graph URLs
+      expect(response.html).toContain('https://api-test.tms.global/GetGraph?CreateTMPQWheel');
+      expect(response.html).toContain('https://api-test.tms.global/GetGraph?CreateTMPQPreferenceWheel');
+    });
+
+    it('should generate QO2 HTML report with risk orientation graphs', async () => {
+      const response = await mockApi.request<any>({
+        method: 'POST',
+        endpoint: '/api/v1/tms/generate-html-report',
+        data: {
+          subscriptionId: qo2Subscription.subscriptionId,
+          templateId: '1'
+        },
+        jwt: jwtToken
+      });
+
+      expect(response).toHaveProperty('html');
+      expect(response.html).toContain('Opportunities-Obstacles Quotient');
+      expect(response.html).toContain('Risk Orientation');
+      
+      // Check for QO2 specific graphs
+      expect(response.html).toContain('https://api-test.tms.global/GetGraph?CreateQO2Model');
+    });
+
+    it('should generate Team Signals individual HTML report', async () => {
+      const response = await mockApi.request<any>({
+        method: 'POST',
+        endpoint: '/api/v1/tms/generate-html-report',
+        data: {
+          subscriptionId: tsSubscription.subscriptionId,
+          templateId: '1'
+        },
+        jwt: jwtToken
+      });
+
+      expect(response).toHaveProperty('html');
+      expect(response.html).toContain('Team Signals');
+      expect(response.html).toContain('HTML Report Test Org');
+      
+      // Check for Team Signals wheel graph
+      expect(response.html).toContain('https://api-test.tms.global/GetGraph?CreateTeamSignals');
+      expect(response.html).toContain('colors=');
+    });
+
+    it('should handle graph generation requests', async () => {
+      const response = await mockApi.request<any>({
+        method: 'POST',
+        endpoint: '/api/v1/tms/generate-graph',
+        data: {
+          subscriptionId: tmpSubscription.subscriptionId,
+          graphType: 'CreateTMPQWheel'
+        },
+        jwt: jwtToken
+      });
+
+      expect(response).toHaveProperty('image');
+      expect(response).toHaveProperty('mimeType', 'image/png');
+      expect(response).toHaveProperty('graphType', 'CreateTMPQWheel');
+      expect(response).toHaveProperty('parameters');
+      
+      // Check that image is base64 encoded PNG
+      expect(response.image).toMatch(/^[A-Za-z0-9+/=]+$/);
+    });
+
+    it('should generate different graph types', async () => {
+      const graphTypes = ['CreateTMPQWheel', 'CreateTMPBar', 'CreateQO2Model', 'CreateTeamSignals'];
+      
+      for (const graphType of graphTypes) {
+        const response = await mockApi.request<any>({
+          method: 'POST',
+          endpoint: '/api/v1/tms/generate-graph',
+          data: {
+            subscriptionId: tmpSubscription.subscriptionId,
+            graphType: graphType
+          },
+          jwt: jwtToken
+        });
+
+        expect(response).toHaveProperty('graphType', graphType);
+        expect(response).toHaveProperty('image');
+      }
+    });
+
+    it('should return error for invalid graph type', async () => {
+      await expect(mockApi.request({
+        method: 'POST',
+        endpoint: '/api/v1/tms/generate-graph',
+        data: {
+          subscriptionId: tmpSubscription.subscriptionId,
+          graphType: 'InvalidGraphType'
+        },
+        jwt: jwtToken
+      })).rejects.toMatchObject({
+        error: 'INVALID_GRAPH_TYPE'
+      });
+    });
+
+    it('should return error for invalid template ID', async () => {
+      await expect(mockApi.request({
+        method: 'POST',
+        endpoint: '/api/v1/tms/generate-html-report',
+        data: {
+          subscriptionId: tmpSubscription.subscriptionId,
+          templateId: '999' // Invalid template
+        },
+        jwt: jwtToken
+      })).rejects.toMatchObject({
+        error: 'INVALID_TEMPLATE'
+      });
+    });
+
+    it('should use respondent name from user data in reports', async () => {
+      // Update user's respondent name
+      testUser.respondentName = 'John Test Smith';
+
+      const response = await mockApi.request<any>({
+        method: 'POST',
+        endpoint: '/api/v1/tms/generate-html-report',
+        data: {
+          subscriptionId: tmpSubscription.subscriptionId,
+          templateId: '1'
+        },
+        jwt: jwtToken
+      });
+
+      expect(response.html).toContain('John Test Smith');
+    });
+  });
 });

@@ -6,7 +6,8 @@
 import { AgentTool, AgentContext, ToolResult } from '../types';
 import { TMS_TOOL_REGISTRY, TMSToolDefinition } from './tms-tool-registry';
 import { tmsAuthService } from './tms-auth-service';
-import { mockTMSClient } from '@/src/lib/mock-tms-api/mock-api-client';
+import { unifiedTMSClient } from '@/src/lib/tms-api/unified-client';
+import { apiModeManager } from '@/src/lib/mock-tms-api/api-mode-config';
 
 /**
  * Format tool result for natural language output
@@ -18,6 +19,9 @@ function formatToolResult(toolName: string, result: any): string {
     
     case 'tms_facilitator_login':
       return `Successfully logged in as facilitator ${result.firstName} ${result.lastName} for organization ${result.organizationId}.`;
+    
+    case 'tms_respondent_login':
+      return `Successfully logged in as respondent. Token received with version ${result.version} for region ${result.region}.`;
     
     case 'tms_check_user_permissions':
       return result.valid 
@@ -46,20 +50,11 @@ function formatToolResult(toolName: string, result: any): string {
         ? `Successfully started workflow. First page ID: ${result.firstPageId}.`
         : 'Failed to start workflow.';
     
-    case 'tms_get_report_summary':
-      return `Retrieved assessment report:\n` +
-        `Type: ${result.assessmentType}\n` +
-        `Completed: ${result.completedDate}\n` +
-        `Overall Score: ${result.scores.overall}%\n` +
-        `Key Insights: ${result.insights.length} insights available`;
+    case 'tms_generate_html_report':
+      return `Successfully generated HTML report for assessment. Report contains ${result.length || 'full'} content.`;
     
-    case 'tms_get_report_templates':
-      const templates = result.templates;
-      return `Found ${templates.length} report templates:\n` +
-        templates.map((t: any) => `- ${t.templateName} (${t.format})`).join('\n');
-    
-    case 'tms_generate_subscription_report':
-      return `Successfully generated report. Download URL: ${result.reportUrl}`;
+    case 'tms_generate_graph':
+      return `Successfully generated ${result.type || 'chart'} graph. Image size: ${result.size || 'standard'}.`;
     
     case 'tms_generate_report':
       return `Custom report generated successfully.\nReport ID: ${result.reportId}\nStatus: ${result.status}\nURL: ${result.reportUrl}`;
@@ -79,7 +74,7 @@ function formatToolResult(toolName: string, result: any): string {
 /**
  * Build endpoint URL with parameters
  */
-function buildEndpointUrl(endpoint: string, params: any): string {
+function buildEndpointUrl(endpoint: string, params: any, toolName?: string): string {
   let url = endpoint;
   
   // Replace path parameters
@@ -89,6 +84,20 @@ function buildEndpointUrl(endpoint: string, params: any): string {
       url = url.replace(placeholder, params[key]);
     }
   });
+  
+  // Special handling for GetGraph endpoint - build query string
+  if (toolName === 'tms_generate_graph' && params.chartType) {
+    const queryParams = [`${params.chartType}`];
+    
+    // Add additional parameters based on chart type
+    if (params.params) {
+      Object.entries(params.params).forEach(([key, value]) => {
+        queryParams.push(`${key}=${encodeURIComponent(String(value))}`);
+      });
+    }
+    
+    url += '?' + queryParams.join('&');
+  }
   
   return url;
 }
@@ -113,6 +122,14 @@ function convertParameters(toolDef: TMSToolDefinition, params: any): any {
     return {
       Email: params.email,
       Password: params.password
+    };
+  }
+  
+  if (toolDef.name === 'tms_respondent_login') {
+    return {
+      RespondentEmail: params.respondentEmail,
+      RespondentPassword: params.respondentPassword,
+      MobileAppType: params.mobileAppType || 'teamOS'
     };
   }
   
@@ -151,15 +168,15 @@ export function createTMSTool(toolName: string): AgentTool | null {
         }
 
         // Build endpoint URL
-        const endpoint = buildEndpointUrl(toolDef.endpoint, params);
+        const endpoint = buildEndpointUrl(toolDef.endpoint, params, toolDef.name);
 
         // Convert parameters to appropriate format
         const requestData = toolDef.method === 'POST' 
           ? convertParameters(toolDef, params)
           : undefined;
 
-        // Make API request
-        const result = await mockTMSClient.request({
+        // Make API request using unified client
+        const result = await unifiedTMSClient.request({
           method: toolDef.method,
           endpoint,
           data: requestData,
@@ -178,7 +195,8 @@ export function createTMSTool(toolName: string): AgentTool | null {
           metadata: {
             source: 'TMS_API',
             tool: toolDef.name,
-            category: toolDef.category
+            category: toolDef.category,
+            apiMode: apiModeManager.getMode()
           }
         };
       } catch (error: any) {

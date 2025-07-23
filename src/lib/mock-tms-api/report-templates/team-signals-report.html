@@ -1,0 +1,525 @@
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>TMS Global</title><link href="https://fonts.googleapis.com/css?family=Roboto" rel="stylesheet">	</head><body><div class="HTMLWorkflowView"><style>.HTMLWorkflowView {
+    text-align: center;
+    background-color: #f2f6f9;
+    padding: 48px;
+    font-size: 18px;
+    max-width: 1200px;
+    margin-left: auto;
+    margin-right: auto;
+    font-family: 'Roboto', sans-serif;
+}
+
+@media only screen and (max-width: 1024px) {
+.HTMLWorkflowView {
+    padding: 2px;
+     background-color: transparent;
+     padding-bottom: 50px;
+}
+}
+
+body.tms{
+min-width:unset;
+}
+
+.HTMLWorkflowView > p {
+   text-align:justify;
+}
+
+.HTMLWorkflowView .teamscore
+{
+margin-top:24px;
+text-align:left;
+}
+
+.HTMLWorkflowView .teamscore .imgheading{
+max-width:180px;
+margin-bottom:24px;
+}
+
+.HTMLWorkflowView h4
+{
+text-align:left;
+margin:0px;
+padding:0px;
+margin-bottom:12px;
+margin-top:24px;
+font-size:22px;
+font-weight:bold;
+}
+h4.disclaimer
+{
+text-align:center;
+margin-top:48px;
+margin-bottom:24px;
+padding:12px;
+text-transform:uppercase;
+background-color:whitesmoke;
+border:1px solid gray;
+}
+
+.HTMLWorkflowView .teamscore h4
+{
+margin-top:0px;
+}
+
+.HTMLWorkflowView .teamscore > p 
+{
+ text-align:justify;
+}
+
+.HTMLWorkflowView h1
+{
+    font-size:24px;
+    text-transform:uppercase;
+    margin-bottom:32px;
+    margin-top:12px;
+    font-weight:bold;
+    padding:0px;
+}
+
+.HTMLWorkflowView .headingcontainer {
+    margin-top:24px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.HTMLWorkflowView .headingcontainer h3 {
+    padding: 24px;
+    margin: 0px;
+    text-transform: uppercase;
+    font-size: 22px;
+    flex-grow: 1;
+    flex-shrink: 1;
+    flex-basis: 200px;
+   border:1px solid whitesmoke
+}
+
+.HTMLWorkflowView .graph_team {
+position:relative;
+display:flex;
+justify-content:center;
+}
+
+.HTMLWorkflowView .graph_team > .graph
+{
+margin-top:24px;
+margin-bottom:24px;
+max-width:500px;
+width:100%;
+height:auto;
+z-index:1;
+}
+
+.HTMLWorkflowView .graph_team .loadingimg {
+position:absolute;
+z-index:0;
+width:200px;
+height:71px;
+left:50%;
+top:50%;
+transform:translate(-50%,-50%);
+}
+
+.HTMLWorkflowView .lightsection{
+justify-content:center;
+display:flex;
+flex-wrap:wrap;
+gap:24px;
+margin-top:12px;
+margin-bottom:12px;
+}
+
+.HTMLWorkflowView .lightsection p {
+flex-grow:1;
+flex-shrink:1;
+flex-basis:400px;
+}
+
+.HTMLWorkflowView .lightsection p
+{
+   text-align:justify;
+}
+
+.HTMLWorkflowView .lightsection > div{
+flex-grow:0;
+flex-shring:0;
+}
+
+.HTMLWorkflowView .lightsection .lightholder
+{
+width:50px;
+}
+
+.HTMLWorkflowView .light
+{
+width:50px;
+height:50px;
+border-radius:36px;
+border:1px solid black;
+}
+
+.HTMLWorkflowView .light.green
+{
+background-color:#9acd66;
+}
+
+.HTMLWorkflowView .light.organge
+{
+background-color:#f9a13a;
+}
+
+.HTMLWorkflowView .light.magenta
+{
+background-color:#ec008c;
+}
+
+.HTMLWorkflowView .footersection{
+  justify-content: center;
+    display: flex;
+flex-wrap:wrap;
+    gap: 12px;
+margin-top:48px;
+}
+
+.HTMLWorkflowView .footersection{
+  justify-content: center;
+    display: flex;
+flex-wrap:wrap;
+    gap: 12px;
+margin-top:48px;
+}
+
+.HTMLWorkflowView .footersection > p {
+flex-grow:1;
+flex-shrink:1;
+flex-basis:400px;
+}
+
+.HTMLWorkflowView .footersection > img
+{
+flex-grow:0;
+flex-shrink:0;
+}
+
+.HTMLWorkflowView .footersection p {
+   text-align:justify;
+}
+
+.HTMLWorkflowView ul
+{
+text-align:left;
+}
+
+.HTMLWorkflowView .footersection img
+{
+width:200px;
+height:113px;
+}</style><head>
+   <script>
+      function returnHeight() {
+         for (var i = 0; i < 6; i++) {
+            setTimeout(function () {
+               window.extents.postMessage(document.body.offsetHeight);
+            }, 1000 * i);
+         }
+      }
+      function returnLocation(loc) {
+         var position = getOffset(loc).top
+         JavascriptChannel.postMessage(position);
+      }
+      function getOffset(el) {
+         const rect = el.getBoundingClientRect();
+         return {
+            left: rect.left + window.scrollX,
+            top: rect.top + window.scrollY
+         };
+      }
+      function setDarkMode() {
+         document.body.style.background = "#00244d";
+
+         var h1Elements = document.getElementsByTagName("h1");
+         for (var i = 0; i < h1Elements.length; i++) {
+            h1Elements[i].style.color = "#bcc7d8";
+         }
+
+         var h4Elements = document.getElementsByTagName("h4");
+         for (var i = 0; i < h4Elements.length; i++) {
+            h4Elements[i].style.color = "#bcc7d8";
+         }
+
+         var spanElements = document.getElementsByTagName("span");
+         for (var i = 0; i < spanElements.length; i++) {
+            spanElements[i].style.color = "#bcc7d8";
+         }
+
+         var h5Elements = document.getElementsByTagName("h5");
+         for (var i = 0; i < h5Elements.length; i++) {
+            h5Elements[i].style.color = "#bcc7d8";
+         }
+
+         var h3Elements = document.getElementsByTagName("h3");
+         for (var i = 0; i < h3Elements.length; i++) {
+            h3Elements[i].style.color = "#bcc7d8";
+         }
+
+         var pElements = document.getElementsByTagName("p");
+         for (var i = 0; i < pElements.length; i++) {
+            pElements[i].style.color = "#bcc7d8";
+         }
+
+         var trElements = document.getElementsByTagName("tr");
+         for (var i = 0; i < trElements.length; i++) {
+            trElements[i].style.color = "#bcc7d8";
+         }
+
+         var liElements = document.getElementsByTagName("li");
+         for (var i = 0; i < liElements.length; i++) {
+            liElements[i].style.color = "#bcc7d8";
+         }
+
+         var labelElements = document.getElementsByTagName("label");
+         for (var i = 0; i < labelElements.length; i++) {
+            labelElements[i].style.color = "#D3D3D3";
+         }
+
+      }
+   </script>
+</head>
+<h1>Team Signals</h1>
+<div class="headingcontainer">
+   <div id="section0"></div>
+   <h3>Team: {{TEAM_NAME}}</h3>
+</div>
+
+<p>This report reflects your personal assessment of your team's performance using the High Energy Teams Model. It highlights areas where you perceive your team to be excelling and identifies opportunities for improvement. </p> <p> Your responses have been converted into percentage scores based on the maximum possible for each sector. Once all team members have completed the questionnaire, your facilitator will receive a separate report showing the aggregated team results—how the team as a whole is perceived by its members. </p><p> Before reviewing the combined team results, take time to explore your individual insights in this personalised report</p>
+<div class="graph_team">
+   <div class="loadingimg"><img style="width:200px" src="{{BASE_URL}}/Asset/get/loadinggif" /></div><img class="graph"
+      src="{{BASE_URL}}/GetGraph?CreateTeamSignals&colors=amber|red|amber|amber|red|red|amber|amber" />
+</div>
+
+<div class="lightsection">
+   <div class="lightholder">
+      <div class="light magenta"></div>
+   </div>
+   <p><strong>Pink (Immediate Attention Required):</strong> If you have scored your team below 50% then this is a sector where you think your team could make substantial improvements. It is recommended that your team meets to discuss answers to the relevant questions.</p>
+</div>
+
+<div class="lightsection">
+   <div class="lightholder">
+      <div class="light organge"></div>
+   </div>
+   <p><strong>Orange (Moderate Development Achieved):</strong> If you have scored your team in the range 50-75% for all sectors then most of your team's development goals are probably being met. However, there may be scope for further development.</p>
+</div>
+
+<div class="lightsection">
+   <div class="lightholder">
+      <div class="light green"></div>
+   </div>
+   <p>
+      <strong>Green (Development Goals Met):</strong> If you have scored your team above 75% on all sectors then you consider your team to be effectively meeting its development goals. Congratulations!
+   </p>
+</div>
+
+<div class="teamscore">
+   <img class="imgheading" loading="lazy" src="{{BASE_URL}}/Asset\Get\team signals pd1 amber"" />
+   <div id="section1"></div>
+   <h4>Your Score: 56%</h4>
+   
+<p>Each person brings different strengths to a team and will approach work in different ways. Team members need to know 'what makes each person tick' so that individual differences can be harnessed to achieve maximum performance potential. In particular team members need to know about work preferences, approach to risk and personal values. This circle is coloured orange because you're reasonably sure that team members know enough about the individual characteristics of each person, although some further development of this area is probably a good idea.</p>
+
+   
+<p>We all approach work in different ways – we think in different ways, we plan in different ways and we communicate in different ways. Some aspects of our work might interest us more than others and therefore we'll tend to place more emphasis on these activities. The things we like doing at work are sometimes referred to as our work preferences. Knowing the preferences of your colleagues will help reduce conflict and improve communication. The more you understand about people the easier it is to interact with them. You 'strongly agree' that team members know what work team members prefer to do but maybe you should relate these to the three concepts of preferences, risk and values. The Workplace Behaviour Pyramid is a good model to help you do this. </p>
+
+   
+<p>People also approach risk in different ways. Some see opportunities as 'stepping stones' to the future whereas others may see them as 'stumbling blocks'. For a team to function well it's important for everyone to understand who is risk-accepting and who is risk-averse as it will impact how they react to change. You've indicated that your team probably needs to review this aspect of 'Who are we?' to be more effective. In Team Management Systems (TMS) we measure risk by a concept known as the QO<sub>2</sub>. This is the ratio of the effort put into looking for opportunities to the effort put into looking for obstacles. High QO<sub>2</sub> people are optimistic, future-oriented and look for ways around obstacles. Low QO<sub>2</sub> people are less optimistic, more oriented to the present and perhaps the past, and will be more aware of the pitfalls that might lie ahead in any project. This information can be invaluable in getting the best from your team.</p>
+
+   
+<p>Values are fundamental concepts or beliefs that drive our decision-making and cause us to summon up energy to preserve what we believe in. They go beyond specific situations and determine how we view people, behaviour and events. Often major sources of conflict and disillusionment are due to mismatched values. An important part of addressing the 'Who are we?' question is understanding the differing values held by team members. You 'strongly agree' that team members do understand the different personal values held by team members. </p>
+
+   
+<p>Diversity is essential to the survival of all systems, be they ecosystems or human systems. It's through diversity that a wide variety of options are generated which in turn can lead to better outcomes. In teamwork, diversity can prevent 'group think' where everyone comes up with the same answer, be it right or wrong. High-energy teams value diversity and leverage it to ensure greater performance. You think there are major problems in the team around diversity issues and this should be discussed with other team members.</p>
+
+</div>
+
+<div class="teamscore">
+   <img class="imgheading" loading="lazy" src="{{BASE_URL}}/Asset\Get\team signals pd2 red"" />
+   <div id="section2"></div>
+   <h4>Your Score: 31%</h4>
+   
+<p>Before planning where you're heading as a team, it's useful to look at team balance, whether people are likely to be risk-averse or risk-accepting, and whether conflicting values are likely to arise. Here it's valuable to carry out a Team Situational Analysis where the team examines its Strengths, Weaknesses, Opportunities and Threats and determines whether the necessary resources are available to achieve the Team Purpose. This circle is coloured pink because it signals that you don't think the team knows enough about its current capabilities. This should be discussed with others in the team to see if they think the same way. Some team development needs to be undertaken to move this circle from pink to orange or green.</p>
+
+   
+<p>An important part of addressing the 'Where are we now?' issue is to look at the balance within the team. This can be done easily by examining individual work preferences. If everyone has strong work preferences for Organising and Producing, for example, and low preferences for Innovating and Advising, it may lead to a reduced emphasis on gathering information and the acceptance of new ideas. However you seem reasonably confident that there's satisfactory team balance to cope with all aspects of teamwork.</p>
+
+   
+<p>Some teams can see the opportunities that lie ahead whereas others seem to lack foresight. In planning for the future it's worth identifying the 'risk-orientation' of each team member. This is measured by the QO<sub>2</sub> metric. A low (QO<sub>2</sub>) may explain why some team members may place less emphasis on seeing the opportunities. This may be the case as you've indicated that the team doesn't always see the opportunities that lie ahead.</p>
+
+   
+<p>It's important for a team to recognise any weaknesses it may have. These may relate to either external factors or internal factors. If not recently done, it might be useful to carry out a team SWOT analysis (Strengths, Weaknesses, Opportunities, Threats). You've indicated that the team isn't always aware of its strengths and, particularly, its weaknesses.</p>
+
+   
+<p>A useful framework to review the stages of teamwork is Tuckman's model of Forming, Storming, Norming and Performing. High-energy teams set and achieve goals, diagnose and solve problems, have open communication, good support and high levels of trust. Above all they set and achieve goals regularly. You've indicated that your team definitely hasn't yet reached the highest levels, and may be in the Storming stage. If so, urgent discussions should be held with other team members to discuss what action should be taken.</p>
+
+</div>
+
+<div class="teamscore">
+   <img class="imgheading" loading="lazy" src="{{BASE_URL}}/Asset\Get\team signals pd3 amber"" />
+   <div id="section3"></div>
+   <h4>Your Score: 75%</h4>
+   
+<p>To work with energy, commitment and enthusiasm, a team needs to know where it's going. It has to have a vision that's aligned with the organisation's mission and goals. It needs to understand its purpose – what makes it different from other teams, what its outputs are and what outcomes they lead to. This circle is coloured orange because you're reasonably sure that team members have a clear view of where the team is going, although some further development of this area is probably a good idea.</p>
+
+   
+<p>A team needs to know why it exists otherwise it has no direction. One way to do this is to develop a Team Purpose. This defines boundaries for what is and is not part of the team's work; gives a framework for defining and evaluating the team's success; focuses thinking and creativity; and helps determine the important tasks. You seem reasonably confident that everyone understands the Team Purpose and knows why the team exists, but you should check this at a team meeting.</p>
+
+   
+<p>The 'organisational vision' is a basic component of the strategic question 'Where are we going?' If nobody knows where they're going then it's virtually impossible to plan how to get there. An organisational vision needs to be developed and widely communicated by the senior management team. It establishes the 'big picture' and gives the necessary direction for teams to develop the Team Purpose. You seem reasonably sure that everyone knows what the organisational vision is. </p>
+
+   
+<p>High-performing teams always make sure that their vision is aligned with that of the organisation. In general, organisations are only effective when the various teams all pull in the same direction - towards the output and outcomes desired by those at the highest level. You've indicated you 'mostly agree' that the team purpose/vision is aligned with that of the organisation.</p>
+
+   
+<p>A high-performing team will also focus on those tasks that are aligned with the team purpose and which will deliver the organisational vision in the most efficient way. Critical tasks will vary as a project proceeds but it's important that the team regularly checks that it's 'doing the right thing' as well as 'doing things right'. You're reasonably happy that the team knows what outputs and outcomes are necessary to deliver organisational expectations, but you may need to check out what other team members think.</p>
+
+</div>
+
+<div class="teamscore">
+   <img class="imgheading" loading="lazy" src="{{BASE_URL}}/Asset\Get\team signals pd4 amber"" />
+   <div id="section4"></div>
+   <h4>Your Score: 62%</h4>
+   
+<p>To turn a vision into reality, it's necessary to systematically set objectives, action plans and measures of performance. It's important to plan the route from where you are now to where you want to be, by examining carefully the critical tasks that need to be done. This circle is coloured orange because you're reasonably sure that the team has action plans in place to steer it towards the goals and objectives that lie ahead, although further development of this area is probably a good idea.</p>
+
+   
+<p>Addressing the strategic issue of 'How will we get there?' means having clear individual and team objectives - milestones along the way to delivering the organisational vision. This may involve agreeing key result areas and ways of evaluating performance. The team also needs the commitment to move forward to its goals. This requires a high level of motivation and the ability to distinguish the important tasks from the peripheral ones. You 'mostly agree' that the team has clear individual and team objectives.</p>
+
+   
+<p>Plans that are specific and action based are important to the success of the team. Some teams consider the planning is done when they have developed generalised statements of idealised ways of working rather than practical, structured procedures of 'who' will do 'what', 'how', 'when' and 'why'. This is unlikely to be the case for your team as you 'mostly agree' that there are action plans that the team follows carefully.</p>
+
+   
+<p>Obstacles are a fact of life. They crop up in every project, no matter how much forward planning is undertaken. What makes the difference in successful teams is how project leaders and their teams react when problems arise. Obstacles treated only as stumbling blocks impede progress; obstacles treated as stepping-stones keep a project moving. High-energy teams will use Potential Obstacle Analysis to highlight and evaluate those areas where unexpected difficulties might arise. You are not sure that this is being done in the team so it's worth following up with other team members.</p>
+
+   
+<p>To move the team towards its goals it's important to understand the critical tasks that are the basis of team success. These are the nine key factors that form the Team Management Systems (TMS) Types of Work Wheel - Advising, Innovating, Promoting, Developing, Organising, Producing, Inspecting, Maintaining and Linking. At various stages in a project one or more of these will be critical. You've indicated that the team mostly focuses on the critical tasks that ensure success and doesn't get side-tracked.</p>
+
+</div>
+<div class="teamscore">
+   <img class="imgheading" loading="lazy" src="{{BASE_URL}}/Asset\Get\team signals pd5 red"" />
+   <div id="section5"></div>
+   <h4>Your Score: 38%</h4>
+   
+<p>People find it difficult to perform if they don't know what they're meant to be doing. In a high-energy team all team members will fully understand their job descriptions, their role in the team, what they're responsible for and, most importantly, what they're accountable for. The development of behavioural ground rules aligned with shared team values is also important to ensure team survival. This circle is coloured pink because it signals that you don't think that team members fully understand what is expected of them. Some team development needs to be undertaken to move this circle from pink to orange or green. Check out the ideas listed below.</p>
+
+   
+<p>It's important for team members to know: What are the boundaries to my job? and What are the tasks on which I will be evaluated? While it's important to have some flexibility, if job descriptions lead to overlapping responsibilities there could be problems for the team. It's a good idea to set aside a team meeting to share and compare current job descriptions, as you've indicated that job descriptions could be ambiguous and roles aren't defined as well as they might be. </p>
+
+   
+<p>It's also important to the team that everyone knows not only what their job is but the areas over which they have accountability. A job description rarely indicates precisely the authority and accountability that people have. In many teams, patterns of work are established that allow team members to have authority on an informal basis. Problems can occur in teams because there are no clear guidelines as to who has authority to do what, and where the areas of accountability lie. You've indicated that this is likely to be the case in your team and should be discussed with other team members as soon as possible, to determine whether any changes are needed.</p>
+
+   
+<p>Difficulties often occur when there is ambiguity over the responsibilities of each team member. This tends to be compounded when people have responsibilities but not the accountability that goes with them. You've indicated that this could be the case in your team. The issues can be addressed by facilitating a session where team members answer the question - What do I need from each team member in order to do my job well? Each team member then takes the responsibility to deliver on the various needs.</p>
+
+   
+<p>Ground rules are guidelines for how the team will function. Sometimes they're referred to as the social 'glue' that holds a team together or a code that describes 'the way we do things around here'. Once ground rules are in place everyone knows what is expected of them as far as teamwork is concerned. You seem very happy that there are clear ground rules defining acceptable behaviour that team members subscribe to. </p>
+
+</div>
+
+<div class="teamscore">
+   <img class="imgheading" loading="lazy" src="{{BASE_URL}}/Asset\Get\team signals pd6 red"" />
+   <div id="section6"></div>
+   <h4>Your Score: 44%</h4>
+   
+<p>Once the team finds answers to the first five strategic circles it can focus on what support is required to deliver results. This means identifying skills gaps and providing necessary training and development so that the team can function at a high level. Personal learning should be encouraged along with a culture of learning from mistakes. This circle is coloured pink because it signals that you don't think that team members have identified the support that's required for the team to deliver great results. Some team development needs to be undertaken to move this circle from pink to orange or green. Check out the ideas listed below.</p>
+
+   
+<p>In the 'Where are we going?' and 'How will we get there?' sections the team develops the ideal outputs and outcomes. In this part of the High-Energy Teams Model, the team identifies the support that's required to deliver these targets. Support is required at both the team and the individual level. A culture of team support should encourage personal growth and development, risk taking, experimentation and innovation. You 'mostly agree' that the team is doing this, although you should see if other team members agree with you.</p>
+
+   
+<p>It's a good idea for the team to agree on the main tasks to be carried out in the next planning period and then assess what skills will be required. A list of necessary resources will soon identify any gaps that need to be filled, either by way of people, technology or systems and procedures. You've indicated that more needs to be done on identifying individual skill gaps within the team and providing training and development. </p>
+
+   
+<p>No one is perfect and mistakes will be made. What differentiates high-performing teams from low-performing teams is how they treat mistakes. High-performing teams will use mistakes as a learning opportunity and a way to ensure that similar situations don't occur again. You 'mostly agree' that learning from mistakes is encouraged.</p>
+
+   
+<p>The team as a whole should encourage team members in their personal learning. A Personal Learning Action Plan can help team members plug any gaps they have, by addressing four questions: What do I want to learn? What resources do I need? Who can help me? How will I know if I've learnt anything? You don't agree that personal learning is encouraged in the team. Perhaps you should add this to the list of topics for a future team discussion.</p>
+
+</div>
+
+<div class="teamscore">
+   <img class="imgheading" loading="lazy" src="{{BASE_URL}}/Asset\Get\team signals pd7 amber"" />
+   <div id="section7"></div>
+   <h4>Your Score: 56%</h4>
+   
+<p>A high-energy team is one that regularly reviews its effectiveness and continually improves its performance. Benchmarks for success can be established and procedures for learning from mistakes implemented. A regular process of Questioning helps prevent complacency from developing. This circle is coloured orange because you're reasonably sure that the team has procedures in place to regularly monitor its effectiveness, although there will be some areas where improvements could be made.</p>
+
+   
+<p>Addressing this strategic issue involves carrying out regular team performance audits. An audit is best done using a questionnaire that addresses the key team performance factors. Team members should give their individual views and outsiders such as other teams, clients or senior management can also be asked for their views. You've indicated that there's a reasonable focus on team auditing but it's a good idea to check with other team members to see if they agree with you. </p>
+
+   
+<p>High-energy teams are those that constantly evaluate their performance against benchmark standards. Most organisations have best practice standards and urge their teams to continuously improve to meet these standards. There's always someone in your industry sector performing better than your team and the aim of this section of the High-Energy Teams Model is to get your team on the pathway to world-wide best practice. You're unsure whether there are sufficient benchmarks by which to assess performance so this could be an issue for discussion.</p>
+
+   
+<p>To be effective, teams need to continually question their way of working. One way of doing this is to use the following questions as a framework. Do we gather enough information? Is this the best way of doing it? Who are the stakeholders we need to influence? Is this what stakeholders want? Are we organised well enough? Are our products/services clearly defined in terms of outputs and outcomes? What details need checking? Are we maintaining our standards? How can linking be improved? You probably think that the team should focus more on questioning its way of working, so this could be added to your list of priorities for team development.</p>
+
+   
+<p>It's vital that team members should also discuss how well they are interacting with one another. This should focus more on 'how' things are done rather than 'what' is being done. Everyone should be encouraged to give open and honest feedback. This should be done with an emphasis on the positive rather than the negative. One way to initiate this is to address such questions as: What does our team do well? What does our team do badly? How can we improve our service to our clients? You 'strongly agree' that the team is doing this.</p>
+
+</div>
+
+<div class="teamscore">
+   <img class="imgheading" loading="lazy" src="{{BASE_URL}}/Asset\Get\team signals pd8 amber"" />
+   <div id="section8"></div>
+   <h4>Your Score: 62%</h4>
+   
+<p>In general, most teams won't reach their full potential unless there's adequate recognition for the accomplishments of all team members. This means rewarding the whole team as well as individuals. Positive feedback should be encouraged, and successes recognised and appropriately celebrated. This circle is coloured orange because you're reasonably sure that team members do get adequate recognition for their efforts, although there will be some areas where improvements could be made.</p>
+
+   
+<p>Many of us fail to make time to give positive feedback. When someone in the team does something well then just a simple 'thank you' goes a long way towards making people feel wanted. Some people enjoy public recognition whereas others prefer just a one-on-one 'thank you'. Knowing when to 'go public' and when to 'go private' comes with skill in understanding people's work preference and values. You 'mostly agree' that positive feedback is openly given in the team; it's probably a good topic for future team discussion.</p>
+
+   
+<p>People like recognition for the effort they put in at work. One way of doing this is by celebrating key successes. Celebrations are beneficial as they help the development of team spirit. You 'mostly agree' that team successes are celebrated, but it could be a topic for future team discussion.</p>
+
+   
+<p>Teams are unlikely to attain high-energy status unless there's adequate recognition for the individual accomplishments of all team members. As far as financial remuneration and promotion are concerned, it's usually the team leader and organisational policy that influence this, so it can be the most difficult form of recognition to get right. You've indicated that you think there are some problems with the individual reward processes in the team.</p>
+
+   
+<p>The challenge for organisations is to reward teams collectively for their efforts, and at the same time recognise the different contributions made by individuals. You 'mostly agree' that this balance is being achieved within the team.</p>
+
+</div>
+
+<h4>Linking Skills</h4>
+<p>Addressing the eight strategic questions that are the basis of your team's development priorities requires the
+   application of Linking Skills. These create the atmosphere in which the team works, by promoting harmony and trust.
+<ul>
+   <li>Active Listening</li>
+   <li>Communication</li>
+   <li>Team Relationships</li>
+   <li>Problem Solving & Counselling</li>
+   <li>Participative Decision Making</li>
+   <li>Interface Management</li>
+</ul>
+<p><strong>Active Listening</strong> is about indicating to the other person that you've received and understood what
+   they've said. Techniques such as seeking clarification, summarizing, and two-way discussion are all a part of the
+   process of active listening.</p>
+<p><strong>Communication</strong> involves interacting with other people in a way that enters their model of the world
+   rather than just staying in your own worldview.</p>
+<p><strong>Team Relationships</strong> is about maintaining respect, understanding and trust.</p>
+<p><strong>Problem Solving & Counselling</strong> is about being available and responsive to people's concerns.</p>
+<p><strong>Participative Decision Making</strong> means involving others in making decisions on key issues so that there
+   is joint ownership of solutions and commitment to their implementation.</p>
+<p><strong>Interface Management</strong> is a term used to describe the process of managing the links between team
+   members and from the team itself to other teams or key stakeholders. The two important aspects of Interface
+   Management are external Linking and internal Linking.</p>
+<p>More information on Linking Skills is available from your Team Management Systems (TMS) Accredited Practitioner.</p>
+<div id="end"></div>
+<p> </p>
+<p> </p>
+<p> </p>
+<p> </p>
+<h4 class="disclaimer">Disclaimer</h4>
+<p>&copy; Team Management Systems IP, 2025, Australia.  Published by Team Management Systems.  All rights reserved.  No part of this publication may be reproduced, stored in a retrieval system, or transmitted in any form or by any means, electronic, mechanical, photocopying, recording or otherwise, without prior written permission of the publishers.</p>
+<p>Team Management Systems, the wheel device and the associated trademarks marked with 'TM' or ® are registered or common law marks of Team Management Systems IP in Australia and various international jurisdictions. </p><p>The content of this report is based on data submitted through the Team Signals Questionnaire. While great care and diligence have been exercised, it is important to note that each personalised report is based on general observations and interpretations.</p><p>The authors and publishers make no guarantees regarding the accuracy, completeness, or applicability of this report for any specific individual or situation. Therefore, they cannot be held liable for any decisions, actions, or outcomes resulting from the use of the information contained in this report.</p>
+</section>
+</div> </body></html>

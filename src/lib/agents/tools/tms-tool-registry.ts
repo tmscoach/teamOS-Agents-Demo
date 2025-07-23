@@ -81,6 +81,34 @@ export const TMS_TOOL_REGISTRY: Record<string, TMSToolDefinition> = {
     }
   },
 
+  tms_respondent_login: {
+    name: 'tms_respondent_login',
+    description: 'Respondent/team member login to TMS Global',
+    category: 'onboarding',
+    endpoint: '/Authenticate',
+    method: 'POST',
+    requiresAuth: false,
+    parameters: {
+      type: 'object',
+      properties: {
+        respondentEmail: {
+          type: 'string',
+          description: 'Email address of the respondent'
+        },
+        respondentPassword: {
+          type: 'string',
+          description: 'Password for the respondent account'
+        },
+        mobileAppType: {
+          type: 'string',
+          description: 'Mobile app type (default: teamOS)',
+          default: 'teamOS'
+        }
+      },
+      required: ['respondentEmail', 'respondentPassword']
+    }
+  },
+
   tms_check_user_permissions: {
     name: 'tms_check_user_permissions',
     description: 'Validate JWT token and get user permissions from TMS Global',
@@ -250,50 +278,12 @@ export const TMS_TOOL_REGISTRY: Record<string, TMSToolDefinition> = {
     }
   },
 
-  // Debrief Tools (3)
-  tms_get_report_summary: {
-    name: 'tms_get_report_summary',
-    description: 'Get HTML report summary for a completed assessment',
+  // Debrief Tools (2)
+  tms_generate_html_report: {
+    name: 'tms_generate_html_report',
+    description: 'Generate HTML report for a completed assessment',
     category: 'debrief',
-    endpoint: '/PageContent/GetSubscriptionSummary/{subscriptionId}',
-    method: 'GET',
-    requiresAuth: true,
-    parameters: {
-      type: 'object',
-      properties: {
-        subscriptionId: {
-          type: 'string',
-          description: 'The subscription ID for the completed assessment'
-        }
-      },
-      required: ['subscriptionId']
-    }
-  },
-
-  tms_get_report_templates: {
-    name: 'tms_get_report_templates',
-    description: 'Get available report templates for an assessment',
-    category: 'debrief',
-    endpoint: '/Subscription/GetTemplates/{subscriptionId}',
-    method: 'GET',
-    requiresAuth: true,
-    parameters: {
-      type: 'object',
-      properties: {
-        subscriptionId: {
-          type: 'string',
-          description: 'The subscription ID for the assessment'
-        }
-      },
-      required: ['subscriptionId']
-    }
-  },
-
-  tms_generate_subscription_report: {
-    name: 'tms_generate_subscription_report',
-    description: 'Generate PDF report for a completed assessment',
-    category: 'debrief',
-    endpoint: '/Subscription/GenerateReport/{subscriptionId}/{templateId}',
+    endpoint: '/Subscription/GetHTMLView/{templateId}/{subscriptionId}',
     method: 'GET',
     requiresAuth: true,
     parameters: {
@@ -309,6 +299,33 @@ export const TMS_TOOL_REGISTRY: Record<string, TMSToolDefinition> = {
         }
       },
       required: ['subscriptionId', 'templateId']
+    }
+  },
+
+  tms_generate_graph: {
+    name: 'tms_generate_graph',
+    description: 'Generate PNG graph/chart for reports',
+    category: 'debrief',
+    endpoint: '/GetGraph',
+    method: 'GET',
+    requiresAuth: true,
+    parameters: {
+      type: 'object',
+      properties: {
+        chartType: {
+          type: 'string',
+          description: 'Type of chart to generate (e.g., CreateTMPQWheel, CreateQO2Model, CreateTeamSignals)',
+          enum: ['CreateTMPQWheel', 'CreateTMPQRido', 'CreateTMPQIntroWheel', 'CreateTMPQPreferenceWheel', 
+                 'CreateTMPQRidoSummary', 'CreateQO2Model', 'CreateComparisonChart', 'CreatePercentageBar', 
+                 'CreateTeamSignals']
+        },
+        params: {
+          type: 'object',
+          description: 'Chart-specific parameters',
+          additionalProperties: true
+        }
+      },
+      required: ['chartType']
     }
   },
 
@@ -403,9 +420,8 @@ export function getToolsForAgent(agentName: string): string[] {
       'tms_start_workflow'
     ],
     'DebriefAgent': [
-      'tms_get_report_summary',
-      'tms_get_report_templates',
-      'tms_generate_subscription_report'
+      'tms_generate_html_report',
+      'tms_generate_graph'
     ],
     'ReportingAgent': [
       'tms_generate_report',

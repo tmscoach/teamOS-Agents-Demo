@@ -87,6 +87,7 @@ export class MockTMSAPIClient {
       return await handler(options);
     } catch (error) {
       console.error('Mock API error:', error);
+      console.error('Error stack:', error instanceof Error ? error.stack : 'No stack');
       if (error && typeof error === 'object' && 'error' in error) {
         throw error; // Already formatted error
       }
@@ -109,10 +110,14 @@ export class MockTMSAPIClient {
    * Get the appropriate handler for an endpoint
    */
   private getHandler(method: string, endpoint: string): Function | null {
+    // Strip query string for path matching
+    const [path] = endpoint.split('?');
+    
     // Import handlers dynamically to avoid circular dependencies
     const handlers = {
       'POST:/api/v1/auth/signup': () => import('./endpoints/auth').then(m => m.signup),
       'POST:/api/v1/auth/login': () => import('./endpoints/auth').then(m => m.login),
+      'POST:/Authenticate': () => import('./endpoints/auth').then(m => m.respondentLogin),
       'GET:/api/v1/team-os/auth/validate': () => import('./endpoints/auth').then(m => m.validate),
       'GET:/Workflow/Process/*': () => import('./endpoints/workflows').then(m => m.getWorkflowProcess),
       'POST:/Workflow/Update': () => import('./endpoints/workflows').then(m => m.updateWorkflow),
@@ -120,11 +125,12 @@ export class MockTMSAPIClient {
       'POST:/Question/GetActions': () => import('./endpoints/questions').then(m => m.getQuestionActions),
       'GET:/Question/GetQuestionIdsThatHaveActions/*': () => import('./endpoints/questions').then(m => m.getQuestionIdsWithActions),
       'GET:/Respondent/GetDashboardSubscription': () => import('./endpoints/subscriptions').then(m => m.getDashboardSubscriptions),
-      'GET:/PageContent/GetSubscriptionSummary/*': () => import('./endpoints/subscriptions').then(m => m.getSubscriptionSummary),
-      'GET:/Subscription/GetTemplates/*': () => import('./endpoints/subscriptions').then(m => m.getReportTemplates),
-      'GET:/Subscription/GenerateReport/*': () => import('./endpoints/subscriptions').then(m => m.generateReport),
+      'GET:/Subscription/GetHTMLView/*': () => import('./endpoints/reports').then(m => m.getHTMLReport),
+      'GET:/GetGraph': () => import('./endpoints/reports').then(m => m.generateGraph),
       'POST:/api/v1/reports/generate': () => import('./endpoints/reports').then(m => m.generateCustomReport),
       'GET:/api/v1/reports/product-usage': () => import('./endpoints/reports').then(m => m.getProductUsage),
+      'POST:/api/v1/tms/generate-html-report': () => import('./endpoints/reports').then(m => m.generateHTMLReport),
+      'POST:/api/v1/tms/generate-graph': () => import('./endpoints/reports').then(m => m.generateGraphAPI),
     };
 
     // Find matching handler
@@ -132,16 +138,16 @@ export class MockTMSAPIClient {
       const [handlerMethod, handlerPath] = pattern.split(':');
       if (handlerMethod !== method) continue;
 
-      // Check if pattern matches endpoint
+      // Check if pattern matches path (without query string)
       if (handlerPath.includes('*')) {
         const regex = new RegExp('^' + handlerPath.replace(/\*/g, '.*') + '$');
-        if (regex.test(endpoint)) {
+        if (regex.test(path)) {
           return async (options: any) => {
             const handler = await handlerLoader();
             return handler(options);
           };
         }
-      } else if (handlerPath === endpoint) {
+      } else if (handlerPath === path) {
         return async (options: any) => {
           const handler = await handlerLoader();
           return handler(options);
