@@ -44,13 +44,23 @@ export async function POST() {
     // Update token mapping
     mockDataStore.tokenToUser.set(facilitatorToken, testUser.id);
 
+    // Create a test respondent
+    const testRespondent = mockDataStore.createUser({
+      email: "respondent@example.com",
+      password: "Welcome123!",
+      firstName: "Test",
+      lastName: "Respondent",
+      userType: 'Respondent',
+      organizationId: testOrg.id
+    });
+
     // Create test subscriptions with recorded IDs
     const subscriptions = [];
     
-    // TMP Subscription
+    // TMP Subscription (assigned to respondent)
     const tmpSub = {
       subscriptionId: '21989',
-      userId: testUser.id,
+      userId: testRespondent.id,
       organizationId: testOrg.id,
       workflowId: 'tmp-workflow',
       workflowName: 'Team Management Profile',
@@ -65,10 +75,10 @@ export async function POST() {
     subscriptions.push(tmpSub);
     console.log('Seed: Created TMP subscription', tmpSub);
     
-    // QO2 Subscription
+    // QO2 Subscription (assigned to respondent)
     const qo2Sub = {
       subscriptionId: '21983',
-      userId: testUser.id,
+      userId: testRespondent.id,
       organizationId: testOrg.id,
       workflowId: 'qo2-workflow',
       workflowName: 'Opportunities-Obstacles Quotient',
@@ -82,10 +92,10 @@ export async function POST() {
     mockDataStore.subscriptions.set('21983', qo2Sub);
     subscriptions.push(qo2Sub);
     
-    // Team Signals Subscription
+    // Team Signals Subscription (assigned to respondent)
     const teamSignalsSub = {
       subscriptionId: '21988',
-      userId: testUser.id,
+      userId: testRespondent.id,
       organizationId: testOrg.id,
       workflowId: 'team-signals-workflow',
       workflowName: 'Team Signals',
@@ -148,11 +158,17 @@ export async function POST() {
     return NextResponse.json({
       message: "Test data created successfully",
       data: {
-        user: {
+        facilitator: {
           id: testUser.id,
           email: testUser.email,
           organizationId: testUser.organizationId,
           token: facilitatorToken
+        },
+        respondent: {
+          id: testRespondent.id,
+          email: testRespondent.email,
+          organizationId: testRespondent.organizationId,
+          password: "Welcome123!" // Include for easy testing
         },
         organization: {
           id: testOrg.id,
@@ -163,7 +179,8 @@ export async function POST() {
           workflowId: sub.workflowId,
           workflowName: sub.workflowName,
           assessmentType: sub.assessmentType,
-          status: sub.status
+          status: sub.status,
+          assignedTo: "respondent@example.com"
         }))
       }
     });

@@ -37,7 +37,8 @@ export default function TMSApiTestPage() {
     workflows: number;
   }>({ users: 0, organizations: 0, subscriptions: 0, workflows: 0 });
   const [testData, setTestData] = useState<{
-    user?: { id: string; email: string; organizationId: string; token: string };
+    facilitator?: { id: string; email: string; organizationId: string; token: string };
+    respondent?: { id: string; email: string; organizationId: string; password: string };
     subscriptions?: Array<{ subscriptionId: string; workflowId: string; workflowName: string; assessmentType: string; status: string }>;
   }>({});
   const [workflowScenarios] = useState([
@@ -78,26 +79,67 @@ export default function TMSApiTestPage() {
       params: { subscriptionId: "21988", baseContentId: "12", sectionId: "13", pageId: "97" }
     },
     {
-      name: "TMP Report Summary",
-      tool: "tms_get_report_summary",
-      params: { subscriptionId: "21989" }
+      name: "TMP HTML Report",
+      tool: "tms_generate_html_report",
+      params: { subscriptionId: "21989", templateId: "6" }
     },
     {
-      name: "QO2 Report Templates",
-      tool: "tms_get_report_templates",
-      params: { subscriptionId: "21983" }
+      name: "QO2 HTML Report",
+      tool: "tms_generate_html_report",
+      params: { subscriptionId: "21983", templateId: "10" }
     },
     {
-      name: "Team Signals Generate Report",
-      tool: "tms_generate_subscription_report",
-      params: { subscriptionId: "21988", templateId: "teamsignals-standard-pdf" }
+      name: "Team Signals HTML Report",
+      tool: "tms_generate_html_report",
+      params: { subscriptionId: "21988", templateId: "2" }
+    },
+    {
+      name: "Team Signals 360 HTML Report",
+      tool: "tms_generate_html_report",
+      params: { subscriptionId: "21988", templateId: "360" }
+    },
+    {
+      name: "TMP Wheel Graph",
+      tool: "tms_generate_graph",
+      params: { 
+        chartType: "CreateTMPQWheel",
+        params: { mr: "8", rr1: "7", rr2: "5" }
+      }
+    },
+    {
+      name: "QO2 Model Graph",
+      tool: "tms_generate_graph",
+      params: {
+        chartType: "CreateQO2Model",
+        params: { gva: "38", pav: "33", ov: "48", tv: "70", povn: "53", enq: "0.9", clear: "yes" }
+      }
+    },
+    {
+      name: "Team Signals Graph",
+      tool: "tms_generate_graph",
+      params: {
+        chartType: "CreateTeamSignals",
+        params: { colors: "amber|red|amber|amber|red|red|amber|amber" }
+      }
+    },
+    {
+      name: "Team Signals 360 Graph",
+      tool: "tms_generate_graph",
+      params: {
+        chartType: "CreateTeamSignals",
+        params: { colors: "amber|amber|red|amber|amber|red|amber|amber" }
+      }
     }
   ]);
 
-  // Load JWT token from database
+  // Load JWT token from database or use test token
   useEffect(() => {
     if (userId) {
       fetchJwtToken();
+    }
+    // If no token, use the test JWT from env
+    if (!jwtToken && process.env.NEXT_PUBLIC_TMS_TEST_JWT) {
+      setJwtToken(process.env.NEXT_PUBLIC_TMS_TEST_JWT);
     }
   }, [userId]);
 
@@ -142,8 +184,8 @@ export default function TMSApiTestPage() {
         const data = await res.json();
         setTestData(data.data);
         // Automatically set the JWT token from seed data
-        if (data.data.user?.token) {
-          setJwtToken(data.data.user.token);
+        if (data.data.facilitator?.token) {
+          setJwtToken(data.data.facilitator.token);
         }
         toast.success("Test data created successfully - JWT token updated");
         fetchMockDataStatus();
@@ -162,7 +204,7 @@ export default function TMSApiTestPage() {
     // Use test data if available
     const subscriptionId = testData.subscriptions?.[0]?.subscriptionId || "sub_123";
     const workflowId = testData.subscriptions?.[0]?.workflowId || "tmp-workflow";
-    const orgId = testData.user?.organizationId || "org_123";
+    const orgId = testData.facilitator?.organizationId || "org_123";
 
     const samples: Record<string, any> = {
       tms_create_org: {
@@ -174,8 +216,13 @@ export default function TMSApiTestPage() {
         PhoneNumber: "+1234567890"
       },
       tms_facilitator_login: {
-        Email: testData.user?.email || "facilitator@example.com",
-        Password: "TestPassword123!"
+        email: testData.facilitator?.email || "facilitator@example.com",
+        password: "TestPassword123!"
+      },
+      tms_respondent_login: {
+        respondentEmail: testData.respondent?.email || "respondent@example.com",
+        respondentPassword: testData.respondent?.password || "Welcome123!",
+        mobileAppType: "teamOS"
       },
       tms_get_workflow_process: {
         subscriptionId: subscriptionId,
@@ -191,8 +238,20 @@ export default function TMSApiTestPage() {
           { questionID: 21, value: "12" }
         ]
       },
-      tms_get_report_summary: {
-        subscriptionId: subscriptionId
+      tms_generate_html_report: {
+        subscriptionId: subscriptionId,
+        templateId: workflowId === "tmp-workflow" ? "6" : 
+                    workflowId === "qo2-workflow" ? "10" : 
+                    workflowId === "team-signals-workflow" ? "2" :
+                    "360" // Team Signals 360
+      },
+      tms_generate_graph: {
+        chartType: "CreateTMPQWheel",
+        params: {
+          mr: "8",
+          rr1: "7", 
+          rr2: "5"
+        }
       },
       tms_generate_report: {
         organizationId: orgId,
@@ -202,15 +261,6 @@ export default function TMSApiTestPage() {
       tms_start_workflow: {
         workflowId: workflowId,
         subscriptionId: subscriptionId
-      },
-      tms_get_report_templates: {
-        subscriptionId: subscriptionId
-      },
-      tms_generate_subscription_report: {
-        subscriptionId: subscriptionId,
-        templateId: workflowId === "tmp-workflow" ? "tmp-standard-pdf" : 
-                    workflowId === "qo2-workflow" ? "qo2-standard-pdf" : 
-                    "teamsignals-standard-pdf"
       },
       tms_get_question_actions: {
         subscriptionId: subscriptionId,
@@ -476,9 +526,10 @@ export default function TMSApiTestPage() {
             <div>Users: {mockDataStatus.users}</div>
             <div>Orgs: {mockDataStatus.organizations}</div>
             <div>Subscriptions: {mockDataStatus.subscriptions}</div>
-            {testData.user && (
+            {testData.facilitator && (
               <div style={{ marginTop: '4px', color: '#10b981', fontSize: '11px' }}>
-                Test user: {testData.user.email}
+                Facilitator: {testData.facilitator.email}<br/>
+                Respondent: {testData.respondent?.email}
               </div>
             )}
           </div>
@@ -705,7 +756,7 @@ export default function TMSApiTestPage() {
               </div>
 
               {/* Workflow and Report Scenarios */}
-              {selectedTool && (selectedTool.includes('workflow') || selectedTool.includes('tms_get_workflow') || selectedTool === 'tms_get_dashboard_subscriptions' || selectedTool.includes('report')) && (
+              {selectedTool && (selectedTool.includes('workflow') || selectedTool.includes('tms_get_workflow') || selectedTool === 'tms_get_dashboard_subscriptions' || selectedTool.includes('report') || selectedTool === 'tms_generate_html_report' || selectedTool === 'tms_generate_graph') && (
                 <div style={{ marginBottom: '24px' }}>
                   <h4 style={{
                     fontSize: '16px',
@@ -987,17 +1038,89 @@ export default function TMSApiTestPage() {
                         Copy
                       </button>
                     </div>
-                    <pre style={{
-                      padding: '12px',
-                      backgroundColor: '#1e293b',
-                      borderRadius: '6px',
-                      fontSize: '12px',
-                      color: '#e2e8f0',
-                      overflow: 'auto',
-                      maxHeight: '400px'
-                    }}>
-                      {JSON.stringify(result.response.data, null, 2)}
-                    </pre>
+                    {/* Special rendering for HTML reports and images */}
+                    {selectedTool === 'tms_generate_html_report' && result.response.status === 200 && typeof result.response.data === 'string' ? (
+                      <div>
+                        <div style={{ marginBottom: '12px' }}>
+                          <iframe
+                            srcDoc={result.response.data}
+                            style={{
+                              width: '100%',
+                              height: '600px',
+                              border: '1px solid #e5e7eb',
+                              borderRadius: '6px',
+                              backgroundColor: 'white'
+                            }}
+                            title="Report Preview"
+                          />
+                        </div>
+                        <details>
+                          <summary style={{ cursor: 'pointer', fontSize: '14px', color: '#6b7280' }}>
+                            View HTML Source
+                          </summary>
+                          <pre style={{
+                            padding: '12px',
+                            backgroundColor: '#1e293b',
+                            borderRadius: '6px',
+                            fontSize: '12px',
+                            color: '#e2e8f0',
+                            overflow: 'auto',
+                            maxHeight: '400px',
+                            marginTop: '8px'
+                          }}>
+                            {result.response.data}
+                          </pre>
+                        </details>
+                      </div>
+                    ) : selectedTool === 'tms_generate_graph' && result.response.status === 200 && result.response.data ? (
+                      <div>
+                        <div style={{ marginBottom: '12px', textAlign: 'center' }}>
+                          <img
+                            src={`data:image/png;base64,${
+                              // Check if response has base64 data
+                              result.response.data.data || ''
+                            }`}
+                            alt="Generated Chart"
+                            style={{
+                              maxWidth: '100%',
+                              border: '1px solid #e5e7eb',
+                              borderRadius: '6px',
+                              backgroundColor: 'white',
+                              padding: '12px'
+                            }}
+                          />
+                        </div>
+                        <details>
+                          <summary style={{ cursor: 'pointer', fontSize: '14px', color: '#6b7280' }}>
+                            View Raw Response
+                          </summary>
+                          <pre style={{
+                            padding: '12px',
+                            backgroundColor: '#1e293b',
+                            borderRadius: '6px',
+                            fontSize: '12px',
+                            color: '#e2e8f0',
+                            overflow: 'auto',
+                            maxHeight: '400px',
+                            marginTop: '8px'
+                          }}>
+                            {JSON.stringify(result.response.data, null, 2)}
+                          </pre>
+                        </details>
+                      </div>
+                    ) : (
+                      <pre style={{
+                        padding: '12px',
+                        backgroundColor: '#1e293b',
+                        borderRadius: '6px',
+                        fontSize: '12px',
+                        color: '#e2e8f0',
+                        overflow: 'auto',
+                        maxHeight: '400px'
+                      }}>
+                        {JSON.stringify(result.response.data, null, 2)}
+                      </pre>
+                    )}
                   </div>
                 </div>
               )}

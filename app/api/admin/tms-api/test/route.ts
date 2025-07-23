@@ -35,6 +35,20 @@ export async function POST(request: Request) {
         }
       });
     }
+    
+    // Special handling for GetGraph endpoint - build query string
+    if (tool === 'tms_generate_graph' && parameters.chartType) {
+      const queryParams = [`${parameters.chartType}`];
+      
+      // Add additional parameters
+      if (parameters.params) {
+        Object.entries(parameters.params).forEach(([key, value]) => {
+          queryParams.push(`${key}=${encodeURIComponent(String(value))}`);
+        });
+      }
+      
+      endpoint += '?' + queryParams.join('&');
+    }
 
     // Separate path params from body params
     const bodyParams = { ...parameters };
@@ -45,13 +59,48 @@ export async function POST(request: Request) {
       });
     }
 
+    // Convert parameters based on tool type
+    let convertedParams = bodyParams;
+    if (toolDef.method !== "GET") {
+      // Apply parameter conversion for specific tools
+      if (tool === 'tms_create_org') {
+        convertedParams = {
+          Email: bodyParams.email,
+          Password: bodyParams.password,
+          FirstName: bodyParams.firstName,
+          LastName: bodyParams.lastName,
+          OrganizationName: bodyParams.organizationName,
+          PhoneNumber: bodyParams.phoneNumber
+        };
+      } else if (tool === 'tms_facilitator_login') {
+        convertedParams = {
+          Email: bodyParams.email,
+          Password: bodyParams.password
+        };
+      } else if (tool === 'tms_respondent_login') {
+        convertedParams = {
+          RespondentEmail: bodyParams.respondentEmail,
+          RespondentPassword: bodyParams.respondentPassword,
+          MobileAppType: bodyParams.mobileAppType || 'teamOS'
+        };
+      }
+    }
+
     // Execute request
     const response = await mockApi.request({
       method: toolDef.method,
       endpoint,
-      data: toolDef.method !== "GET" ? bodyParams : undefined,
+      data: toolDef.method !== "GET" ? convertedParams : undefined,
       jwt: toolDef.requiresAuth ? jwtToken : undefined
     });
+
+    // Special handling for graph responses - convert Buffer to base64
+    if (tool === 'tms_generate_graph' && response instanceof Buffer) {
+      return NextResponse.json({
+        type: 'image/png',
+        data: response.toString('base64')
+      });
+    }
 
     return NextResponse.json(response);
   } catch (error) {

@@ -4,12 +4,13 @@
  */
 
 import { mockDataStore } from '../mock-data-store';
-import { mockTMSClient } from '../mock-api-client';
+import { mockTMSClient, MockTMSAPIClient } from '../mock-api-client';
 import { 
   TMSGenerateReportRequest,
   TMSProductUsage,
   TMSErrorResponse
 } from '../types';
+import { generateHTMLReport as generateHTMLReportContent } from '../report-generators';
 
 /**
  * POST /api/v1/reports/generate
@@ -139,4 +140,318 @@ export async function getProductUsage(options: {
   };
 
   return mockUsage;
+}
+
+/**
+ * GET /Subscription/GetHTMLView/{templateId}/{subscriptionId}
+ * Get HTML report for a specific assessment
+ */
+export async function getHTMLReport(options: {
+  endpoint: string;
+  jwt?: string;
+}): Promise<string> {
+  // Extract path parameters
+  const pathMatch = options.endpoint.match(/\/Subscription\/GetHTMLView\/(\d+)\/(\d+)/);
+  if (!pathMatch) {
+    throw {
+      error: 'INVALID_REQUEST',
+      message: 'Invalid endpoint format'
+    } as TMSErrorResponse;
+  }
+
+  const templateId = pathMatch[1];
+  const subscriptionId = pathMatch[2];
+
+  // Validate JWT
+  if (!options.jwt) {
+    throw {
+      error: 'UNAUTHORIZED',
+      message: 'Authentication required'
+    } as TMSErrorResponse;
+  }
+
+  const claims = mockTMSClient.decodeJWT(options.jwt);
+  if (!claims) {
+    throw {
+      error: 'INVALID_TOKEN',
+      message: 'Invalid authentication token'
+    } as TMSErrorResponse;
+  }
+
+  // Get subscription
+  const subscription = mockDataStore.getSubscription(subscriptionId);
+  if (!subscription) {
+    throw {
+      error: 'SUBSCRIPTION_NOT_FOUND',
+      message: 'Subscription not found'
+    } as TMSErrorResponse;
+  }
+
+  // Check access - either the user owns the subscription or is a facilitator in the same org
+  const user = mockDataStore.getUserByToken(options.jwt);
+  if (!user) {
+    throw {
+      error: 'USER_NOT_FOUND',
+      message: 'User not found'
+    } as TMSErrorResponse;
+  }
+
+  const hasAccess = subscription.userId === user.id || 
+    (user.userType === 'Facilitator' && user.organizationId === subscription.organizationId);
+
+  if (!hasAccess) {
+    throw {
+      error: 'ACCESS_DENIED',
+      message: 'You do not have access to this subscription'
+    } as TMSErrorResponse;
+  }
+
+  // Generate HTML report based on assessment type
+  const { generateHTMLReport } = await import('../report-generators');
+  const htmlReport = await generateHTMLReport(subscription, templateId);
+
+  return htmlReport;
+}
+
+/**
+ * GET /GetGraph
+ * Generate PNG graph/chart for reports
+ */
+export async function generateGraph(options: {
+  endpoint: string;
+  jwt?: string;
+}): Promise<Buffer> {
+  // Validate JWT
+  if (!options.jwt) {
+    throw {
+      error: 'UNAUTHORIZED',
+      message: 'Authentication required'
+    } as TMSErrorResponse;
+  }
+
+  // For mock implementation, fetch from live API using the provided JWT
+  try {
+    const liveApiUrl = `https://api-test.tms.global${options.endpoint}`;
+    console.log('Fetching graph from live API:', liveApiUrl);
+    
+    const response = await fetch(liveApiUrl, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${options.jwt}`,
+        'Accept': 'image/png',
+      },
+    });
+    
+    if (!response.ok) {
+      throw {
+        error: 'GRAPH_GENERATION_FAILED',
+        message: `Live API returned ${response.status}: ${response.statusText}`
+      } as TMSErrorResponse;
+    }
+    
+    // Get the image data as a buffer
+    const arrayBuffer = await response.arrayBuffer();
+    return Buffer.from(arrayBuffer);
+  } catch (error: any) {
+    console.error('Graph generation error:', error);
+    
+    // Fallback to mock implementation
+    const url = new URL(options.endpoint, 'https://api.tms.global');
+    const queryString = url.search.substring(1);
+    
+    // Parse chart type and parameters
+    const parts = queryString.split('&');
+    const chartType = parts[0]; // First parameter is always the chart type
+    
+    const params: Record<string, string> = {};
+    for (let i = 1; i < parts.length; i++) {
+      const [key, value] = parts[i].split('=');
+      if (key && value) {
+        params[key] = decodeURIComponent(value);
+      }
+    }
+
+    // Generate PNG based on chart type
+    const { generateChartPNG } = await import('../chart-generator');
+    const pngBuffer = await generateChartPNG(chartType, params);
+
+    return pngBuffer;
+  }
+}
+
+/**
+ * Generate HTML Report Endpoint - New endpoint for TMS API test
+ */
+export async function generateHTMLReport(options: {
+  data: {
+    subscriptionId: string;
+    templateId: string;
+  };
+  jwt?: string;
+}): Promise<{ html: string }> {
+  const { subscriptionId, templateId } = options.data;
+
+  // Validate JWT
+  if (!options.jwt) {
+    throw {
+      error: 'AUTH_REQUIRED',
+      message: 'Authentication token required'
+    };
+  }
+
+  const mockClient = new MockTMSAPIClient();
+  const claims = mockClient.decodeJWT(options.jwt);
+  if (!claims) {
+    throw {
+      error: 'INVALID_TOKEN',
+      message: 'Invalid authentication token'
+    };
+  }
+
+  // Get subscription
+  const subscription = mockDataStore.getSubscription(subscriptionId);
+  if (!subscription) {
+    throw {
+      error: 'NOT_FOUND',
+      message: 'Subscription not found'
+    };
+  }
+
+  // Get user
+  const user = mockDataStore.getUser(claims.sub);
+  if (!user) {
+    throw {
+      error: 'USER_NOT_FOUND',
+      message: 'User not found'
+    };
+  }
+
+  // Check access control for Team Signals 360
+  if ((templateId === '360' || templateId === '3') && subscription.assessmentType === 'TeamSignals') {
+    if (user.userType !== 'Facilitator') {
+      throw {
+        error: 'ACCESS_DENIED',
+        message: 'Only facilitators can generate Team Signals 360 reports'
+      };
+    }
+  }
+
+  // Check template validity
+  if (templateId === '360' && subscription.assessmentType !== 'TeamSignals') {
+    throw {
+      error: 'INVALID_TEMPLATE',
+      message: 'Template 360 is only available for Team Signals assessments'
+    };
+  }
+
+  // Check invalid template IDs
+  const validTemplates = ['1', '2', '3', '360'];
+  if (!validTemplates.includes(templateId)) {
+    throw {
+      error: 'INVALID_TEMPLATE',
+      message: `Invalid template ID: ${templateId}`
+    };
+  }
+
+  // Generate HTML report
+  try {
+    const html = await generateHTMLReportContent(subscription, templateId);
+    return { html };
+  } catch (error) {
+    throw {
+      error: 'REPORT_GENERATION_FAILED',
+      message: error instanceof Error ? error.message : 'Failed to generate report'
+    };
+  }
+}
+
+/**
+ * Generate Graph API Endpoint - New endpoint for TMS API test
+ */
+export async function generateGraphAPI(options: {
+  data: {
+    subscriptionId: string;
+    graphType: string;
+    templateId?: string;
+  };
+  jwt?: string;
+}): Promise<{
+  image: string;
+  mimeType: string;
+  graphType: string;
+  parameters: Record<string, any>;
+}> {
+  const { subscriptionId, graphType, templateId } = options.data;
+
+  // Validate JWT
+  if (!options.jwt) {
+    throw {
+      error: 'AUTH_REQUIRED',
+      message: 'Authentication token required'
+    };
+  }
+
+  // Validate graph type
+  const validGraphTypes = ['CreateTMPQWheel', 'CreateTMPBar', 'CreateQO2Model', 'CreateQO2Bar', 'CreateTeamSignals'];
+  if (!validGraphTypes.includes(graphType)) {
+    throw {
+      error: 'INVALID_GRAPH_TYPE',
+      message: `Invalid graph type: ${graphType}`
+    };
+  }
+
+  // Get subscription
+  const subscription = mockDataStore.getSubscription(subscriptionId);
+  if (!subscription) {
+    throw {
+      error: 'NOT_FOUND',
+      message: 'Subscription not found'
+    };
+  }
+
+  // Generate appropriate parameters based on graph type and template
+  let parameters: Record<string, any> = {};
+  
+  if (graphType === 'CreateTeamSignals' && (templateId === '360' || templateId === '3')) {
+    // For Team Signals 360, aggregate team scores
+    const orgSubscriptions = mockDataStore.getAllSubscriptions()
+      .filter(s => s.organizationId === subscription.organizationId && 
+                   s.assessmentType === 'TeamSignals' &&
+                   s.status === 'completed');
+    
+    // Calculate average scores for each development area
+    const avgScores = [56, 33, 75, 62, 38, 44, 56, 62]; // Mock averages
+    const colors = avgScores.map(score => {
+      if (score >= 75) return 'green';
+      if (score >= 50) return 'amber';
+      return 'red';
+    });
+    
+    parameters.colors = colors.join('|');
+  } else if (graphType === 'CreateTeamSignals') {
+    // Individual Team Signals
+    parameters.colors = 'amber|red|amber|amber|red|red|amber|amber';
+  } else if (graphType === 'CreateTMPQWheel') {
+    parameters.mr = 8;
+    parameters.rr1 = 7;
+    parameters.rr2 = 5;
+  } else if (graphType === 'CreateQO2Model') {
+    parameters.gva = 38;
+    parameters.pav = 33;
+    parameters.ov = 48;
+    parameters.tv = 70;
+    parameters.povn = 53;
+    parameters.enq = 0.9;
+    parameters.clear = 'yes';
+  }
+
+  // Generate mock base64 PNG data
+  const mockImageData = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+
+  return {
+    image: mockImageData,
+    mimeType: 'image/png',
+    graphType,
+    parameters
+  };
 }

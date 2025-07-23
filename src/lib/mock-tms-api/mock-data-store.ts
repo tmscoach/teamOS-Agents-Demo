@@ -152,6 +152,14 @@ class MockDataStore {
     return userId ? this.users.get(userId) : undefined;
   }
 
+  getUser(userId: string): MockUser | undefined {
+    return this.users.get(userId);
+  }
+
+  getAllSubscriptions(): MockSubscription[] {
+    return Array.from(this.subscriptions.values());
+  }
+
   // Organization Management
   createOrganization(name: string, facilitatorId: string): MockOrganization {
     const id = `org-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
