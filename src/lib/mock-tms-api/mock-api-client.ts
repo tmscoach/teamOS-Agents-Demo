@@ -128,6 +128,7 @@ export class MockTMSAPIClient {
       'POST:/Question/GetActions': () => import('./endpoints/questions').then(m => m.getQuestionActions),
       'GET:/Question/GetQuestionIdsThatHaveActions/*': () => import('./endpoints/questions').then(m => m.getQuestionIdsWithActions),
       'GET:/Respondent/GetDashboardSubscription': () => import('./endpoints/subscriptions').then(m => m.getDashboardSubscriptions),
+      'POST:/api/v1/subscriptions/assign': () => import('./endpoints/subscriptions').then(m => m.assignSubscription),
       'GET:/Subscription/GetHTMLView/*': () => import('./endpoints/reports').then(m => m.getHTMLReport),
       'GET:/GetGraph': () => import('./endpoints/reports').then(m => m.generateGraph),
       'POST:/api/v1/reports/generate': () => import('./endpoints/reports').then(m => m.generateCustomReport),

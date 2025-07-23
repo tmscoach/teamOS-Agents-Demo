@@ -206,21 +206,34 @@ export const TMS_TOOL_REGISTRY: Record<string, TMSToolDefinition> = {
     }
   },
 
-  tms_check_user_permissions: {
-    name: 'tms_check_user_permissions',
-    description: 'Validate JWT token and get user permissions from TMS Global',
-    category: 'onboarding',
-    endpoint: '/api/v1/team-os/auth/validate',
-    method: 'GET',
+  // Assessment Tools (7)
+  tms_assign_subscription: {
+    name: 'tms_assign_subscription',
+    description: 'Assign a workflow subscription to a user (facilitator or respondent)',
+    category: 'assessment',
+    endpoint: '/api/v1/subscriptions/assign',
+    method: 'POST',
     requiresAuth: true,
     parameters: {
       type: 'object',
-      properties: {},
-      required: []
+      properties: {
+        userId: {
+          type: 'string',
+          description: 'The user ID to assign the subscription to'
+        },
+        workflowId: {
+          type: 'string',
+          description: 'The workflow ID to assign (e.g., tmp-workflow, qo2-workflow)'
+        },
+        organizationId: {
+          type: 'string',
+          description: 'The organization ID (must match the facilitator\'s organization)'
+        }
+      },
+      required: ['userId', 'workflowId', 'organizationId']
     }
   },
 
-  // Assessment Tools (6)
   tms_get_workflow_process: {
     name: 'tms_get_workflow_process',
     description: 'Get current workflow state with questions for an assessment',
@@ -508,10 +521,10 @@ export function getToolsForAgent(agentName: string): string[] {
       'tms_facilitator_login',
       'tms_create_respondent',
       'tms_create_facilitator',
-      'tms_token_exchange',
-      'tms_check_user_permissions'
+      'tms_token_exchange'
     ],
     'AssessmentAgent': [
+      'tms_assign_subscription',
       'tms_get_workflow_process',
       'tms_update_workflow',
       'tms_get_question_actions',

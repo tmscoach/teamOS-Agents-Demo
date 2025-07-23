@@ -27,6 +27,7 @@ export default function TMSApiTestPage() {
   const [selectedTool, setSelectedTool] = useState<string>("");
   const [jwtToken, setJwtToken] = useState<string>("");
   const [parameters, setParameters] = useState<Record<string, any>>({});
+  const [customHeaders, setCustomHeaders] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ApiTestResult | null>(null);
   const [copied, setCopied] = useState(false);
@@ -208,12 +209,13 @@ export default function TMSApiTestPage() {
 
     const samples: Record<string, any> = {
       tms_create_org: {
-        Email: "manager@example.com",
-        Password: "securePassword123!",
-        FirstName: "John",
-        LastName: "Doe",
-        OrganizationName: "Acme Corp",
-        PhoneNumber: "+1234567890"
+        email: "manager@example.com",
+        password: "securePassword123!",
+        firstName: "John",
+        lastName: "Doe",
+        organizationName: "Acme Corp",
+        phoneNumber: "+1234567890",
+        clerkUserId: "" // Optional - leave empty for password-based
       },
       tms_facilitator_login: {
         email: testData.facilitator?.email || "facilitator@example.com",
@@ -269,6 +271,29 @@ export default function TMSApiTestPage() {
       },
       tms_get_question_ids_with_actions: {
         pageId: "tmp-page-1"
+      },
+      tms_create_respondent: {
+        email: "test.respondent@example.com",
+        firstName: "Test",
+        lastName: "Respondent",
+        organizationId: orgId,
+        clerkUserId: "clerk_test_resp_" + Date.now(),
+        respondentName: "Test Respondent"
+      },
+      tms_create_facilitator: {
+        email: "test.facilitator@example.com",
+        firstName: "Test",
+        lastName: "Facilitator",
+        organizationId: orgId,
+        clerkUserId: "clerk_test_fac_" + Date.now()
+      },
+      tms_token_exchange: {
+        clerkUserId: "clerk_test_123"
+      },
+      tms_assign_subscription: {
+        userId: testData.facilitator?.id || "user_123",
+        workflowId: "tmp-workflow",
+        organizationId: orgId
       }
     };
 
@@ -279,6 +304,13 @@ export default function TMSApiTestPage() {
     setSelectedTool(tool);
     setParameters(generateSampleData(tool));
     setResult(null);
+    
+    // Set default headers for password-less tools
+    if (tool === 'tms_create_respondent' || tool === 'tms_create_facilitator' || tool === 'tms_token_exchange') {
+      setCustomHeaders({ 'x-api-key': 'mock-api-key-12345' });
+    } else {
+      setCustomHeaders({});
+    }
   };
 
   const handleParameterChange = (key: string, value: any) => {
@@ -347,7 +379,8 @@ export default function TMSApiTestPage() {
         body: JSON.stringify({
           tool: selectedTool,
           parameters,
-          jwtToken: toolDef.requiresAuth ? jwtToken : undefined
+          jwtToken: toolDef.requiresAuth ? jwtToken : undefined,
+          headers: customHeaders
         })
       });
 
@@ -891,6 +924,52 @@ export default function TMSApiTestPage() {
                   )}
                 </div>
               </div>
+
+              {/* Custom Headers */}
+              {(selectedTool === 'tms_create_respondent' || selectedTool === 'tms_create_facilitator' || selectedTool === 'tms_token_exchange') && (
+                <div style={{ marginBottom: '24px' }}>
+                  <h4 style={{
+                    fontSize: '16px',
+                    fontWeight: '600',
+                    color: '#111827',
+                    marginBottom: '12px'
+                  }}>
+                    Headers
+                  </h4>
+                  <div style={{
+                    padding: '16px',
+                    backgroundColor: '#f9fafb',
+                    borderRadius: '8px',
+                    border: '1px solid #e5e7eb'
+                  }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Key style={{ width: '16px', height: '16px', color: '#6b7280' }} />
+                        <span style={{ fontSize: '14px', fontWeight: '500', color: '#374151' }}>
+                          x-api-key
+                        </span>
+                      </div>
+                      <input
+                        type="text"
+                        value={customHeaders['x-api-key'] || ''}
+                        onChange={(e) => setCustomHeaders({ ...customHeaders, 'x-api-key': e.target.value })}
+                        placeholder="Enter API key"
+                        style={{
+                          width: '100%',
+                          padding: '8px 12px',
+                          borderRadius: '6px',
+                          border: '1px solid #e5e7eb',
+                          fontSize: '14px',
+                          fontFamily: 'monospace'
+                        }}
+                      />
+                      <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+                        Required for password-less user creation endpoints. Default: mock-api-key-12345
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Execute Button */}
               <button
