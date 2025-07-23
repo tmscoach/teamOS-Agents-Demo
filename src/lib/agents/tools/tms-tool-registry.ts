@@ -439,7 +439,37 @@ export const TMS_TOOL_REGISTRY: Record<string, TMSToolDefinition> = {
     }
   },
 
-  // Reporting Tools (0) - Moved to use debrief tools instead
+  // Reporting Tools (1) - Manager-specific reports
+  tms_generate_team_signals_360: {
+    name: 'tms_generate_team_signals_360',
+    description: 'Generate Team Signals 360 report (aggregated team view) - PLACEHOLDER',
+    category: 'reporting',
+    endpoint: '/api/v1/reports/team-signals-360',
+    method: 'POST',
+    requiresAuth: true,
+    parameters: {
+      type: 'object',
+      properties: {
+        organizationId: {
+          type: 'string',
+          description: 'Organization ID'
+        },
+        teamId: {
+          type: 'string',
+          description: 'Team ID (optional, defaults to all teams)'
+        },
+        dateRange: {
+          type: 'object',
+          description: 'Date range for the report',
+          properties: {
+            start: { type: 'string', description: 'Start date (ISO format)' },
+            end: { type: 'string', description: 'End date (ISO format)' }
+          }
+        }
+      },
+      required: ['organizationId']
+    }
+  }
 };
 
 /**
@@ -476,7 +506,8 @@ export function getToolsForAgent(agentName: string): string[] {
     ],
     'ReportingAgent': [
       'tms_generate_html_report',
-      'tms_generate_graph'
+      'tms_generate_graph',
+      'tms_generate_team_signals_360'
     ],
     'OrchestratorAgent': [], // No direct TMS tools
     'DiscoveryAgent': [],
