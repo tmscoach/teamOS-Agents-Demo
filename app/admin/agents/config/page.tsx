@@ -62,16 +62,16 @@ interface AgentSummary {
 }
 
 const AGENT_NAMES = [
-  "Orchestrator Agent",
-  "Discovery Agent", 
-  "Onboarding Agent",
-  "Assessment Agent",
-  "Debrief Agent",
-  "Alignment Agent",
-  "Learning Agent",
-  "Nudge Agent",
-  "Progress Monitor",
-  "Recognition Agent"
+  "OrchestratorAgent",
+  "DiscoveryAgent", 
+  "OnboardingAgent",
+  "AssessmentAgent",
+  "DebriefAgent",
+  "AlignmentAgent",
+  "LearningAgent",
+  "NudgeAgent",
+  "ProgressMonitor",
+  "RecognitionAgent"
 ];
 
 const TABS = [
