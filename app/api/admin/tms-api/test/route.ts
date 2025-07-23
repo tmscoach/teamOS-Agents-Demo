@@ -10,7 +10,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { tool, parameters, jwtToken } = await request.json();
+    const { tool, parameters, jwtToken, headers = {} } = await request.json();
 
     // Validate tool exists
     const toolDef = TMS_TOOL_REGISTRY[tool];
@@ -70,7 +70,8 @@ export async function POST(request: Request) {
           FirstName: bodyParams.firstName,
           LastName: bodyParams.lastName,
           OrganizationName: bodyParams.organizationName,
-          PhoneNumber: bodyParams.phoneNumber
+          PhoneNumber: bodyParams.phoneNumber,
+          ClerkUserId: bodyParams.clerkUserId
         };
       } else if (tool === 'tms_facilitator_login') {
         convertedParams = {
@@ -83,6 +84,26 @@ export async function POST(request: Request) {
           RespondentPassword: bodyParams.respondentPassword,
           MobileAppType: bodyParams.mobileAppType || 'teamOS'
         };
+      } else if (tool === 'tms_create_respondent' || tool === 'tms_create_facilitator') {
+        convertedParams = {
+          email: bodyParams.email,
+          firstName: bodyParams.firstName,
+          lastName: bodyParams.lastName,
+          organizationId: bodyParams.organizationId,
+          clerkUserId: bodyParams.clerkUserId,
+          userType: bodyParams.userType || (tool === 'tms_create_respondent' ? 'Respondent' : 'Facilitator'),
+          respondentName: bodyParams.respondentName
+        };
+      } else if (tool === 'tms_token_exchange') {
+        convertedParams = {
+          clerkUserId: bodyParams.clerkUserId
+        };
+      } else if (tool === 'tms_assign_subscription') {
+        convertedParams = {
+          userId: bodyParams.userId,
+          workflowId: bodyParams.workflowId,
+          organizationId: bodyParams.organizationId
+        };
       }
     }
 
@@ -91,7 +112,8 @@ export async function POST(request: Request) {
       method: toolDef.method,
       endpoint,
       data: toolDef.method !== "GET" ? convertedParams : undefined,
-      jwt: toolDef.requiresAuth ? jwtToken : undefined
+      jwt: toolDef.requiresAuth ? jwtToken : undefined,
+      headers
     });
 
     // Special handling for graph responses - convert Buffer to base64

@@ -261,3 +261,124 @@ export async function generateReport(options: {
     reportData
   };
 }
+
+/**
+ * POST /api/v1/subscriptions/assign
+ * Assign a workflow subscription to a user
+ */
+export async function assignSubscription(options: {
+  data: {
+    userId: string;
+    workflowId: string;
+    organizationId: string;
+  };
+  jwt?: string;
+}): Promise<{
+  subscriptionId: string;
+  userId: string;
+  workflowId: string;
+  workflowName: string;
+  assessmentType: string;
+  status: string;
+  assignedDate: string;
+  dashboardUrl: string;
+}> {
+  // Validate JWT
+  if (!options.jwt) {
+    throw {
+      error: 'UNAUTHORIZED',
+      message: 'Authentication required'
+    } as TMSErrorResponse;
+  }
+
+  const claims = mockTMSClient.decodeJWT(options.jwt);
+  if (!claims) {
+    throw {
+      error: 'INVALID_TOKEN',
+      message: 'Invalid authentication token'
+    } as TMSErrorResponse;
+  }
+
+  // Only facilitators can assign subscriptions
+  if (claims.UserType !== 'Facilitator') {
+    throw {
+      error: 'ACCESS_DENIED',
+      message: 'Only facilitators can assign subscriptions'
+    } as TMSErrorResponse;
+  }
+
+  const { userId, workflowId, organizationId } = options.data;
+
+  // Validate required fields
+  if (!userId || !workflowId || !organizationId) {
+    throw {
+      error: 'VALIDATION_ERROR',
+      message: 'userId, workflowId, and organizationId are required'
+    } as TMSErrorResponse;
+  }
+
+  // Verify the facilitator belongs to the same organization
+  console.log('Assign subscription - Facilitator org:', claims.organisationId);
+  console.log('Assign subscription - Requested org:', organizationId);
+  
+  if (claims.organisationId !== organizationId) {
+    throw {
+      error: 'ACCESS_DENIED',
+      message: 'You can only assign subscriptions within your organization'
+    } as TMSErrorResponse;
+  }
+
+  // Check if user exists and belongs to the organization
+  const targetUser = mockDataStore.getUser(userId);
+  if (!targetUser) {
+    throw {
+      error: 'USER_NOT_FOUND',
+      message: 'User not found'
+    } as TMSErrorResponse;
+  }
+
+  if (targetUser.organizationId !== organizationId) {
+    throw {
+      error: 'ACCESS_DENIED',
+      message: 'User does not belong to your organization'
+    } as TMSErrorResponse;
+  }
+
+  // Check for existing active subscription
+  const existingSubscriptions = mockDataStore.getUserSubscriptions(userId);
+  const hasActiveSubscription = existingSubscriptions.some(sub => 
+    sub.workflowId === workflowId && 
+    sub.status !== 'completed'
+  );
+
+  if (hasActiveSubscription) {
+    throw {
+      error: 'DUPLICATE_SUBSCRIPTION',
+      message: 'User already has an active subscription for this workflow'
+    } as TMSErrorResponse;
+  }
+
+  // Create the subscription
+  try {
+    const subscription = mockDataStore.createSubscription(userId, workflowId, organizationId);
+    
+    // Generate dashboard URL
+    const dashboardUrl = `/dashboard/assessments/${subscription.subscriptionId}`;
+
+    return {
+      subscriptionId: subscription.subscriptionId,
+      userId: subscription.userId,
+      workflowId: subscription.workflowId,
+      workflowName: subscription.workflowName,
+      assessmentType: subscription.assessmentType,
+      status: subscription.status,
+      assignedDate: subscription.assignedDate.toISOString(),
+      dashboardUrl
+    };
+  } catch (error) {
+    throw {
+      error: 'WORKFLOW_NOT_FOUND',
+      message: 'Invalid workflow ID'
+    } as TMSErrorResponse;
+  }
+}

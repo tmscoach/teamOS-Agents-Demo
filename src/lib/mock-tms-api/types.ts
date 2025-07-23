@@ -6,11 +6,12 @@
 // Auth Types
 export interface TMSSignupRequest {
   Email: string;
-  Password: string;
+  Password?: string; // Made optional for Clerk integration
   FirstName: string;
   LastName: string;
   OrganizationName: string;
   PhoneNumber?: string;
+  ClerkUserId?: string; // For password-less signup
 }
 
 export interface TMSLoginRequest {
@@ -136,6 +137,21 @@ export interface TMSProductUsage {
   }[];
 }
 
+// Password-less Auth Types
+export interface TMSCreateUserRequest {
+  email: string;
+  firstName: string;
+  lastName: string;
+  organizationId: string;
+  clerkUserId: string;
+  userType: 'Facilitator' | 'Respondent';
+  respondentName?: string; // For display purposes
+}
+
+export interface TMSTokenExchangeRequest {
+  clerkUserId: string;
+}
+
 // Error Response
 export interface TMSErrorResponse {
   error: string;
@@ -150,6 +166,7 @@ export interface TMSJWTClaims {
   respondentID?: string;
   nameid: string; // email
   organisationId: string;
+  clerkUserId?: string; // Clerk integration
   exp: number;
   iat: number;
 }

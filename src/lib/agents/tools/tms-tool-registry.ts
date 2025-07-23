@@ -35,7 +35,11 @@ export const TMS_TOOL_REGISTRY: Record<string, TMSToolDefinition> = {
         },
         password: {
           type: 'string',
-          description: 'Password for the facilitator account'
+          description: 'Password for the facilitator account (optional if ClerkUserId provided)'
+        },
+        clerkUserId: {
+          type: 'string',
+          description: 'Clerk user ID for password-less authentication'
         },
         firstName: {
           type: 'string',
@@ -54,7 +58,7 @@ export const TMS_TOOL_REGISTRY: Record<string, TMSToolDefinition> = {
           description: 'Optional phone number'
         }
       },
-      required: ['email', 'password', 'firstName', 'lastName', 'organizationName']
+      required: ['email', 'firstName', 'lastName', 'organizationName'] // password or clerkUserId required
     }
   },
 
@@ -78,6 +82,99 @@ export const TMS_TOOL_REGISTRY: Record<string, TMSToolDefinition> = {
         }
       },
       required: ['email', 'password']
+    }
+  },
+
+  tms_create_respondent: {
+    name: 'tms_create_respondent',
+    description: 'Create respondent account in TMS Global without password (Clerk integration)',
+    category: 'onboarding',
+    endpoint: '/api/v1/auth/create-respondent',
+    method: 'POST',
+    requiresAuth: false,
+    parameters: {
+      type: 'object',
+      properties: {
+        email: {
+          type: 'string',
+          description: 'Email address for the respondent account'
+        },
+        firstName: {
+          type: 'string',
+          description: 'First name of the respondent'
+        },
+        lastName: {
+          type: 'string',
+          description: 'Last name of the respondent'
+        },
+        organizationId: {
+          type: 'string',
+          description: 'Organization ID the respondent belongs to'
+        },
+        clerkUserId: {
+          type: 'string',
+          description: 'Clerk user ID for password-less authentication'
+        },
+        respondentName: {
+          type: 'string',
+          description: 'Optional display name for the respondent'
+        }
+      },
+      required: ['email', 'firstName', 'lastName', 'organizationId', 'clerkUserId']
+    }
+  },
+
+  tms_create_facilitator: {
+    name: 'tms_create_facilitator',
+    description: 'Create facilitator account in TMS Global without password (Clerk integration)',
+    category: 'onboarding',
+    endpoint: '/api/v1/auth/create-facilitator',
+    method: 'POST',
+    requiresAuth: false,
+    parameters: {
+      type: 'object',
+      properties: {
+        email: {
+          type: 'string',
+          description: 'Email address for the facilitator account'
+        },
+        firstName: {
+          type: 'string',
+          description: 'First name of the facilitator'
+        },
+        lastName: {
+          type: 'string',
+          description: 'Last name of the facilitator'
+        },
+        organizationId: {
+          type: 'string',
+          description: 'Organization ID the facilitator belongs to'
+        },
+        clerkUserId: {
+          type: 'string',
+          description: 'Clerk user ID for password-less authentication'
+        }
+      },
+      required: ['email', 'firstName', 'lastName', 'organizationId', 'clerkUserId']
+    }
+  },
+
+  tms_token_exchange: {
+    name: 'tms_token_exchange',
+    description: 'Exchange Clerk user ID for TMS JWT token',
+    category: 'onboarding',
+    endpoint: '/api/v1/auth/token-exchange',
+    method: 'POST',
+    requiresAuth: false,
+    parameters: {
+      type: 'object',
+      properties: {
+        clerkUserId: {
+          type: 'string',
+          description: 'Clerk user ID to exchange for TMS JWT'
+        }
+      },
+      required: ['clerkUserId']
     }
   },
 
@@ -109,21 +206,34 @@ export const TMS_TOOL_REGISTRY: Record<string, TMSToolDefinition> = {
     }
   },
 
-  tms_check_user_permissions: {
-    name: 'tms_check_user_permissions',
-    description: 'Validate JWT token and get user permissions from TMS Global',
-    category: 'onboarding',
-    endpoint: '/api/v1/team-os/auth/validate',
-    method: 'GET',
+  // Assessment Tools (7)
+  tms_assign_subscription: {
+    name: 'tms_assign_subscription',
+    description: 'Assign a workflow subscription to a user (facilitator or respondent)',
+    category: 'assessment',
+    endpoint: '/api/v1/subscriptions/assign',
+    method: 'POST',
     requiresAuth: true,
     parameters: {
       type: 'object',
-      properties: {},
-      required: []
+      properties: {
+        userId: {
+          type: 'string',
+          description: 'The user ID to assign the subscription to'
+        },
+        workflowId: {
+          type: 'string',
+          description: 'The workflow ID to assign (e.g., tmp-workflow, qo2-workflow)'
+        },
+        organizationId: {
+          type: 'string',
+          description: 'The organization ID (must match the facilitator\'s organization)'
+        }
+      },
+      required: ['userId', 'workflowId', 'organizationId']
     }
   },
 
-  // Assessment Tools (6)
   tms_get_workflow_process: {
     name: 'tms_get_workflow_process',
     description: 'Get current workflow state with questions for an assessment',
@@ -329,12 +439,12 @@ export const TMS_TOOL_REGISTRY: Record<string, TMSToolDefinition> = {
     }
   },
 
-  // Reporting Tools (2)
-  tms_generate_report: {
-    name: 'tms_generate_report',
-    description: 'Generate custom organization-wide reports',
+  // Reporting Tools (1) - Manager-specific reports
+  tms_generate_team_signals_360: {
+    name: 'tms_generate_team_signals_360',
+    description: 'Generate Team Signals 360 report (aggregated team view) - PLACEHOLDER',
     category: 'reporting',
-    endpoint: '/api/v1/reports/generate',
+    endpoint: '/api/v1/reports/team-signals-360',
     method: 'POST',
     requiresAuth: true,
     parameters: {
@@ -342,54 +452,22 @@ export const TMS_TOOL_REGISTRY: Record<string, TMSToolDefinition> = {
       properties: {
         organizationId: {
           type: 'string',
-          description: 'The organization ID'
+          description: 'Organization ID'
         },
-        reportType: {
+        teamId: {
           type: 'string',
-          description: 'Type of report to generate'
+          description: 'Team ID (optional, defaults to all teams)'
         },
         dateRange: {
           type: 'object',
-          description: 'Optional date range for the report',
+          description: 'Date range for the report',
           properties: {
-            start: {
-              type: 'string',
-              description: 'Start date (ISO format)'
-            },
-            end: {
-              type: 'string',
-              description: 'End date (ISO format)'
-            }
+            start: { type: 'string', description: 'Start date (ISO format)' },
+            end: { type: 'string', description: 'End date (ISO format)' }
           }
-        },
-        includeTeams: {
-          type: 'array',
-          description: 'Optional list of team IDs to include',
-          items: {
-            type: 'string'
-          }
-        },
-        format: {
-          type: 'string',
-          enum: ['PDF', 'Excel'],
-          description: 'Report format (default: PDF)'
         }
       },
-      required: ['organizationId', 'reportType']
-    }
-  },
-
-  tms_get_product_usage: {
-    name: 'tms_get_product_usage',
-    description: 'Get product usage analytics for the organization',
-    category: 'reporting',
-    endpoint: '/api/v1/reports/product-usage',
-    method: 'GET',
-    requiresAuth: true,
-    parameters: {
-      type: 'object',
-      properties: {},
-      required: []
+      required: ['organizationId']
     }
   }
 };
@@ -409,9 +487,12 @@ export function getToolsForAgent(agentName: string): string[] {
     'OnboardingAgent': [
       'tms_create_org',
       'tms_facilitator_login',
-      'tms_check_user_permissions'
+      'tms_create_respondent',
+      'tms_create_facilitator',
+      'tms_token_exchange'
     ],
     'AssessmentAgent': [
+      'tms_assign_subscription',
       'tms_get_workflow_process',
       'tms_update_workflow',
       'tms_get_question_actions',
@@ -424,8 +505,9 @@ export function getToolsForAgent(agentName: string): string[] {
       'tms_generate_graph'
     ],
     'ReportingAgent': [
-      'tms_generate_report',
-      'tms_get_product_usage'
+      'tms_generate_html_report',
+      'tms_generate_graph',
+      'tms_generate_team_signals_360'
     ],
     'OrchestratorAgent': [], // No direct TMS tools
     'DiscoveryAgent': [],

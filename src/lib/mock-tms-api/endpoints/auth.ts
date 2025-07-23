@@ -10,22 +10,41 @@ import {
   TMSLoginRequest, 
   TMSAuthResponse, 
   TMSValidateResponse,
-  TMSErrorResponse 
+  TMSErrorResponse,
+  TMSCreateUserRequest,
+  TMSTokenExchangeRequest
 } from '../types';
+
+/**
+ * Validate API key for system-level operations
+ */
+function validateApiKey(apiKey?: string): boolean {
+  const validApiKey = process.env.TMS_API_KEY || 'mock-api-key-12345';
+  return apiKey === validApiKey;
+}
 
 /**
  * POST /api/v1/auth/signup
  * Creates organization and facilitator account
  */
 export async function signup(options: { data: TMSSignupRequest }): Promise<TMSAuthResponse> {
-  const { Email, Password, FirstName, LastName, OrganizationName } = options.data;
+  const { Email, Password, FirstName, LastName, OrganizationName, ClerkUserId } = options.data;
 
-  // Validate input
-  if (!Email || !Password || !FirstName || !LastName || !OrganizationName) {
+  // Validate input - password is optional if ClerkUserId is provided
+  if (!Email || !FirstName || !LastName || !OrganizationName) {
     throw {
       error: 'VALIDATION_ERROR',
-      message: 'All fields are required',
-      details: { required: ['Email', 'Password', 'FirstName', 'LastName', 'OrganizationName'] }
+      message: 'Email, FirstName, LastName, and OrganizationName are required',
+      details: { required: ['Email', 'FirstName', 'LastName', 'OrganizationName'] }
+    } as TMSErrorResponse;
+  }
+
+  // Require either password or ClerkUserId
+  if (!Password && !ClerkUserId) {
+    throw {
+      error: 'VALIDATION_ERROR',
+      message: 'Either Password or ClerkUserId must be provided',
+      details: { required: ['Password or ClerkUserId'] }
     } as TMSErrorResponse;
   }
 
@@ -44,11 +63,12 @@ export async function signup(options: { data: TMSSignupRequest }): Promise<TMSAu
   // Create facilitator user
   const user = mockDataStore.createUser({
     email: Email,
-    password: Password, // In real API, this would be hashed
+    password: Password, // Optional - in real API, this would be hashed
     firstName: FirstName,
     lastName: LastName,
     userType: 'Facilitator',
-    organizationId: org.id
+    organizationId: org.id,
+    clerkUserId: ClerkUserId
   });
 
   // Update org with facilitator ID
@@ -59,7 +79,8 @@ export async function signup(options: { data: TMSSignupRequest }): Promise<TMSAu
     sub: user.id,
     UserType: 'Facilitator',
     nameid: user.email,
-    organisationId: org.id
+    organisationId: org.id,
+    clerkUserId: ClerkUserId
   });
 
   // Update user with token
@@ -112,12 +133,20 @@ export async function login(options: { data: TMSLoginRequest }): Promise<TMSAuth
 
   console.log('Found user:', { id: user.id, email: user.email, password: user.password });
 
-  // Check password
-  if (user.password !== Password) {
+  // Check password - only for password-based users
+  if (user.authSource !== 'clerk' && user.password !== Password) {
     console.log('Password mismatch:', { provided: Password, expected: user.password });
     throw {
       error: 'INVALID_CREDENTIALS',
       message: 'Invalid email or password'
+    } as TMSErrorResponse;
+  }
+
+  // Clerk users should use token exchange instead
+  if (user.authSource === 'clerk') {
+    throw {
+      error: 'INVALID_AUTH_METHOD',
+      message: 'This user was created with Clerk authentication. Please use token exchange instead.'
     } as TMSErrorResponse;
   }
 
@@ -220,11 +249,19 @@ export async function respondentLogin(options: {
     } as TMSErrorResponse;
   }
 
-  // Check password
-  if (user.password !== RespondentPassword) {
+  // Check password - only for password-based users
+  if (user.authSource !== 'clerk' && user.password !== RespondentPassword) {
     throw {
       error: 'INVALID_CREDENTIALS',
       message: 'Invalid email or password'
+    } as TMSErrorResponse;
+  }
+
+  // Clerk users should use token exchange instead
+  if (user.authSource === 'clerk') {
+    throw {
+      error: 'INVALID_AUTH_METHOD',
+      message: 'This user was created with Clerk authentication. Please use token exchange instead.'
     } as TMSErrorResponse;
   }
 
@@ -294,6 +331,186 @@ export async function createRespondent(data: {
     userId: user.id,
     userType: 'Respondent',
     organizationId: data.organizationId,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    email: user.email
+  };
+}
+
+/**
+ * POST /api/v1/auth/create-respondent
+ * Create respondent without password (Clerk integration)
+ */
+export async function createRespondentPasswordless(options: {
+  data: TMSCreateUserRequest;
+  headers?: { 'x-api-key'?: string };
+}): Promise<TMSAuthResponse> {
+  // Validate API key
+  if (!validateApiKey(options.headers?.['x-api-key'])) {
+    throw {
+      error: 'UNAUTHORIZED',
+      message: 'Invalid API key'
+    } as TMSErrorResponse;
+  }
+
+  const { email, firstName, lastName, organizationId, clerkUserId, respondentName } = options.data;
+
+  // Check if user already exists
+  let user = mockDataStore.getUserByEmail(email);
+  if (user) {
+    // If user exists but doesn't have Clerk ID, update it
+    if (!user.clerkUserId && clerkUserId) {
+      user.clerkUserId = clerkUserId;
+      user.authSource = 'clerk';
+      mockDataStore.clerkIdToUser.set(clerkUserId, user.id);
+    }
+  } else {
+    // Create new respondent without password
+    user = mockDataStore.createUser({
+      email,
+      firstName,
+      lastName,
+      userType: 'Respondent',
+      organizationId,
+      clerkUserId,
+      respondentName
+    });
+  }
+
+  // Generate JWT token
+  const token = mockTMSClient.generateJWT({
+    sub: user.id,
+    UserType: 'Respondent',
+    respondentID: user.id,
+    nameid: user.email,
+    organisationId: organizationId,
+    clerkUserId
+  });
+
+  // Update user with token
+  user.token = token;
+  mockDataStore.tokenToUser.set(token, user.id);
+
+  return {
+    token,
+    userId: user.id,
+    userType: 'Respondent',
+    organizationId,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    email: user.email
+  };
+}
+
+/**
+ * POST /api/v1/auth/create-facilitator
+ * Create facilitator without password (Clerk integration)
+ */
+export async function createFacilitatorPasswordless(options: {
+  data: TMSCreateUserRequest;
+  headers?: { 'x-api-key'?: string };
+}): Promise<TMSAuthResponse> {
+  // Validate API key
+  if (!validateApiKey(options.headers?.['x-api-key'])) {
+    throw {
+      error: 'UNAUTHORIZED',
+      message: 'Invalid API key'
+    } as TMSErrorResponse;
+  }
+
+  const { email, firstName, lastName, organizationId, clerkUserId } = options.data;
+
+  // Check if user already exists
+  let user = mockDataStore.getUserByEmail(email);
+  if (user) {
+    // If user exists but doesn't have Clerk ID, update it
+    if (!user.clerkUserId && clerkUserId) {
+      user.clerkUserId = clerkUserId;
+      user.authSource = 'clerk';
+      mockDataStore.clerkIdToUser.set(clerkUserId, user.id);
+    }
+  } else {
+    // Create new facilitator without password
+    user = mockDataStore.createUser({
+      email,
+      firstName,
+      lastName,
+      userType: 'Facilitator',
+      organizationId,
+      clerkUserId
+    });
+  }
+
+  // Generate JWT token
+  const token = mockTMSClient.generateJWT({
+    sub: user.id,
+    UserType: 'Facilitator',
+    nameid: user.email,
+    organisationId: organizationId,
+    clerkUserId
+  });
+
+  // Update user with token
+  user.token = token;
+  mockDataStore.tokenToUser.set(token, user.id);
+
+  return {
+    token,
+    userId: user.id,
+    userType: 'Facilitator',
+    organizationId,
+    firstName: user.firstName,
+    lastName: user.lastName,
+    email: user.email
+  };
+}
+
+/**
+ * POST /api/v1/auth/token-exchange
+ * Exchange Clerk user ID for TMS JWT token
+ */
+export async function tokenExchange(options: {
+  data: TMSTokenExchangeRequest;
+  headers?: { 'x-api-key'?: string };
+}): Promise<TMSAuthResponse> {
+  // Validate API key
+  if (!validateApiKey(options.headers?.['x-api-key'])) {
+    throw {
+      error: 'UNAUTHORIZED',
+      message: 'Invalid API key'
+    } as TMSErrorResponse;
+  }
+
+  const { clerkUserId } = options.data;
+
+  // Find user by Clerk ID
+  const user = mockDataStore.getUserByClerkId(clerkUserId);
+  if (!user) {
+    throw {
+      error: 'USER_NOT_FOUND',
+      message: 'No TMS user found for this Clerk ID'
+    } as TMSErrorResponse;
+  }
+
+  // Generate new JWT token
+  const token = mockTMSClient.generateJWT({
+    sub: user.id,
+    UserType: user.userType,
+    respondentID: user.userType === 'Respondent' ? user.id : undefined,
+    nameid: user.email,
+    organisationId: user.organizationId,
+    clerkUserId
+  });
+
+  // Update user with token
+  user.token = token;
+  mockDataStore.tokenToUser.set(token, user.id);
+
+  return {
+    token,
+    userId: user.id,
+    userType: user.userType,
+    organizationId: user.organizationId,
     firstName: user.firstName,
     lastName: user.lastName,
     email: user.email
