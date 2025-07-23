@@ -10,12 +10,15 @@ import { getAssessmentByWorkflow, ASSESSMENT_DEFINITIONS } from './assessment-de
 interface MockUser {
   id: string;
   email: string;
-  password: string;
+  password?: string; // Made optional for Clerk integration
+  clerkUserId?: string; // Link to Clerk user
   firstName: string;
   lastName: string;
   userType: 'Facilitator' | 'Respondent';
   organizationId: string;
   token?: string;
+  respondentName?: string; // Display name for respondents
+  authSource?: 'password' | 'clerk'; // Track authentication source
 }
 
 interface MockOrganization {
@@ -50,6 +53,7 @@ class MockDataStore {
   organizations: Map<string, MockOrganization> = new Map();
   subscriptions: Map<string, MockSubscription> = new Map();
   tokenToUser: Map<string, string> = new Map();
+  clerkIdToUser: Map<string, string> = new Map(); // Map Clerk IDs to user IDs
 
   constructor() {
     // Don't initialize test data automatically - let seed endpoint handle it
@@ -137,9 +141,25 @@ class MockDataStore {
   createUser(user: Omit<MockUser, 'id' | 'token'>): MockUser {
     const id = `user-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const token = `mock-jwt-${id}`;
-    const newUser: MockUser = { ...user, id, token };
+    
+    // Set auth source based on presence of password or clerkUserId
+    const authSource = user.clerkUserId ? 'clerk' : 'password';
+    
+    const newUser: MockUser = { 
+      ...user, 
+      id, 
+      token,
+      authSource 
+    };
+    
     this.users.set(id, newUser);
     this.tokenToUser.set(token, id);
+    
+    // Map Clerk ID if provided
+    if (user.clerkUserId) {
+      this.clerkIdToUser.set(user.clerkUserId, id);
+    }
+    
     return newUser;
   }
 
@@ -154,6 +174,11 @@ class MockDataStore {
 
   getUser(userId: string): MockUser | undefined {
     return this.users.get(userId);
+  }
+
+  getUserByClerkId(clerkUserId: string): MockUser | undefined {
+    const userId = this.clerkIdToUser.get(clerkUserId);
+    return userId ? this.users.get(userId) : undefined;
   }
 
   getAllSubscriptions(): MockSubscription[] {
@@ -305,6 +330,7 @@ export function resetMockDataStore(): void {
   store.organizations.clear();
   store.subscriptions.clear();
   store.tokenToUser.clear();
+  store.clerkIdToUser.clear();
   
   // Clear workflow states
   store.subscriptions.forEach((sub) => {

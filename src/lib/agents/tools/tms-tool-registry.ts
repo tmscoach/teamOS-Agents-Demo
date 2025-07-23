@@ -35,7 +35,11 @@ export const TMS_TOOL_REGISTRY: Record<string, TMSToolDefinition> = {
         },
         password: {
           type: 'string',
-          description: 'Password for the facilitator account'
+          description: 'Password for the facilitator account (optional if ClerkUserId provided)'
+        },
+        clerkUserId: {
+          type: 'string',
+          description: 'Clerk user ID for password-less authentication'
         },
         firstName: {
           type: 'string',
@@ -54,7 +58,7 @@ export const TMS_TOOL_REGISTRY: Record<string, TMSToolDefinition> = {
           description: 'Optional phone number'
         }
       },
-      required: ['email', 'password', 'firstName', 'lastName', 'organizationName']
+      required: ['email', 'firstName', 'lastName', 'organizationName'] // password or clerkUserId required
     }
   },
 
@@ -78,6 +82,99 @@ export const TMS_TOOL_REGISTRY: Record<string, TMSToolDefinition> = {
         }
       },
       required: ['email', 'password']
+    }
+  },
+
+  tms_create_respondent: {
+    name: 'tms_create_respondent',
+    description: 'Create respondent account in TMS Global without password (Clerk integration)',
+    category: 'onboarding',
+    endpoint: '/api/v1/auth/create-respondent',
+    method: 'POST',
+    requiresAuth: false,
+    parameters: {
+      type: 'object',
+      properties: {
+        email: {
+          type: 'string',
+          description: 'Email address for the respondent account'
+        },
+        firstName: {
+          type: 'string',
+          description: 'First name of the respondent'
+        },
+        lastName: {
+          type: 'string',
+          description: 'Last name of the respondent'
+        },
+        organizationId: {
+          type: 'string',
+          description: 'Organization ID the respondent belongs to'
+        },
+        clerkUserId: {
+          type: 'string',
+          description: 'Clerk user ID for password-less authentication'
+        },
+        respondentName: {
+          type: 'string',
+          description: 'Optional display name for the respondent'
+        }
+      },
+      required: ['email', 'firstName', 'lastName', 'organizationId', 'clerkUserId']
+    }
+  },
+
+  tms_create_facilitator: {
+    name: 'tms_create_facilitator',
+    description: 'Create facilitator account in TMS Global without password (Clerk integration)',
+    category: 'onboarding',
+    endpoint: '/api/v1/auth/create-facilitator',
+    method: 'POST',
+    requiresAuth: false,
+    parameters: {
+      type: 'object',
+      properties: {
+        email: {
+          type: 'string',
+          description: 'Email address for the facilitator account'
+        },
+        firstName: {
+          type: 'string',
+          description: 'First name of the facilitator'
+        },
+        lastName: {
+          type: 'string',
+          description: 'Last name of the facilitator'
+        },
+        organizationId: {
+          type: 'string',
+          description: 'Organization ID the facilitator belongs to'
+        },
+        clerkUserId: {
+          type: 'string',
+          description: 'Clerk user ID for password-less authentication'
+        }
+      },
+      required: ['email', 'firstName', 'lastName', 'organizationId', 'clerkUserId']
+    }
+  },
+
+  tms_token_exchange: {
+    name: 'tms_token_exchange',
+    description: 'Exchange Clerk user ID for TMS JWT token',
+    category: 'onboarding',
+    endpoint: '/api/v1/auth/token-exchange',
+    method: 'POST',
+    requiresAuth: false,
+    parameters: {
+      type: 'object',
+      properties: {
+        clerkUserId: {
+          type: 'string',
+          description: 'Clerk user ID to exchange for TMS JWT'
+        }
+      },
+      required: ['clerkUserId']
     }
   },
 
@@ -409,6 +506,9 @@ export function getToolsForAgent(agentName: string): string[] {
     'OnboardingAgent': [
       'tms_create_org',
       'tms_facilitator_login',
+      'tms_create_respondent',
+      'tms_create_facilitator',
+      'tms_token_exchange',
       'tms_check_user_permissions'
     ],
     'AssessmentAgent': [

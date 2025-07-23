@@ -103,6 +103,184 @@ describe('Mock TMS API', () => {
         userType: 'Facilitator'
       });
     });
+
+    describe('Password-less Authentication', () => {
+      const validApiKey = 'mock-api-key-12345';
+
+      it('should create organization with Clerk ID', async () => {
+        const signupData = {
+          Email: 'clerk@example.com',
+          FirstName: 'Clerk',
+          LastName: 'User',
+          OrganizationName: 'Clerk Org',
+          ClerkUserId: 'clerk_user_123'
+        };
+
+        const response = await mockApi.request({
+          method: 'POST',
+          endpoint: '/api/v1/auth/signup',
+          data: signupData
+        });
+
+        expect(response).toHaveProperty('token');
+        expect(response).toHaveProperty('userId');
+        expect(response).toHaveProperty('userType', 'Facilitator');
+        
+        // Verify user was created with Clerk ID
+        const user = mockDataStore.getUserByEmail('clerk@example.com');
+        expect(user).toBeDefined();
+        expect(user?.clerkUserId).toBe('clerk_user_123');
+        expect(user?.authSource).toBe('clerk');
+        expect(user?.password).toBeUndefined();
+      });
+
+      it('should create respondent without password', async () => {
+        const org = mockDataStore.createOrganization('Test Org', '');
+        
+        const response = await mockApi.request({
+          method: 'POST',
+          endpoint: '/api/v1/auth/create-respondent',
+          headers: { 'x-api-key': validApiKey },
+          data: {
+            email: 'respondent@example.com',
+            firstName: 'Test',
+            lastName: 'Respondent',
+            organizationId: org.id,
+            clerkUserId: 'clerk_resp_123',
+            userType: 'Respondent'
+          }
+        });
+
+        expect(response).toHaveProperty('token');
+        expect(response).toHaveProperty('userType', 'Respondent');
+        
+        const user = mockDataStore.getUserByClerkId('clerk_resp_123');
+        expect(user).toBeDefined();
+        expect(user?.password).toBeUndefined();
+      });
+
+      it('should create facilitator without password', async () => {
+        const org = mockDataStore.createOrganization('Test Org', '');
+        
+        const response = await mockApi.request({
+          method: 'POST',
+          endpoint: '/api/v1/auth/create-facilitator',
+          headers: { 'x-api-key': validApiKey },
+          data: {
+            email: 'facilitator2@example.com',
+            firstName: 'Test',
+            lastName: 'Facilitator',
+            organizationId: org.id,
+            clerkUserId: 'clerk_fac_123',
+            userType: 'Facilitator'
+          }
+        });
+
+        expect(response).toHaveProperty('token');
+        expect(response).toHaveProperty('userType', 'Facilitator');
+      });
+
+      it('should exchange Clerk ID for JWT token', async () => {
+        // First create a user with Clerk ID
+        const org = mockDataStore.createOrganization('Test Org', '');
+        mockDataStore.createUser({
+          email: 'exchange@example.com',
+          firstName: 'Exchange',
+          lastName: 'User',
+          userType: 'Facilitator',
+          organizationId: org.id,
+          clerkUserId: 'clerk_exchange_123'
+        });
+
+        const response = await mockApi.request({
+          method: 'POST',
+          endpoint: '/api/v1/auth/token-exchange',
+          headers: { 'x-api-key': validApiKey },
+          data: {
+            clerkUserId: 'clerk_exchange_123'
+          }
+        });
+
+        expect(response).toHaveProperty('token');
+        expect(response).toHaveProperty('email', 'exchange@example.com');
+      });
+
+      it('should reject password-less endpoints without API key', async () => {
+        await expect(mockApi.request({
+          method: 'POST',
+          endpoint: '/api/v1/auth/create-respondent',
+          data: {
+            email: 'test@example.com',
+            firstName: 'Test',
+            lastName: 'User',
+            organizationId: 'org-123',
+            clerkUserId: 'clerk_123',
+            userType: 'Respondent'
+          }
+        })).rejects.toMatchObject({
+          error: 'UNAUTHORIZED'
+        });
+      });
+
+      it('should reject login for Clerk users', async () => {
+        // Create a Clerk user
+        const org = mockDataStore.createOrganization('Test Org', '');
+        mockDataStore.createUser({
+          email: 'clerkonly@example.com',
+          firstName: 'Clerk',
+          lastName: 'Only',
+          userType: 'Facilitator',
+          organizationId: org.id,
+          clerkUserId: 'clerk_only_123'
+        });
+
+        await expect(mockApi.request({
+          method: 'POST',
+          endpoint: '/api/v1/auth/login',
+          data: {
+            Email: 'clerkonly@example.com',
+            Password: 'any-password'
+          }
+        })).rejects.toMatchObject({
+          error: 'INVALID_AUTH_METHOD'
+        });
+      });
+
+      it('should update existing user with Clerk ID', async () => {
+        // Create user with password first
+        const org = mockDataStore.createOrganization('Test Org', '');
+        mockDataStore.createUser({
+          email: 'existing@example.com',
+          password: 'Test123!',
+          firstName: 'Existing',
+          lastName: 'User',
+          userType: 'Respondent',
+          organizationId: org.id
+        });
+
+        // Create same user with Clerk ID
+        const response = await mockApi.request({
+          method: 'POST',
+          endpoint: '/api/v1/auth/create-respondent',
+          headers: { 'x-api-key': validApiKey },
+          data: {
+            email: 'existing@example.com',
+            firstName: 'Existing',
+            lastName: 'User',
+            organizationId: org.id,
+            clerkUserId: 'clerk_existing_123',
+            userType: 'Respondent'
+          }
+        });
+
+        expect(response).toHaveProperty('token');
+        
+        // Verify user was updated, not duplicated
+        const user = mockDataStore.getUserByEmail('existing@example.com');
+        expect(user?.clerkUserId).toBe('clerk_existing_123');
+        expect(user?.authSource).toBe('clerk');
+      });
+    });
   });
 
   describe('Workflow Management', () => {
