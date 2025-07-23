@@ -66,6 +66,7 @@ const AGENT_NAMES = [
   "Discovery Agent", 
   "Onboarding Agent",
   "Assessment Agent",
+  "Debrief Agent",
   "Alignment Agent",
   "Learning Agent",
   "Nudge Agent",
