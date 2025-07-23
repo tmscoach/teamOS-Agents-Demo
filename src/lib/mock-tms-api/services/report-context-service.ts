@@ -244,27 +244,22 @@ class ReportContextService {
   private analyzeQueryIntent(query: string): QueryIntent {
     const lowerQuery = query.toLowerCase();
     
-    // Pattern matching for different intent types
-    const patterns = {
-      explain_visual: /wheel|graph|chart|image|color|section|green|red|yellow|visual|picture|diagram/i,
-      compare_scores: /compare|difference|better|worse|average|benchmark|others|team/i,
-      interpret_results: /mean|means|significance|interpret|understand|explain|why|what does/i,
-      next_steps: /next|recommend|improve|action|focus|should|work on|develop/i
-    };
+    // Pattern matching for different intent types - order matters!
+    const patterns = [
+      { intent: 'explain_visual', pattern: /wheel|graph|chart|image|color|section|green|red|yellow|orange|pink|visual|picture|diagram|traffic light/i },
+      { intent: 'next_steps', pattern: /what should i do|next|recommend|improve|action|focus|work on|develop/i },
+      { intent: 'compare_scores', pattern: /compare|comparison|difference|better|worse|average|benchmark|others|versus/i },
+      { intent: 'interpret_results', pattern: /what does.*mean|means|significance|interpret|understand my|explain my/i }
+    ];
 
     let matchedIntent: QueryIntent['type'] = 'general';
-    let highestConfidence = 0;
     const entities: QueryIntent['entities'] = {};
 
-    // Check each pattern
-    for (const [intent, pattern] of Object.entries(patterns)) {
-      const match = lowerQuery.match(pattern);
-      if (match) {
-        const confidence = match[0].length / query.length;
-        if (confidence > highestConfidence) {
-          highestConfidence = confidence;
-          matchedIntent = intent as QueryIntent['type'];
-        }
+    // Check patterns in order - first match wins
+    for (const { intent, pattern } of patterns) {
+      if (pattern.test(lowerQuery)) {
+        matchedIntent = intent as QueryIntent['type'];
+        break;
       }
     }
 
@@ -280,7 +275,7 @@ class ReportContextService {
     return {
       type: matchedIntent,
       entities,
-      confidence: Math.min(highestConfidence * 2, 1) // Boost confidence for MVP
+      confidence: matchedIntent === 'general' ? 0.5 : 0.9 // High confidence for matched intents
     };
   }
 
@@ -331,7 +326,7 @@ class ReportContextService {
     const sections: DebriefResponse['relevantSections'] = [];
 
     // Generate explanation based on assessment type and visual element
-    if (assessmentType === 'TMP' && visualElement?.includes('wheel')) {
+    if (assessmentType === 'TMP' && (visualElement?.includes('wheel') || visualElement?.includes('green') || visualElement?.includes('section'))) {
       response = this.explainTMPWheel(reportContext);
       
       // Add wheel image to relevant sections
@@ -343,7 +338,7 @@ class ReportContextService {
           explanation: wheelImage.description
         });
       }
-    } else if (assessmentType === 'TeamSignals' && (visualElement?.includes('traffic') || visualElement?.includes('light'))) {
+    } else if (assessmentType === 'TeamSignals' && (visualElement?.includes('traffic') || visualElement?.includes('light') || query.toLowerCase().includes('traffic light'))) {
       response = this.explainTeamSignalsTrafficLights(reportContext);
     } else {
       // Generic visual explanation
@@ -424,7 +419,8 @@ class ReportContextService {
     // Add assessment-specific comparisons
     if (assessmentType === 'TMP') {
       response += `Your Team Management Profile shows your unique combination of work preferences. `;
-      response += `While there's no "better" or "worse" profile, understanding your preferences helps you work more effectively with others who have different styles.`;
+      response += `When you compare your profile to others, remember that there's no "better" or "worse" profile - each has unique strengths. `;
+      response += `Understanding your preferences helps you work more effectively with others who have different styles.`;
     } else if (assessmentType === 'TeamSignals') {
       response += `Your team's scores can be compared against typical team performance benchmarks. `;
       response += `Green areas indicate where your team is performing above average, while amber and red areas show opportunities for improvement.`;
@@ -502,6 +498,11 @@ class ReportContextService {
   ): Promise<DebriefResponse> {
     const { assessmentType } = reportContext;
     
+    // Check if it's a general "help me understand" query
+    if (query.toLowerCase().includes('help me understand') || query.toLowerCase().includes('understand my report')) {
+      return this.interpretResults(query, { type: 'interpret_results', entities: {}, confidence: 0.8 }, reportContext);
+    }
+    
     const response = `I can help you understand your ${assessmentType} report. You can ask me about:\n\n` +
                     `• What the visual elements (wheels, graphs, colors) mean\n` +
                     `• How to interpret your scores and results\n` +
@@ -557,7 +558,7 @@ class ReportContextService {
         'comparison': [
           'How does my team compare to high-performing teams?',
           'Which areas are we strongest in?',
-          'What's our biggest gap compared to benchmarks?'
+          'What\'s our biggest gap compared to benchmarks?'
         ],
         'interpretation': [
           'What do these scores mean for team effectiveness?',
