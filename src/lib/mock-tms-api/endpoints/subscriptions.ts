@@ -318,6 +318,9 @@ export async function assignSubscription(options: {
   }
 
   // Verify the facilitator belongs to the same organization
+  console.log('Assign subscription - Facilitator org:', claims.organisationId);
+  console.log('Assign subscription - Requested org:', organizationId);
+  
   if (claims.organisationId !== organizationId) {
     throw {
       error: 'ACCESS_DENIED',

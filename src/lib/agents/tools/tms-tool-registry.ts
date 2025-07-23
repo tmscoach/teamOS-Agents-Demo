@@ -439,69 +439,7 @@ export const TMS_TOOL_REGISTRY: Record<string, TMSToolDefinition> = {
     }
   },
 
-  // Reporting Tools (2)
-  tms_generate_report: {
-    name: 'tms_generate_report',
-    description: 'Generate custom organization-wide reports',
-    category: 'reporting',
-    endpoint: '/api/v1/reports/generate',
-    method: 'POST',
-    requiresAuth: true,
-    parameters: {
-      type: 'object',
-      properties: {
-        organizationId: {
-          type: 'string',
-          description: 'The organization ID'
-        },
-        reportType: {
-          type: 'string',
-          description: 'Type of report to generate'
-        },
-        dateRange: {
-          type: 'object',
-          description: 'Optional date range for the report',
-          properties: {
-            start: {
-              type: 'string',
-              description: 'Start date (ISO format)'
-            },
-            end: {
-              type: 'string',
-              description: 'End date (ISO format)'
-            }
-          }
-        },
-        includeTeams: {
-          type: 'array',
-          description: 'Optional list of team IDs to include',
-          items: {
-            type: 'string'
-          }
-        },
-        format: {
-          type: 'string',
-          enum: ['PDF', 'Excel'],
-          description: 'Report format (default: PDF)'
-        }
-      },
-      required: ['organizationId', 'reportType']
-    }
-  },
-
-  tms_get_product_usage: {
-    name: 'tms_get_product_usage',
-    description: 'Get product usage analytics for the organization',
-    category: 'reporting',
-    endpoint: '/api/v1/reports/product-usage',
-    method: 'GET',
-    requiresAuth: true,
-    parameters: {
-      type: 'object',
-      properties: {},
-      required: []
-    }
-  }
+  // Reporting Tools (0) - Moved to use debrief tools instead
 };
 
 /**
@@ -537,8 +475,8 @@ export function getToolsForAgent(agentName: string): string[] {
       'tms_generate_graph'
     ],
     'ReportingAgent': [
-      'tms_generate_report',
-      'tms_get_product_usage'
+      'tms_generate_html_report',
+      'tms_generate_graph'
     ],
     'OrchestratorAgent': [], // No direct TMS tools
     'DiscoveryAgent': [],

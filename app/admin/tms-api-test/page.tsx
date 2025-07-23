@@ -293,7 +293,7 @@ export default function TMSApiTestPage() {
       tms_assign_subscription: {
         userId: testData.facilitator?.id || "user_123",
         workflowId: "tmp-workflow",
-        organizationId: orgId
+        organizationId: testData.facilitator?.organizationId || orgId
       }
     };
 

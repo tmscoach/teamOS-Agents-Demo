@@ -274,7 +274,11 @@ export async function startWorkflow(options: {
   }
 
   // Check if user has access
-  if (subscription.userId !== claims.sub) {
+  // User can access their own subscription OR facilitators can access any subscription in their org
+  const hasAccess = subscription.userId === claims.sub || 
+    (claims.UserType === 'Facilitator' && claims.organisationId === subscription.organizationId);
+  
+  if (!hasAccess) {
     throw {
       error: 'ACCESS_DENIED',
       message: 'You do not have access to this subscription'
