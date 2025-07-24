@@ -5,6 +5,8 @@ import { getToolsForAgent } from '../tools/tms-tool-registry';
 import { knowledgeBaseTools } from '../../knowledge-base';
 import { AgentConfigLoader } from '../config/agent-config-loader';
 import { DebriefGuardrails, DebriefGuardrailConfig } from '../guardrails/debrief-guardrails';
+import { JourneyTracker } from '@/lib/orchestrator/journey-tracker';
+import { JourneyPhase } from '@/lib/orchestrator/journey-phases';
 
 /**
  * OpenAI-powered Debrief Agent with TMS tools and knowledge base
@@ -28,33 +30,54 @@ export class OpenAIDebriefAgent extends OpenAIAgent {
       description: 'Provides assessment debriefs and generates reports for completed assessments',
       handoffDescription: 'Let me provide insights from your completed assessment',
       inputGuardrails: guardrails,
-      instructions: () => `You are the TMS Debrief Agent. Your role is to provide comprehensive debriefs for completed assessments and generate reports.
+      instructions: () => {
+        // Get system prompt from config
+        const configPrompt = this.loadedConfig?.systemPrompt || 
+          `You are the TMS Debrief Agent. Your role is to provide comprehensive debriefs for completed assessments.`;
+        
+        // Add TMP debrief instructions
+        const tmpDebriefInstructions = `
 
-Your responsibilities include:
-- Retrieving and presenting assessment results
-- Generating insights from assessment data
-- Creating customized reports based on templates
-- Explaining scores and recommendations
-- Guiding next steps based on results
+## TMP Debrief Flow
 
-When a user asks about their report:
-1. First check if they have provided a subscription ID
-2. If not, ask them for their subscription ID or team details
-3. Use the tms_debrief_report tool to retrieve and analyze their report
-4. If the subscription is not found, guide them to generate a report first
+When conducting a TMP debrief, follow these numbered steps:
 
-If you need a test subscription ID, ask the user or check their dashboard for available assessments.
+1. Read through the user's completed TMP report and understand it. Use the TMS knowledge base for context on the Team Management Profile (TMP) report, terminology and research.
 
-When generating reports with tms_generate_html_report:
-- Use templateId "1" for default template
-- The tool expects numeric template IDs (1, 2, 3, etc.), not assessment type names
+2. Retrieve the full TMP profile result using tms_generate_html_report or tms_debrief_report and store this as $PROFILE
 
-Remember to:
-- Present results in an understandable way
-- Focus on actionable insights
-- Maintain confidentiality of assessment data
-- Offer constructive feedback
-- Suggest appropriate next steps`,
+3. From $PROFILE, display the following information:
+   - Major Role:
+   - 1st Related Role:
+   - 2nd Related Role:  
+   - Net Scores:
+   - Key Points of Note:
+
+4. Say: "The purpose of our session is to learn more about yourself, explore your personal team management profile, the implications for your job role, and use that information as a catalyst to review and fine-tune how you work. To get started, what are your main objectives from the debrief session today?"
+   - Suggest 3 example objectives for a TMP debrief
+   - Wait for user response and record as $OBJECTIVES
+
+5. Ask: "From looking at your profile, what are your 3 highlights?"
+   - Suggest examples from the 'Leadership Strengths' section of $PROFILE
+   - Wait for user response and record as $HIGHLIGHTS
+
+6. Ask: "What would be 2 suggestions that other people might follow to effectively communicate with you?"
+   - Show examples from 'Areas for Self Assessment' section
+   - Wait for user response and record as $COMMUNICATION
+
+7. Ask: "What is 1 area that other people might follow to support you better?"
+   - Wait for user response and record as $SUPPORT
+
+8. Summarize by listing:
+   - Objectives: $OBJECTIVES
+   - Highlights: $HIGHLIGHTS
+   - Communication Tips: $COMMUNICATION
+   - Support Needs: $SUPPORT
+
+9. Thank the user and note that this information will guide their journey in future.`;
+        
+        return configPrompt + tmpDebriefInstructions;
+      },
       tools: [],
       handoffs: [{
         targetAgent: 'AlignmentAgent',
@@ -127,6 +150,91 @@ Remember to:
       console.log(`[${this.name}] Loaded ${tmsTools.length} TMS tools`);
     } catch (error) {
       console.error(`[${this.name}] Failed to load TMS tools:`, error);
+    }
+  }
+
+  /**
+   * Override processMessage to check for available reports and handle debrief completion
+   */
+  async processMessage(
+    message: string,
+    context: AgentContext
+  ): Promise<AgentResponse> {
+    // Check if this is the start of a conversation
+    if (!context.conversationId || context.messageCount === 0) {
+      // Add instruction to check for available reports
+      const checkReportsPrompt = `REMINDER: This is the start of a new conversation. 
+You MUST immediately use tms_get_dashboard_subscriptions to check for completed assessments.
+After checking, proactively offer to debrief any completed assessments you find.
+
+User message: ${message}`;
+      
+      // Process with the modified message
+      const response = await super.processMessage(checkReportsPrompt, context);
+      
+      return response;
+    }
+    
+    // Normal processing
+    const response = await super.processMessage(message, context);
+    
+    // Check if debrief was completed based on extracted variables
+    if (response.metadata?.extractedVariables?.debrief_completed === true) {
+      await this.handleDebriefCompletion(context, response);
+    }
+    
+    return response;
+  }
+  
+  /**
+   * Handle debrief completion and update journey tracker
+   */
+  private async handleDebriefCompletion(
+    context: AgentContext,
+    response: AgentResponse
+  ): Promise<void> {
+    try {
+      const journeyTracker = new JourneyTracker(context.managerId);
+      const extractedVars = response.metadata?.extractedVariables || {};
+      
+      // Determine assessment type
+      const assessmentType = extractedVars.assessment_type || 'unknown';
+      
+      // Mark debrief as viewed with extracted variables
+      await journeyTracker.markDebriefViewed(`${assessmentType}_debrief`, {
+        subscriptionId: extractedVars.subscriptionId,
+        objectives: extractedVars.objectives,
+        highlights: extractedVars.highlights,
+        communication: extractedVars.communication,
+        support: extractedVars.support,
+        culture_type: extractedVars.culture_type,
+        team_strengths: extractedVars.team_strengths,
+        priority_actions: extractedVars.priority_actions,
+        completedAt: new Date()
+      });
+      
+      // Check if user should move to continuous engagement phase
+      const journey = await journeyTracker.getCurrentJourney();
+      const requiredDebriefs = ['tmp_debrief']; // TMP is required
+      
+      const hasCompletedRequiredDebriefs = requiredDebriefs.every(
+        debrief => journey.viewedDebriefs[debrief]
+      );
+      
+      if (hasCompletedRequiredDebriefs && journey.currentPhase === JourneyPhase.DEBRIEF) {
+        // Update journey phase to continuous engagement
+        await journeyTracker.updateJourneyProgress('debrief_complete', {
+          phase: JourneyPhase.CONTINUOUS_ENGAGEMENT,
+          timestamp: new Date()
+        });
+        
+        console.log(`[${this.name}] Updated journey phase to CONTINUOUS_ENGAGEMENT for user ${context.managerId}`);
+      }
+      
+      console.log(`[${this.name}] Marked ${assessmentType} debrief as complete for user ${context.managerId}`);
+    } catch (error) {
+      console.error(`[${this.name}] Failed to update journey tracker:`, error);
+      // Don't throw - this shouldn't break the debrief flow
     }
   }
 }
