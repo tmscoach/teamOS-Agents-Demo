@@ -34,7 +34,7 @@ export const knowledgeBaseTools: AgentTool[] = [
         const results = await search.search(params.query, {
           documentTypes: params.document_types,
           limit: params.limit || 5,
-          minRelevance: 0.3  // Lower threshold for better results
+          minRelevance: parseFloat(process.env.KNOWLEDGE_BASE_MIN_RELEVANCE || '0.3')  // Configurable threshold
         });
         
         await search.close();

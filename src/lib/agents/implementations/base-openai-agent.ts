@@ -40,10 +40,22 @@ export class OpenAIAgent extends Agent {
     super(config);
     
     this.llm = new LLMProvider(config.llmConfig);
+    
+    // Allow environment variable overrides for specific agents
+    const envModelKey = `${this.name.toUpperCase().replace(/\s+/g, '_')}_MODEL`;
+    const envTempKey = `${this.name.toUpperCase().replace(/\s+/g, '_')}_TEMPERATURE`;
+    
     // Use GPT-4o for DebriefAgent to prevent hallucination, gpt-4o-mini for others
-    this.model = config.model || (this.name === 'DebriefAgent' ? 'gpt-4o' : 'gpt-4o-mini');
+    this.model = config.model || 
+      process.env[envModelKey] || 
+      (this.name === 'DebriefAgent' ? 'gpt-4o' : 'gpt-4o-mini');
+    
     // Lower temperature for DebriefAgent to reduce hallucination
-    this.temperature = config.temperature ?? (this.name === 'DebriefAgent' ? 0.3 : 0.7);
+    const envTemp = process.env[envTempKey] ? parseFloat(process.env[envTempKey]) : undefined;
+    this.temperature = config.temperature ?? 
+      envTemp ?? 
+      (this.name === 'DebriefAgent' ? 0.3 : 0.7);
+      
     this.maxTokens = config.maxTokens ?? 2048;
     this.systemPrompt = config.systemPrompt;
     

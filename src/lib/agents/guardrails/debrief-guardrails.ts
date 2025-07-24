@@ -89,6 +89,92 @@ export class DebriefGuardrails {
           }
         }
 
+        // Extract subscription ID from input to verify ownership
+        const subscriptionMatch = input.match(/subscription\s*(?:id\s*)?[:\s]*(\d+)/i);
+        if (subscriptionMatch) {
+          const subscriptionId = subscriptionMatch[1];
+          
+          try {
+            // Verify user has access to this subscription
+            // In mock mode, check against the mock data store
+            if (process.env.NEXT_PUBLIC_USE_MOCK_TMS_API === 'true') {
+              const { mockDataStore } = await import('@/lib/mock-tms-api/mock-data-store');
+              const subscription = mockDataStore.getSubscription(subscriptionId);
+              
+              if (subscription) {
+                // Check if user owns the subscription
+                if (subscription.userId !== context.managerId) {
+                  // Check if user is part of the same organization
+                  const user = mockDataStore.getUser(context.managerId);
+                  const subscriptionOwner = mockDataStore.getUser(subscription.userId);
+                  
+                  if (!user || !subscriptionOwner || user.organizationId !== subscriptionOwner.organizationId) {
+                    // Log unauthorized access attempt
+                    console.warn(`[ReportAccess] Unauthorized access attempt: User ${context.managerId} tried to access subscription ${subscriptionId} owned by ${subscription.userId}`);
+                    
+                    return {
+                      passed: false,
+                      reason: 'This subscription belongs to another user. You can only access reports for your own assessments or those of your team members.',
+                      metadata: {
+                        subscriptionId,
+                        severity: 'high',
+                        category: 'unauthorized_subscription_access',
+                        attemptedUserId: context.managerId,
+                        actualOwnerId: subscription.userId
+                      }
+                    };
+                  }
+                }
+              }
+            } else {
+              // In production, verify against real database
+              // This would need proper implementation based on your subscription model
+              const { default: prisma } = await import('@/lib/db');
+              
+              // Check if user has access through their team
+              const user = await prisma.user.findUnique({
+                where: { id: context.managerId },
+                include: {
+                  Team_User_teamIdToTeam: {
+                    include: {
+                      User_User_teamIdToTeam: {
+                        select: { id: true }
+                      }
+                    }
+                  }
+                }
+              });
+              
+              if (!user) {
+                return {
+                  passed: false,
+                  reason: 'Unable to verify your identity. Please log in again.',
+                  metadata: {
+                    severity: 'high',
+                    category: 'user_not_found'
+                  }
+                };
+              }
+              
+              // TODO: Implement actual subscription ownership check
+              // For now, we'll audit log the access attempt
+              console.info(`[ReportAccess] User ${context.managerId} accessing subscription ${subscriptionId}`);
+            }
+          } catch (error) {
+            console.error('[ReportAccess] Error checking subscription access:', error);
+            // Fail closed - deny access if we can't verify
+            return {
+              passed: false,
+              reason: 'Unable to verify subscription access. Please try again later.',
+              metadata: {
+                error: error instanceof Error ? error.message : 'Unknown error',
+                severity: 'medium',
+                category: 'verification_error'
+              }
+            };
+          }
+        }
+
         return { passed: true };
       }
     };

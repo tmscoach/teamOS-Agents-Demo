@@ -22,7 +22,7 @@ When a user asks about their report:
 3. Use the tms_debrief_report tool to retrieve and analyze their report
 4. If the subscription is not found, guide them to generate a report first
 
-For testing purposes, you can suggest using subscription ID "21988" which has sample TMP report data.
+If you need a test subscription ID, ask the user or check their dashboard for available assessments.
 
 CRITICAL: When answering questions about TMS terminology, concepts, or methodologies:
 - ALWAYS use the search_tms_knowledge tool first to find accurate information

@@ -115,19 +115,110 @@ class ReportContextService {
   /**
    * Query report with natural language
    */
-  async queryReport(subscriptionId: string, query: string, conversationContext?: any): Promise<DebriefResponse> {
-    const reportContext = this.reportStore.get(subscriptionId);
-    if (!reportContext) {
-      throw new Error(`No report context found for subscription ${subscriptionId}`);
+  async queryReport(params: {
+    subscriptionId: string;
+    query: string;
+    userId?: string;
+    conversationContext?: any;
+  }): Promise<DebriefResponse & { success: boolean; message?: string }> {
+    // Validate subscription ID
+    const subscriptionValidation = this.validateSubscriptionId(params.subscriptionId);
+    if (!subscriptionValidation.valid) {
+      return {
+        success: false,
+        message: subscriptionValidation.error,
+        response: '',
+        relevantSections: [],
+        suggestedQuestions: []
+      };
     }
 
-    // Analyze query intent
-    const intent = this.analyzeQueryIntent(query);
+    // Validate user ID if provided
+    if (params.userId) {
+      const userValidation = this.validateUserId(params.userId);
+      if (!userValidation.valid) {
+        return {
+          success: false,
+          message: userValidation.error,
+          response: '',
+          relevantSections: [],
+          suggestedQuestions: []
+        };
+      }
 
-    // Generate response based on intent
-    const response = await this.generateResponse(query, intent, reportContext, conversationContext);
+      // Check rate limit
+      if (!this.checkRateLimit(params.userId)) {
+        return {
+          success: false,
+          message: 'Rate limit exceeded. Please wait a minute before trying again.',
+          response: '',
+          relevantSections: [],
+          suggestedQuestions: []
+        };
+      }
+    }
 
-    return response;
+    // Validate and sanitize query
+    if (!params.query || params.query.trim() === '') {
+      return {
+        success: false,
+        message: 'Query cannot be empty',
+        response: '',
+        relevantSections: [],
+        suggestedQuestions: []
+      };
+    }
+
+    if (params.query.length > 5000) {
+      return {
+        success: false,
+        message: 'Query is too long. Please limit to 5000 characters.',
+        response: '',
+        relevantSections: [],
+        suggestedQuestions: []
+      };
+    }
+
+    const sanitizedQuery = this.sanitizeQuery(params.query);
+
+    // Get report context with sanitized subscription ID
+    const reportContext = this.reportStore.get(subscriptionValidation.sanitized!);
+    if (!reportContext) {
+      return {
+        success: false,
+        message: `No report context found for subscription ${subscriptionValidation.sanitized}`,
+        response: '',
+        relevantSections: [],
+        suggestedQuestions: []
+      };
+    }
+
+    try {
+      // Analyze query intent
+      const intent = this.analyzeQueryIntent(sanitizedQuery);
+
+      // Generate response based on intent
+      const response = await this.generateResponse(
+        sanitizedQuery, 
+        intent, 
+        reportContext, 
+        params.conversationContext
+      );
+
+      return {
+        success: true,
+        ...response
+      };
+    } catch (error) {
+      console.error('Error processing query:', error);
+      return {
+        success: false,
+        message: 'An error occurred while processing your query. Please try again.',
+        response: '',
+        relevantSections: [],
+        suggestedQuestions: []
+      };
+    }
   }
 
   /**
@@ -1140,6 +1231,116 @@ Remember: You are debriefing THIS SPECIFIC report with THIS SPECIFIC data. Do no
     return str.replace(/\w\S*/g, (txt) => {
       return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
     });
+  }
+
+  /**
+   * Validate subscription ID format
+   */
+  validateSubscriptionId(id: any): { valid: boolean; sanitized?: string; error?: string } {
+    if (!id || typeof id !== 'string') {
+      return { valid: false, error: 'Subscription ID must be a string' };
+    }
+
+    // Remove whitespace
+    const trimmed = id.trim();
+
+    // Check for empty
+    if (!trimmed) {
+      return { valid: false, error: 'Subscription ID cannot be empty' };
+    }
+
+    // Check format - allow digits or sub-{timestamp}-{random} format
+    if (!/^(\d+|sub-\d+-\w+)$/.test(trimmed)) {
+      return { valid: false, error: 'Invalid subscription ID format' };
+    }
+
+    // Check length
+    if (trimmed.length > 50) {
+      return { valid: false, error: 'Subscription ID too long' };
+    }
+
+    // For numeric IDs, remove leading zeros
+    let sanitized = trimmed;
+    if (/^\d+$/.test(trimmed)) {
+      sanitized = trimmed.replace(/^0+/, '') || '0';
+      
+      // Check for zero
+      if (sanitized === '0') {
+        return { valid: false, error: 'Invalid subscription ID' };
+      }
+    }
+
+    return { valid: true, sanitized };
+  }
+
+  /**
+   * Validate user ID format
+   */
+  validateUserId(userId: any): { valid: boolean; error?: string } {
+    if (!userId || typeof userId !== 'string') {
+      return { valid: false, error: 'User ID must be a string' };
+    }
+
+    // Check format - allow user-{timestamp}-{random} or facilitator-{number} or respondent-{number}
+    if (!/^(user|facilitator|respondent)-[\d\w-]+$/.test(userId)) {
+      return { valid: false, error: 'Invalid user ID format' };
+    }
+
+    return { valid: true };
+  }
+
+  /**
+   * Sanitize query input
+   */
+  sanitizeQuery(query: string): string {
+    // Remove HTML tags
+    let sanitized = query.replace(/<[^>]*>/g, '');
+    
+    // Remove javascript: protocol
+    sanitized = sanitized.replace(/javascript:/gi, '');
+    
+    // Remove event handlers
+    sanitized = sanitized.replace(/on\w+\s*=/gi, '');
+    
+    return sanitized.trim();
+  }
+
+  /**
+   * Rate limiter for queries
+   */
+  private rateLimiter = new Map<string, { count: number; resetTime: number }>();
+
+  /**
+   * Check rate limit for user
+   */
+  checkRateLimit(userId: string): boolean {
+    const now = Date.now();
+    const limit = 5; // 5 queries per minute
+    const window = 60000; // 1 minute
+
+    const userLimit = this.rateLimiter.get(userId);
+    
+    if (!userLimit || now > userLimit.resetTime) {
+      this.rateLimiter.set(userId, {
+        count: 1,
+        resetTime: now + window
+      });
+      return true;
+    }
+
+    if (userLimit.count >= limit) {
+      return false;
+    }
+
+    userLimit.count++;
+    return true;
+  }
+
+  /**
+   * Clear rate limiter (for testing)
+   */
+  clearRateLimiter(): void {
+    this.rateLimiter.clear();
   }
 }
 

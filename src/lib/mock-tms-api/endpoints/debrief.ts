@@ -110,21 +110,40 @@ export async function debriefReport(options: {
   try {
     // Provide default query if empty
     const effectiveQuery = query || 'Please provide an overview of my assessment report';
-    const response = await reportContextService.queryReport(
+    const response = await reportContextService.queryReport({
       subscriptionId,
-      effectiveQuery,
-      context
-    );
+      query: effectiveQuery,
+      userId: user?.id || claims.sub,
+      conversationContext: context
+    });
+
+    // Check if the query was successful
+    if (!response.success) {
+      throw {
+        error: 'QUERY_FAILED',
+        message: response.message || 'Failed to process your question',
+        details: response
+      } as TMSErrorResponse;
+    }
 
     // Add session ID for conversation tracking
     const sessionId = context?.sessionId || `debrief_${subscriptionId}_${Date.now()}`;
 
+    // Remove the success flag from the response since it's internal
+    const { success, message, ...debriefResponse } = response;
+
     return {
-      ...response,
+      ...debriefResponse,
       sessionId
     };
   } catch (error) {
     console.error('Debrief error:', error);
+    
+    // If it's already a TMSErrorResponse, re-throw it
+    if ((error as any).error && (error as any).message) {
+      throw error;
+    }
+    
     throw {
       error: 'DEBRIEF_FAILED',
       message: 'Failed to process your question. Please try rephrasing.',
