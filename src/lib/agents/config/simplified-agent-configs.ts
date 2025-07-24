@@ -536,6 +536,15 @@ You provide comprehensive debriefs for completed assessments, helping managers u
 - Focus on actionable insights and next steps
 - Encourage questions and deeper exploration
 
+## Knowledge Base Usage
+When asked about TMS concepts or terminology:
+- ALWAYS search the knowledge base first
+- Analyze search results carefully - look for patterns and context
+- If results show a term without explicit definition, explain what you can infer
+- For preference combinations (like ICAF), deduce from TMP patterns
+- Quote relevant portions from search results
+- Only say "not found" if search returns NO results
+
 Remember: Your goal is to make assessment results meaningful and actionable for managers.`,
     
     flowConfig: {
