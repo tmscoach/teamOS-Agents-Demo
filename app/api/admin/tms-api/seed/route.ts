@@ -14,6 +14,8 @@ export async function POST() {
     resetMockDataStore();
     
     console.log('Seed: Starting to create test data...');
+    console.log('Seed: Current Clerk user ID:', session.userId);
+    console.log('Seed: Current Clerk user email:', session.sessionClaims?.email);
     
     // Create a test user
     const testEmail = "facilitator@example.com";
@@ -54,28 +56,55 @@ export async function POST() {
       organizationId: testOrg.id
     });
 
+    // Also create a user entry for the current logged-in Clerk user
+    // This allows the DebriefAgent to find subscriptions for the actual user
+    // Use a known email that matches what's in the JWT token
+    const currentUserEmail = "rowan@teammanagementsystems.com"; // This matches the JWT token email
+    const currentUserName = session.sessionClaims?.name || session.sessionClaims?.firstName || "Rowan McCann";
+    const [firstName, ...lastNameParts] = currentUserName.split(' ');
+    const lastName = lastNameParts.join(' ') || 'User';
+    
+    const currentUser = mockDataStore.createUser({
+      email: currentUserEmail,
+      firstName,
+      lastName,
+      userType: 'Respondent',
+      organizationId: testOrg.id,
+      clerkUserId: session.userId
+    });
+    
+    // Map the Clerk user ID to the mock user
+    mockDataStore.clerkIdToUser.set(session.userId, currentUser.id);
+    
+    console.log('Seed: Created current user:', {
+      id: currentUser.id,
+      email: currentUser.email,
+      clerkUserId: session.userId
+    });
+
     // Create test subscriptions with recorded IDs
     const subscriptions = [];
     
-    // TMP Subscription (assigned to respondent)
+    // TMP Subscription (assigned to current user)
     const tmpSub = {
       subscriptionId: '21989',
-      userId: testRespondent.id,
+      userId: currentUser.id,  // Changed to current user
       organizationId: testOrg.id,
       workflowId: 'tmp-workflow',
       workflowName: 'Team Management Profile',
       assessmentType: 'TMP' as const,
-      status: 'not_started' as const,
-      completionPercentage: 0,
+      status: 'completed' as const,  // Changed to completed for debrief
+      completionPercentage: 100,
       assignedDate: new Date('2024-01-15'),
+      completedDate: new Date('2024-01-16'),
       baseContentId: 3,
       currentPageId: 2
     };
     mockDataStore.subscriptions.set('21989', tmpSub);
     subscriptions.push(tmpSub);
-    console.log('Seed: Created TMP subscription', tmpSub);
+    console.log('Seed: Created TMP subscription for current user', tmpSub);
     
-    // QO2 Subscription (assigned to respondent)
+    // QO2 Subscription (assigned to test respondent)
     const qo2Sub = {
       subscriptionId: '21983',
       userId: testRespondent.id,
@@ -92,7 +121,7 @@ export async function POST() {
     mockDataStore.subscriptions.set('21983', qo2Sub);
     subscriptions.push(qo2Sub);
     
-    // Team Signals Subscription (assigned to respondent)
+    // Team Signals Subscription (assigned to test respondent)
     const teamSignalsSub = {
       subscriptionId: '21988',
       userId: testRespondent.id,
@@ -170,6 +199,13 @@ export async function POST() {
           organizationId: testRespondent.organizationId,
           password: "Welcome123!" // Include for easy testing
         },
+        currentUser: {
+          id: currentUser.id,
+          email: currentUser.email,
+          organizationId: currentUser.organizationId,
+          clerkUserId: session.userId,
+          hasCompletedTMP: true
+        },
         organization: {
           id: testOrg.id,
           name: testOrg.name
@@ -180,7 +216,9 @@ export async function POST() {
           workflowName: sub.workflowName,
           assessmentType: sub.assessmentType,
           status: sub.status,
-          assignedTo: "respondent@example.com"
+          assignedTo: sub.userId === currentUser.id ? currentUser.email : 
+                     sub.userId === testRespondent.id ? testRespondent.email : 
+                     "unknown"
         }))
       }
     });

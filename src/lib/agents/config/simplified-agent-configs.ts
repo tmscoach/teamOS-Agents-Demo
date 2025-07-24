@@ -516,25 +516,37 @@ Remember: Great transformations start with great understanding.`,
 ## Your Role
 You provide comprehensive debriefs for completed assessments, helping managers understand their results through intelligent, contextual explanations. You can interpret visual elements (wheels, charts), scores, and provide personalized insights.
 
+## CRITICAL: Proactive Report Detection
+When conversation starts:
+1. IMMEDIATELY use tms_get_dashboard_subscriptions to check for completed assessments
+2. Filter for assessments with status "Completed" that haven't been debriefed yet
+3. If completed reports are available, proactively offer: "I see you have completed [assessment name]. Would you like to review your results and insights?"
+4. If user agrees, use tms_debrief_report to load and begin the assessment-specific debrief flow
+5. If no completed reports available, inform user: "I don't see any completed assessments ready for debrief. Would you like me to check your assessment status?"
+
 ## Core Objectives
-1. Explain assessment results in understandable terms
-2. Interpret visual elements (wheels, charts, graphs)
-3. Provide context for scores and recommendations
-4. Answer specific questions about report details
-5. Guide managers to actionable next steps
+1. Proactively detect and offer to debrief completed assessments
+2. Explain assessment results in understandable terms
+3. Interpret visual elements (wheels, charts, graphs)
+4. Provide context for scores and recommendations
+5. Answer specific questions about report details
+6. Guide managers to actionable next steps
 
 ## Your Capabilities
 - Access to complete report content including HTML and visual elements
 - Deep understanding of TMP, Team Signals, QO2, WoW, and LLP assessments
 - Ability to explain what colors, sections, and scores mean
 - Knowledge of TMS research and best practices
+- Can check for available completed assessments using dashboard tools
 
 ## Your Approach
+- Start by checking for available reports
 - Be conversational and supportive
 - Use the report context to provide specific, accurate answers
 - Explain technical terms in simple language
 - Focus on actionable insights and next steps
 - Encourage questions and deeper exploration
+- Follow assessment-specific debrief flows when available
 
 ## Knowledge Base Usage
 When asked about TMS concepts, terminology, or methodology:
@@ -553,22 +565,113 @@ CRITICAL: When asked about score calculations or methodology:
 3. Check the relevant accreditation handbook for detailed methodology
 4. NEVER say you don't know without searching first
 
-Remember: Your goal is to make assessment results meaningful and actionable for managers.`,
+Remember: Your goal is to make assessment results meaningful and actionable for managers through proactive engagement and personalized debriefs.`,
     
     flowConfig: {
       states: [
+        // Initial States
+        {
+          name: "report_check",
+          description: "Check for available completed assessment reports",
+          objectives: ["Check dashboard subscriptions", "Filter completed assessments", "Identify report type"],
+          key_outputs: ["available_reports", "assessment_type"]
+        },
         {
           name: "debrief_intro",
           description: "Welcome and introduce debrief process",
-          objectives: ["Set context", "Build rapport", "Encourage questions"],
-          key_outputs: []
+          objectives: ["Set context", "Build rapport", "Offer available reports"],
+          key_outputs: ["selected_assessment"]
+        },
+        
+        // TMP Specific States
+        {
+          name: "tmp_report_load",
+          description: "Load TMP report and extract profile information",
+          objectives: ["Load HTML report", "Extract profile data", "Store as $PROFILE"],
+          key_outputs: ["profile_data", "major_role", "related_roles", "net_scores"]
         },
         {
-          name: "report_overview",
-          description: "Provide high-level report summary",
-          objectives: ["Highlight key findings", "Explain structure", "Set priorities"],
-          key_outputs: ["key_findings", "priority_areas"]
+          name: "tmp_profile_display",
+          description: "Display TMP profile summary",
+          objectives: ["Show Major/Related roles", "Display net scores", "Highlight key points"],
+          key_outputs: ["profile_displayed"]
         },
+        {
+          name: "tmp_objectives",
+          description: "Gather user's debrief objectives",
+          objectives: ["Ask for objectives", "Suggest examples", "Capture response"],
+          key_outputs: ["objectives"],
+          duration: "2 minutes"
+        },
+        {
+          name: "tmp_highlights",
+          description: "Identify 3 profile highlights",
+          objectives: ["Ask for highlights", "Suggest from Leadership Strengths", "Capture response"],
+          key_outputs: ["highlights"],
+          duration: "2 minutes"
+        },
+        {
+          name: "tmp_communication",
+          description: "Gather communication suggestions",
+          objectives: ["Ask for 2 communication tips", "Show examples from profile", "Capture response"],
+          key_outputs: ["communication"],
+          duration: "2 minutes"
+        },
+        {
+          name: "tmp_support",
+          description: "Identify support needs",
+          objectives: ["Ask for 1 support area", "Capture response"],
+          key_outputs: ["support"],
+          duration: "1 minute"
+        },
+        {
+          name: "tmp_summary",
+          description: "Summarize captured insights",
+          objectives: ["List all captured variables", "Thank user", "Note for future guidance"],
+          key_outputs: ["summary_complete"]
+        },
+        
+        // QO2 Specific States
+        {
+          name: "qo2_report_load",
+          description: "Load QO2 organizational culture report",
+          objectives: ["Load HTML report", "Extract culture data"],
+          key_outputs: ["culture_type", "alignment_scores"]
+        },
+        {
+          name: "qo2_culture_review",
+          description: "Review organizational culture assessment",
+          objectives: ["Explain culture type", "Show alignment gaps", "Discuss implications"],
+          key_outputs: ["culture_insights", "alignment_gaps"]
+        },
+        {
+          name: "qo2_action_planning",
+          description: "Develop culture transformation actions",
+          objectives: ["Identify priority areas", "Create action items", "Set timelines"],
+          key_outputs: ["culture_actions"]
+        },
+        
+        // Team Signals Specific States
+        {
+          name: "ts_report_load",
+          description: "Load Team Signals report",
+          objectives: ["Load HTML report", "Extract team health metrics"],
+          key_outputs: ["team_metrics", "health_scores"]
+        },
+        {
+          name: "ts_metrics_review",
+          description: "Review team health indicators",
+          objectives: ["Explain metrics", "Identify strengths/weaknesses", "Compare to benchmarks"],
+          key_outputs: ["team_strengths", "improvement_areas"]
+        },
+        {
+          name: "ts_priority_setting",
+          description: "Set team improvement priorities",
+          objectives: ["Rank improvement areas", "Create action plan", "Set review schedule"],
+          key_outputs: ["priority_actions"]
+        },
+        
+        // Common End States
         {
           name: "interactive_qa",
           description: "Answer specific questions about report",
@@ -576,30 +679,135 @@ Remember: Your goal is to make assessment results meaningful and actionable for 
           key_outputs: ["questions_answered", "clarifications"]
         },
         {
-          name: "action_planning",
-          description: "Help plan next steps based on results",
-          objectives: ["Identify actions", "Set priorities", "Create timeline"],
-          key_outputs: ["action_items", "timeline"]
+          name: "debrief_complete",
+          description: "Mark debrief as complete and update journey",
+          objectives: ["Update journey tracker", "Store extracted variables", "Schedule follow-up"],
+          key_outputs: ["debrief_completed", "journey_updated"]
         }
       ],
       transitions: [
+        // Initial Flow
+        {
+          from: "START",
+          to: "report_check",
+          condition: "conversation_started",
+          action: "check_available_reports"
+        },
+        {
+          from: "report_check",
+          to: "debrief_intro",
+          condition: "reports_checked",
+          action: "present_available_reports"
+        },
+        
+        // TMP Flow Transitions
         {
           from: "debrief_intro",
-          to: "report_overview",
-          condition: "ready_for_overview",
-          action: "present_overview"
+          to: "tmp_report_load",
+          condition: "tmp_selected",
+          action: "load_tmp_report"
         },
         {
-          from: "report_overview",
-          to: "interactive_qa",
-          condition: "has_questions",
-          action: "start_qa"
+          from: "tmp_report_load",
+          to: "tmp_profile_display",
+          condition: "tmp_loaded",
+          action: "display_profile"
         },
+        {
+          from: "tmp_profile_display",
+          to: "tmp_objectives",
+          condition: "profile_acknowledged",
+          action: "gather_objectives"
+        },
+        {
+          from: "tmp_objectives",
+          to: "tmp_highlights",
+          condition: "objectives_captured",
+          action: "gather_highlights"
+        },
+        {
+          from: "tmp_highlights",
+          to: "tmp_communication",
+          condition: "highlights_captured",
+          action: "gather_communication"
+        },
+        {
+          from: "tmp_communication",
+          to: "tmp_support",
+          condition: "communication_captured",
+          action: "gather_support"
+        },
+        {
+          from: "tmp_support",
+          to: "tmp_summary",
+          condition: "support_captured",
+          action: "summarize_insights"
+        },
+        {
+          from: "tmp_summary",
+          to: "interactive_qa",
+          condition: "summary_complete",
+          action: "offer_qa"
+        },
+        
+        // QO2 Flow Transitions
+        {
+          from: "debrief_intro",
+          to: "qo2_report_load",
+          condition: "qo2_selected",
+          action: "load_qo2_report"
+        },
+        {
+          from: "qo2_report_load",
+          to: "qo2_culture_review",
+          condition: "qo2_loaded",
+          action: "review_culture"
+        },
+        {
+          from: "qo2_culture_review",
+          to: "qo2_action_planning",
+          condition: "culture_reviewed",
+          action: "plan_culture_actions"
+        },
+        {
+          from: "qo2_action_planning",
+          to: "interactive_qa",
+          condition: "actions_planned",
+          action: "offer_qa"
+        },
+        
+        // Team Signals Flow Transitions
+        {
+          from: "debrief_intro",
+          to: "ts_report_load",
+          condition: "team_signals_selected",
+          action: "load_ts_report"
+        },
+        {
+          from: "ts_report_load",
+          to: "ts_metrics_review",
+          condition: "ts_loaded",
+          action: "review_metrics"
+        },
+        {
+          from: "ts_metrics_review",
+          to: "ts_priority_setting",
+          condition: "metrics_reviewed",
+          action: "set_priorities"
+        },
+        {
+          from: "ts_priority_setting",
+          to: "interactive_qa",
+          condition: "priorities_set",
+          action: "offer_qa"
+        },
+        
+        // Common End Transitions
         {
           from: "interactive_qa",
-          to: "action_planning",
-          condition: "ready_for_actions",
-          action: "plan_actions"
+          to: "debrief_complete",
+          condition: "no_more_questions",
+          action: "complete_debrief"
         },
         {
           from: "interactive_qa",
@@ -611,11 +819,85 @@ Remember: Your goal is to make assessment results meaningful and actionable for 
     },
     
     extractionRules: {
+      // Common Rules
       assessment_type: {
         type: 'string',
         patterns: ['TMP', 'Team Signals', 'TeamSignals', 'QO2', 'WoW', 'LLP'],
         description: "Type of assessment being debriefed"
       },
+      available_reports: {
+        type: 'array',
+        description: "List of completed assessments available for debrief"
+      },
+      
+      // TMP Specific Variables
+      objectives: {
+        type: 'string',
+        patterns: [
+          "(?:objectives are|my objectives are|goals include|my goals are)\\s+(.+)",
+          "(?:I want to|I'd like to|hoping to)\\s+(.+)"
+        ],
+        required: false,
+        description: "User's debrief objectives for TMP"
+      },
+      highlights: {
+        type: 'array',
+        patterns: [
+          "(?:highlights are|my highlights are|strengths include)\\s+(.+)",
+          "(?:I'm good at|I excel at|my strengths are)\\s+(.+)"
+        ],
+        required: false,
+        description: "3 profile highlights from TMP"
+      },
+      communication: {
+        type: 'array',
+        patterns: [
+          "(?:communicate with me by|communication tips are)\\s+(.+)",
+          "(?:people should|others can)\\s+(.+)\\s+(?:to communicate|when communicating)"
+        ],
+        required: false,
+        description: "2 communication suggestions for TMP"
+      },
+      support: {
+        type: 'string',
+        patterns: [
+          "(?:support me by|I need support with)\\s+(.+)",
+          "(?:help me with|assist me in)\\s+(.+)"
+        ],
+        required: false,
+        description: "1 support area for TMP"
+      },
+      
+      // QO2 Specific Variables
+      culture_type: {
+        type: 'string',
+        patterns: ['Role Culture', 'Power Culture', 'Achievement Culture', 'Support Culture'],
+        description: "Organizational culture type from QO2"
+      },
+      alignment_gaps: {
+        type: 'array',
+        description: "Gaps between current and desired culture"
+      },
+      culture_actions: {
+        type: 'array',
+        description: "Action items for culture transformation"
+      },
+      
+      // Team Signals Specific Variables
+      team_strengths: {
+        type: 'array',
+        description: "Identified team strengths from Team Signals"
+      },
+      improvement_areas: {
+        type: 'array',
+        description: "Areas needing improvement from Team Signals"
+      },
+      priority_actions: {
+        type: 'array',
+        description: "Priority actions for team improvement"
+      },
+      
+      // Common Debrief Variables
       key_findings: {
         type: 'array',
         required: true,
@@ -633,6 +915,10 @@ Remember: Your goal is to make assessment results meaningful and actionable for 
         type: 'array',
         patterns: ['wheel', 'chart', 'graph', 'color', 'section'],
         description: "Visual elements explained"
+      },
+      debrief_completed: {
+        type: 'boolean',
+        description: "Whether the debrief was completed"
       }
     },
     

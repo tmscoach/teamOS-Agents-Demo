@@ -39,12 +39,12 @@ function formatToolResult(toolName: string, result: any): string {
         : 'Failed to submit answers.';
     
     case 'tms_get_dashboard_subscriptions':
-      const subs = result.subscriptions;
-      if (subs.length === 0) return 'No assessments assigned.';
-      const summary = subs.map((s: any) => 
-        `${s.workflowName}: ${s.status} (${s.completionPercentage}% complete)`
+      // The endpoint returns an array directly, not an object with subscriptions property
+      if (!result || result.length === 0) return 'No assessments assigned.';
+      const summary = result.map((s: any) => 
+        `${s.WorkflowType || s.AssessmentType}: ${s.Status} (${s.Progress}% complete)`
       ).join('\n');
-      return `Found ${subs.length} assessment(s):\n${summary}`;
+      return `Found ${result.length} assessment(s):\n${summary}`;
     
     case 'tms_start_workflow':
       return result.success

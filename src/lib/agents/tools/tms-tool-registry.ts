@@ -550,6 +550,7 @@ export function getToolsForAgent(agentName: string): string[] {
       'tms_start_workflow'
     ],
     'DebriefAgent': [
+      'tms_get_dashboard_subscriptions',
       'tms_generate_html_report',
       'tms_generate_graph',
       'tms_debrief_report'

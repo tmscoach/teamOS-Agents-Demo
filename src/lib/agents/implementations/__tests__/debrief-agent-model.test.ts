@@ -70,7 +70,7 @@ describe('DebriefAgent Model Selection', () => {
     
     expect(instructions).toContain('TMS Debrief Agent');
     expect(instructions).toContain('comprehensive debriefs');
-    expect(instructions).toContain('subscription ID');
+    expect(instructions).toContain('Team Management Profile');
   });
 
   it('should configure TMS tools correctly', async () => {
