@@ -53,7 +53,27 @@ export async function getDashboardSubscriptions(options: {
     console.log('Found subscriptions:', userSubscriptions);
   } else {
     // Respondents only see their own subscriptions
-    userSubscriptions = mockDataStore.getUserSubscriptions(claims.sub);
+    // Check if the sub claim is a Clerk user ID and map it to mock user ID
+    let mockUser = mockDataStore.getUserByClerkId(claims.sub);
+    
+    // If not found by Clerk ID, try to find by regular user ID
+    if (!mockUser) {
+      mockUser = mockDataStore.getUser(claims.sub);
+    }
+    
+    // If still not found, check if there's a user with matching email
+    if (!mockUser && claims.nameid) {
+      mockUser = mockDataStore.getUserByEmail(claims.nameid);
+    }
+    
+    const userId = mockUser ? mockUser.id : claims.sub;
+    console.log('Respondent - Looking up user:', { 
+      claimSub: claims.sub, 
+      claimEmail: claims.nameid,
+      mockUserId: userId, 
+      found: !!mockUser 
+    });
+    userSubscriptions = mockDataStore.getUserSubscriptions(userId);
   }
 
   // Transform to dashboard format matching the recorded API
