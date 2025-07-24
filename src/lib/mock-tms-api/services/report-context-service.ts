@@ -279,10 +279,16 @@ class ReportContextService {
     const chartType = parts[0] || 'Unknown';
     const params: Record<string, string> = {};
     
+    // List of rendering-only parameters to exclude
+    const renderingParams = ['mr', 'rr1', 'rr2'];
+    
     for (let i = 1; i < parts.length; i++) {
       const [key, value] = parts[i].split('=');
       if (key && value) {
-        params[key] = decodeURIComponent(value);
+        // Filter out rendering-only parameters
+        if (!renderingParams.includes(key)) {
+          params[key] = decodeURIComponent(value);
+        }
       }
     }
 
@@ -841,13 +847,14 @@ CRITICAL INSTRUCTIONS:
 6. Quote directly from the "FULL REPORT CONTENT" section when answering about specific sections
 7. If data is not available in the report, say so - do not invent information
 8. Be professional, supportive, and constructive in your interpretations
+9. NEVER mention mr, rr1, or rr2 values - these are rendering parameters for graph visualization only
 
 IMPORTANT TMS Context:
 - TMP uses four work preference measures: Relationships (E/I), Information (P/C), Decisions (A/B), Organization (S/F)
 - Net scores are calculated by subtracting the lower from the higher (e.g., I: 7 means Introvert preference of 7)
 - These net scores determine the Major Role and Related Roles on the Team Management Wheel
 - There is NO such thing as a "Major Role Score of 85" - roles are qualitative, not quantitative
-- The numbers in image URLs (like mr=85) are GRAPH PARAMETERS for visualization, NOT actual scores
+- The numbers in image URLs (like mr=85, rr1=70, rr2=65) are GRAPH PARAMETERS for visualization ONLY - they have NO meaning in TMS and should NEVER be mentioned to the user
 
 TMS Team Management Wheel Roles:
 1. Reporter-Adviser: Gathering and reporting information
