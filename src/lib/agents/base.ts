@@ -73,8 +73,14 @@ export abstract class Agent implements BaseAgent {
     let passed = true;
     let failureReason: string | undefined;
 
+    console.log(`[${this.name}] Validating input with ${this.inputGuardrails.length} guardrails`);
+    console.log(`[${this.name}] Input to validate: "${input}"`);
+
     for (const guardrail of this.inputGuardrails) {
+      console.log(`[${this.name}] Running guardrail: ${guardrail.name}`);
       const result = await guardrail.validate(input, context);
+      
+      console.log(`[${this.name}] Guardrail ${guardrail.name} result:`, result);
       
       const event: GuardrailEvent = {
         id: uuidv4(),
@@ -92,6 +98,7 @@ export abstract class Agent implements BaseAgent {
       if (!result.passed && passed) {
         passed = false;
         failureReason = `${guardrail.name}: ${result.reason}`;
+        console.log(`[${this.name}] Guardrail failed! Reason: ${failureReason}`);
       }
     }
 

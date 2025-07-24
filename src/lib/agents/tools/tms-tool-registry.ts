@@ -388,7 +388,7 @@ export const TMS_TOOL_REGISTRY: Record<string, TMSToolDefinition> = {
     }
   },
 
-  // Debrief Tools (2)
+  // Debrief Tools (3)
   tms_generate_html_report: {
     name: 'tms_generate_html_report',
     description: 'Generate HTML report for a completed assessment',
@@ -436,6 +436,55 @@ export const TMS_TOOL_REGISTRY: Record<string, TMSToolDefinition> = {
         }
       },
       required: ['chartType']
+    }
+  },
+
+  tms_debrief_report: {
+    name: 'tms_debrief_report',
+    description: 'Interactive debrief of assessment report with Q&A capability',
+    category: 'debrief',
+    endpoint: '/api/v1/tms/debrief-report',
+    method: 'POST',
+    requiresAuth: true,
+    parameters: {
+      type: 'object',
+      properties: {
+        subscriptionId: {
+          type: 'string',
+          description: 'The subscription ID for the completed assessment'
+        },
+        query: {
+          type: 'string',
+          description: 'User question about the report (e.g., "What does my wheel mean?", "Explain my scores")'
+        },
+        context: {
+          type: 'object',
+          description: 'Optional context from conversation history',
+          properties: {
+            previousMessages: {
+              type: 'array',
+              description: 'Previous messages in the conversation',
+              items: {
+                type: 'object',
+                properties: {
+                  role: {
+                    type: 'string',
+                    enum: ['user', 'assistant']
+                  },
+                  content: {
+                    type: 'string'
+                  }
+                }
+              }
+            },
+            sessionId: {
+              type: 'string',
+              description: 'Session ID for conversation tracking'
+            }
+          }
+        }
+      },
+      required: ['subscriptionId', 'query']
     }
   },
 
@@ -502,7 +551,8 @@ export function getToolsForAgent(agentName: string): string[] {
     ],
     'DebriefAgent': [
       'tms_generate_html_report',
-      'tms_generate_graph'
+      'tms_generate_graph',
+      'tms_debrief_report'
     ],
     'ReportingAgent': [
       'tms_generate_html_report',

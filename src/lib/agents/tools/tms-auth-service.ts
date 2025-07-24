@@ -34,7 +34,7 @@ export class TMSAuthService {
       // Check database
       const authToken = await prisma.tMSAuthToken.findUnique({
         where: { userId },
-        include: { user: true }
+        include: { User: true }
       });
 
       if (authToken?.tmsJwtToken && authToken.expiresAt && authToken.expiresAt > new Date()) {
@@ -78,11 +78,13 @@ export class TMSAuthService {
           expiresAt
         },
         create: {
+          id: `tmsauth_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
           userId,
           tmsJwtToken: authResponse.token,
           tmsUserId: authResponse.userId,
           tmsOrgId: authResponse.organizationId,
-          expiresAt
+          expiresAt,
+          updatedAt: new Date()
         }
       });
 
@@ -122,7 +124,7 @@ export class TMSAuthService {
   private async createMockToken(userId: string, authToken: any): Promise<string> {
     try {
       // Get user details
-      const user = authToken?.user || await prisma.user.findUnique({
+      const user = authToken?.User || await prisma.user.findUnique({
         where: { id: userId }
       });
 
@@ -153,7 +155,7 @@ export class TMSAuthService {
       return mockAuthResponse.token;
     } catch (error) {
       console.error('[TMSAuthService] Error creating mock token:', error);
-      return null;
+      throw new Error(`Failed to create mock token: ${error}`);
     }
   }
 

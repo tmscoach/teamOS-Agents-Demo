@@ -256,10 +256,12 @@ export class JourneyTracker {
           // Create user in database
           user = await prisma.user.create({
             data: {
+              id: `user_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
               clerkId: clerkUser.id,
               email: clerkUser.emailAddresses[0]?.emailAddress || '',
               name: `${clerkUser.firstName || ''} ${clerkUser.lastName || ''}`.trim() || 'User',
               role: 'MANAGER', // Default to manager role for new sign-ups
+              updatedAt: new Date(),
             },
             select: { id: true, role: true }
           })

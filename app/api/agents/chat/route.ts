@@ -101,21 +101,34 @@ const contextManager = new PersistentContextManager(conversationStore);
 const router = new AgentRouter({ contextManager });
 
 // Register all available agents
-function registerAgents() {
-  // Register all agents
-  router.registerAgent(createOrchestratorAgent());
-  router.registerAgent(createOnboardingAgent());
-  router.registerAgent(createDiscoveryAgent());
-  router.registerAgent(createAssessmentAgent());
-  router.registerAgent(createAlignmentAgent());
-  router.registerAgent(createLearningAgent());
-  router.registerAgent(createNudgeAgent());
-  router.registerAgent(createProgressMonitor());
-  router.registerAgent(createRecognitionAgent());
+async function registerAgents() {
+  try {
+    // Register all agents (some return promises)
+    const agents = await Promise.all([
+      createOrchestratorAgent(),
+      createOnboardingAgent(),
+      createDiscoveryAgent(),
+      createAssessmentAgent(),
+      createAlignmentAgent(),
+      createLearningAgent(),
+      createNudgeAgent(),
+      createProgressMonitor(),
+      createRecognitionAgent()
+    ]);
+    
+    agents.forEach(agent => {
+      if (agent) {
+        router.registerAgent(agent);
+        console.log(`Successfully registered ${agent.name}`);
+      }
+    });
+  } catch (error) {
+    console.error('Failed to register agents:', error);
+  }
 }
 
 // Initialize agents on startup
-registerAgents();
+registerAgents().catch(console.error);
 
 export async function POST(req: NextRequest) {
   try {
@@ -171,7 +184,7 @@ export async function POST(req: NextRequest) {
       // Get user details from database
       const dbUser = await prisma.user.findUnique({
         where: { clerkId: user.id },
-        include: { team: true, managedTeams: true },
+        include: { Team_User_teamIdToTeam: true, Team_Team_managerIdToUser: true },
       });
 
       if (!dbUser) {
@@ -182,7 +195,7 @@ export async function POST(req: NextRequest) {
       }
 
       // Check if user is a manager of the specified team
-      const isManager = dbUser.managedTeams.some(team => team.id === teamId);
+      const isManager = dbUser.Team_Team_managerIdToUser.some(team => team.id === teamId);
       
       if (!isManager && dbUser.teamId !== teamId) {
         return NextResponse.json(
@@ -194,7 +207,7 @@ export async function POST(req: NextRequest) {
       // Create new conversation (default to OnboardingAgent)
       const newConversationId = await conversationStore.createConversation(
         teamId,
-        isManager ? dbUser.id : dbUser.team?.managerId || dbUser.id,
+        isManager ? dbUser.id : dbUser.Team_User_teamIdToTeam?.managerId || dbUser.id,
         {
           initialAgent: 'OnboardingAgent',
           metadata: {

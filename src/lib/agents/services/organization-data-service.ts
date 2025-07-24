@@ -175,12 +175,12 @@ export class OrganizationDataService {
     const teams = await prisma.team.findMany({
       where: buildOrganizationWhere(context),
       include: {
-        manager: {
+        User_Team_managerIdToUser: {
           select: {
             name: true
           }
         },
-        members: {
+        User_User_teamIdToTeam: {
           select: {
             id: true,
             completedAssessments: true
@@ -195,7 +195,7 @@ export class OrganizationDataService {
       let completed = 0;
       let inProgress = 0;
 
-      team.members.forEach(member => {
+      team.User_User_teamIdToTeam.forEach(member => {
         if (member.completedAssessments && typeof member.completedAssessments === 'object') {
           const assessments = member.completedAssessments as Record<string, any>;
           Object.values(assessments).forEach((assessment: any) => {
@@ -209,8 +209,8 @@ export class OrganizationDataService {
       return {
         id: team.id,
         name: team.name,
-        memberCount: team.members.length,
-        managerName: team.manager?.name || null,
+        memberCount: team.User_User_teamIdToTeam.length,
+        managerName: team.User_Team_managerIdToUser?.name || null,
         assessmentProgress: {
           total,
           completed,
@@ -235,12 +235,12 @@ export class OrganizationDataService {
         ...buildOrganizationWhere(context)
       },
       include: {
-        manager: {
+        User_Team_managerIdToUser: {
           select: {
             name: true
           }
         },
-        members: {
+        User_User_teamIdToTeam: {
           select: {
             id: true,
             completedAssessments: true
@@ -264,7 +264,7 @@ export class OrganizationDataService {
     let completed = 0;
     let inProgress = 0;
 
-    team.members.forEach(member => {
+    team.User_User_teamIdToTeam.forEach(member => {
       if (member.completedAssessments && typeof member.completedAssessments === 'object') {
         const assessments = member.completedAssessments as Record<string, any>;
         Object.values(assessments).forEach((assessment: any) => {
@@ -278,8 +278,8 @@ export class OrganizationDataService {
     return {
       id: team.id,
       name: team.name,
-      memberCount: team.members.length,
-      managerName: team.manager?.name || null,
+      memberCount: team.User_User_teamIdToTeam.length,
+      managerName: team.User_Team_managerIdToUser?.name || null,
       assessmentProgress: {
         total,
         completed,
@@ -313,7 +313,7 @@ export class OrganizationDataService {
         id: true,
         name: true,
         completedAssessments: true,
-        team: {
+        Team_User_teamIdToTeam: {
           select: {
             id: true,
             name: true
@@ -340,12 +340,12 @@ export class OrganizationDataService {
     let totalAssessments = 0;
 
     users.forEach(user => {
-      if (!user.team) return;
+      if (!user.Team_User_teamIdToTeam) return;
 
       // Initialize team entry if needed
-      if (!byTeam[user.team.id]) {
-        byTeam[user.team.id] = {
-          teamName: user.team.name,
+      if (!byTeam[user.Team_User_teamIdToTeam.id]) {
+        byTeam[user.Team_User_teamIdToTeam.id] = {
+          teamName: user.Team_User_teamIdToTeam.name,
           total: 0,
           completed: 0
         };
@@ -361,11 +361,11 @@ export class OrganizationDataService {
           if (byType[type]) {
             totalAssessments++;
             byType[type].total++;
-            byTeam[user.team!.id].total++;
+            byTeam[user.Team_User_teamIdToTeam!.id].total++;
             
             if (assessment.status === 'completed') {
               byType[type].completed++;
-              byTeam[user.team!.id].completed++;
+              byTeam[user.Team_User_teamIdToTeam!.id].completed++;
             } else if (assessment.status === 'in_progress') {
               byType[type].inProgress++;
             } else {
@@ -426,7 +426,7 @@ export class OrganizationDataService {
     if (!user) return null;
 
     // Check access - team members can only see their own progress
-    if (context.userRole === 'TEAM_MEMBER' && user.id !== context.userId) {
+    if (context.organizationRole === 'TEAM_MEMBER' && user.id !== context.userId) {
       return null;
     }
 
@@ -485,8 +485,15 @@ export class OrganizationDataService {
     }
 
     // For team members, only show their own team
-    if (context.userRole === 'TEAM_MEMBER') {
-      where.teamId = { in: context.teamIds };
+    if (context.organizationRole === 'TEAM_MEMBER') {
+      // Team members don't have teamIds in context, so we need to get their team from the user
+      const user = await prisma.user.findUnique({
+        where: { id: context.userId },
+        select: { teamId: true }
+      });
+      if (user?.teamId) {
+        where.teamId = user.teamId;
+      }
     }
 
     const members = await prisma.user.findMany({

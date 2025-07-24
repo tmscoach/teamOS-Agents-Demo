@@ -57,26 +57,28 @@ export async function POST() {
       });
     }
 
-    if (!loginResponse || !loginResponse.token) {
+    if (!loginResponse || !(loginResponse as any).token) {
       return NextResponse.json(
         { error: "Failed to generate JWT token" },
         { status: 500 }
       );
     }
 
-    const { token, userId: tmsUserId, organizationId: tmsOrgId } = loginResponse;
+    const { token, userId: tmsUserId, organizationId: tmsOrgId } = loginResponse as any;
 
     // Ensure user exists in database first
     await prisma.user.upsert({
       where: { clerkId: session.userId },
       update: {},
       create: {
+        id: `user_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
         clerkId: session.userId,
         email: user.emailAddresses[0]?.emailAddress || testEmail,
         name: `${user.firstName || 'Test'} ${user.lastName || 'User'}`,
         role: 'MANAGER',
         journeyPhase: 'ONBOARDING',
-        journeyStatus: 'ACTIVE'
+        journeyStatus: 'ACTIVE',
+        updatedAt: new Date()
       }
     });
 
@@ -103,11 +105,13 @@ export async function POST() {
         updatedAt: new Date()
       },
       create: {
+        id: `tmsauth_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
         userId: dbUser.id,
         tmsJwtToken: token,
         tmsUserId: tmsUserId,
         tmsOrgId: tmsOrgId,
-        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000) // 24 hours
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
+        updatedAt: new Date()
       }
     });
 

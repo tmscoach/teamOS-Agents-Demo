@@ -267,11 +267,11 @@ export async function respondentLogin(options: {
 
   // Generate JWT token with respondentID claim
   const token = mockTMSClient.generateJWT({
+    sub: user.id,
+    UserType: 'Respondent',
     respondentID: user.id.replace('user-', ''), // Extract numeric part for compatibility
-    lastModified: Date.now().toString(),
-    mobileAppType: MobileAppType,
-    iss: 'TMS.Global',
-    aud: 'TMS.Global'
+    nameid: user.email,
+    organisationId: user.organizationId || 'org-1'
   });
 
   // Update token mapping

@@ -7,6 +7,7 @@ const ALL_AGENTS = [
   'OnboardingAgent',
   'DiscoveryAgent',
   'AssessmentAgent',
+  'DebriefAgent',
   'AlignmentAgent',
   'LearningAgent',
   'NudgeAgent',
@@ -90,6 +91,7 @@ export async function GET(req: NextRequest) {
               flowConfig: { states: [], transitions: [] },
               extractionRules: {},
               guardrailConfig: {},
+              toolsConfig: {},
               active: false,
               createdBy: 'system',
               createdAt: new Date().toISOString(),
@@ -106,6 +108,7 @@ export async function GET(req: NextRequest) {
             flowConfig: defaultConfig.flowConfig,
             extractionRules: defaultConfig.extractionRules,
             guardrailConfig: defaultConfig.guardrailConfig || {},
+            toolsConfig: defaultConfig.toolsConfig || {},
             active: false,
             createdBy: 'system',
             createdAt: new Date().toISOString(),
@@ -127,7 +130,8 @@ export async function GET(req: NextRequest) {
         return NextResponse.json({
           ...activeConfig,
           systemPrompt,
-          guardrailConfig: activeConfig.guardrailConfig || {}
+          guardrailConfig: activeConfig.guardrailConfig || {},
+          toolsConfig: activeConfig.toolsConfig || {}
         });
       }
 
@@ -319,6 +323,7 @@ export async function PUT(req: NextRequest) {
       extractionRules: body.extractionRules,
       guardrailConfig: body.guardrailConfig,
       knowledgeConfig: body.knowledgeConfig,
+      toolsConfig: body.toolsConfig,
     };
 
     const config = await AgentConfigurationService.updateConfiguration(

@@ -133,6 +133,8 @@ export class MockTMSAPIClient {
       'GET:/GetGraph': () => import('./endpoints/reports').then(m => m.generateGraph),
       'POST:/api/v1/tms/generate-html-report': () => import('./endpoints/reports').then(m => m.generateHTMLReport),
       'POST:/api/v1/tms/generate-graph': () => import('./endpoints/reports').then(m => m.generateGraphAPI),
+      'POST:/api/v1/tms/debrief-report': () => import('./endpoints/debrief').then(m => m.debriefReport),
+      'GET:/api/v1/tms/debrief-report/samples': () => import('./endpoints/debrief').then(m => m.getDebriefSampleQuestions),
     };
 
     // Find matching handler

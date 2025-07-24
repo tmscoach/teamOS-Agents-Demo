@@ -19,6 +19,7 @@ export class VariableExtractionService {
   static async trackExtraction(data: VariableExtractionInput): Promise<VariableExtraction> {
     return await prisma.variableExtraction.create({
       data: {
+        id: `varextract_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
         conversationId: data.conversationId,
         agentName: data.agentName,
         fieldName: data.fieldName,
@@ -36,7 +37,10 @@ export class VariableExtractionService {
    */
   static async trackExtractionBatch(extractions: VariableExtractionInput[]): Promise<number> {
     const result = await prisma.variableExtraction.createMany({
-      data: extractions,
+      data: extractions.map(extraction => ({
+        id: `varextract_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+        ...extraction
+      })),
     });
     return result.count;
   }
@@ -173,7 +177,7 @@ export class VariableExtractionService {
           take: 5,
           orderBy: { timestamp: 'desc' },
           include: {
-            conversation: {
+            Conversation: {
               select: {
                 id: true,
                 contextData: true,
@@ -277,7 +281,7 @@ export class VariableExtractionService {
         take: params.limit || 50,
         skip: params.offset || 0,
         include: {
-          conversation: {
+          Conversation: {
             select: {
               id: true,
               teamId: true,

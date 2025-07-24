@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
         name: true,
         organizationId: true,
         _count: {
-          select: { members: true }
+          select: { User_User_teamIdToTeam: true }
         }
       }
     });
@@ -71,7 +71,7 @@ export async function GET(req: NextRequest) {
       teams: teams.map(t => ({
         name: t.name,
         org: t.organizationId,
-        memberCount: t._count.members
+        memberCount: t._count.User_User_teamIdToTeam
       }))
     });
   } catch (error) {

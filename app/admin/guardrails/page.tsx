@@ -14,6 +14,17 @@ interface GuardrailStats {
   violationsByAgent: Array<{ agent: string; count: number }>;
 }
 
+interface GuardrailViolation {
+  id: string;
+  conversationId: string;
+  agentName: string;
+  guardrailType: string;
+  input: string;
+  severity: string;
+  reasoning: string;
+  timestamp: string;
+}
+
 export default function GuardrailsPage() {
   const [stats, setStats] = useState<GuardrailStats>({
     totalChecks: 50,
@@ -22,6 +33,7 @@ export default function GuardrailsPage() {
     passRate: 100.0,
     violationsByAgent: []
   });
+  const [violations, setViolations] = useState<GuardrailViolation[]>([]);
   const [activeTab, setActiveTab] = useState("violations");
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
@@ -32,19 +44,27 @@ export default function GuardrailsPage() {
 
   const fetchData = async () => {
     try {
-      const response = await fetch('/api/admin/guardrails/stats');
-      if (response.ok) {
-        const data = await response.json();
+      // Fetch stats
+      const statsResponse = await fetch('/api/admin/guardrails/stats');
+      if (statsResponse.ok) {
+        const data = await statsResponse.json();
         setStats({
-          totalChecks: data.totalChecks || 50,
-          passedChecks: data.totalChecks - data.failedChecks || 50,
+          totalChecks: data.totalChecks || 0,
+          passedChecks: data.totalChecks - data.failedChecks || 0,
           failedChecks: data.failedChecks || 0,
           passRate: data.passRate || 100.0,
           violationsByAgent: data.violationsByAgent || []
         });
       }
+      
+      // Fetch recent violations
+      const violationsResponse = await fetch('/api/admin/guardrails/stats?recent=true&limit=50');
+      if (violationsResponse.ok) {
+        const violationsData = await violationsResponse.json();
+        setViolations(violationsData);
+      }
     } catch (error) {
-      console.error('Error fetching guardrail stats:', error);
+      console.error('Error fetching guardrail data:', error);
     } finally {
       setLoading(false);
     }
@@ -108,11 +128,70 @@ export default function GuardrailsPage() {
 
         {activeTab === 'violations' && (
           <div className="mt-6">
-            <EmptyState
-              icon={CheckCircle}
-              title="No recent guardrail violations"
-              description="All agents are operating within defined parameters"
-            />
+            {violations.length === 0 ? (
+              <EmptyState
+                icon={CheckCircle}
+                title="No recent guardrail violations"
+                description="All agents are operating within defined parameters"
+              />
+            ) : (
+              <div className="space-y-4">
+                {violations.map((violation) => (
+                  <div
+                    key={violation.id}
+                    className="p-4 border border-[var(--teams-ui-border)] rounded-[var(--teams-radius-md)] bg-[var(--teams-surface)] hover:shadow-sm transition-shadow"
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <div className="flex items-center gap-3">
+                        <Shield className="h-5 w-5 text-red-500" />
+                        <div>
+                          <h4 className="font-medium text-[var(--teams-text-primary)]">
+                            {violation.guardrailType}
+                          </h4>
+                          <p className="text-sm text-[var(--teams-text-secondary)]">
+                            Agent: {violation.agentName}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className={`inline-block px-2 py-1 text-xs font-medium rounded ${
+                          violation.severity === 'high' ? 'bg-red-100 text-red-700' :
+                          violation.severity === 'medium' ? 'bg-yellow-100 text-yellow-700' :
+                          'bg-gray-100 text-gray-700'
+                        }`}>
+                          {violation.severity}
+                        </span>
+                        <p className="text-xs text-[var(--teams-text-secondary)] mt-1">
+                          {new Date(violation.timestamp).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="mt-3">
+                      <p className="text-sm text-[var(--teams-text-secondary)] mb-1">Input:</p>
+                      <p className="text-sm bg-gray-50 p-2 rounded font-mono">
+                        {violation.input}
+                      </p>
+                    </div>
+                    {violation.reasoning && (
+                      <div className="mt-2">
+                        <p className="text-sm text-[var(--teams-text-secondary)] mb-1">Reason:</p>
+                        <p className="text-sm">
+                          {JSON.parse(violation.reasoning).reason || 'Violation detected'}
+                        </p>
+                      </div>
+                    )}
+                    <div className="mt-2">
+                      <a
+                        href={`/admin/conversations/${violation.conversationId}`}
+                        className="text-sm text-[var(--teams-primary)] hover:underline"
+                      >
+                        View conversation →
+                      </a>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

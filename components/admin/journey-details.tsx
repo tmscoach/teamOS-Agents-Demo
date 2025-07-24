@@ -17,6 +17,7 @@ interface JourneyStepWithProgress {
 
 interface JourneyDetailsProps {
   journeyStatus: 'ONBOARDING' | 'ACTIVE' | 'DORMANT';
+  journeyPhase?: string; // Add journey phase from conversation
   completedSteps: string[];
   currentStep: {
     id: string;
@@ -60,6 +61,7 @@ const PHASE_CONFIG = {
 
 export function JourneyDetails({
   journeyStatus,
+  journeyPhase,
   completedSteps,
   currentStep,
   lastActivity,
@@ -69,7 +71,10 @@ export function JourneyDetails({
 }: JourneyDetailsProps) {
   // Get steps for user's role
   const roleSteps = getStepsForRole(userRole);
-  const currentPhase = getCurrentPhase(completedSteps, userRole);
+  // Use provided journey phase or calculate from completed steps
+  const currentPhase = journeyPhase ? 
+    (journeyPhase.toUpperCase() as JourneyPhase) : 
+    getCurrentPhase(completedSteps, userRole);
   
   // Map completed steps to journey steps with progress info
   const journeySteps: JourneyStepWithProgress[] = roleSteps.map(step => ({

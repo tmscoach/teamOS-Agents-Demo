@@ -33,7 +33,8 @@ export const knowledgeBaseTools: AgentTool[] = [
       try {
         const results = await search.search(params.query, {
           documentTypes: params.document_types,
-          limit: params.limit || 5
+          limit: params.limit || 5,
+          minRelevance: parseFloat(process.env.KNOWLEDGE_BASE_MIN_RELEVANCE || '0.3')  // Configurable threshold
         });
         
         await search.close();
@@ -88,7 +89,8 @@ export const knowledgeBaseTools: AgentTool[] = [
         
         const results = await search.search(query, {
           documentTypes: ['HANDBOOK'],
-          limit: 3
+          limit: 3,
+          minRelevance: 0.5
         });
         
         await search.close();
@@ -195,7 +197,8 @@ export const knowledgeBaseTools: AgentTool[] = [
           ['intervention', 'strategy', 'transformation', params.scenario],
           {
             documentTypes: ['HANDBOOK', 'RESEARCH'],
-            limit: 5
+            limit: 5,
+            minRelevance: 0.5
           }
         );
         
@@ -248,7 +251,8 @@ export const knowledgeBaseTools: AgentTool[] = [
         
         const results = await search.search(query, {
           documentTypes: ['RESEARCH', 'REPORT'],
-          limit: 3
+          limit: 3,
+          minRelevance: 0.5
         });
         
         await search.close();

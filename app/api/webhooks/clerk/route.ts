@@ -103,6 +103,7 @@ export async function POST(req: Request) {
           ...(email === (process.env.ADMIN_EMAIL || 'rowan@teammanagementsystems.com') ? { role } : {})
         },
         create: {
+          id: `user_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
           clerkId: id,
           email,
           name: `${first_name || ''} ${last_name || ''}`.trim() || email,
@@ -112,6 +113,7 @@ export async function POST(req: Request) {
           completedSteps: [],
           organizationId,
           organizationRole,
+          updatedAt: new Date(),
         },
       });
 

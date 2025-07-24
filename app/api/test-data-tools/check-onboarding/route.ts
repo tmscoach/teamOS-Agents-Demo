@@ -25,7 +25,7 @@ export async function GET(req: NextRequest) {
         journeyStatus: true,
         onboardingData: true,
         clerkId: true,
-        managedTeams: {
+        Team_Team_managerIdToUser: {
           select: {
             id: true,
             name: true,
@@ -84,7 +84,7 @@ export async function GET(req: NextRequest) {
         capturedOrganization,
         onboardingData: dbUser.onboardingData
       },
-      teams: dbUser.managedTeams,
+      teams: dbUser.Team_Team_managerIdToUser,
       recentConversations: recentConversations.map(c => ({
         id: c.id,
         createdAt: c.createdAt,

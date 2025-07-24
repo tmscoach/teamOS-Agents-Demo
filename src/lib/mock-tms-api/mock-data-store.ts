@@ -28,7 +28,7 @@ interface MockOrganization {
   createdAt: Date;
 }
 
-interface MockSubscription {
+export interface MockSubscription {
   subscriptionId: string;
   userId: string;
   organizationId: string;
@@ -74,6 +74,11 @@ class MockDataStore {
     if (testUser) {
       // User exists, get their organization
       testOrg = this.organizations.get(testUser.organizationId);
+      if (!testOrg) {
+        // Create organization if user exists but organization doesn't
+        testOrg = this.createOrganization('Test Organization', testUser.id);
+        testUser.organizationId = testOrg.id;
+      }
     } else {
       // Create new test organization and user
       testOrg = this.createOrganization('Test Organization', 'facilitator-1');

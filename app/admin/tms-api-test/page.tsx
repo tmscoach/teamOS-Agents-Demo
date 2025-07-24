@@ -130,6 +130,14 @@ export default function TMSApiTestPage() {
         chartType: "CreateTeamSignals",
         params: { colors: "amber|amber|red|amber|amber|red|amber|amber" }
       }
+    },
+    {
+      name: "Report Debrief Q&A",
+      tool: "tms_debrief_report",
+      params: {
+        subscriptionId: "21988",
+        query: "What does the green section in my TMP wheel represent?"
+      }
     }
   ]);
 
@@ -789,7 +797,7 @@ export default function TMSApiTestPage() {
               </div>
 
               {/* Workflow and Report Scenarios */}
-              {selectedTool && (selectedTool.includes('workflow') || selectedTool.includes('tms_get_workflow') || selectedTool === 'tms_get_dashboard_subscriptions' || selectedTool.includes('report') || selectedTool === 'tms_generate_html_report' || selectedTool === 'tms_generate_graph') && (
+              {selectedTool && (selectedTool.includes('workflow') || selectedTool.includes('tms_get_workflow') || selectedTool === 'tms_get_dashboard_subscriptions' || selectedTool.includes('report') || selectedTool === 'tms_generate_html_report' || selectedTool === 'tms_generate_graph' || selectedTool === 'tms_debrief_report') && (
                 <div style={{ marginBottom: '24px' }}>
                   <h4 style={{
                     fontSize: '16px',
@@ -1169,6 +1177,108 @@ export default function TMSApiTestPage() {
                             }}
                           />
                         </div>
+                        <details>
+                          <summary style={{ cursor: 'pointer', fontSize: '14px', color: '#6b7280' }}>
+                            View Raw Response
+                          </summary>
+                          <pre style={{
+                            padding: '12px',
+                            backgroundColor: '#1e293b',
+                            borderRadius: '6px',
+                            fontSize: '12px',
+                            color: '#e2e8f0',
+                            overflow: 'auto',
+                            maxHeight: '400px',
+                            marginTop: '8px'
+                          }}>
+                            {JSON.stringify(result.response.data, null, 2)}
+                          </pre>
+                        </details>
+                      </div>
+                    ) : selectedTool === 'tms_debrief_report' && result.response.status === 200 && result.response.data ? (
+                      <div>
+                        {/* Main Response */}
+                        <div style={{ marginBottom: '16px' }}>
+                          <h6 style={{ fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
+                            Debrief Response:
+                          </h6>
+                          <div style={{
+                            padding: '12px',
+                            backgroundColor: '#f9fafb',
+                            borderRadius: '6px',
+                            fontSize: '14px',
+                            color: '#111827',
+                            whiteSpace: 'pre-wrap'
+                          }}>
+                            {result.response.data.response}
+                          </div>
+                        </div>
+
+                        {/* Relevant Sections */}
+                        {result.response.data.relevantSections && result.response.data.relevantSections.length > 0 && (
+                          <div style={{ marginBottom: '16px' }}>
+                            <h6 style={{ fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
+                              Relevant Report Sections:
+                            </h6>
+                            {result.response.data.relevantSections.map((section: any, idx: number) => (
+                              <div key={idx} style={{
+                                padding: '12px',
+                                backgroundColor: '#f3f4f6',
+                                borderRadius: '6px',
+                                marginBottom: '8px'
+                              }}>
+                                <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px' }}>
+                                  Type: {section.type}
+                                </div>
+                                {section.explanation && (
+                                  <div style={{ fontSize: '13px', color: '#374151' }}>
+                                    {section.explanation}
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Suggested Questions */}
+                        {result.response.data.suggestedQuestions && result.response.data.suggestedQuestions.length > 0 && (
+                          <div style={{ marginBottom: '16px' }}>
+                            <h6 style={{ fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '8px' }}>
+                              Suggested Follow-up Questions:
+                            </h6>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                              {result.response.data.suggestedQuestions.map((question: string, idx: number) => (
+                                <button
+                                  key={idx}
+                                  onClick={() => {
+                                    setParameters({ ...parameters, query: question });
+                                    toast.success('Question loaded into parameters');
+                                  }}
+                                  style={{
+                                    padding: '8px 12px',
+                                    backgroundColor: '#e5e7eb',
+                                    borderRadius: '6px',
+                                    border: 'none',
+                                    fontSize: '13px',
+                                    color: '#374151',
+                                    cursor: 'pointer',
+                                    textAlign: 'left',
+                                    transition: 'background-color 0.2s'
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.backgroundColor = '#d1d5db';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.backgroundColor = '#e5e7eb';
+                                  }}
+                                >
+                                  {question}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
                         <details>
                           <summary style={{ cursor: 'pointer', fontSize: '14px', color: '#6b7280' }}>
                             View Raw Response

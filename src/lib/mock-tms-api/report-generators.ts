@@ -3,12 +3,84 @@
  * Generates HTML reports for different assessment types
  */
 
-import { MockSubscription } from './types';
+// Import MockSubscription from mock-data-store where it's defined
+import type { MockSubscription } from './mock-data-store';
 import { WorkflowStateManager } from './workflow-state-manager';
 import * as fs from 'fs';
 import * as path from 'path';
 
 const workflowStateManager = WorkflowStateManager.getInstance();
+
+/**
+ * Calculate TMP results from questionnaire answers
+ */
+function calculateTMPResults(answers: Record<number, string>) {
+  // TMP roles mapping
+  const tmpRoles = [
+    { role: 'Creator Innovator', code: 'cre_inn' },
+    { role: 'Explorer Promoter', code: 'exp_pro' },
+    { role: 'Assessor Developer', code: 'ass_dev' },
+    { role: 'Thruster Organizer', code: 'thr_org' },
+    { role: 'Concluder Producer', code: 'con_pro' },
+    { role: 'Controller Inspector', code: 'con_ins' },
+    { role: 'Upholder Maintainer', code: 'uph_mai' },
+    { role: 'Reporter Adviser', code: 'rep_adv' }
+  ];
+  
+  // Simple scoring logic for MVP
+  // In production, this would use the actual TMP scoring algorithm
+  const roleScores = [0, 0, 0, 0, 0, 0, 0, 0];
+  
+  // Map answers to role scores (simplified for MVP)
+  Object.entries(answers).forEach(([questionId, value]) => {
+    const qId = parseInt(questionId);
+    const answer = parseInt(value) || 0;
+    
+    // Distribute scores based on question ranges (simplified)
+    if (qId >= 1 && qId <= 10) {
+      roleScores[Math.floor((qId - 1) % 8)] += answer;
+    } else if (qId >= 11 && qId <= 20) {
+      roleScores[Math.floor((qId - 11) % 8)] += answer;
+    } else {
+      roleScores[qId % 8] += answer;
+    }
+  });
+  
+  // Find major role and related roles
+  const scoredRoles = roleScores.map((score, index) => ({
+    score,
+    index,
+    role: tmpRoles[index].role,
+    code: tmpRoles[index].code
+  })).sort((a, b) => b.score - a.score);
+  
+  // Default to Upholder Maintainer if no answers
+  if (scoredRoles[0].score === 0) {
+    return {
+      majorRole: 'Upholder Maintainer',
+      majorRoleCode: 'uph_mai',
+      relatedRole1: 'Controller Inspector',
+      relatedRole1Code: 'con_ins',
+      relatedRole2: 'Thruster Organizer',
+      relatedRole2Code: 'thr_org',
+      majorRoleScore: 85,
+      relatedRole1Score: 70,
+      relatedRole2Score: 65
+    };
+  }
+  
+  return {
+    majorRole: scoredRoles[0].role,
+    majorRoleCode: scoredRoles[0].code,
+    relatedRole1: scoredRoles[1].role,
+    relatedRole1Code: scoredRoles[1].code,
+    relatedRole2: scoredRoles[2].role,
+    relatedRole2Code: scoredRoles[2].code,
+    majorRoleScore: Math.min(100, scoredRoles[0].score * 5),
+    relatedRole1Score: Math.min(100, scoredRoles[1].score * 5),
+    relatedRole2Score: Math.min(100, scoredRoles[2].score * 5)
+  };
+}
 
 /**
  * Load HTML template and replace placeholders
@@ -70,12 +142,25 @@ function generateTMPReport(subscription: MockSubscription, state: any, templateI
   // Get organization name
   const org = mockDataStore.getOrganization(subscription.organizationId);
   const organizationName = org?.name || 'Test Organization';
+  
+  // In production, TMS Global calculates all scores and generates complete HTML
+  // For this mock system, we simulate the calculation to test the debrief functionality
+  const tmpResults = calculateTMPResults(state.answers);
     
   const replacements = {
     BASE_URL: baseUrl,
     RESPONDENT_NAME: respondentName,
     ORGANIZATION_NAME: organizationName,
-    REPORT_DATE: new Date().toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric' })
+    REPORT_DATE: new Date().toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+    MAJOR_ROLE: tmpResults.majorRole,
+    MAJOR_ROLE_CODE: tmpResults.majorRoleCode,
+    RELATED_ROLE_1: tmpResults.relatedRole1,
+    RELATED_ROLE_1_CODE: tmpResults.relatedRole1Code,
+    RELATED_ROLE_2: tmpResults.relatedRole2,
+    RELATED_ROLE_2_CODE: tmpResults.relatedRole2Code,
+    MAJOR_ROLE_SCORE: tmpResults.majorRoleScore.toString(),
+    RELATED_ROLE_1_SCORE: tmpResults.relatedRole1Score.toString(),
+    RELATED_ROLE_2_SCORE: tmpResults.relatedRole2Score.toString()
   };
   
   return loadTemplate('tmp-report', replacements);
@@ -167,7 +252,7 @@ function generateTeamSignals360Report(subscription: MockSubscription, state: any
   } else {
     averages = [];
     for (let i = 0; i < 8; i++) {
-      const sum = teamMembers.reduce((acc, member) => acc + member.scores[i], 0);
+      const sum = teamMembers.reduce((acc: number, member: any) => acc + member.scores[i], 0);
       averages.push(Math.round(sum / teamMembers.length));
     }
   }
@@ -265,7 +350,7 @@ function generateIndividualResponses(teamMembers: any[], averages: number[]): st
     html += `
       <tr>
         <td>${member.name}</td>
-        ${member.scores.map(score => `<td>${score}%</td>`).join('')}
+        ${member.scores.map((score: number) => `<td>${score}%</td>`).join('')}
       </tr>
     `;
   });

@@ -993,7 +993,7 @@ top.style.color = "#bcc7d8";
 }
 </script>
 </head>
-<div class="graphwheel"><div class="loadingimg"><img  style="width:200px" src="{{BASE_URL}}/Asset/get/loadinggif"/></div><img class="graph" src="{{BASE_URL}}/GetGraph?CreateTMPQWheel&mr=8&rr1=7&rr2=5"/></div>
+<div class="graphwheel"><div class="loadingimg"><img  style="width:200px" src="{{BASE_URL}}/Asset/get/loadinggif"/></div><img class="graph" src="{{BASE_URL}}/GetGraph?CreateTMPQWheel&mr={{MAJOR_ROLE_SCORE}}&rr1={{RELATED_ROLE_1_SCORE}}&rr2={{RELATED_ROLE_2_SCORE}}"/></div>
 <h1>Team Management Profile</h1>
 <h1>{{RESPONDENT_NAME}}</h1>
 <div class="contents" id="toc">
@@ -1007,7 +1007,7 @@ top.style.color = "#bcc7d8";
 <li><a href="#interpersonalskills" onclick="javascript:returnLocation(interpersonalskills)">Interpersonal Skills</a></li>
 <li><a href="#teambuilding" onclick="javascript:returnLocation(teambuilding)">Team-Building</a></li>
 <li><a href="#areasforselfassessment" onclick="javascript:returnLocation(areasforselfassessment)">Areas For Self-Assessment</a></li>
-<li><a href="#keypoints" onclick="javascript:returnLocation(keypoints)">Key Points of Note for Upholder Maintainers</a></li>
+<li><a href="#keypoints" onclick="javascript:returnLocation(keypoints)">Key Points of Note for {{MAJOR_ROLE}}s</a></li>
 <li><a href="#relatedroles" onclick="javascript:returnLocation(relatedroles)">Related Roles</a></li>
 <li><a href="#workpreferencedistribution" onclick="javascript:returnLocation(workpreferencedistribution)">Work Preference Distribution</a></li>
 <li><a href="#linking" onclick="javascript:returnLocation(linking)">Linking</a></li>
@@ -1030,13 +1030,13 @@ top.style.color = "#bcc7d8";
 </div>
 <div class="summaryarea">
 <div class="lineitem">
-<div class="imgholder"><img class="graph" src="{{BASE_URL}}/Asset\Get\mr_circle_uph_mai""/></div><div><label>Major Role</label><p>Upholder Maintainer</div>
+<div class="imgholder"><img class="graph" src="{{BASE_URL}}/Asset\Get\mr_circle_{{MAJOR_ROLE_CODE}}""/></div><div><label>Major Role</label><p>{{MAJOR_ROLE}}</div>
 </div>
 <div class="lineitem">
-<div class="imgholder2"><img class="graph" src="{{BASE_URL}}/Asset\Get\rr_circle_con_ins""/></div><div><label>1st Related Role</label><p>Controller Inspector</div>
+<div class="imgholder2"><img class="graph" src="{{BASE_URL}}/Asset\Get\rr_circle_{{RELATED_ROLE_1_CODE}}""/></div><div><label>1st Related Role</label><p>{{RELATED_ROLE_1}}</div>
 </div>
 <div class="lineitem">
-<div class="imgholder2"><img class="graph" src="{{BASE_URL}}/Asset\Get\rr_circle_thr_org""/></div><div><label>2nd Related Role</label><p>Thruster Organiser</div>
+<div class="imgholder2"><img class="graph" src="{{BASE_URL}}/Asset\Get\rr_circle_{{RELATED_ROLE_2_CODE}}""/></div><div><label>2nd Related Role</label><p>{{RELATED_ROLE_2}}</div>
 </div>
 </div>
 </div>
@@ -1198,7 +1198,7 @@ top.style.color = "#bcc7d8";
 
 </section>
 <section id="keypoints">
-<h2>Key Points of Note for Upholder Maintainers</h2>
+<h2>Key Points of Note for {{MAJOR_ROLE}}s</h2>
 
 <p class="listparagraph">You are usually quietly confident and persevering in the team's interests.</p>
 <p class="listparagraph">You tend to be strong on ideas and innovation.</p>
@@ -1304,13 +1304,13 @@ top.style.color = "#bcc7d8";
 </div>
 <div class="summaryarea">
 <div class="lineitem">
-<div class="imgholder"><img class="graph" src="{{BASE_URL}}/Asset\Get\mr_circle_uph_mai""/></div><div><label>Major Role</label><p>Upholder Maintainer</div>
+<div class="imgholder"><img class="graph" src="{{BASE_URL}}/Asset\Get\mr_circle_{{MAJOR_ROLE_CODE}}""/></div><div><label>Major Role</label><p>{{MAJOR_ROLE}}</div>
 </div>
 <div class="lineitem">
-<div class="imgholder2"><img class="graph" src="{{BASE_URL}}/Asset\Get\rr_circle_con_ins""/></div><div><label>1st Related Role</label><p>Controller Inspector</div>
+<div class="imgholder2"><img class="graph" src="{{BASE_URL}}/Asset\Get\rr_circle_{{RELATED_ROLE_1_CODE}}""/></div><div><label>1st Related Role</label><p>{{RELATED_ROLE_1}}</div>
 </div>
 <div class="lineitem">
-<div class="imgholder2"><img class="graph" src="{{BASE_URL}}/Asset\Get\rr_circle_thr_org""/></div><div><label>2nd Related Role</label><p>Thruster Organiser</div>
+<div class="imgholder2"><img class="graph" src="{{BASE_URL}}/Asset\Get\rr_circle_{{RELATED_ROLE_2_CODE}}""/></div><div><label>2nd Related Role</label><p>{{RELATED_ROLE_2}}</div>
 </div>
 </div>
 </div>
