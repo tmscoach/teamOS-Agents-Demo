@@ -145,7 +145,8 @@ describe('Report Context Service Input Validation', () => {
         'user-999999',
         'facilitator-1',
         'user-1234567890-abc123def', // Mock data store format
-        'respondent-42'
+        'respondent-42',
+        'cmcujg1nf0000smqd9rtnrfcp' // CUID format
       ];
 
       for (const userId of validUserIds) {

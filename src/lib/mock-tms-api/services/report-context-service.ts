@@ -1281,8 +1281,9 @@ Remember: You are debriefing THIS SPECIFIC report with THIS SPECIFIC data. Do no
       return { valid: false, error: 'User ID must be a string' };
     }
 
-    // Check format - allow user-{timestamp}-{random} or facilitator-{number} or respondent-{number}
-    if (!/^(user|facilitator|respondent)-[\d\w-]+$/.test(userId)) {
+    // Check format - allow user-{timestamp}-{random}, facilitator-{number}, respondent-{number}, or database IDs (CUIDs)
+    // CUIDs start with 'c' and contain lowercase letters and numbers
+    if (!/^((user|facilitator|respondent)-[\d\w-]+|c[a-z0-9]{20,})$/.test(userId)) {
       return { valid: false, error: 'Invalid user ID format' };
     }
 
