@@ -21,7 +21,8 @@ import {
   createLearningAgent,
   createNudgeAgent,
   createProgressMonitor,
-  createRecognitionAgent
+  createRecognitionAgent,
+  createDebriefAgent
 } from '@/src/lib/agents/implementations';
 import { prisma } from '@/lib/db/prisma';
 
@@ -113,7 +114,8 @@ async function registerAgents() {
       createLearningAgent(),
       createNudgeAgent(),
       createProgressMonitor(),
-      createRecognitionAgent()
+      createRecognitionAgent(),
+      createDebriefAgent()
     ]);
     
     agents.forEach(agent => {
