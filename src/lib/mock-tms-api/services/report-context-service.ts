@@ -279,10 +279,16 @@ class ReportContextService {
     const chartType = parts[0] || 'Unknown';
     const params: Record<string, string> = {};
     
+    // List of rendering-only parameters to exclude
+    const renderingParams = ['mr', 'rr1', 'rr2'];
+    
     for (let i = 1; i < parts.length; i++) {
       const [key, value] = parts[i].split('=');
       if (key && value) {
-        params[key] = decodeURIComponent(value);
+        // Filter out rendering-only parameters
+        if (!renderingParams.includes(key)) {
+          params[key] = decodeURIComponent(value);
+        }
       }
     }
 
@@ -318,13 +324,16 @@ class ReportContextService {
     // Extract scores if available (simplified for MVP)
     const scores: Record<string, number> = {};
     
-    // For TMP, extract role scores from HTML
+    // For TMP, extract actual work preference scores from report text
     if (subscription.assessmentType === 'TMP') {
-      const wheelMatch = html.match(/CreateTMPQWheel&mr=(\d+)&rr1=(\d+)&rr2=(\d+)/);
-      if (wheelMatch) {
-        scores.majorRole = parseInt(wheelMatch[1]);
-        scores.relatedRole1 = parseInt(wheelMatch[2]);
-        scores.relatedRole2 = parseInt(wheelMatch[3]);
+      // Extract work preference net scores (I, C, B, S) from the report
+      const scorePattern = /These are I: (\d+); C: (\d+); B: (\d+); S: (\d+) and are the foundation/;
+      const scoreMatch = html.match(scorePattern);
+      if (scoreMatch) {
+        scores.introvert = parseInt(scoreMatch[1]);
+        scores.creative = parseInt(scoreMatch[2]);
+        scores.beliefs = parseInt(scoreMatch[3]);
+        scores.structured = parseInt(scoreMatch[4]);
       }
     }
 
@@ -585,22 +594,37 @@ class ReportContextService {
         response = `Your Major Role is **${majorRoleMatch[1]}**.\n\n`;
         response += `This means you naturally prefer to contribute to teams through ${majorRoleMatch[1].toLowerCase()} activities. `;
         response += `People with this major role typically excel at tasks that involve this type of work preference.`;
-      } else if (isAskingAboutScores && wheelMatch) {
-        response = `Your TMP raw scores are:\n\n`;
-        response += `• Major Role Score: ${wheelMatch[1]}\n`;
-        response += `• Related Role 1 Score: ${wheelMatch[2]}\n`;
-        response += `• Related Role 2 Score: ${wheelMatch[3]}\n\n`;
-        response += `These scores indicate the relative strength of your preferences across different team roles.`;
+      } else if (isAskingAboutScores) {
+        // Extract actual work preference scores from report
+        const scorePattern = /These are I: (\d+); C: (\d+); B: (\d+); S: (\d+) and are the foundation/;
+        const actualScoreMatch = reportContext.htmlContent.match(scorePattern);
         
-        sections.push({
-          type: 'score',
-          content: {
-            majorRole: parseInt(wheelMatch[1]),
-            relatedRole1: parseInt(wheelMatch[2]),
-            relatedRole2: parseInt(wheelMatch[3])
-          },
-          explanation: 'Your TMP role preference scores'
-        });
+        if (actualScoreMatch) {
+          response = `Your TMP Work Preference Net Scores are:\n\n`;
+          response += `• Introvert (I): ${actualScoreMatch[1]}\n`;
+          response += `• Creative (C): ${actualScoreMatch[2]}\n`;
+          response += `• Beliefs (B): ${actualScoreMatch[3]}\n`;
+          response += `• Structured (S): ${actualScoreMatch[4]}\n\n`;
+          response += `These net scores (on a scale of 0-17) indicate the strength of your preferences on each dimension. They determine your Major Role and Related Roles on the Team Management Wheel.`;
+          
+          sections.push({
+            type: 'score',
+            content: {
+              introvert: parseInt(actualScoreMatch[1]),
+              creative: parseInt(actualScoreMatch[2]),
+              beliefs: parseInt(actualScoreMatch[3]),
+              structured: parseInt(actualScoreMatch[4])
+            },
+            explanation: 'Your TMP work preference net scores'
+          });
+        } else {
+          response = `I couldn't find the specific work preference scores in your report. In TMP, the key scores are:\n\n`;
+          response += `• I (Introvert/Extrovert preference)\n`;
+          response += `• C (Creative/Practical preference)\n`;
+          response += `• B (Beliefs/Analytical preference)\n`;
+          response += `• S (Structured/Flexible preference)\n\n`;
+          response += `These scores determine your Major Role and Related Roles. Please check your full report for these values.`;
+        }
       } else {
         // General interpretation
         response = `Your Team Management Profile (TMP) results indicate:\n\n`;
@@ -613,8 +637,11 @@ class ReportContextService {
         response += `• These preferences influence your communication style, decision-making, and problem-solving approach\n`;
         response += `• Understanding these preferences helps you leverage your strengths and work effectively with others\n`;
         
-        if (wheelMatch) {
-          response += `\nYour preference scores: Major Role (${wheelMatch[1]}), Related Roles (${wheelMatch[2]}, ${wheelMatch[3]})`;
+        // Add actual work preference scores if available
+        const scorePattern = /These are I: (\d+); C: (\d+); B: (\d+); S: (\d+) and are the foundation/;
+        const actualScoreMatch = reportContext.htmlContent.match(scorePattern);
+        if (actualScoreMatch) {
+          response += `\nYour work preference net scores: I=${actualScoreMatch[1]}, C=${actualScoreMatch[2]}, B=${actualScoreMatch[3]}, S=${actualScoreMatch[4]}`;
         }
       }
       
@@ -841,13 +868,14 @@ CRITICAL INSTRUCTIONS:
 6. Quote directly from the "FULL REPORT CONTENT" section when answering about specific sections
 7. If data is not available in the report, say so - do not invent information
 8. Be professional, supportive, and constructive in your interpretations
+9. NEVER mention mr, rr1, or rr2 values - these are rendering parameters for graph visualization only
 
 IMPORTANT TMS Context:
 - TMP uses four work preference measures: Relationships (E/I), Information (P/C), Decisions (A/B), Organization (S/F)
 - Net scores are calculated by subtracting the lower from the higher (e.g., I: 7 means Introvert preference of 7)
 - These net scores determine the Major Role and Related Roles on the Team Management Wheel
 - There is NO such thing as a "Major Role Score of 85" - roles are qualitative, not quantitative
-- The numbers in image URLs (like mr=85) are GRAPH PARAMETERS for visualization, NOT actual scores
+- The numbers in image URLs (like mr=85, rr1=70, rr2=65) are GRAPH PARAMETERS for visualization ONLY - they have NO meaning in TMS and should NEVER be mentioned to the user
 
 TMS Team Management Wheel Roles:
 1. Reporter-Adviser: Gathering and reporting information
@@ -1281,8 +1309,9 @@ Remember: You are debriefing THIS SPECIFIC report with THIS SPECIFIC data. Do no
       return { valid: false, error: 'User ID must be a string' };
     }
 
-    // Check format - allow user-{timestamp}-{random} or facilitator-{number} or respondent-{number}
-    if (!/^(user|facilitator|respondent)-[\d\w-]+$/.test(userId)) {
+    // Check format - allow user-{timestamp}-{random}, facilitator-{number}, respondent-{number}, or database IDs (CUIDs)
+    // CUIDs start with 'c' and contain lowercase letters and numbers
+    if (!/^((user|facilitator|respondent)-[\d\w-]+|c[a-z0-9]{20,})$/.test(userId)) {
       return { valid: false, error: 'Invalid user ID format' };
     }
 

@@ -82,7 +82,8 @@ describe('ReportContextService', () => {
       
       const images = Array.from(context?.images.values() || []);
       expect(images[0].type).toBe('CreateTMPQWheel');
-      expect(images[0].parameters).toEqual({ mr: '8', rr1: '7', rr2: '5' });
+      // Rendering parameters (mr, rr1, rr2) should be filtered out
+      expect(images[0].parameters).toEqual({});
       expect(images[1].type).toBe('CreateTMPQRido');
       expect(images[1].parameters).toEqual({ lv: '15', rv: '22' });
     });
@@ -109,23 +110,31 @@ describe('ReportContextService', () => {
         <html>
           <body>
             <h1>Team Management Profile</h1>
+            <div class="report-section">
+              <div class="role-info">
+                <label>Major Role</label><p>Upholder-Maintainer</p></div>
+              <div class="score-info">
+                <p>These are I: 5; C: 3; B: 7; S: 12 and are the foundation of your work preferences.</p>
+              </div>
+            </div>
             <img src="https://api.tms.global/GetGraph?CreateTMPQWheel&mr=8&rr1=7&rr2=5" />
-            <p>Your major role is Upholder-Maintainer</p>
+            <p>The green section represents Advising - gathering and sharing information.</p>
           </body>
         </html>
       `;
 
       await reportContextService.storeReportContext(subscription.subscriptionId, htmlContent);
-      return subscription.subscriptionId;
+      return { subscriptionId: subscription.subscriptionId, user };
     };
 
     it('should handle visual element queries', async () => {
-      const subscriptionId = await setupTestReport();
+      const { subscriptionId, user } = await setupTestReport();
       
-      const response = await reportContextService.queryReport(
+      const response = await reportContextService.queryReport({
         subscriptionId,
-        'What does the green section in my wheel represent?'
-      );
+        query: 'What does the green section in my wheel represent?',
+        userId: user.id
+      });
 
       expect(response.response).toContain('Advising');
       expect(response.response).toContain('green');
@@ -137,12 +146,13 @@ describe('ReportContextService', () => {
     });
 
     it('should handle score comparison queries', async () => {
-      const subscriptionId = await setupTestReport();
+      const { subscriptionId, user } = await setupTestReport();
       
-      const response = await reportContextService.queryReport(
+      const response = await reportContextService.queryReport({
         subscriptionId,
-        'How do I compare to others?'
-      );
+        query: 'How do I compare to others?',
+        userId: user.id
+      });
 
       expect(response.response).toContain('Team Management Profile');
       expect(response.response.toLowerCase()).toContain('compare');
@@ -150,12 +160,13 @@ describe('ReportContextService', () => {
     });
 
     it('should handle interpretation queries', async () => {
-      const subscriptionId = await setupTestReport();
+      const { subscriptionId, user } = await setupTestReport();
       
-      const response = await reportContextService.queryReport(
+      const response = await reportContextService.queryReport({
         subscriptionId,
-        'What does my profile mean?'
-      );
+        query: 'What does my profile mean?',
+        userId: user.id
+      });
 
       expect(response.response).toContain('results indicate');
       expect(response.response).toContain('preferences');
@@ -163,12 +174,13 @@ describe('ReportContextService', () => {
     });
 
     it('should handle next steps queries', async () => {
-      const subscriptionId = await setupTestReport();
+      const { subscriptionId, user } = await setupTestReport();
       
-      const response = await reportContextService.queryReport(
+      const response = await reportContextService.queryReport({
         subscriptionId,
-        'What should I do next?'
-      );
+        query: 'What should I do next?',
+        userId: user.id
+      });
 
       expect(response.response).toContain('next steps');
       expect(response.response).toContain('Review and Reflect');
@@ -176,12 +188,13 @@ describe('ReportContextService', () => {
     });
 
     it('should handle general queries', async () => {
-      const subscriptionId = await setupTestReport();
+      const { subscriptionId, user } = await setupTestReport();
       
-      const response = await reportContextService.queryReport(
+      const response = await reportContextService.queryReport({
         subscriptionId,
-        'Can you help me understand my report?'
-      );
+        query: 'Can you help me understand my report?',
+        userId: user.id
+      });
 
       // Since "help me understand" triggers interpret_results intent
       expect(response.response).toContain('results indicate');
@@ -190,9 +203,23 @@ describe('ReportContextService', () => {
     });
 
     it('should throw error for non-existent subscription', async () => {
-      await expect(
-        reportContextService.queryReport('non-existent', 'test query')
-      ).rejects.toThrow('No report context found');
+      // Test with invalid format first
+      const invalidResponse = await reportContextService.queryReport({
+        subscriptionId: 'non-existent',
+        query: 'test query',
+        userId: 'user-123'
+      });
+      expect(invalidResponse.success).toBe(false);
+      expect(invalidResponse.message).toContain('Invalid subscription ID format');
+      
+      // Test with valid format but non-existent subscription
+      const notFoundResponse = await reportContextService.queryReport({
+        subscriptionId: '999999',
+        query: 'test query',
+        userId: 'user-123'
+      });
+      expect(notFoundResponse.success).toBe(false);
+      expect(notFoundResponse.message).toContain('No report context found');
     });
   });
 
@@ -228,16 +255,17 @@ describe('ReportContextService', () => {
       `;
 
       await reportContextService.storeReportContext(subscription.subscriptionId, htmlContent);
-      return subscription.subscriptionId;
+      return { subscriptionId: subscription.subscriptionId, user };
     };
 
     it('should explain traffic lights', async () => {
-      const subscriptionId = await setupTeamSignalsReport();
+      const { subscriptionId, user } = await setupTeamSignalsReport();
       
-      const response = await reportContextService.queryReport(
+      const response = await reportContextService.queryReport({
         subscriptionId,
-        'What do the traffic lights mean?'
-      );
+        query: 'What do the traffic lights mean?',
+        userId: user.id
+      });
 
       // Check that it's recognized as a visual query about traffic lights
       expect(response.response.toLowerCase()).toContain('traffic light');

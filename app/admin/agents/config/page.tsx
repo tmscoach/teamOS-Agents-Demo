@@ -1888,6 +1888,59 @@ You are a friendly Team Development Assistant conducting a quick 5-minute intake
                       Enable profanity and inappropriate content checking
                     </span>
                   </label>
+
+                  {/* Report Access Check for DebriefAgent */}
+                  {editedConfig?.agentName === 'DebriefAgent' && (
+                    <>
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', marginTop: '12px' }}>
+                        <input
+                          type="checkbox"
+                          checked={editedConfig?.guardrailConfig?.enableReportAccessCheck !== false}
+                          onChange={(e) => setEditedConfig({
+                            ...editedConfig!,
+                            guardrailConfig: {
+                              ...editedConfig?.guardrailConfig,
+                              enableReportAccessCheck: e.target.checked
+                            }
+                          })}
+                          style={{ width: '16px', height: '16px' }}
+                        />
+                        <span style={{ fontSize: '14px', color: '#374151' }}>
+                          Enable report access check (verify user owns the report)
+                        </span>
+                      </label>
+                      
+                      <div style={{ marginTop: '16px' }}>
+                        <label style={{ fontSize: '14px', fontWeight: '500', color: '#374151', display: 'block', marginBottom: '4px' }}>
+                          Max Questions Per Session
+                        </label>
+                        <input
+                          type="number"
+                          value={editedConfig?.guardrailConfig?.maxQuestionsPerSession || 30}
+                          onChange={(e) => setEditedConfig({
+                            ...editedConfig!,
+                            guardrailConfig: {
+                              ...editedConfig?.guardrailConfig,
+                              maxQuestionsPerSession: parseInt(e.target.value) || 30
+                            }
+                          })}
+                          style={{
+                            width: '100px',
+                            padding: '8px 12px',
+                            fontSize: '14px',
+                            border: '1px solid #d1d5db',
+                            borderRadius: '6px',
+                            backgroundColor: '#fff'
+                          }}
+                          min="1"
+                          max="100"
+                        />
+                        <span style={{ marginLeft: '8px', fontSize: '12px', color: '#6b7280' }}>
+                          questions
+                        </span>
+                      </div>
+                    </>
+                  )}
                 </div>
               </div>
             </div>
