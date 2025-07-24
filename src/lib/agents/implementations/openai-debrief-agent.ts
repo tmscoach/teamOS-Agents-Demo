@@ -160,14 +160,23 @@ When conducting a TMP debrief, follow these numbered steps:
     message: string,
     context: AgentContext
   ): Promise<AgentResponse> {
-    // Check if this is the start of a conversation
-    if (!context.conversationId || context.messageCount === 0) {
+    console.log(`[${this.name}] Processing message:`, {
+      message,
+      conversationId: context.conversationId,
+      messageCount: context.messageCount,
+      isFirstMessage: !context.conversationId || context.messageCount === 0 || message.includes('[User joined')
+    });
+    
+    // Check if this is the start of a conversation or user just joined
+    if (!context.conversationId || context.messageCount === 0 || message.includes('[User joined')) {
       // Add instruction to check for available reports
       const checkReportsPrompt = `REMINDER: This is the start of a new conversation. 
 You MUST immediately use tms_get_dashboard_subscriptions to check for completed assessments.
 After checking, proactively offer to debrief any completed assessments you find.
 
 User message: ${message}`;
+      
+      console.log(`[${this.name}] Modifying prompt for report check`);
       
       // Process with the modified message
       const response = await super.processMessage(checkReportsPrompt, context);
