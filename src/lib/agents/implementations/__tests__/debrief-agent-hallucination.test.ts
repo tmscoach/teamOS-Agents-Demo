@@ -4,18 +4,24 @@
  */
 
 import { OpenAIDebriefAgent } from '../openai-debrief-agent';
-import { KnowledgeSearchService } from '../../../knowledge-base/retrieval/search';
+import { KnowledgeBaseSearch } from '../../../knowledge-base/retrieval/search';
 import { AgentContext, Message } from '../../types';
 
 // Mock dependencies
 jest.mock('../../../knowledge-base/retrieval/search');
 jest.mock('openai');
 
+// Create mock instance
+const mockSearchInstance = {
+  search: jest.fn()
+};
+
+// Mock the constructor
+jest.mocked(KnowledgeBaseSearch).mockImplementation(() => mockSearchInstance as any);
+
 describe('DebriefAgent Hallucination Fix', () => {
   let agent: OpenAIDebriefAgent;
   let mockContext: AgentContext;
-  
-  const mockSearchService = KnowledgeSearchService as jest.MockedClass<typeof KnowledgeSearchService>;
 
   beforeEach(async () => {
     jest.clearAllMocks();
@@ -36,7 +42,7 @@ describe('DebriefAgent Hallucination Fix', () => {
   describe('ICAF Definition Test', () => {
     it('should return correct ICAF definition from knowledge base', async () => {
       // Mock knowledge base returning correct ICAF definition
-      mockSearchService.search.mockResolvedValue({
+      mockSearchInstance.search.mockResolvedValue({
         results: [{
           content: 'ICAF stands for Introvert, Creative, Analytical, Flexible. These are the four key personality dimensions measured in the TMP assessment.',
           source: 'TMP Handbook',
@@ -84,7 +90,7 @@ describe('DebriefAgent Hallucination Fix', () => {
 
     it('should NOT hallucinate ICAF as "Inner Circle Assessment Facilitator"', async () => {
       // Mock empty knowledge base results
-      mockSearchService.search.mockResolvedValue({
+      mockSearchInstance.search.mockResolvedValue({
         results: [],
         totalCount: 0,
         searchTime: 100
@@ -123,7 +129,7 @@ describe('DebriefAgent Hallucination Fix', () => {
   describe('Knowledge Base Usage Tests', () => {
     it('should use search results with relevance above 0.3', async () => {
       // Mock result with relevance 0.467 (previously filtered out at 0.5)
-      mockSearchService.search.mockResolvedValue({
+      mockSearchInstance.search.mockResolvedValue({
         results: [{
           content: 'TMP measures team preferences across multiple dimensions including ICAF.',
           source: 'TMP Manual',
@@ -158,7 +164,7 @@ describe('DebriefAgent Hallucination Fix', () => {
     });
 
     it('should handle multiple search results and use most relevant', async () => {
-      mockSearchService.search.mockResolvedValue({
+      mockSearchInstance.search.mockResolvedValue({
         results: [
           {
             content: 'ICAF is an acronym used in multiple contexts...',
@@ -223,7 +229,7 @@ describe('DebriefAgent Hallucination Fix', () => {
 
   describe('Edge Cases', () => {
     it('should handle acronyms with multiple meanings', async () => {
-      mockSearchService.search.mockResolvedValue({
+      mockSearchInstance.search.mockResolvedValue({
         results: [
           {
             content: 'TMS can mean Team Management Systems or Time Management Software',
@@ -256,7 +262,7 @@ describe('DebriefAgent Hallucination Fix', () => {
     });
 
     it('should admit uncertainty rather than hallucinate', async () => {
-      mockSearchService.search.mockResolvedValue({
+      mockSearchInstance.search.mockResolvedValue({
         results: [],
         totalCount: 0,
         searchTime: 100
