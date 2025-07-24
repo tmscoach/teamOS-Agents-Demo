@@ -68,12 +68,14 @@ export async function GET(
         // Create new user
         dbUser = await prisma.user.create({
           data: {
+            id: `user_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
             clerkId: user.id,
             email: userEmail,
             name: user.fullName || user.firstName || userEmail.split('@')[0] || 'Demo User',
             role: 'MANAGER',
             journeyStatus: 'ONBOARDING',
-            journeyPhase: 'ONBOARDING'
+            journeyPhase: 'ONBOARDING',
+            updatedAt: new Date()
           },
           select: { id: true }
         });

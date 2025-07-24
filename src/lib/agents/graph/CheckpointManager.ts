@@ -45,6 +45,7 @@ export class CheckpointManager {
         // Create new checkpoint
         await tx.flowCheckpoint.create({
           data: {
+            id: `flow_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
             conversationId: this.conversationId,
             flowConfigId: this.flowConfigId,
             state,

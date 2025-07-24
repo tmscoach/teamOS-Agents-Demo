@@ -41,10 +41,10 @@ export default async function DashboardPage() {
       lastActivity: true,
       onboardingData: true,
       teamId: true,
-      team: {
+      Team_User_teamIdToTeam: {
         select: {
           name: true,
-          members: {
+          User_User_teamIdToTeam: {
             select: {
               id: true,
               name: true,
@@ -106,8 +106,8 @@ export default async function DashboardPage() {
   // Get user's name from onboarding data if available
   const onboardingData = user?.onboardingData as Record<string, any> || {}
   const userName = onboardingData.managerName || user?.name || clerkUser?.firstName || 'Manager'
-  const teamName = onboardingData.teamName || user?.team?.name || 'Your Team'
-  const teamSize = onboardingData.teamSize || user?.team?.members?.length || 0
+  const teamName = onboardingData.teamName || user?.Team_User_teamIdToTeam?.name || 'Your Team'
+  const teamSize = onboardingData.teamSize || user?.Team_User_teamIdToTeam?.User_User_teamIdToTeam?.length || 0
   
   // Check if user is in Assessment phase
   const isInAssessment = user?.journeyPhase === 'ASSESSMENT' || 

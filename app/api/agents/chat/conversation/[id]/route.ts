@@ -38,7 +38,7 @@ export async function GET(
     // Get user from database to verify access
     const dbUser = await prisma.user.findUnique({
       where: { clerkId: user.id },
-      include: { managedTeams: true }
+      include: { Team_Team_managerIdToUser: true }
     });
 
     if (!dbUser) {
@@ -63,7 +63,7 @@ export async function GET(
 
     // Check if user is the manager or part of the team
     const hasAccess = conversation.managerId === dbUser.id || 
-                     dbUser.managedTeams.some(team => team.id === conversation.teamId) ||
+                     dbUser.Team_Team_managerIdToUser.some(team => team.id === conversation.teamId) ||
                      dbUser.teamId === conversation.teamId;
 
     if (!hasAccess) {

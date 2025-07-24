@@ -48,18 +48,22 @@ class StreamPersistentContextManager extends ContextManager {
 let conversationStore: ConversationStore;
 let contextManager: StreamPersistentContextManager;
 let router: AgentRouter;
+let servicesInitialized = false;
 
-try {
+async function initializeServices() {
+  if (servicesInitialized) return;
+  
+  try {
   conversationStore = new ConversationStore(prisma);
   contextManager = new StreamPersistentContextManager(conversationStore);
   router = new AgentRouter({ contextManager });
 
-  // Register all agents
-  const agents = [
+  // Register all agents (handle async ones)
+  const agentPromises = [
     createOrchestratorAgent(),
     createOnboardingAgent(),
     createDiscoveryAgent(),
-    createAssessmentAgent(),
+    createAssessmentAgent(), // This returns a Promise
     createAlignmentAgent(),
     createLearningAgent(),
     createNudgeAgent(),
@@ -67,18 +71,30 @@ try {
     createRecognitionAgent()
   ];
 
+  const agents = await Promise.all(agentPromises);
+  
   agents.forEach(agent => {
     if (agent) {
       router.registerAgent(agent);
       console.log(`Successfully registered ${agent.name}`);
     }
   });
-} catch (error) {
-  console.error('Failed to initialize chat services:', error);
+  
+  servicesInitialized = true;
+  } catch (error) {
+    console.error('Failed to initialize chat services:', error);
+    throw error;
+  }
 }
+
+// Initialize on module load
+initializeServices().catch(console.error);
 
 export async function POST(req: NextRequest) {
   try {
+    // Ensure services are initialized
+    await initializeServices();
+    
     // Check if services are initialized
     if (!conversationStore || !contextManager || !router) {
       return new Response(
@@ -110,7 +126,7 @@ export async function POST(req: NextRequest) {
     // Get user from database
     const dbUser = await prisma.user.findUnique({
       where: { clerkId: user.id },
-      include: { managedTeams: true }
+      include: { Team_Team_managerIdToUser: true }
     });
 
     if (!dbUser) {
@@ -141,8 +157,8 @@ export async function POST(req: NextRequest) {
           await contextManager.setContext(conversationId, context);
         } else {
           // Create new conversation
-          const teamId = dbUser.managedTeams.length > 0 
-            ? dbUser.managedTeams[0].id 
+          const teamId = dbUser.Team_Team_managerIdToUser.length > 0 
+            ? dbUser.Team_Team_managerIdToUser[0].id 
             : dbUser.id;
           
           const newConversationId = await conversationStore.createConversation(

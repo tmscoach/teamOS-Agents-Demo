@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { currentUser } from '@/src/lib/auth/clerk-dev-wrapper';
-import { AgentRouter, ContextManager, ConversationStore, AgentContext } from '@/src/lib/agents';
+import { AgentRouter, ContextManager, ConversationStore, AgentContext, TransformationPhase } from '@/src/lib/agents';
 import { 
   createOnboardingAgent,
   createOrchestratorAgent,
@@ -96,7 +96,7 @@ export async function POST(req: NextRequest) {
       // Try to find by email first (for dev auth users)
       dbUser = await prisma.user.findUnique({
         where: { email: userEmail },
-        include: { managedTeams: true }
+        include: { Team_Team_managerIdToUser: true }
       });
     }
     
@@ -104,7 +104,7 @@ export async function POST(req: NextRequest) {
       // Try by clerkId
       dbUser = await prisma.user.findUnique({
         where: { clerkId: user.id },
-        include: { managedTeams: true }
+        include: { Team_Team_managerIdToUser: true }
       });
     }
 
@@ -112,14 +112,16 @@ export async function POST(req: NextRequest) {
       // Create new user
       dbUser = await prisma.user.create({
         data: {
+          id: `user_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
           clerkId: user.id,
           email: userEmail || `${user.id}@demo.com`,
           name: user.fullName || user.firstName || userEmail?.split('@')[0] || 'Demo User',
           role: 'MANAGER',
           journeyStatus: 'ONBOARDING',
-          journeyPhase: 'ONBOARDING'
+          journeyPhase: 'ONBOARDING',
+          updatedAt: new Date()
         },
-        include: { managedTeams: true }
+        include: { Team_Team_managerIdToUser: true }
       });
     }
 
@@ -137,7 +139,7 @@ export async function POST(req: NextRequest) {
       if (!context.organizationId && dbUser.organizationId) {
         context.organizationId = dbUser.organizationId;
         context.organizationRole = dbUser.organizationRole;
-        context.userRole = dbUser.role;
+        context.userRole = (dbUser.role === 'ADMIN' ? 'MANAGER' : dbUser.role) as 'MANAGER' | 'TEAM_MEMBER' | null;
         
         // Update context in metadata as well
         context.metadata.organizationId = dbUser.organizationId;
@@ -148,13 +150,34 @@ export async function POST(req: NextRequest) {
       }
     } else {
       // Create new conversation
-      const teamId = dbUser.managedTeams[0]?.id || dbUser.teamId || '';
+      const teamId = dbUser.Team_Team_managerIdToUser[0]?.id || dbUser.teamId || '';
+      
+      // Determine the appropriate phase based on the agent
+      let conversationPhase = dbUser.journeyPhase?.toLowerCase() || 'onboarding';
+      if (agentName) {
+        // Map agents to their typical phases
+        const agentPhaseMap: Record<string, string> = {
+          'OnboardingAgent': 'onboarding',
+          'DiscoveryAgent': 'analysis',
+          'AssessmentAgent': 'assessment',
+          'DebriefAgent': 'assessment', // Debrief happens during/after assessment
+          'AlignmentAgent': 'transformation',
+          'LearningAgent': 'transformation',
+          'NudgeAgent': 'monitoring',
+          'ProgressMonitor': 'monitoring',
+          'RecognitionAgent': 'monitoring',
+          'OrchestratorAgent': dbUser.journeyPhase?.toLowerCase() || 'onboarding'
+        };
+        conversationPhase = agentPhaseMap[agentName] || dbUser.journeyPhase?.toLowerCase() || 'onboarding';
+      }
+      
       const newConversationId = await conversationStore.createConversation(
         teamId,
         dbUser.id,
         {
           initialAgent: agentName || 'OnboardingAgent',
-          organizationId: dbUser.organizationId,
+          phase: conversationPhase as TransformationPhase, // Set the appropriate phase
+          organizationId: dbUser.organizationId || undefined,
           metadata: {
             initiatedBy: dbUser.id,
             userRole: dbUser.role,
@@ -348,8 +371,99 @@ export async function POST(req: NextRequest) {
     console.log(`[${context.currentAgent}] Message history:`, conversationMessages.length, 'messages');
     console.log(`[${context.currentAgent}] User message:`, userMessageContent);
 
+    // Validate input with guardrails if the agent has them
+    // @ts-ignore - accessing protected method
+    if (agent && 'validateInput' in agent && typeof agent.validateInput === 'function') {
+      try {
+        // @ts-ignore - accessing protected method
+        const validationResult = await agent.validateInput(userMessageContent, context);
+        console.log(`[${context.currentAgent}] Guardrail validation result:`, validationResult);
+        
+        // Save guardrail events to database
+        if (validationResult.events && validationResult.events.length > 0) {
+          for (const event of validationResult.events) {
+            await conversationStore.addEvent(context.conversationId, event);
+            
+            // Save to guardrail checks table for admin visibility
+            const guardrailEvent = event as any;
+            if (event.type === 'guardrail') {
+              try {
+                await prisma.guardrailCheck.create({
+                  data: {
+                    id: `guard_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+                    conversationId: context.conversationId,
+                    agentName: guardrailEvent.agent || context.currentAgent,
+                    guardrailType: guardrailEvent.guardrailName || 'unknown',
+                    input: userMessageContent,
+                    passed: guardrailEvent.result?.passed || false,
+                    severity: guardrailEvent.result?.metadata?.severity || 
+                             (guardrailEvent.result?.passed === false ? 'high' : 'low'),
+                    reasoning: JSON.stringify(guardrailEvent.result || {}),
+                    timestamp: guardrailEvent.timestamp || new Date()
+                  }
+                });
+                console.log(`[${context.currentAgent}] Saved guardrail check: ${guardrailEvent.guardrailName}`);
+              } catch (error) {
+                console.error('Failed to save guardrail check:', error);
+              }
+            }
+          }
+        }
+        
+        // If validation failed, return early with the failure message
+        if (!validationResult.passed) {
+          // Create a simple text stream with the guardrail failure message
+          const failureMessage = `I cannot process that message. ${validationResult.failureReason || 'Please rephrase your request.'}`;
+          
+          // Save the user message first
+          await conversationStore.addMessage(context.conversationId, {
+            id: `msg-${Date.now()}`,
+            role: 'user',
+            content: userMessageContent,
+            timestamp: new Date()
+          });
+          
+          // Save the assistant's response
+          await conversationStore.addMessage(context.conversationId, {
+            id: `msg-${Date.now() + 1}`,
+            role: 'assistant',
+            content: failureMessage,
+            agent: context.currentAgent,
+            timestamp: new Date()
+          });
+          
+          // Return the failure message as a properly formatted AI SDK stream
+          // Use streamText with a simple system prompt that returns the failure message
+          const result = await streamText({
+            model: aiOpenai(agent && 'model' in agent ? (agent as any).model : 'gpt-4o-mini'),
+            system: 'You are a helpful assistant. Return exactly the message provided by the user, nothing more.',
+            messages: [
+              {
+                role: 'user',
+                content: failureMessage
+              }
+            ],
+            onFinish: async ({ text }) => {
+              console.log('[Streaming] Guardrail failure response finished');
+              // The messages are already saved above, no need to save again
+            }
+          });
+          
+          console.log('[Streaming] Returning guardrail failure stream');
+          return result.toDataStreamResponse({
+            headers: {
+              'X-Conversation-ID': context.conversationId
+            }
+          });
+        }
+      } catch (error) {
+        console.error(`[${context.currentAgent}] Guardrail validation error:`, error);
+        // Continue without guardrails if there's an error
+      }
+    }
+
     // Get the agent's tools if available
-    let tools = undefined;
+    let tools: Record<string, any> | undefined = undefined;
     if (agent && 'tools' in agent && Array.isArray(agent.tools)) {
       // Convert agent tools to AI SDK format
       tools = {};
@@ -384,10 +498,28 @@ export async function POST(req: NextRequest) {
             console.log(`[${context.currentAgent}] Executing tool: ${agentTool.name}`, params);
             try {
               const result = await agentTool.execute(params, context);
-              console.log(`[${context.currentAgent}] Tool result:`, result);
+              console.log(`[${context.currentAgent}] Tool result:`, JSON.stringify(result, null, 2));
               
               // Extract the appropriate string response from the tool result
               if (result.success && result.output) {
+                // For search_tms_knowledge, format the results properly
+                if (agentTool.name === 'search_tms_knowledge' && result.output.results) {
+                  const searchResults = result.output.results;
+                  console.log(`[${context.currentAgent}] Search results count:`, searchResults.length);
+                  
+                  if (searchResults.length === 0) {
+                    return 'No results found for your search query.';
+                  }
+                  
+                  // Format the search results for the model to use
+                  const formattedResults = searchResults.map((r: any, idx: number) => 
+                    `Result ${idx + 1} (relevance: ${r.relevance?.toFixed(2) || 'N/A'}):\n${r.content}\nSource: ${r.source || 'Unknown'}`
+                  ).join('\n\n---\n\n');
+                  
+                  console.log(`[${context.currentAgent}] Formatted search results:`, formattedResults);
+                  return formattedResults;
+                }
+                
                 // If output has naturalLanguage, use that
                 if (result.output.naturalLanguage) {
                   return result.output.naturalLanguage;
@@ -430,15 +562,26 @@ export async function POST(req: NextRequest) {
 
     // Use the new AI SDK streaming approach
     try {
-      // Temporarily disable tools if they're causing issues
+      // Get the model from the agent if it has one
+      let modelName = 'gpt-4o-mini';
+      let temperature = 0.7;
+      if (agent && 'model' in agent) {
+        modelName = (agent as any).model || 'gpt-4o-mini';
+      }
+      if (agent && 'temperature' in agent) {
+        temperature = (agent as any).temperature ?? 0.7;
+      }
+      
+      console.log(`[${context.currentAgent}] Using model: ${modelName}, temperature: ${temperature}`);
+      
       const streamConfig: any = {
-        model: aiOpenai('gpt-4o-mini'),
+        model: aiOpenai(modelName),
         system: enhancedPrompt,
         messages: [
           ...conversationMessages,
           { role: 'user', content: userMessageContent }
         ],
-        temperature: 0.7,
+        temperature: temperature,
         maxTokens: 1000, // Increase token limit
       };
       
@@ -456,10 +599,10 @@ export async function POST(req: NextRequest) {
         experimental_toolCallStreaming: true, // Enable tool streaming
         maxSteps: 3, // Allow multiple steps for tool calls and responses
         experimental_continueSteps: true, // Continue after tool calls
-        onToolCall: ({ toolCall }) => {
+        onToolCall: ({ toolCall }: any) => {
           console.log('[Streaming] Tool call initiated:', toolCall.toolName, toolCall.args);
         },
-        onStepFinish: ({ stepType, toolCalls, toolResults, finishReason, usage }) => {
+        onStepFinish: ({ stepType, toolCalls, toolResults, finishReason, usage }: any) => {
           console.log('[Streaming] Step finished:', { 
             stepType, 
             toolCallCount: toolCalls?.length,
@@ -470,7 +613,7 @@ export async function POST(req: NextRequest) {
             console.log('[Streaming] Tool results:', toolResults);
           }
         },
-        onFinish: async ({ text, toolCalls, toolResults, finishReason, usage }) => {
+        onFinish: async ({ text, toolCalls, toolResults, finishReason, usage }: any) => {
         console.log('[Streaming] Stream finished:', { 
           hasText: !!text, 
           textLength: text?.length,

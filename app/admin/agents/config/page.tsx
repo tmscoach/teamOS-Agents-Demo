@@ -132,15 +132,18 @@ export default function AgentConfigPage() {
     }
   }, [selectedAgent]);
 
-  const fetchAgents = async () => {
+  const fetchAgents = async (preserveSelection = false) => {
     try {
       setLoading(true);
       const res = await fetch("/api/admin/agents/config");
       if (res.ok) {
         const data = await res.json();
         setAgents(data);
-        if (data.length > 0) {
-          setSelectedAgent(data[0].agentName);
+        // Only set selected agent if none is selected or not preserving selection
+        if (!preserveSelection && data.length > 0) {
+          if (!selectedAgent) {
+            setSelectedAgent(data[0].agentName);
+          }
         }
       }
     } catch (error) {
@@ -196,7 +199,7 @@ export default function AgentConfigPage() {
       if (res.ok) {
         toast.success("Configuration saved successfully. New conversations will use the updated configuration.");
         await fetchAgentConfig(selectedAgent);
-        await fetchAgents(); // Refresh agent list to update metrics
+        await fetchAgents(true); // Refresh agent list to update metrics, preserve selection
       } else {
         const errorData = await res.json().catch(() => ({ error: 'Unknown error' }));
         console.error("Save failed:", errorData);
@@ -1932,7 +1935,9 @@ You are a friendly Team Development Assistant conducting a quick 5-minute intake
                     {[
                       { id: 'tms_create_org', name: 'Create Organization', desc: 'Create organization and facilitator account in TMS Global' },
                       { id: 'tms_facilitator_login', name: 'Facilitator Login', desc: 'Facilitator/team manager login to TMS Global' },
-                      { id: 'tms_check_user_permissions', name: 'Check Permissions', desc: 'Validate JWT token and get user permissions' }
+                      { id: 'tms_create_respondent', name: 'Create Respondent', desc: 'Create respondent account without password (Clerk integration)' },
+                      { id: 'tms_create_facilitator', name: 'Create Facilitator', desc: 'Create facilitator account without password (Clerk integration)' },
+                      { id: 'tms_token_exchange', name: 'Token Exchange', desc: 'Exchange Clerk user ID for TMS JWT token' }
                     ].map(tool => (
                       <label key={tool.id} style={{ display: 'flex', alignItems: 'start', gap: '12px', cursor: 'pointer' }}>
                         <input
@@ -1979,11 +1984,12 @@ You are a friendly Team Development Assistant conducting a quick 5-minute intake
                   </h4>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     {[
+                      { id: 'tms_assign_subscription', name: 'Assign Subscription', desc: 'Assign a workflow subscription to a user' },
                       { id: 'tms_get_workflow_process', name: 'Get Workflow Process', desc: 'Get current workflow state with questions for an assessment' },
                       { id: 'tms_update_workflow', name: 'Update Workflow', desc: 'Submit answers and update workflow progress' },
                       { id: 'tms_get_question_actions', name: 'Get Question Actions', desc: 'Check conditional logic for questions based on current answers' },
                       { id: 'tms_get_question_ids_with_actions', name: 'Get Question IDs with Actions', desc: 'Get questions that have conditional logic on a specific page' },
-                      { id: 'tms_get_dashboard_subscriptions', name: 'Get Dashboard Subscriptions', desc: 'Get user\'s assessment subscriptions (Respondent only)' },
+                      { id: 'tms_get_dashboard_subscriptions', name: 'Get Dashboard Subscriptions', desc: 'Get user\'s assessment subscriptions' },
                       { id: 'tms_start_workflow', name: 'Start Workflow', desc: 'Start or initialize an assessment workflow' }
                     ].map(tool => (
                       <label key={tool.id} style={{ display: 'flex', alignItems: 'start', gap: '12px', cursor: 'pointer' }}>
@@ -2031,9 +2037,9 @@ You are a friendly Team Development Assistant conducting a quick 5-minute intake
                   </h4>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     {[
-                      { id: 'tms_get_report_summary', name: 'Get Report Summary', desc: 'Get HTML report summary for a completed assessment' },
-                      { id: 'tms_get_report_templates', name: 'Get Report Templates', desc: 'Get available report templates for an assessment' },
-                      { id: 'tms_generate_subscription_report', name: 'Generate Subscription Report', desc: 'Generate PDF report for a completed assessment' }
+                      { id: 'tms_generate_html_report', name: 'Generate HTML Report', desc: 'Generate HTML report for a completed assessment' },
+                      { id: 'tms_generate_graph', name: 'Generate Graph', desc: 'Generate PNG graph/chart for reports' },
+                      { id: 'tms_debrief_report', name: 'Debrief Report', desc: 'Interactive debrief of assessment report with Q&A capability' }
                     ].map(tool => (
                       <label key={tool.id} style={{ display: 'flex', alignItems: 'start', gap: '12px', cursor: 'pointer' }}>
                         <input
@@ -2080,8 +2086,9 @@ You are a friendly Team Development Assistant conducting a quick 5-minute intake
                   </h4>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     {[
-                      { id: 'tms_generate_report', name: 'Generate Report', desc: 'Generate custom organization-wide reports' },
-                      { id: 'tms_get_product_usage', name: 'Get Product Usage', desc: 'Get product usage analytics for the organization' }
+                      { id: 'tms_generate_html_report', name: 'Generate HTML Report', desc: 'Generate HTML report for a completed assessment' },
+                      { id: 'tms_generate_graph', name: 'Generate Graph', desc: 'Generate PNG graph/chart for reports' },
+                      { id: 'tms_generate_team_signals_360', name: 'Team Signals 360', desc: 'Generate Team Signals 360 report (aggregated team view)' }
                     ].map(tool => (
                       <label key={tool.id} style={{ display: 'flex', alignItems: 'start', gap: '12px', cursor: 'pointer' }}>
                         <input
@@ -2131,11 +2138,11 @@ You are a friendly Team Development Assistant conducting a quick 5-minute intake
                       onClick={() => {
                         // Load default tools for this agent type
                         const agentName = selectedAgent.replace(' ', '');
-                        const defaultTools = {
-                          'OnboardingAgent': ['tms_create_org', 'tms_facilitator_login', 'tms_check_user_permissions'],
-                          'AssessmentAgent': ['tms_get_workflow_process', 'tms_update_workflow', 'tms_get_question_actions', 'tms_get_question_ids_with_actions', 'tms_get_dashboard_subscriptions', 'tms_start_workflow'],
-                          'DebriefAgent': ['tms_get_report_summary', 'tms_get_report_templates', 'tms_generate_subscription_report'],
-                          'ReportingAgent': ['tms_generate_report', 'tms_get_product_usage']
+                        const defaultTools: Record<string, string[]> = {
+                          'OnboardingAgent': ['tms_create_org', 'tms_facilitator_login', 'tms_create_respondent', 'tms_create_facilitator', 'tms_token_exchange'],
+                          'AssessmentAgent': ['tms_assign_subscription', 'tms_get_workflow_process', 'tms_update_workflow', 'tms_get_question_actions', 'tms_get_question_ids_with_actions', 'tms_get_dashboard_subscriptions', 'tms_start_workflow'],
+                          'DebriefAgent': ['tms_generate_html_report', 'tms_generate_graph', 'tms_debrief_report'],
+                          'ReportingAgent': ['tms_generate_html_report', 'tms_generate_graph', 'tms_generate_team_signals_360']
                         };
                         
                         const tools = defaultTools[agentName] || [];

@@ -15,7 +15,7 @@ export async function GET(req: NextRequest) {
         email: user.emailAddresses?.[0]?.emailAddress || user.id 
       },
       include: {
-        managedTeams: true
+        Team_Team_managerIdToUser: true
       }
     });
 
@@ -32,8 +32,8 @@ export async function GET(req: NextRequest) {
       organizationRole: dbUser.organizationRole,
       role: dbUser.role,
       onboardingData: dbUser.onboardingData,
-      managedTeamsCount: dbUser.managedTeams.length,
-      managedTeamIds: dbUser.managedTeams.map(t => t.id)
+      managedTeamsCount: dbUser.Team_Team_managerIdToUser.length,
+      managedTeamIds: dbUser.Team_Team_managerIdToUser.map(t => t.id)
     };
 
     return NextResponse.json({

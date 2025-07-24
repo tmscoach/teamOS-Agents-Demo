@@ -40,6 +40,7 @@ export interface SimplifiedAgentConfig {
     enableTopicRelevance?: boolean;
     enableProfanityCheck?: boolean;
   };
+  toolsConfig?: Record<string, boolean>;
 }
 
 export const SIMPLIFIED_AGENT_CONFIGS: Record<string, SimplifiedAgentConfig> = {
@@ -506,6 +507,121 @@ Remember: Great transformations start with great understanding.`,
         required: true,
         description: "Main insights from discovery"
       }
+    }
+  },
+
+  DebriefAgent: {
+    systemPrompt: `You are the Debrief Agent for teamOS, specializing in assessment report interpretation and interactive Q&A.
+
+## Your Role
+You provide comprehensive debriefs for completed assessments, helping managers understand their results through intelligent, contextual explanations. You can interpret visual elements (wheels, charts), scores, and provide personalized insights.
+
+## Core Objectives
+1. Explain assessment results in understandable terms
+2. Interpret visual elements (wheels, charts, graphs)
+3. Provide context for scores and recommendations
+4. Answer specific questions about report details
+5. Guide managers to actionable next steps
+
+## Your Capabilities
+- Access to complete report content including HTML and visual elements
+- Deep understanding of TMP, Team Signals, QO2, WoW, and LLP assessments
+- Ability to explain what colors, sections, and scores mean
+- Knowledge of TMS research and best practices
+
+## Your Approach
+- Be conversational and supportive
+- Use the report context to provide specific, accurate answers
+- Explain technical terms in simple language
+- Focus on actionable insights and next steps
+- Encourage questions and deeper exploration
+
+Remember: Your goal is to make assessment results meaningful and actionable for managers.`,
+    
+    flowConfig: {
+      states: [
+        {
+          name: "debrief_intro",
+          description: "Welcome and introduce debrief process",
+          objectives: ["Set context", "Build rapport", "Encourage questions"],
+          key_outputs: []
+        },
+        {
+          name: "report_overview",
+          description: "Provide high-level report summary",
+          objectives: ["Highlight key findings", "Explain structure", "Set priorities"],
+          key_outputs: ["key_findings", "priority_areas"]
+        },
+        {
+          name: "interactive_qa",
+          description: "Answer specific questions about report",
+          objectives: ["Clarify details", "Explain visuals", "Provide context"],
+          key_outputs: ["questions_answered", "clarifications"]
+        },
+        {
+          name: "action_planning",
+          description: "Help plan next steps based on results",
+          objectives: ["Identify actions", "Set priorities", "Create timeline"],
+          key_outputs: ["action_items", "timeline"]
+        }
+      ],
+      transitions: [
+        {
+          from: "debrief_intro",
+          to: "report_overview",
+          condition: "ready_for_overview",
+          action: "present_overview"
+        },
+        {
+          from: "report_overview",
+          to: "interactive_qa",
+          condition: "has_questions",
+          action: "start_qa"
+        },
+        {
+          from: "interactive_qa",
+          to: "action_planning",
+          condition: "ready_for_actions",
+          action: "plan_actions"
+        },
+        {
+          from: "interactive_qa",
+          to: "interactive_qa",
+          condition: "more_questions",
+          action: "continue_qa"
+        }
+      ]
+    },
+    
+    extractionRules: {
+      assessment_type: {
+        type: 'string',
+        patterns: ['TMP', 'Team Signals', 'TeamSignals', 'QO2', 'WoW', 'LLP'],
+        description: "Type of assessment being debriefed"
+      },
+      key_findings: {
+        type: 'array',
+        required: true,
+        description: "Main findings from the report"
+      },
+      questions_answered: {
+        type: 'array',
+        description: "Questions answered during debrief"
+      },
+      action_items: {
+        type: 'array',
+        description: "Action items identified"
+      },
+      visual_elements_discussed: {
+        type: 'array',
+        patterns: ['wheel', 'chart', 'graph', 'color', 'section'],
+        description: "Visual elements explained"
+      }
+    },
+    
+    guardrailConfig: {
+      enableProfanityCheck: true,
+      maxMessageLength: 2000
     }
   }
 };

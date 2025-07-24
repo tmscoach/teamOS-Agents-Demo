@@ -139,7 +139,7 @@ export class ConfigurableFlowEngine {
         }
       },
       include: {
-        messages: true
+        Message: true
       }
     });
     

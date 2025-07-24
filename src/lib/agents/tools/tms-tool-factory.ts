@@ -8,6 +8,7 @@ import { TMS_TOOL_REGISTRY, TMSToolDefinition } from './tms-tool-registry';
 import { tmsAuthService } from './tms-auth-service';
 import { unifiedTMSClient } from '@/src/lib/tms-api/unified-client';
 import { apiModeManager } from '@/src/lib/mock-tms-api/api-mode-config';
+import { mockTMSClient } from '@/src/lib/mock-tms-api/mock-api-client';
 
 /**
  * Format tool result for natural language output
@@ -156,15 +157,25 @@ export function createTMSTool(toolName: string): AgentTool | null {
         // Get JWT token if required
         let jwt: string | undefined;
         if (toolDef.requiresAuth) {
-          const token = await tmsAuthService.getOrCreateToken(context.managerId);
-          if (!token) {
-            return {
-              success: false,
-              output: null,
-              error: 'Failed to authenticate with TMS Global. Please ensure you have completed onboarding.'
-            };
+          // In mock mode, use a test token if no managerId
+          if (process.env.NEXT_PUBLIC_USE_MOCK_TMS_API === 'true' && !context.managerId) {
+            jwt = mockTMSClient.generateJWT({
+              sub: 'test-agent-user',
+              UserType: 'Facilitator',
+              nameid: 'agent@test.com',
+              organisationId: 'test-org'
+            });
+          } else {
+            const token = await tmsAuthService.getOrCreateToken(context.managerId);
+            if (!token) {
+              return {
+                success: false,
+                output: null,
+                error: 'Failed to authenticate with TMS Global. Please ensure you have completed onboarding.'
+              };
+            }
+            jwt = token;
           }
-          jwt = token;
         }
 
         // Build endpoint URL

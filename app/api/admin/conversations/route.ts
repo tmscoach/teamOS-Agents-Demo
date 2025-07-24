@@ -84,7 +84,7 @@ export async function GET(req: NextRequest) {
       conversations = await prisma.conversation.findMany({
       where,
       include: {
-        messages: {
+        Message: {
           orderBy: {
             timestamp: 'desc'
           },
@@ -146,7 +146,7 @@ export async function GET(req: NextRequest) {
           managerConfidence?: string;
         };
       } | undefined;
-      const lastMessage = conv.messages[0];
+      const lastMessage = conv.Message[0];
       const team = teamMap.get(conv.teamId);
       const manager = managerMap.get(conv.managerId);
       
@@ -162,7 +162,7 @@ export async function GET(req: NextRequest) {
       }
 
       // Count total messages
-      const messageCount = conv.messages.length;
+      const messageCount = conv.Message.length;
 
       // Calculate journey progress
       const completedSteps = manager?.completedSteps || [];

@@ -69,22 +69,26 @@ export async function debriefReport(options: {
 
   // Check access permissions
   const user = mockDataStore.getUser(claims.sub);
-  if (!user) {
+  
+  // In mock mode, if user not found but we have a valid JWT, allow access for testing
+  if (!user && process.env.NEXT_PUBLIC_USE_MOCK_TMS_API === 'true') {
+    console.warn(`[Debrief] User ${claims.sub} not found in mock store, allowing access for testing`);
+  } else if (!user) {
     throw {
       error: 'USER_NOT_FOUND',
       message: 'User not found'
     } as TMSErrorResponse;
-  }
+  } else {
+    // Normal access check for existing users
+    const hasAccess = subscription.userId === user.id || 
+      (user.userType === 'Facilitator' && user.organizationId === subscription.organizationId);
 
-  // Users can access their own reports, facilitators can access team reports
-  const hasAccess = subscription.userId === user.id || 
-    (user.userType === 'Facilitator' && user.organizationId === subscription.organizationId);
-
-  if (!hasAccess) {
-    throw {
-      error: 'ACCESS_DENIED',
-      message: 'You do not have access to this report'
-    } as TMSErrorResponse;
+    if (!hasAccess) {
+      throw {
+        error: 'ACCESS_DENIED',
+        message: 'You do not have access to this subscription'
+      } as TMSErrorResponse;
+    }
   }
 
   // Check if report context exists
@@ -104,9 +108,11 @@ export async function debriefReport(options: {
 
   // Query the report with the user's question
   try {
+    // Provide default query if empty
+    const effectiveQuery = query || 'Please provide an overview of my assessment report';
     const response = await reportContextService.queryReport(
       subscriptionId,
-      query,
+      effectiveQuery,
       context
     );
 

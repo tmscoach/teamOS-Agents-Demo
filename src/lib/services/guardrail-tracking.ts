@@ -24,6 +24,7 @@ export class GuardrailTrackingService {
 
     return await prisma.guardrailCheck.create({
       data: {
+        id: `guardrail_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
         conversationId: data.conversationId,
         agentName: data.agentName,
         guardrailType: data.guardrailType,
@@ -118,21 +119,25 @@ export class GuardrailTrackingService {
   /**
    * Get recent violations
    */
-  static async getRecentViolations(limit: number = 10): Promise<GuardrailCheck[]> {
-    return await prisma.guardrailCheck.findMany({
+  static async getRecentViolations(limit: number = 10): Promise<any[]> {
+    const violations = await prisma.guardrailCheck.findMany({
       where: { passed: false },
       orderBy: { timestamp: 'desc' },
       take: limit,
-      include: {
-        conversation: {
-          select: {
-            id: true,
-            teamId: true,
-            managerId: true,
-          },
-        },
-      },
     });
+    
+    // Convert to plain objects to avoid serialization issues
+    return violations.map(v => ({
+      id: v.id,
+      conversationId: v.conversationId,
+      agentName: v.agentName,
+      guardrailType: v.guardrailType,
+      input: v.input,
+      passed: v.passed,
+      severity: v.severity,
+      reasoning: v.reasoning,
+      timestamp: v.timestamp.toISOString(),
+    }));
   }
 
   /**
@@ -176,7 +181,7 @@ export class GuardrailTrackingService {
         take: params.limit || 50,
         skip: params.offset || 0,
         include: {
-          conversation: {
+          Conversation: {
             select: {
               id: true,
               teamId: true,

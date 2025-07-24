@@ -9,6 +9,7 @@ export interface AgentConfigInput {
   extractionRules: Record<string, any>;
   guardrailConfig?: Record<string, any>;
   knowledgeConfig?: Record<string, any>;
+  toolsConfig?: Record<string, any>;
   createdBy: string;
 }
 
@@ -49,6 +50,7 @@ export class AgentConfigurationService {
       try {
         return await prisma.agentConfiguration.create({
           data: {
+            id: `agentconfig_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
             agentName: data.agentName,
             version: newVersion,
             prompts: promptData,
@@ -56,8 +58,10 @@ export class AgentConfigurationService {
             extractionRules: data.extractionRules,
             guardrailConfig: data.guardrailConfig || {},
             knowledgeConfig: data.knowledgeConfig || {},
+            toolsConfig: data.toolsConfig || {},
             active: true,
             createdBy: data.createdBy,
+            updatedAt: new Date(),
           },
         });
       } catch (error: any) {
@@ -66,6 +70,7 @@ export class AgentConfigurationService {
           console.warn('guardrailConfig column missing, creating without it');
           return await prisma.agentConfiguration.create({
             data: {
+              id: `agentconfig_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
               agentName: data.agentName,
               version: newVersion,
               prompts: promptData,
@@ -73,6 +78,7 @@ export class AgentConfigurationService {
               extractionRules: data.extractionRules,
               active: true,
               createdBy: data.createdBy,
+              updatedAt: new Date(),
             },
           });
         }
@@ -104,6 +110,11 @@ export class AgentConfigurationService {
       // Add knowledgeConfig if it doesn't exist
       if (config && !('knowledgeConfig' in config)) {
         (config as any).knowledgeConfig = {};
+      }
+      
+      // Add toolsConfig if it doesn't exist
+      if (config && !('toolsConfig' in config)) {
+        (config as any).toolsConfig = {};
       }
       
       return config;
@@ -198,6 +209,7 @@ export class AgentConfigurationService {
         extractionRules: updates.extractionRules || {},
         guardrailConfig: updates.guardrailConfig || {},
         knowledgeConfig: updates.knowledgeConfig || {},
+        toolsConfig: updates.toolsConfig || {},
         createdBy: updatedBy,
       });
     }
@@ -210,6 +222,7 @@ export class AgentConfigurationService {
       extractionRules: updates.extractionRules || (currentConfig.extractionRules as Record<string, any>),
       guardrailConfig: updates.guardrailConfig || (currentConfig.guardrailConfig as Record<string, any>) || {},
       knowledgeConfig: updates.knowledgeConfig || (currentConfig.knowledgeConfig as Record<string, any>) || {},
+      toolsConfig: updates.toolsConfig || (currentConfig.toolsConfig as Record<string, any>) || {},
       createdBy: updatedBy,
     });
   }

@@ -10,151 +10,22 @@ datasource db {
   extensions = [uuid_ossp(map: "uuid-ossp", schema: "extensions"), vector]
 }
 
-model User {
-  id                   String        @id @default(cuid())
-  clerkId              String        @unique
-  email                String        @unique
-  name                 String?
-  role                 UserRole      @default(MANAGER)
-  teamId               String?
-  department           String?
-  profileData          Json?
-  engagementMetrics    Json?
-  assessmentStatus     Json?
-  createdAt            DateTime      @default(now())
-  updatedAt            DateTime      @updatedAt
-  imageUrl             String?
-  currentAgent         String?
-  completedSteps       String[]      @default([])
-  lastActivity         DateTime      @default(now())
-  onboardingData       Json?
-  deletedAt            DateTime?
-  journeyStatus        JourneyStatus @default(ONBOARDING)
-  journeyPhase         JourneyPhase  @default(ONBOARDING)
-  completedAssessments Json?         @default("{}")
-  viewedDebriefs       Json?         @default("{}")
-  teamSignalsEligible  Boolean       @default(false)
-  organizationId       String?       // Clerk organization ID
-  organizationRole     String?       // Clerk organization role (org:admin, org:member)
-  managedTeams         Team[]        @relation("TeamManager")
-  team                 Team?         @relation(fields: [teamId], references: [id])
-  tmsAuthToken         TMSAuthToken?
+model Agent {
+  id                String              @id
+  name              String              @unique
+  type              String
+  description       String?
+  isActive          Boolean             @default(true)
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime
+  FlowConfiguration FlowConfiguration[]
 
-  @@index([teamId])
-  @@index([clerkId])
-  @@index([journeyStatus])
-  @@index([journeyPhase])
-  @@index([organizationId])
-}
-
-model Team {
-  id                   String    @id @default(cuid())
-  name                 String
-  managerId            String
-  department           String?
-  maturityIndicators   Json?
-  performanceData      Json?
-  transformationStatus String    @default("pending")
-  currentProgram       String?
-  programStartDate     DateTime?
-  programEndDate       DateTime?
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
-  organizationId       String?   // Organization this team belongs to
-  manager              User      @relation("TeamManager", fields: [managerId], references: [id])
-  members              User[]
-
-  @@index([managerId])
-  @@index([organizationId])
-}
-
-model Conversation {
-  id                  String               @id @default(cuid())
-  teamId              String
-  managerId           String
-  currentAgent        String
-  phase               String
-  contextData         Json
-  createdAt           DateTime             @default(now())
-  updatedAt           DateTime             @updatedAt
-  metadata            Json?
-  organizationId      String?              // Organization this conversation belongs to
-  events              AgentEvent[]
-  flowCheckpoints     FlowCheckpoint[]
-  guardrailChecks     GuardrailCheck[]
-  messages            Message[]
-  variableExtractions VariableExtraction[]
-
-  @@index([teamId])
-  @@index([managerId])
-  @@index([organizationId])
-}
-
-model Message {
-  id             String       @id @default(cuid())
-  conversationId String
-  role           String
-  content        String
-  agent          String?
-  metadata       Json?
-  timestamp      DateTime     @default(now())
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-
-  @@index([conversationId])
-}
-
-model AgentEvent {
-  id             String       @id @default(cuid())
-  conversationId String
-  type           String
-  agent          String
-  content        String
-  metadata       Json?
-  timestamp      DateTime     @default(now())
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-
-  @@index([conversationId])
+  @@index([name])
   @@index([type])
 }
 
-model GuardrailCheck {
-  id             String       @id @default(cuid())
-  conversationId String
-  agentName      String
-  guardrailType  String
-  input          String
-  passed         Boolean
-  severity       String?
-  reasoning      String
-  timestamp      DateTime     @default(now())
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-
-  @@index([conversationId])
-  @@index([guardrailType])
-  @@index([passed])
-}
-
-model VariableExtraction {
-  id               String       @id @default(cuid())
-  conversationId   String
-  agentName        String
-  fieldName        String
-  attempted        Boolean
-  successful       Boolean
-  extractedValue   String?
-  confidence       Float?
-  timestamp        DateTime     @default(now())
-  extractionMethod String?
-  conversation     Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-
-  @@index([conversationId])
-  @@index([fieldName])
-  @@index([successful])
-  @@index([extractionMethod])
-}
-
 model AgentConfiguration {
-  id              String   @id @default(cuid())
+  id              String   @id
   agentName       String
   version         Int
   prompts         Json
@@ -163,26 +34,62 @@ model AgentConfiguration {
   active          Boolean  @default(false)
   createdBy       String
   createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  updatedAt       DateTime
   guardrailConfig Json?
   knowledgeConfig Json?
-  toolsConfig     Json?    // Stores which tools are enabled for this agent
+  toolsConfig     Json?
 
   @@unique([agentName, version])
   @@index([agentName, active])
 }
 
-model Document {
-  id                 String              @id @default(dbgenerated("(gen_random_uuid())::text"))
-  title              String
-  sourcePath         String              @unique
-  documentType       DocumentType
-  content            String
+model AgentEvent {
+  id             String       @id
+  conversationId String
+  type           String
+  agent          String
+  content        String
+  metadata       Json?
+  timestamp      DateTime     @default(now())
+  Conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@index([type])
+}
+
+model Conversation {
+  id                 String               @id
+  teamId             String
+  managerId          String
+  currentAgent       String
+  phase              String
+  contextData        Json
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime
   metadata           Json?
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @default(now()) @updatedAt
-  chunks             DocumentChunk[]
-  questionnaireItems QuestionnaireItem[]
+  organizationId     String?
+  AgentEvent         AgentEvent[]
+  FlowCheckpoint     FlowCheckpoint[]
+  GuardrailCheck     GuardrailCheck[]
+  Message            Message[]
+  VariableExtraction VariableExtraction[]
+
+  @@index([managerId])
+  @@index([organizationId])
+  @@index([teamId])
+}
+
+model Document {
+  id                String              @id @default(dbgenerated("(gen_random_uuid())::text"))
+  title             String
+  sourcePath        String              @unique
+  documentType      DocumentType
+  content           String
+  metadata          Json?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @default(now())
+  DocumentChunk     DocumentChunk[]
+  QuestionnaireItem QuestionnaireItem[]
 
   @@index([documentType])
   @@index([documentType], map: "document_type_idx")
@@ -197,11 +104,72 @@ model DocumentChunk {
   embedding  Unsupported("vector")?
   metadata   Json?
   createdAt  DateTime               @default(now())
-  document   Document               @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  Document   Document               @relation(fields: [documentId], references: [id], onDelete: Cascade)
 
-  @@index([documentId])
   @@index([chunkIndex])
+  @@index([documentId])
   @@index([embedding], map: "document_chunk_embedding_idx")
+}
+
+model FlowCheckpoint {
+  id                String            @id
+  conversationId    String
+  flowConfigId      String
+  state             String
+  data              Json
+  createdAt         DateTime          @default(now())
+  Conversation      Conversation      @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  FlowConfiguration FlowConfiguration @relation(fields: [flowConfigId], references: [id])
+
+  @@index([conversationId])
+  @@index([createdAt])
+  @@index([flowConfigId])
+}
+
+model FlowConfiguration {
+  id             String           @id
+  agentId        String
+  version        Int              @default(1)
+  name           String
+  config         Json
+  isActive       Boolean          @default(false)
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime
+  FlowCheckpoint FlowCheckpoint[]
+  Agent          Agent            @relation(fields: [agentId], references: [id])
+
+  @@unique([agentId, version])
+  @@index([agentId, isActive])
+}
+
+model GuardrailCheck {
+  id             String       @id
+  conversationId String
+  agentName      String
+  guardrailType  String
+  input          String
+  passed         Boolean
+  severity       String?
+  reasoning      String
+  timestamp      DateTime     @default(now())
+  Conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@index([guardrailType])
+  @@index([passed])
+}
+
+model Message {
+  id             String       @id
+  conversationId String
+  role           String
+  content        String
+  agent          String?
+  metadata       Json?
+  timestamp      DateTime     @default(now())
+  Conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
 }
 
 model QuestionnaireItem {
@@ -215,7 +183,7 @@ model QuestionnaireItem {
   assessmentType  String
   metadata        Json?
   createdAt       DateTime @default(now())
-  document        Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  Document        Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
 
   @@unique([documentId, questionId])
   @@index([assessmentType])
@@ -224,73 +192,100 @@ model QuestionnaireItem {
   @@index([category], map: "questionnaire_category_idx")
 }
 
-model Agent {
-  id                 String              @id @default(cuid())
-  name               String              @unique
-  type               String
-  description        String?
-  isActive           Boolean             @default(true)
-  createdAt          DateTime            @default(now())
-  updatedAt          DateTime            @updatedAt
-  flowConfigurations FlowConfiguration[]
-
-  @@index([name])
-  @@index([type])
+model TMSAuthToken {
+  id          String    @id
+  userId      String    @unique
+  tmsJwtToken String?
+  tmsUserId   String?
+  tmsOrgId    String?
+  expiresAt   DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime
+  User        User      @relation(fields: [userId], references: [id])
 }
 
-model FlowConfiguration {
-  id              String           @id @default(cuid())
-  agentId         String
-  version         Int              @default(1)
-  name            String
-  config          Json
-  isActive        Boolean          @default(false)
-  createdAt       DateTime         @default(now())
-  updatedAt       DateTime         @updatedAt
-  flowCheckpoints FlowCheckpoint[]
-  agent           Agent            @relation(fields: [agentId], references: [id])
+model Team {
+  id                        String    @id
+  name                      String
+  managerId                 String
+  department                String?
+  maturityIndicators        Json?
+  performanceData           Json?
+  transformationStatus      String    @default("pending")
+  currentProgram            String?
+  programStartDate          DateTime?
+  programEndDate            DateTime?
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime
+  organizationId            String?
+  User_Team_managerIdToUser User      @relation("Team_managerIdToUser", fields: [managerId], references: [id])
+  User_User_teamIdToTeam    User[]    @relation("User_teamIdToTeam")
 
-  @@unique([agentId, version])
-  @@index([agentId, isActive])
+  @@index([managerId])
+  @@index([organizationId])
 }
 
-model FlowCheckpoint {
-  id             String            @id @default(cuid())
-  conversationId String
-  flowConfigId   String
-  state          String
-  data           Json
-  createdAt      DateTime          @default(now())
-  conversation   Conversation      @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  flowConfig     FlowConfiguration @relation(fields: [flowConfigId], references: [id])
+model User {
+  id                        String        @id
+  clerkId                   String        @unique
+  email                     String        @unique
+  name                      String?
+  role                      UserRole      @default(MANAGER)
+  teamId                    String?
+  department                String?
+  profileData               Json?
+  engagementMetrics         Json?
+  assessmentStatus          Json?
+  createdAt                 DateTime      @default(now())
+  updatedAt                 DateTime
+  imageUrl                  String?
+  currentAgent              String?
+  completedSteps            String[]      @default([])
+  lastActivity              DateTime      @default(now())
+  onboardingData            Json?
+  deletedAt                 DateTime?
+  journeyStatus             JourneyStatus @default(ONBOARDING)
+  journeyPhase              JourneyPhase  @default(ONBOARDING)
+  completedAssessments      Json?         @default("{}")
+  viewedDebriefs            Json?         @default("{}")
+  teamSignalsEligible       Boolean       @default(false)
+  organizationId            String?
+  organizationRole          String?
+  TMSAuthToken              TMSAuthToken?
+  Team_Team_managerIdToUser Team[]        @relation("Team_managerIdToUser")
+  Team_User_teamIdToTeam    Team?         @relation("User_teamIdToTeam", fields: [teamId], references: [id])
+
+  @@index([clerkId])
+  @@index([journeyPhase])
+  @@index([journeyStatus])
+  @@index([organizationId])
+  @@index([teamId])
+}
+
+model VariableExtraction {
+  id               String       @id
+  conversationId   String
+  agentName        String
+  fieldName        String
+  attempted        Boolean
+  successful       Boolean
+  extractedValue   String?
+  confidence       Float?
+  timestamp        DateTime     @default(now())
+  extractionMethod String?
+  Conversation     Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
   @@index([conversationId])
-  @@index([flowConfigId])
-  @@index([createdAt])
+  @@index([extractionMethod])
+  @@index([fieldName])
+  @@index([successful])
 }
 
-model TMSAuthToken {
-  id             String    @id @default(cuid())
-  userId         String    @unique
-  tmsJwtToken    String?   @db.Text
-  tmsUserId      String?
-  tmsOrgId       String?
-  expiresAt      DateTime?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  user           User      @relation(fields: [userId], references: [id])
-}
-
-enum UserRole {
-  TEAM_MEMBER
-  MANAGER
-  ADMIN
-}
-
-enum JourneyStatus {
-  ONBOARDING
-  ACTIVE
-  DORMANT
+enum DocumentType {
+  HANDBOOK
+  QUESTIONNAIRE
+  REPORT
+  RESEARCH
 }
 
 enum JourneyPhase {
@@ -300,9 +295,14 @@ enum JourneyPhase {
   CONTINUOUS_ENGAGEMENT
 }
 
-enum DocumentType {
-  HANDBOOK
-  QUESTIONNAIRE
-  REPORT
-  RESEARCH
+enum JourneyStatus {
+  ONBOARDING
+  ACTIVE
+  DORMANT
+}
+
+enum UserRole {
+  TEAM_MEMBER
+  MANAGER
+  ADMIN
 }

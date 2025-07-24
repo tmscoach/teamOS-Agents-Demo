@@ -16,8 +16,8 @@ function buildOrganizationContext(context: AgentContext): OrganizationContext | 
   return {
     userId: context.managerId,
     organizationId: context.organizationId,
-    userRole: context.userRole || 'TEAM_MEMBER',
-    teamIds: context.teamId ? [context.teamId] : []
+    organizationRole: context.organizationRole || null,
+    isSuperAdmin: false
   };
 }
 
@@ -67,7 +67,7 @@ export function createDataQueryTools(): AgentTool[] {
             output: formattedOutput,
             metadata: {
               source: 'LOCAL_DB',
-              accessLevel: orgContext.userRole
+              accessLevel: orgContext.organizationRole || 'UNKNOWN'
             }
           };
         } catch (error) {

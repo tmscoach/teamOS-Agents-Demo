@@ -5,12 +5,13 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { currentUser } from '@/src/lib/auth/clerk-dev-wrapper';
-import { AgentRouter, ContextManager, ConversationStore, AgentContext, Message } from '@/src/lib/agents';
+import { AgentRouter, ContextManager, ConversationStore, AgentContext, Message, TransformationPhase } from '@/src/lib/agents';
 import { 
   createOnboardingAgent,
   createOrchestratorAgent,
   createDiscoveryAgent,
   createAssessmentAgent,
+  createDebriefAgent,
   createAlignmentAgent,
   createLearningAgent,
   createNudgeAgent,
@@ -30,7 +31,7 @@ interface AuthUser {
 }
 
 interface DatabaseUser extends PrismaUser {
-  managedTeams: PrismaTeam[];
+  Team_Team_managerIdToUser: PrismaTeam[];
 }
 
 interface RouteEvent {
@@ -99,45 +100,56 @@ class PersistentContextManager extends ContextManager {
 let conversationStore: ConversationStore;
 let contextManager: PersistentContextManager;
 let router: AgentRouter;
+let servicesInitialized = false;
 
-try {
-  conversationStore = new ConversationStore(prisma);
-  contextManager = new PersistentContextManager(conversationStore);
-  router = new AgentRouter({ contextManager });
+async function initializeServices() {
+  if (servicesInitialized) return;
+  
+  try {
+    conversationStore = new ConversationStore(prisma);
+    contextManager = new PersistentContextManager(conversationStore);
+    router = new AgentRouter({ contextManager });
 
-  // Register all agents with error handling
-  const agents = [
-    { name: 'OrchestratorAgent', create: createOrchestratorAgent },
-    { name: 'OnboardingAgent', create: createOnboardingAgent },
-    { name: 'DiscoveryAgent', create: createDiscoveryAgent },
-    { name: 'AssessmentAgent', create: createAssessmentAgent },
-    { name: 'AlignmentAgent', create: createAlignmentAgent },
-    { name: 'LearningAgent', create: createLearningAgent },
-    { name: 'NudgeAgent', create: createNudgeAgent },
-    { name: 'ProgressMonitor', create: createProgressMonitor },
-    { name: 'RecognitionAgent', create: createRecognitionAgent }
-  ];
+    // Register all agents with error handling
+    const agents = [
+      { name: 'OrchestratorAgent', create: createOrchestratorAgent },
+      { name: 'OnboardingAgent', create: createOnboardingAgent },
+      { name: 'DiscoveryAgent', create: createDiscoveryAgent },
+      { name: 'AssessmentAgent', create: createAssessmentAgent },
+      { name: 'DebriefAgent', create: createDebriefAgent },
+      { name: 'AlignmentAgent', create: createAlignmentAgent },
+      { name: 'LearningAgent', create: createLearningAgent },
+      { name: 'NudgeAgent', create: createNudgeAgent },
+      { name: 'ProgressMonitor', create: createProgressMonitor },
+      { name: 'RecognitionAgent', create: createRecognitionAgent }
+    ];
 
-  for (const agentDef of agents) {
-    try {
-      const agent = agentDef.create();
-      router.registerAgent(agent);
-      console.log(`Successfully registered ${agentDef.name}`);
-    } catch (error) {
-      console.error(`Failed to register ${agentDef.name}:`, error);
-      // Continue with other agents
+    for (const agentDef of agents) {
+      try {
+        const agent = await agentDef.create(); // Make it async for agents that need initialization
+        router.registerAgent(agent);
+        console.log(`Successfully registered ${agentDef.name}`);
+      } catch (error) {
+        console.error(`Failed to register ${agentDef.name}:`, error);
+        // Continue with other agents
+      }
     }
+    
+    servicesInitialized = true;
+  } catch (error) {
+    console.error('Failed to initialize chat services:', error);
+    throw error;
   }
-} catch (error) {
-  console.error('Failed to initialize chat services:', error);
-  // These will be checked in the request handler
 }
+
+// Initialize on module load
+initializeServices().catch(console.error);
 
 // Helper functions for POST handler
 async function findOrCreateUser(user: AuthUser): Promise<DatabaseUser> {
   let dbUser = await prisma.user.findUnique({
     where: { clerkId: user.id },
-    include: { managedTeams: true }
+    include: { Team_Team_managerIdToUser: true }
   });
 
   if (!dbUser) {
@@ -145,17 +157,20 @@ async function findOrCreateUser(user: AuthUser): Promise<DatabaseUser> {
     
     dbUser = await prisma.user.create({
       data: {
+        id: `user_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
         clerkId: user.id,
         email: user.emailAddresses?.[0]?.emailAddress || `${user.id}@demo.com`,
         name: user.fullName || user.firstName || 'Demo User',
         role: 'MANAGER',
+        updatedAt: new Date(),
       },
-      include: { managedTeams: true }
+      include: { Team_Team_managerIdToUser: true }
     });
 
     // Create a demo team for the user
     const demoTeam = await prisma.team.create({
       data: {
+        id: `team_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
         name: `${dbUser.name}'s Team`,
         department: 'Engineering',
         managerId: dbUser.id,
@@ -167,6 +182,7 @@ async function findOrCreateUser(user: AuthUser): Promise<DatabaseUser> {
           trustScore: 3.8
         },
         organizationId: dbUser.organizationId,
+        updatedAt: new Date(),
       },
     });
 
@@ -178,7 +194,7 @@ async function findOrCreateUser(user: AuthUser): Promise<DatabaseUser> {
 
 async function findOrCreateTeamId(dbUser: DatabaseUser): Promise<string> {
   // Get the user's team (first managed team or create one)
-  let teamId = dbUser.managedTeams[0]?.id;
+  let teamId = dbUser.Team_Team_managerIdToUser[0]?.id;
   
   if (!teamId) {
     // If user has no teams, find or create a demo team
@@ -191,11 +207,13 @@ async function findOrCreateTeamId(dbUser: DatabaseUser): Promise<string> {
     } else {
       const newTeam = await prisma.team.create({
         data: {
+          id: `team_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
           name: `${dbUser.name}'s Team`,
           department: 'General',
           managerId: dbUser.id,
           transformationStatus: 'active',
           organizationId: dbUser.organizationId,
+          updatedAt: new Date(),
         },
       });
       teamId = newTeam.id;
@@ -230,15 +248,38 @@ async function loadOrCreateContext(
     // Get team ID
     const teamId = await findOrCreateTeamId(dbUser);
 
-    // Create new conversation
+    // Determine the appropriate phase based on the agent
+    let conversationPhase: TransformationPhase = 'onboarding';
+    if (agentName) {
+      // Map agents to their typical phases
+      const agentPhaseMap: Record<string, TransformationPhase> = {
+        'OnboardingAgent': 'onboarding',
+        'DiscoveryAgent': 'analysis',
+        'AssessmentAgent': 'assessment',
+        'DebriefAgent': 'assessment', // Debrief happens during/after assessment
+        'AlignmentAgent': 'transformation',
+        'LearningAgent': 'transformation',
+        'NudgeAgent': 'monitoring',
+        'ProgressMonitor': 'monitoring',
+        'RecognitionAgent': 'monitoring',
+        'OrchestratorAgent': (dbUser.journeyPhase?.toLowerCase() as TransformationPhase) || 'onboarding'
+      };
+      conversationPhase = agentPhaseMap[agentName] || (dbUser.journeyPhase?.toLowerCase() as TransformationPhase) || 'onboarding';
+    } else {
+      conversationPhase = (dbUser.journeyPhase?.toLowerCase() as TransformationPhase) || 'onboarding';
+    }
+
+    // Create new conversation with appropriate phase
     const newConversationId = await conversationStore.createConversation(
       teamId,
       dbUser.id,
       {
         initialAgent: agentName || 'OrchestratorAgent',
+        phase: conversationPhase,
         metadata: {
           initiatedBy: dbUser.id,
           userRole: dbUser.role,
+          isTestConversation: true, // Mark as test conversation
         },
       }
     );
@@ -267,24 +308,28 @@ async function saveGuardrailChecks(
     try {
       await prisma.guardrailCheck.createMany({
         data: guardrailEvents.map(event => {
-          const guardrailEvent = event as { 
-            guardrailName?: string; 
-            result?: { passed?: boolean; severity?: string | null };
-            agent: string;
-            timestamp: Date;
-          };
+          // Type assertion to GuardrailEvent type
+          const guardrailEvent = event as any; // RouteEvent doesn't have the specific fields
+          
+          // Extract severity from metadata if available
+          const severity = guardrailEvent.result?.metadata?.severity || 
+                         guardrailEvent.result?.severity || 
+                         (guardrailEvent.result?.passed === false ? 'high' : 'low');
+          
           return {
+            id: `guard_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
             conversationId: context.conversationId,
-            agentName: guardrailEvent.agent,
+            agentName: guardrailEvent.agent || 'unknown',
             guardrailType: guardrailEvent.guardrailName || 'unknown',
             input: message,
             passed: guardrailEvent.result?.passed || false,
-            severity: guardrailEvent.result?.severity || null,
-            reasoning: JSON.stringify(guardrailEvent.result),
-            timestamp: guardrailEvent.timestamp
+            severity: severity,
+            reasoning: JSON.stringify(guardrailEvent.result || {}),
+            timestamp: guardrailEvent.timestamp || new Date()
           };
         })
       });
+      console.log(`[Guardrails] Saved ${guardrailEvents.length} guardrail checks for conversation ${context.conversationId}`);
     } catch (error) {
       console.error('Failed to save guardrail checks:', error);
     }
@@ -375,6 +420,9 @@ function handleDatabaseError(error: PrismaError): NextResponse | null {
 
 export async function POST(req: NextRequest) {
   try {
+    // Ensure services are initialized
+    await initializeServices();
+    
     // Check if services are initialized
     if (!conversationStore || !contextManager || !router) {
       console.error('Chat services not initialized');
@@ -510,7 +558,7 @@ export async function GET(req: NextRequest) {
     // Get user from database
     const dbUser = await prisma.user.findUnique({
       where: { clerkId: user.id },
-      include: { managedTeams: true }
+      include: { Team_Team_managerIdToUser: true }
     });
 
     if (!dbUser) {
@@ -521,7 +569,7 @@ export async function GET(req: NextRequest) {
     }
 
     // Get conversations for user's teams
-    const teamIds = dbUser.managedTeams.map(team => team.id);
+    const teamIds = dbUser.Team_Team_managerIdToUser.map(team => team.id);
     if (dbUser.teamId) {
       teamIds.push(dbUser.teamId);
     }
@@ -542,7 +590,7 @@ export async function GET(req: NextRequest) {
         createdAt: true,
         updatedAt: true,
         _count: {
-          select: { messages: true }
+          select: { Message: true }
         }
       },
       orderBy: { updatedAt: 'desc' },
@@ -558,7 +606,7 @@ export async function GET(req: NextRequest) {
         phase: conv.phase,
         createdAt: conv.createdAt.toISOString(),
         updatedAt: conv.updatedAt.toISOString(),
-        messageCount: conv._count.messages
+        messageCount: conv._count.Message
       }))
     });
   } catch (error) {

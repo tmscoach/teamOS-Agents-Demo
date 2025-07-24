@@ -45,10 +45,15 @@ export class ConversationStore {
     };
 
     let conversation;
+    // Generate a unique ID for the conversation
+    const conversationId = `conv_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    
     try {
+      
       // Try to create with metadata field
       conversation = await this.prisma.conversation.create({
         data: {
+          id: conversationId,
           teamId,
           managerId,
           currentAgent: context.currentAgent,
@@ -56,6 +61,7 @@ export class ConversationStore {
           contextData: context,
           metadata: options?.metadata || {},
           organizationId: options?.organizationId,
+          updatedAt: new Date(),
         },
       });
     } catch (error: any) {
@@ -64,12 +70,14 @@ export class ConversationStore {
         console.warn('Metadata column not found in Conversation table, creating without it');
         conversation = await this.prisma.conversation.create({
           data: {
+            id: conversationId,
             teamId,
             managerId,
             currentAgent: context.currentAgent,
             phase: context.transformationPhase,
             contextData: context,
             organizationId: options?.organizationId,
+            updatedAt: new Date(),
           },
         });
       } else {
@@ -148,6 +156,7 @@ export class ConversationStore {
       if (events.length > 0) {
         await tx.agentEvent.createMany({
           data: events.map(event => ({
+            id: event.id,
             conversationId,
             type: event.type,
             agent: event.agent,
@@ -174,10 +183,10 @@ export class ConversationStore {
     const conversation = await this.prisma.conversation.findUnique({
       where: { id: conversationId },
       include: {
-        messages: {
+        Message: {
           orderBy: { timestamp: 'asc' },
         },
-        events: {
+        AgentEvent: {
           orderBy: { timestamp: 'asc' },
         },
       },
@@ -191,7 +200,7 @@ export class ConversationStore {
     const context = conversation.contextData as AgentContext;
     
     // Ensure messageHistory is up to date
-    context.messageHistory = conversation.messages.map((msg: any) => ({
+    context.messageHistory = conversation.Message.map((msg: any) => ({
       id: msg.id,
       role: msg.role as Message['role'],
       content: msg.content,
@@ -201,7 +210,7 @@ export class ConversationStore {
     }));
 
     // Parse events
-    const events = conversation.events.map((event: any) => {
+    const events = conversation.AgentEvent.map((event: any) => {
       const parsedEvent = JSON.parse(event.content) as AgentEvent;
       return parsedEvent;
     });
@@ -321,6 +330,7 @@ export class ConversationStore {
   async addEvent(conversationId: string, event: AgentEvent): Promise<void> {
     await this.prisma.agentEvent.create({
       data: {
+        id: event.id,
         conversationId,
         type: event.type,
         agent: event.agent,
@@ -365,7 +375,7 @@ export class ConversationStore {
       where,
       include: {
         _count: {
-          select: { messages: true },
+          select: { Message: true },
         },
       },
       orderBy: { updatedAt: 'desc' },
@@ -380,7 +390,7 @@ export class ConversationStore {
       phase: conv.phase,
       createdAt: conv.createdAt,
       updatedAt: conv.updatedAt,
-      messageCount: conv._count.messages,
+      messageCount: conv._count.Message,
     }));
   }
 
@@ -399,11 +409,11 @@ export class ConversationStore {
       include: {
         _count: {
           select: {
-            messages: true,
-            events: true,
+            Message: true,
+            AgentEvent: true,
           },
         },
-        events: {
+        AgentEvent: {
           where: {
             type: { in: ['handoff', 'tool_call'] },
           },
@@ -416,13 +426,13 @@ export class ConversationStore {
       throw new Error(`Conversation not found: ${conversationId}`);
     }
 
-    const handoffs = conversation.events.filter((e: any) => e.type === 'handoff').length;
-    const toolCalls = conversation.events.filter((e: any) => e.type === 'tool_call').length;
+    const handoffs = conversation.AgentEvent.filter((e: any) => e.type === 'handoff').length;
+    const toolCalls = conversation.AgentEvent.filter((e: any) => e.type === 'tool_call').length;
     const duration = Date.now() - conversation.createdAt.getTime();
 
     return {
-      messageCount: conversation._count.messages,
-      eventCount: conversation._count.events,
+      messageCount: conversation._count.Message,
+      eventCount: conversation._count.AgentEvent,
       agentHandoffs: handoffs,
       toolCalls,
       duration,

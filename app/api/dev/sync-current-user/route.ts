@@ -39,6 +39,7 @@ export async function GET(req: NextRequest) {
     // Create user in database
     const user = await prisma.user.create({
       data: {
+        id: `user_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
         clerkId: clerkUser.id,
         email: email,
         name: clerkUser.firstName || email.split('@')[0],
@@ -46,6 +47,7 @@ export async function GET(req: NextRequest) {
         journeyStatus,
         lastActivity: new Date(),
         completedSteps: [],
+        updatedAt: new Date(),
       }
     })
 

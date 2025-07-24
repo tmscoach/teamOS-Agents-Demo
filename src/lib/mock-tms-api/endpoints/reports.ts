@@ -11,6 +11,7 @@ import {
   TMSErrorResponse
 } from '../types';
 import { generateHTMLReport as generateHTMLReportContent } from '../report-generators';
+import { reportContextService } from '../services/report-context-service';
 
 /**
  * POST /api/v1/reports/generate
@@ -209,6 +210,10 @@ export async function getHTMLReport(options: {
   // Generate HTML report based on assessment type
   const { generateHTMLReport } = await import('../report-generators');
   const htmlReport = await generateHTMLReport(subscription, templateId);
+  
+  // Store the report context for debrief functionality
+  await reportContextService.storeReportContext(subscriptionId, htmlReport);
+  console.log(`[Reports] Stored report context for subscription ${subscriptionId} via GetHTMLView`);
 
   return htmlReport;
 }
@@ -356,6 +361,11 @@ export async function generateHTMLReport(options: {
   // Generate HTML report
   try {
     const html = await generateHTMLReportContent(subscription, templateId);
+    
+    // Store the report context for debrief functionality
+    await reportContextService.storeReportContext(subscriptionId, html);
+    console.log(`[Reports] Stored report context for subscription ${subscriptionId}`);
+    
     return { html };
   } catch (error) {
     throw {

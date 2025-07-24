@@ -26,12 +26,12 @@ export async function GET(
     const conversation = await prisma.conversation.findUnique({
       where: { id: conversationId },
       include: {
-        messages: {
+        Message: {
           orderBy: {
             timestamp: 'asc'
           }
         },
-        events: {
+        AgentEvent: {
           orderBy: {
             timestamp: 'asc'
           }
@@ -99,7 +99,7 @@ export async function GET(
       teamId: conversation.teamId,
       teamName: team?.name || 'Unknown Team',
       currentAgent: conversation.currentAgent,
-      messages: conversation.messages.map(msg => ({
+      messages: conversation.Message.map(msg => ({
         id: msg.id,
         role: msg.role,
         content: msg.content,
@@ -107,7 +107,7 @@ export async function GET(
         agent: msg.agent
       })),
       metadata,
-      events: conversation.events.map(event => ({
+      events: conversation.AgentEvent.map(event => ({
         id: event.id,
         type: event.type,
         timestamp: event.timestamp,
@@ -116,6 +116,7 @@ export async function GET(
       })),
       // Journey tracking data
       journeyStatus: manager?.journeyStatus || 'ONBOARDING',
+      journeyPhase: conversation.phase || 'onboarding', // Add conversation phase
       userRole: manager?.role || 'MANAGER',
       completedSteps: manager?.completedSteps || [],
       currentStep: currentStep ? {

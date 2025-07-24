@@ -3,8 +3,9 @@
  * Stores and retrieves report context for intelligent interrogation
  */
 
-import { MockSubscription } from '../types';
+import type { MockSubscription } from '../mock-data-store';
 import { mockDataStore } from '../mock-data-store';
+import { OpenAI } from 'openai';
 
 interface ReportContext {
   subscriptionId: string;
@@ -58,8 +59,16 @@ interface DebriefResponse {
 class ReportContextService {
   private static instance: ReportContextService;
   private reportStore: Map<string, ReportContext> = new Map();
+  private openai: OpenAI | null = null;
 
-  private constructor() {}
+  private constructor() {
+    // Initialize OpenAI client if API key is available and not in test environment
+    if (process.env.OPENAI_API_KEY && process.env.NODE_ENV !== 'test') {
+      this.openai = new OpenAI({
+        apiKey: process.env.OPENAI_API_KEY
+      });
+    }
+  }
 
   static getInstance(): ReportContextService {
     if (!ReportContextService.instance) {
@@ -242,6 +251,15 @@ class ReportContextService {
    * Analyze query intent
    */
   private analyzeQueryIntent(query: string): QueryIntent {
+    // Handle missing or empty query
+    if (!query || query.trim() === '') {
+      return {
+        type: 'general',
+        entities: {},
+        confidence: 0.5
+      };
+    }
+    
     const lowerQuery = query.toLowerCase();
     
     // Pattern matching for different intent types - order matters!
@@ -288,6 +306,18 @@ class ReportContextService {
     reportContext: ReportContext,
     conversationContext?: any
   ): Promise<DebriefResponse> {
+    // First check if user is asking about a specific section
+    const sectionResponse = await this.checkForSectionQuery(query, reportContext);
+    if (sectionResponse) {
+      return sectionResponse;
+    }
+    
+    // If OpenAI is available, use LLM for intelligent responses
+    if (this.openai) {
+      return this.generateLLMResponse(query, reportContext, conversationContext);
+    }
+    
+    // Otherwise fall back to pattern-based responses
     switch (intent.type) {
       case 'explain_visual':
         return this.explainVisualElement(query, intent, reportContext);
@@ -441,24 +471,86 @@ class ReportContextService {
     intent: QueryIntent,
     reportContext: ReportContext
   ): Promise<DebriefResponse> {
-    const { assessmentType, metadata } = reportContext;
+    const { assessmentType, metadata, plainText, htmlContent } = reportContext;
+    const sections: DebriefResponse['relevantSections'] = [];
     
-    let response = `Your ${assessmentType} results indicate:\n\n`;
+    let response = '';
     
-    // Add assessment-specific interpretation
+    // Check if user is asking about specific scores or roles
+    const isAskingAboutRole = query.toLowerCase().includes('role') || query.toLowerCase().includes('major');
+    const isAskingAboutScores = query.toLowerCase().includes('score') || query.toLowerCase().includes('raw');
+    
     if (assessmentType === 'TMP') {
-      response += `• Your work preferences show how you naturally approach tasks and interact with team members\n`;
-      response += `• These preferences influence your communication style, decision-making, and problem-solving approach\n`;
-      response += `• Understanding these preferences helps you leverage your strengths and work effectively with others\n`;
+      // Extract major role from HTML - updated pattern to match the template structure
+      const majorRoleMatch = htmlContent.match(/<label>Major Role<\/label><p>([^<]+)<\/div>/i) || 
+                            htmlContent.match(/Major Role[:\s]*<[^>]+>([^<]+)</i) ||
+                            htmlContent.match(/Major Role[:\s]+(\w+)/i) ||
+                            plainText.match(/Major Role[:\s]+(\w+)/i);
+      
+      // Extract scores from CreateTMPQWheel parameters
+      const wheelMatch = htmlContent.match(/CreateTMPQWheel&mr=(\d+)&rr1=(\d+)&rr2=(\d+)/);
+      
+      if (isAskingAboutRole && majorRoleMatch) {
+        response = `Your Major Role is **${majorRoleMatch[1]}**.\n\n`;
+        response += `This means you naturally prefer to contribute to teams through ${majorRoleMatch[1].toLowerCase()} activities. `;
+        response += `People with this major role typically excel at tasks that involve this type of work preference.`;
+      } else if (isAskingAboutScores && wheelMatch) {
+        response = `Your TMP raw scores are:\n\n`;
+        response += `• Major Role Score: ${wheelMatch[1]}\n`;
+        response += `• Related Role 1 Score: ${wheelMatch[2]}\n`;
+        response += `• Related Role 2 Score: ${wheelMatch[3]}\n\n`;
+        response += `These scores indicate the relative strength of your preferences across different team roles.`;
+        
+        sections.push({
+          type: 'score',
+          content: {
+            majorRole: parseInt(wheelMatch[1]),
+            relatedRole1: parseInt(wheelMatch[2]),
+            relatedRole2: parseInt(wheelMatch[3])
+          },
+          explanation: 'Your TMP role preference scores'
+        });
+      } else {
+        // General interpretation
+        response = `Your Team Management Profile (TMP) results indicate:\n\n`;
+        
+        if (majorRoleMatch) {
+          response += `• **Major Role: ${majorRoleMatch[1]}** - Your primary work preference\n`;
+        }
+        
+        response += `• Your work preferences show how you naturally approach tasks and interact with team members\n`;
+        response += `• These preferences influence your communication style, decision-making, and problem-solving approach\n`;
+        response += `• Understanding these preferences helps you leverage your strengths and work effectively with others\n`;
+        
+        if (wheelMatch) {
+          response += `\nYour preference scores: Major Role (${wheelMatch[1]}), Related Roles (${wheelMatch[2]}, ${wheelMatch[3]})`;
+        }
+      }
+      
+      // Add wheel visualization if available
+      const wheelImage = Array.from(reportContext.images.values()).find(img => img.type.includes('Wheel'));
+      if (wheelImage) {
+        sections.push({
+          type: 'image',
+          content: wheelImage,
+          explanation: 'Your Team Management Profile wheel'
+        });
+      }
     } else if (assessmentType === 'QO2') {
-      response += `• Your Opportunities-Obstacles Quotient reveals how you perceive and respond to challenges\n`;
-      response += `• This affects your ability to identify opportunities and navigate obstacles\n`;
+      response = `Your Opportunities-Obstacles Quotient (QO2) results indicate:\n\n`;
+      response += `• Your perception and response to challenges in the workplace\n`;
+      response += `• Your ability to identify opportunities versus focusing on obstacles\n`;
       response += `• Higher scores indicate a more opportunity-focused mindset\n`;
+    } else {
+      response = `Your ${assessmentType} results indicate:\n\n`;
+      response += `• Key performance indicators across multiple dimensions\n`;
+      response += `• Areas of strength and opportunities for development\n`;
+      response += `• Actionable insights for improvement\n`;
     }
 
     return {
       response,
-      relevantSections: [],
+      relevantSections: sections,
       suggestedQuestions: this.getSuggestedQuestions(assessmentType, 'interpretation')
     };
   }
@@ -628,6 +720,426 @@ class ReportContextService {
    */
   getAllReportIds(): string[] {
     return Array.from(this.reportStore.keys());
+  }
+  
+  /**
+   * Generate intelligent response using LLM
+   */
+  private async generateLLMResponse(
+    query: string,
+    reportContext: ReportContext,
+    conversationContext?: any
+  ): Promise<DebriefResponse> {
+    try {
+      // Prepare context for LLM
+      const systemPrompt = `You are a TMS (Team Management Systems) assessment debrief specialist. You have access to a user's ${reportContext.assessmentType} assessment report and need to answer their questions accurately based on the actual report content.
+
+Assessment Type: ${reportContext.assessmentType}
+User: ${reportContext.metadata.userName || 'User'}
+Organization: ${reportContext.metadata.organizationName || 'Organization'}
+
+Report Data:
+${this.generateReportSummary(reportContext)}
+
+CRITICAL INSTRUCTIONS:
+1. ALWAYS use the EXACT data from the report text above - NEVER make up or guess values
+2. When asked about Major Role, use the EXACT role name provided (e.g., "Upholder Maintainer")
+3. For TMP scores, use ONLY the Work Preference Net Scores (I, C, B, S) which are single digits - these are NOT percentages
+4. IGNORE any numbers in image URLs or graph parameters - these are visualization parameters, not actual scores
+5. Major Roles in TMS do NOT have numerical scores - they are determined by the pattern of I, C, B, S scores
+6. Quote directly from the "FULL REPORT CONTENT" section when answering about specific sections
+7. If data is not available in the report, say so - do not invent information
+8. Be professional, supportive, and constructive in your interpretations
+
+IMPORTANT TMS Context:
+- TMP uses four work preference measures: Relationships (E/I), Information (P/C), Decisions (A/B), Organization (S/F)
+- Net scores are calculated by subtracting the lower from the higher (e.g., I: 7 means Introvert preference of 7)
+- These net scores determine the Major Role and Related Roles on the Team Management Wheel
+- There is NO such thing as a "Major Role Score of 85" - roles are qualitative, not quantitative
+- The numbers in image URLs (like mr=85) are GRAPH PARAMETERS for visualization, NOT actual scores
+
+TMS Team Management Wheel Roles:
+1. Reporter-Adviser: Gathering and reporting information
+2. Creator-Innovator: Creating and experimenting with ideas  
+3. Explorer-Promoter: Exploring and presenting opportunities
+4. Assessor-Developer: Assessing and testing applicability of new approaches
+5. Thruster-Organizer: Establishing and implementing ways of making things work
+6. Concluder-Producer: Concluding and delivering outputs
+7. Controller-Inspector: Controlling and auditing systems
+8. Upholder-Maintainer: Upholding and safeguarding standards
+
+Each role represents a preferred way of working, not a fixed personality type. People typically have a Major Role (strongest preference) and two Related Roles.
+
+When discussing roles, NEVER mention numerical scores for the roles themselves - only the I, C, B, S preference scores have numbers.
+
+Remember: You are debriefing THIS SPECIFIC report with THIS SPECIFIC data. Do not use generic examples or template responses.`;
+
+      // Build conversation history
+      const messages: any[] = [
+        { role: 'system', content: systemPrompt }
+      ];
+      
+      // Add previous messages if available
+      if (conversationContext?.previousMessages) {
+        messages.push(...conversationContext.previousMessages);
+      }
+      
+      // Add current query
+      messages.push({ role: 'user', content: query });
+      
+      // Call OpenAI
+      const completion = await this.openai!.chat.completions.create({
+        model: 'gpt-4-turbo-preview',
+        messages,
+        temperature: 0.7,
+        max_tokens: 1000
+      });
+      
+      const response = completion.choices[0]?.message?.content || 'I apologize, but I couldn\'t generate a response. Please try again.';
+      
+      // Extract relevant sections based on the response
+      const relevantSections = this.extractRelevantSections(response, reportContext);
+      
+      // Generate suggested questions based on the context
+      const suggestedQuestions = this.getSuggestedQuestions(
+        reportContext.assessmentType,
+        this.determineResponseContext(response)
+      );
+      
+      return {
+        response,
+        relevantSections,
+        suggestedQuestions
+      };
+    } catch (error) {
+      console.error('LLM response generation failed:', error);
+      // Fall back to pattern-based response
+      const intent = this.analyzeQueryIntent(query);
+      return this.generateResponse(query, intent, reportContext, conversationContext);
+    }
+  }
+  
+  /**
+   * Generate a summary of the report for LLM context
+   */
+  private generateReportSummary(reportContext: ReportContext): string {
+    const { assessmentType, plainText, metadata, images, htmlContent } = reportContext;
+    
+    let summary = `Assessment: ${assessmentType}\n`;
+    
+    // Extract key data from the HTML report
+    if (assessmentType === 'TMP') {
+      // Extract Major Role
+      const majorRoleMatch = htmlContent.match(/<label>Major Role<\/label><p>([^<]+)<\/div>/);
+      if (majorRoleMatch) {
+        summary += `\nMajor Role: ${majorRoleMatch[1]}\n`;
+      }
+      
+      // Extract Related Roles
+      const relatedRole1Match = htmlContent.match(/<label>1st Related Role<\/label><p>([^<]+)<\/div>/);
+      const relatedRole2Match = htmlContent.match(/<label>2nd Related Role<\/label><p>([^<]+)<\/div>/);
+      if (relatedRole1Match) {
+        summary += `1st Related Role: ${relatedRole1Match[1]}\n`;
+      }
+      if (relatedRole2Match) {
+        summary += `2nd Related Role: ${relatedRole2Match[1]}\n`;
+      }
+      
+      // Extract work preference scores (I, C, B, S) from the report text, NOT from URLs
+      const scorePattern = /These are I: (\d+); C: (\d+); B: (\d+); S: (\d+) and are the foundation/;
+      const scoreMatch = htmlContent.match(scorePattern);
+      if (scoreMatch) {
+        summary += `\nWork Preference Net Scores (from report text):\n`;
+        summary += `- I (Introvert): ${scoreMatch[1]}\n`;
+        summary += `- C (Creative): ${scoreMatch[2]}\n`;
+        summary += `- B (Beliefs): ${scoreMatch[3]}\n`;
+        summary += `- S (Structured): ${scoreMatch[4]}\n`;
+        summary += `\nNote: These are the net scores that determine your role preferences, not percentages.\n`;
+      }
+      
+      // Extract work preference distribution percentages if available
+      const distributionMatch = htmlContent.match(/Maintaining[\s\S]*?(\d+)%/);
+      if (distributionMatch) {
+        summary += `\nWork Preference Distribution: The report shows percentage distributions across all eight types of work, but these are different from the core preference scores.\n`;
+      }
+    }
+    
+    // Add image descriptions
+    if (images.size > 0) {
+      summary += '\nVisual Elements:\n';
+      images.forEach((img, key) => {
+        summary += `- ${img.description || img.type}\n`;
+        if (img.parameters && Object.keys(img.parameters).length > 0) {
+          summary += `  Parameters: ${JSON.stringify(img.parameters)}\n`;
+        }
+      });
+    }
+    
+    // Add COMPLETE plain text content, not just excerpt
+    summary += '\n\nFULL REPORT CONTENT:\n';
+    summary += plainText;
+    
+    return summary;
+  }
+  
+  /**
+   * Extract relevant sections mentioned in the LLM response
+   */
+  private extractRelevantSections(
+    response: string,
+    reportContext: ReportContext
+  ): DebriefResponse['relevantSections'] {
+    const sections: DebriefResponse['relevantSections'] = [];
+    
+    // Check if response mentions visual elements
+    if (response.toLowerCase().includes('wheel') || response.toLowerCase().includes('graph')) {
+      const wheelImage = Array.from(reportContext.images.values()).find(img => 
+        img.type.includes('Wheel') || img.type.includes('Graph')
+      );
+      if (wheelImage) {
+        sections.push({
+          type: 'image',
+          content: wheelImage,
+          explanation: wheelImage.description
+        });
+      }
+    }
+    
+    // Check if response mentions scores
+    if (response.toLowerCase().includes('score') && reportContext.metadata.scores) {
+      sections.push({
+        type: 'score',
+        content: reportContext.metadata.scores,
+        explanation: 'Assessment scores'
+      });
+    }
+    
+    return sections;
+  }
+  
+  /**
+   * Determine context type from response for suggested questions
+   */
+  private determineResponseContext(response: string): string {
+    const lowerResponse = response.toLowerCase();
+    
+    if (lowerResponse.includes('visual') || lowerResponse.includes('wheel') || lowerResponse.includes('color')) {
+      return 'visual';
+    } else if (lowerResponse.includes('compar') || lowerResponse.includes('benchmark')) {
+      return 'comparison';
+    } else if (lowerResponse.includes('next') || lowerResponse.includes('action') || lowerResponse.includes('improve')) {
+      return 'action';
+    } else if (lowerResponse.includes('score') || lowerResponse.includes('result')) {
+      return 'interpretation';
+    }
+    
+    return 'general';
+  }
+  
+  /**
+   * Check if query is asking about a specific section and extract its content
+   */
+  private async checkForSectionQuery(
+    query: string,
+    reportContext: ReportContext
+  ): Promise<DebriefResponse | null> {
+    const lowerQuery = query.toLowerCase();
+    
+    // Skip section check for generic visual/interpretation queries
+    if (lowerQuery.includes('wheel') || lowerQuery.includes('color') || 
+        lowerQuery.includes('graph') || lowerQuery.includes('what does') && lowerQuery.includes('mean')) {
+      return null;
+    }
+    
+    // List of common section-related keywords
+    const sectionKeywords = [
+      'section', 'part', 'area', 'summary', 'summarise', 'summarize',
+      'what does it say about', 'tell me about my', 'explain my'
+    ];
+    
+    // Check if query contains section-related keywords
+    const isAskingAboutSection = sectionKeywords.some(keyword => lowerQuery.includes(keyword));
+    if (!isAskingAboutSection) {
+      return null;
+    }
+    
+    // Try to extract section name from query
+    // Common patterns: "Areas for Self-Assessment", "Leadership Strengths", etc.
+    const sectionPatterns = [
+      /(?:section|part|area)\s+(?:called|titled|named)?\s*["']?([^"']+)["']?/i,
+      /(?:summarise|summarize|summary of|explain)\s+(?:my|the)?\s*([^section]+)(?:section)?/i,
+      /tell me about\s+(?:my|the)?\s*([^section]+)(?:section)?/i,
+      /what does.*say about\s+(?:my|the)?\s*([^section]+)(?:section)?/i
+    ];
+    
+    let sectionName = '';
+    for (const pattern of sectionPatterns) {
+      const match = query.match(pattern);
+      if (match) {
+        sectionName = match[1].trim();
+        break;
+      }
+    }
+    
+    // If no section name found, check for specific known sections
+    const knownSections = [
+      'areas for self-assessment',
+      'leadership strengths',
+      'decision-making',
+      'interpersonal skills',
+      'team-building',
+      'key points',
+      'overview',
+      'introduction',
+      'related roles',
+      'work preference',
+      'linking',
+      'individual summary',
+      'disclaimer'
+    ];
+    
+    if (!sectionName) {
+      for (const section of knownSections) {
+        if (lowerQuery.includes(section)) {
+          sectionName = section;
+          break;
+        }
+      }
+    }
+    
+    if (!sectionName) {
+      return null;
+    }
+    
+    // Search for the section in the HTML content
+    const sectionContent = this.extractSectionContent(reportContext.htmlContent, sectionName);
+    
+    if (!sectionContent) {
+      // Section not found, return helpful response
+      return {
+        response: `I couldn't find a section specifically called "${sectionName}" in your report. Your ${reportContext.assessmentType} report contains the following sections:\n\n` +
+                 this.listAvailableSections(reportContext.htmlContent) +
+                 `\n\nPlease let me know which section you'd like to learn more about.`,
+        relevantSections: [],
+        suggestedQuestions: this.getSuggestedQuestions(reportContext.assessmentType, 'general')
+      };
+    }
+    
+    // Format the response
+    const response = `Here's what your ${reportContext.assessmentType} report says in the "${this.titleCase(sectionName)}" section:\n\n${sectionContent}`;
+    
+    return {
+      response,
+      relevantSections: [{
+        type: 'text',
+        content: sectionContent,
+        explanation: `Content from the ${this.titleCase(sectionName)} section`
+      }],
+      suggestedQuestions: [
+        `What does this mean for my work style?`,
+        `How can I apply this information?`,
+        `Tell me more about another section of my report`
+      ]
+    };
+  }
+  
+  /**
+   * Extract content of a specific section from HTML
+   */
+  private extractSectionContent(html: string, sectionName: string): string | null {
+    // Normalize section name for comparison
+    const normalizedName = sectionName.toLowerCase().replace(/[^a-z0-9]/g, '');
+    
+    // Try to find section by ID first (most accurate)
+    const idPattern = new RegExp(`<section\s+id=["']([^"']+)["']>([\s\S]*?)</section>`, 'gi');
+    let match;
+    
+    while ((match = idPattern.exec(html)) !== null) {
+      const sectionId = match[1].toLowerCase().replace(/[^a-z0-9]/g, '');
+      if (sectionId === normalizedName || sectionId.includes(normalizedName) || normalizedName.includes(sectionId)) {
+        // Extract text content from the section
+        const sectionHtml = match[2];
+        return this.extractTextFromSection(sectionHtml);
+      }
+    }
+    
+    // Try to find by heading text
+    const headingPattern = new RegExp(`<h2[^>]*>([^<]*${sectionName}[^<]*)</h2>([\s\S]*?)(?=<section|</div>|$)`, 'gi');
+    match = headingPattern.exec(html);
+    if (match) {
+      return this.extractTextFromSection(match[2]);
+    }
+    
+    return null;
+  }
+  
+  /**
+   * Extract clean text from a section HTML
+   */
+  private extractTextFromSection(sectionHtml: string): string {
+    // Remove style tags and their content
+    let text = sectionHtml.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
+    
+    // Remove script tags and their content
+    text = text.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
+    
+    // Convert list items to bullet points
+    text = text.replace(/<li[^>]*>/gi, '\n• ');
+    
+    // Convert paragraphs to double newlines
+    text = text.replace(/<\/p>/gi, '\n\n');
+    text = text.replace(/<p[^>]*>/gi, '');
+    
+    // Convert headings to uppercase with newlines
+    text = text.replace(/<h([1-6])[^>]*>([^<]+)<\/h\1>/gi, (match, level, content) => {
+      return `\n\n**${content.toUpperCase()}**\n\n`;
+    });
+    
+    // Remove remaining HTML tags
+    text = text.replace(/<[^>]+>/g, ' ');
+    
+    // Clean up whitespace
+    text = text.replace(/\s+/g, ' ');
+    text = text.replace(/\n\s+/g, '\n');
+    text = text.replace(/\n{3,}/g, '\n\n');
+    
+    // Decode HTML entities
+    text = text.replace(/&nbsp;/g, ' ');
+    text = text.replace(/&quot;/g, '"');
+    text = text.replace(/&#39;/g, "'");
+    text = text.replace(/&lt;/g, '<');
+    text = text.replace(/&gt;/g, '>');
+    text = text.replace(/&amp;/g, '&');
+    
+    return text.trim();
+  }
+  
+  /**
+   * List available sections in the report
+   */
+  private listAvailableSections(html: string): string {
+    const sections: string[] = [];
+    const idPattern = /<section\s+id=["']([^"']+)["']>/gi;
+    let match;
+    
+    while ((match = idPattern.exec(html)) !== null) {
+      const sectionId = match[1];
+      // Convert ID to readable title
+      const title = sectionId.replace(/([a-z])([A-Z])/g, '$1 $2')
+                            .replace(/^./, str => str.toUpperCase());
+      sections.push(`• ${title}`);
+    }
+    
+    return sections.join('\n');
+  }
+  
+  /**
+   * Convert string to title case
+   */
+  private titleCase(str: string): string {
+    return str.replace(/\w\S*/g, (txt) => {
+      return txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase();
+    });
   }
 }
 

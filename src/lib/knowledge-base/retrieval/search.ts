@@ -30,23 +30,39 @@ export class KnowledgeBaseSearch {
       const queryEmbedding = await this.embeddingService.generateEmbedding(query);
       
       // Use Prisma's safe query building to prevent SQL injection
-      const results = await this.prisma.$queryRaw<any[]>`
-        SELECT 
-          dc.content,
-          dc.metadata,
-          d.title as source,
-          d."sourcePath",
-          d."documentType",
-          1 - (dc.embedding <=> ${queryEmbedding}::vector) as similarity
-        FROM "DocumentChunk" dc
-        JOIN "Document" d ON d.id = dc."documentId"
-        ${documentTypes.length > 0 
-          ? Prisma.sql`WHERE d."documentType" = ANY(${documentTypes})` 
-          : Prisma.empty
-        }
-        ORDER BY similarity DESC
-        LIMIT ${limit}
-      `;
+      let results;
+      
+      if (documentTypes.length > 0) {
+        // Cast the array elements to the enum type
+        results = await this.prisma.$queryRaw<any[]>`
+          SELECT 
+            dc.content,
+            dc.metadata,
+            d.title as source,
+            d."sourcePath",
+            d."documentType",
+            1 - (dc.embedding <=> ${queryEmbedding}::vector) as similarity
+          FROM "DocumentChunk" dc
+          JOIN "Document" d ON d.id = dc."documentId"
+          WHERE d."documentType"::text = ANY(${documentTypes})
+          ORDER BY similarity DESC
+          LIMIT ${limit}
+        `;
+      } else {
+        results = await this.prisma.$queryRaw<any[]>`
+          SELECT 
+            dc.content,
+            dc.metadata,
+            d.title as source,
+            d."sourcePath",
+            d."documentType",
+            1 - (dc.embedding <=> ${queryEmbedding}::vector) as similarity
+          FROM "DocumentChunk" dc
+          JOIN "Document" d ON d.id = dc."documentId"
+          ORDER BY similarity DESC
+          LIMIT ${limit}
+        `;
+      }
       
       return results
         .filter(r => r.similarity >= minRelevance)
@@ -120,20 +136,20 @@ export class KnowledgeBaseSearch {
       
       const whereClause = whereConditions.join(' AND ');
       
-      const results = await this.prisma.$queryRaw<any[]>`
+      const results = await this.prisma.$queryRawUnsafe<any[]>(`
         SELECT 
           dc.content,
           dc.metadata,
           d.title as source,
           d."sourcePath",
           d."documentType",
-          ts_rank(to_tsvector('english', dc.content), to_tsquery('english', ${searchPattern})) as rank
+          ts_rank(to_tsvector('english', dc.content), to_tsquery('english', $1)) as rank
         FROM "DocumentChunk" dc
         JOIN "Document" d ON d.id = dc."documentId"
         WHERE ${whereClause}
         ORDER BY rank DESC
         LIMIT ${limit}
-      `;
+      `, ...params);
       
       return results.map(r => ({
         content: r.content,
@@ -163,7 +179,7 @@ export class KnowledgeBaseSearch {
           }
         },
         include: {
-          document: true
+          Document: true
         }
       });
       
@@ -171,9 +187,9 @@ export class KnowledgeBaseSearch {
       
       return {
         content: result.content,
-        source: result.document.title,
+        source: result.Document.title,
         relevance: 1,
-        citation: `${result.document.title}, ${section}`,
+        citation: `${result.Document.title}, ${section}`,
         metadata: result.metadata as any
       };
     } catch (error) {
@@ -205,7 +221,7 @@ export class KnowledgeBaseSearch {
       const items = await this.prisma.questionnaireItem.findMany({
         where,
         include: {
-          document: true
+          Document: true
         }
       });
       
@@ -216,7 +232,7 @@ export class KnowledgeBaseSearch {
         scoringFormula: item.scoringFormula,
         category: item.category,
         assessmentType: item.assessmentType,
-        source: item.document.title,
+        source: item.Document.title,
         metadata: item.metadata
       }));
     } catch (error) {

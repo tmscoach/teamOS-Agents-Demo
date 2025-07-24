@@ -35,6 +35,7 @@ interface ConversationDetail {
   teamId: string;
   teamName: string;
   currentAgent: string;
+  journeyPhase?: string; // Add journey phase
   messages: Message[];
   metadata?: {
     onboarding?: {
@@ -244,38 +245,42 @@ export default function ConversationDetailPage() {
         <div style={{ display: 'flex', gap: '8px' }}>
           {onboardingData && (
             <>
-              <span style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                padding: '6px 16px',
-                borderRadius: '20px',
-                fontSize: '14px',
-                fontWeight: '500',
-                border: '1px solid #e5e7eb',
-                backgroundColor: 'white',
-                color: '#6b7280',
-                textTransform: 'capitalize'
-              }}>
-                {onboardingData.state.replace(/_/g, ' ').toLowerCase()}
-              </span>
-              <span style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                padding: '6px 16px',
-                borderRadius: '20px',
-                fontSize: '14px',
-                fontWeight: '500',
-                backgroundColor: 
-                  onboardingData.qualityMetrics.managerConfidence === 'high' ? '#d1fae5' :
-                  onboardingData.qualityMetrics.managerConfidence === 'medium' ? '#dbeafe' :
-                  '#fee2e2',
-                color: 
-                  onboardingData.qualityMetrics.managerConfidence === 'high' ? '#065f46' :
-                  onboardingData.qualityMetrics.managerConfidence === 'medium' ? '#1e40af' :
-                  '#991b1b'
-              }}>
-                {onboardingData.qualityMetrics.managerConfidence} confidence
-              </span>
+              {onboardingData.state && (
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  padding: '6px 16px',
+                  borderRadius: '20px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  border: '1px solid #e5e7eb',
+                  backgroundColor: 'white',
+                  color: '#6b7280',
+                  textTransform: 'capitalize'
+                }}>
+                  {onboardingData.state.replace(/_/g, ' ').toLowerCase()}
+                </span>
+              )}
+              {onboardingData.qualityMetrics?.managerConfidence && (
+                <span style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  padding: '6px 16px',
+                  borderRadius: '20px',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  backgroundColor: 
+                    onboardingData.qualityMetrics.managerConfidence === 'high' ? '#d1fae5' :
+                    onboardingData.qualityMetrics.managerConfidence === 'medium' ? '#dbeafe' :
+                    '#fee2e2',
+                  color: 
+                    onboardingData.qualityMetrics.managerConfidence === 'high' ? '#065f46' :
+                    onboardingData.qualityMetrics.managerConfidence === 'medium' ? '#1e40af' :
+                    '#991b1b'
+                }}>
+                  {onboardingData.qualityMetrics.managerConfidence} confidence
+                </span>
+              )}
             </>
           )}
         </div>
@@ -386,10 +391,11 @@ export default function ConversationDetailPage() {
           {/* Journey Details */}
           <JourneyDetails
             journeyStatus={conversation.journeyStatus}
+            journeyPhase={conversation.journeyPhase} // Pass conversation phase
             completedSteps={conversation.completedSteps}
             currentStep={conversation.currentStep}
             lastActivity={conversation.lastActivity}
-            onboardingData={conversation.onboardingData}
+            onboardingData={onboardingData}
             userRole={conversation.userRole as UserRole}
             stateTransitions={onboardingData?.stateTransitions}
           />
@@ -461,8 +467,8 @@ export default function ConversationDetailPage() {
                 <div>
                   {activeTab === 'captured' ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                      {Object.entries(onboardingData.capturedFields || {}).length > 0 ? (
-                        Object.entries(onboardingData.capturedFields).map(([key, value]) => {
+                      {Object.entries(onboardingData?.capturedFields || {}).length > 0 ? (
+                        Object.entries(onboardingData.capturedFields || {}).map(([key, value]) => {
                           // Find the extraction rule for this field
                           const rule = extractionRules.find(r => r.fieldName === key);
                           const displayName = rule?.displayName || key;
@@ -493,7 +499,7 @@ export default function ConversationDetailPage() {
                         extractionRules
                           .filter(rule => rule.required)
                           .map(rule => {
-                            const isCaptured = onboardingData.capturedFields?.[rule.fieldName] !== undefined;
+                            const isCaptured = onboardingData?.capturedFields?.[rule.fieldName] !== undefined;
                             
                             return (
                               <div key={rule.fieldName} style={{
@@ -558,7 +564,7 @@ export default function ConversationDetailPage() {
                       Completion
                     </span>
                     <span style={{ fontSize: '14px', color: '#6b7280' }}>
-                      {onboardingData.qualityMetrics.completionPercentage}%
+                      {onboardingData?.qualityMetrics?.completionPercentage || 0}%
                     </span>
                   </div>
                   <div style={{
@@ -569,7 +575,7 @@ export default function ConversationDetailPage() {
                     overflow: 'hidden'
                   }}>
                     <div style={{
-                      width: `${onboardingData.qualityMetrics.completionPercentage}%`,
+                      width: `${onboardingData?.qualityMetrics?.completionPercentage || 0}%`,
                       height: '100%',
                       backgroundColor: '#3b82f6',
                       borderRadius: '4px',
@@ -588,7 +594,7 @@ export default function ConversationDetailPage() {
                       Rapport Score
                     </span>
                     <span style={{ fontSize: '14px', color: '#6b7280' }}>
-                      {onboardingData.qualityMetrics.rapportScore}/100
+                      {onboardingData?.qualityMetrics?.rapportScore || 0}/100
                     </span>
                   </div>
                   <div style={{
@@ -599,7 +605,7 @@ export default function ConversationDetailPage() {
                     overflow: 'hidden'
                   }}>
                     <div style={{
-                      width: `${onboardingData.qualityMetrics.rapportScore}%`,
+                      width: `${onboardingData?.qualityMetrics?.rapportScore || 0}%`,
                       height: '100%',
                       backgroundColor: '#10b981',
                       borderRadius: '4px',
@@ -612,7 +618,7 @@ export default function ConversationDetailPage() {
           )}
 
           {/* State Transitions */}
-          {onboardingData && onboardingData.stateTransitions && onboardingData.stateTransitions.length > 0 && (
+          {onboardingData?.stateTransitions && onboardingData.stateTransitions.length > 0 && (
             <div style={{
               backgroundColor: 'white',
               borderRadius: '12px',
@@ -630,7 +636,7 @@ export default function ConversationDetailPage() {
               </div>
               <div style={{ padding: '24px' }}>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  {onboardingData.stateTransitions.map((transition, index) => (
+                  {onboardingData.stateTransitions?.map((transition, index) => (
                     <div key={index} style={{
                       display: 'flex',
                       alignItems: 'center',
