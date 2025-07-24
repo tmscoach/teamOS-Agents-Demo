@@ -63,9 +63,10 @@ function calculateTMPResults(answers: Record<number, string>) {
       relatedRole1Code: 'con_ins',
       relatedRole2: 'Thruster Organizer',
       relatedRole2Code: 'thr_org',
-      majorRoleScore: 85,
-      relatedRole1Score: 70,
-      relatedRole2Score: 65
+      // These are wheel rendering parameters, NOT TMS scores
+      majorRoleScore: 85,    // For wheel visualization only
+      relatedRole1Score: 70, // For wheel visualization only
+      relatedRole2Score: 65  // For wheel visualization only
     };
   }
   
@@ -76,9 +77,10 @@ function calculateTMPResults(answers: Record<number, string>) {
     relatedRole1Code: scoredRoles[1].code,
     relatedRole2: scoredRoles[2].role,
     relatedRole2Code: scoredRoles[2].code,
-    majorRoleScore: Math.min(100, scoredRoles[0].score * 5),
-    relatedRole1Score: Math.min(100, scoredRoles[1].score * 5),
-    relatedRole2Score: Math.min(100, scoredRoles[2].score * 5)
+    // These are wheel rendering parameters, NOT TMS scores
+    majorRoleScore: Math.min(100, scoredRoles[0].score * 5),    // For wheel visualization only
+    relatedRole1Score: Math.min(100, scoredRoles[1].score * 5), // For wheel visualization only
+    relatedRole2Score: Math.min(100, scoredRoles[2].score * 5)  // For wheel visualization only
   };
 }
 
