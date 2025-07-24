@@ -98,7 +98,7 @@ export class DebriefGuardrails {
             // Verify user has access to this subscription
             // In mock mode, check against the mock data store
             if (process.env.NEXT_PUBLIC_USE_MOCK_TMS_API === 'true') {
-              const { mockDataStore } = await import('@/lib/mock-tms-api/mock-data-store');
+              const { mockDataStore } = await import('../../mock-tms-api/mock-data-store');
               const subscription = mockDataStore.getSubscription(subscriptionId);
               
               if (subscription) {
