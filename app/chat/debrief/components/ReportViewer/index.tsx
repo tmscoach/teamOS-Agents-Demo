@@ -5,7 +5,7 @@ import MainCard from './sections/MainCard';
 import NavigationMenu from './sections/NavigationMenu';
 import Frame from './sections/Frame';
 import DbMainCard from './sections/DbMainCard';
-import { ParsedReport } from '@/lib/utils/report-parser';
+import { ParsedReport } from '@/src/lib/utils/report-parser';
 
 interface ReportViewerProps {
   reportType: 'TMP' | 'QO2' | 'TeamSignals';

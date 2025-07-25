@@ -3,7 +3,7 @@
  * Fetches and parses reports from TMS API
  */
 
-import { ReportParser, ParsedReport } from '@/lib/utils/report-parser';
+import { ReportParser, ParsedReport } from '@/src/lib/utils/report-parser';
 
 interface ReportLoaderOptions {
   subscriptionId: string;

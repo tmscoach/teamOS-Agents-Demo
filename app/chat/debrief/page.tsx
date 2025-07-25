@@ -4,8 +4,8 @@ import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import DebriefLayout from './components/DebriefLayout';
-import { ReportLoader } from '@/lib/services/report-loader';
-import { ParsedReport } from '@/lib/utils/report-parser';
+import { ReportLoader } from '@/src/lib/services/report-loader';
+import { ParsedReport } from '@/src/lib/utils/report-parser';
 
 function DebriefPageLoading() {
   return (

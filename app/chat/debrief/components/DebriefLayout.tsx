@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import ReportViewer from './ReportViewer';
 import ChatInterface from './ChatInterface';
-import { ParsedReport } from '@/lib/utils/report-parser';
+import { ParsedReport } from '@/src/lib/utils/report-parser';
 
 interface DebriefLayoutProps {
   agentName: string;
