@@ -65,9 +65,12 @@ export class ReportLoader {
       return parsedReport;
     } catch (error) {
       console.error('Error loading report:', error);
+      console.log('Using fallback data for development');
       
       // Return fallback data for development
-      return this.getFallbackReport(reportType);
+      const fallbackReport = this.getFallbackReport(reportType);
+      fallbackReport.subscriptionId = subscriptionId;
+      return fallbackReport;
     }
   }
 

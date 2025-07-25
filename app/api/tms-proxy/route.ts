@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { currentUser } from '@/src/lib/auth/clerk-dev-wrapper';
 import { createTMSTool } from '@/src/lib/agents/tools/tms-tool-factory';
 import { AgentContext } from '@/src/lib/agents/types';
+import prisma from '@/lib/db';
 
 export async function POST(request: NextRequest) {
   try {
@@ -31,9 +32,14 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Get the user's database record for the mock auth
+    const dbUser = await prisma.user.findUnique({
+      where: { clerkUserId: user.id }
+    });
+
     // Create a minimal agent context for the tool
     const context: AgentContext = {
-      managerId: user.id,
+      managerId: dbUser?.id || user.id,
       conversationId: 'tms-proxy-' + Date.now(),
       messageHistory: []
     };
