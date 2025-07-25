@@ -21,6 +21,7 @@ export class OpenAIDebriefAgent extends OpenAIAgent {
   };
   
   constructor() {
+    console.log(`[OpenAIDebriefAgent] Constructor called - custom implementation`);
     // Create guardrails
     const guardrails = DebriefGuardrails.createGuardrails();
     console.log(`[DebriefAgent] Created ${guardrails.length} guardrails:`, guardrails.map(g => g.name));
@@ -32,8 +33,14 @@ export class OpenAIDebriefAgent extends OpenAIAgent {
       inputGuardrails: guardrails,
       instructions: () => {
         // Get system prompt from config
-        const configPrompt = this.loadedConfig?.systemPrompt || 
+        let configPrompt = this.loadedConfig?.systemPrompt || 
           `You are the TMS Debrief Agent. Your role is to provide comprehensive debriefs for completed assessments.`;
+        
+        // CRITICAL: Remove the auto-check instruction from config to prevent duplicate checks
+        configPrompt = configPrompt.replace(
+          /IMMEDIATELY use tms_get_dashboard_subscriptions to check for completed assessments/g,
+          'Wait for specific instructions about when to check for assessments'
+        );
         
         // Add TMP debrief instructions
         const tmpDebriefInstructions = `
