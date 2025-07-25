@@ -38,43 +38,35 @@ export class OpenAIDebriefAgent extends OpenAIAgent {
         // Add TMP debrief instructions
         const tmpDebriefInstructions = `
 
-## TMP Debrief Flow
+## TMP Debrief Flow - Optimized for Conversational Experience
 
-When conducting a TMP debrief, follow these numbered steps:
+When conducting a TMP debrief, focus on creating a natural conversation:
 
-1. Read through the user's completed TMP report and understand it. Use the TMS knowledge base for context on the Team Management Profile (TMP) report, terminology and research.
+1. **Start Immediately with Objectives** (DO NOT load full report first)
+   - After user confirms debrief, immediately ask: "Great! The purpose of our session is to learn more about yourself, explore your personal team management profile, and use that information as a catalyst to review and fine-tune how you work. To get started, what are your main objectives from the debrief session today?"
+   - Suggest 3 example objectives if helpful
+   - Record response as $OBJECTIVES
 
-2. Retrieve the full TMP profile result using tms_generate_html_report or tms_debrief_report and store this as $PROFILE
+2. **Progressive Information Loading**
+   - Only use tms_debrief_report when you need specific information to answer questions
+   - Load profile details (roles, scores) only when discussing them specifically
+   - Keep the conversation flowing naturally without long pauses for data loading
 
-3. From $PROFILE, display the following information:
-   - Major Role:
-   - 1st Related Role:
-   - 2nd Related Role:  
-   - Net Scores:
-   - Key Points of Note:
+3. **Gather Key Insights** (in order):
+   - Highlights: "What are your 3 highlights from looking at your profile?"
+   - Communication: "What would be 2 suggestions that other people might follow to effectively communicate with you?"
+   - Support: "What is 1 area that other people might follow to support you better?"
 
-4. Say: "The purpose of our session is to learn more about yourself, explore your personal team management profile, the implications for your job role, and use that information as a catalyst to review and fine-tune how you work. To get started, what are your main objectives from the debrief session today?"
-   - Suggest 3 example objectives for a TMP debrief
-   - Wait for user response and record as $OBJECTIVES
+4. **Use Report Data Intelligently**
+   - When user mentions specific aspects, then load that data
+   - Example: If user asks about their Major Role, then query: "Show me the Major Role and Related Roles from the TMP report"
+   - Don't pre-load everything - let the conversation guide what data you need
 
-5. Ask: "From looking at your profile, what are your 3 highlights?"
-   - Suggest examples from the 'Leadership Strengths' section of $PROFILE
-   - Wait for user response and record as $HIGHLIGHTS
+5. **Summary and Wrap-up**
+   - Summarize the captured objectives, highlights, communication tips, and support needs
+   - Thank the user and note how this information will guide their journey
 
-6. Ask: "What would be 2 suggestions that other people might follow to effectively communicate with you?"
-   - Show examples from 'Areas for Self Assessment' section
-   - Wait for user response and record as $COMMUNICATION
-
-7. Ask: "What is 1 area that other people might follow to support you better?"
-   - Wait for user response and record as $SUPPORT
-
-8. Summarize by listing:
-   - Objectives: $OBJECTIVES
-   - Highlights: $HIGHLIGHTS
-   - Communication Tips: $COMMUNICATION
-   - Support Needs: $SUPPORT
-
-9. Thank the user and note that this information will guide their journey in future.`;
+Remember: The goal is a <5 second response time after user confirms. Prioritize conversation flow over data completeness.`;
         
         return configPrompt + tmpDebriefInstructions;
       },
@@ -164,22 +156,60 @@ When conducting a TMP debrief, follow these numbered steps:
       message,
       conversationId: context.conversationId,
       messageCount: context.messageCount,
-      isFirstMessage: !context.conversationId || context.messageCount === 0 || message.includes('[User joined')
+      hasCheckedSubscriptions: context.metadata?.subscriptionsChecked,
+      availableReports: context.metadata?.availableReports
     });
     
-    // Check if this is the start of a conversation or user just joined
-    if (!context.conversationId || context.messageCount === 0 || message.includes('[User joined')) {
+    // Check if we already have subscription data in context
+    const hasCheckedSubscriptions = context.metadata?.subscriptionsChecked;
+    const availableReports = context.metadata?.availableReports;
+    
+    // Check if user is confirming they want to start a debrief
+    const userConfirmsDebrief = (
+      message.toLowerCase().includes('yes') || 
+      message.toLowerCase().includes('please') ||
+      message.toLowerCase().includes('start') ||
+      message.toLowerCase().includes('let\'s') ||
+      message.toLowerCase().includes('sure')
+    ) && availableReports?.length > 0 && context.messageCount > 0;
+    
+    // If user confirms debrief, skip re-checking and go directly to objectives
+    if (userConfirmsDebrief) {
+      const reportType = context.metadata?.selectedAssessment || 'TMP';
+      const skipToObjectivesPrompt = `The user has confirmed they want to start the ${reportType} debrief. 
+Skip checking subscriptions again - we already checked and found completed assessments.
+Go directly to the debrief flow starting with: "Great! The purpose of our session is to learn more about yourself, explore your personal team management profile, and use that information as a catalyst to review and fine-tune how you work. To get started, what are your main objectives from the debrief session today?"
+
+DO NOT load the full report yet. Only load report data when needed to answer specific questions.
+
+User message: ${message}`;
+      
+      console.log(`[${this.name}] User confirmed debrief, skipping to objectives`);
+      
+      return super.processMessage(skipToObjectivesPrompt, context);
+    }
+    
+    // Only check subscriptions if we haven't already
+    if (!hasCheckedSubscriptions && (!context.conversationId || context.messageCount === 0 || message.includes('[User joined'))) {
       // Add instruction to check for available reports
       const checkReportsPrompt = `REMINDER: This is the start of a new conversation. 
 You MUST immediately use tms_get_dashboard_subscriptions to check for completed assessments.
 After checking, proactively offer to debrief any completed assessments you find.
+Store the results in context for future reference.
 
 User message: ${message}`;
       
-      console.log(`[${this.name}] Modifying prompt for report check`);
+      console.log(`[${this.name}] First check - looking for subscriptions`);
       
       // Process with the modified message
       const response = await super.processMessage(checkReportsPrompt, context);
+      
+      // Mark that we've checked subscriptions
+      response.metadata = {
+        ...response.metadata,
+        subscriptionsChecked: true,
+        availableReports: response.metadata?.extractedVariables?.available_reports || []
+      };
       
       return response;
     }

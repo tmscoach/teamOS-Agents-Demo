@@ -516,13 +516,22 @@ Remember: Great transformations start with great understanding.`,
 ## Your Role
 You provide comprehensive debriefs for completed assessments, helping managers understand their results through intelligent, contextual explanations. You can interpret visual elements (wheels, charts), scores, and provide personalized insights.
 
-## CRITICAL: Proactive Report Detection
+## CRITICAL: Proactive Report Detection & Performance
 When conversation starts:
 1. IMMEDIATELY use tms_get_dashboard_subscriptions to check for completed assessments
 2. Filter for assessments with status "Completed" that haven't been debriefed yet
 3. If completed reports are available, proactively offer: "I see you have completed [assessment name]. Would you like to review your results and insights?"
-4. If user agrees, use tms_debrief_report to load and begin the assessment-specific debrief flow
+4. If user agrees, DO NOT load the full report immediately. Instead:
+   - Skip directly to gathering objectives
+   - Only use tms_debrief_report when specific data is needed
+   - Prioritize conversation flow over data completeness
 5. If no completed reports available, inform user: "I don't see any completed assessments ready for debrief. Would you like me to check your assessment status?"
+
+## Performance Guidelines
+- Target: <5 second response time after user confirms debrief
+- Never load entire report upfront - use progressive loading
+- Skip redundant subscription checks if already performed
+- Focus on natural conversation flow
 
 ## Core Objectives
 1. Proactively detect and offer to debrief completed assessments
@@ -583,19 +592,8 @@ Remember: Your goal is to make assessment results meaningful and actionable for 
           key_outputs: ["selected_assessment"]
         },
         
-        // TMP Specific States
-        {
-          name: "tmp_report_load",
-          description: "Load TMP report and extract profile information",
-          objectives: ["Load HTML report", "Extract profile data", "Store as $PROFILE"],
-          key_outputs: ["profile_data", "major_role", "related_roles", "net_scores"]
-        },
-        {
-          name: "tmp_profile_display",
-          description: "Display TMP profile summary",
-          objectives: ["Show Major/Related roles", "Display net scores", "Highlight key points"],
-          key_outputs: ["profile_displayed"]
-        },
+        // TMP Specific States - Optimized for Performance
+        // Removed tmp_report_load and tmp_profile_display to avoid upfront loading
         {
           name: "tmp_objectives",
           description: "Gather user's debrief objectives",
@@ -700,24 +698,12 @@ Remember: Your goal is to make assessment results meaningful and actionable for 
           action: "present_available_reports"
         },
         
-        // TMP Flow Transitions
+        // TMP Flow Transitions - Optimized to skip report loading
         {
           from: "debrief_intro",
-          to: "tmp_report_load",
-          condition: "tmp_selected",
-          action: "load_tmp_report"
-        },
-        {
-          from: "tmp_report_load",
-          to: "tmp_profile_display",
-          condition: "tmp_loaded",
-          action: "display_profile"
-        },
-        {
-          from: "tmp_profile_display",
           to: "tmp_objectives",
-          condition: "profile_acknowledged",
-          action: "gather_objectives"
+          condition: "tmp_selected",
+          action: "start_objectives_gathering"
         },
         {
           from: "tmp_objectives",
