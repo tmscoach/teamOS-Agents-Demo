@@ -1,15 +1,42 @@
 import { OpenAIDebriefAgent } from '../openai-debrief-agent';
 import { AgentContext } from '../../types';
 
+// Mock the LLM provider to avoid OpenAI instantiation
+jest.mock('../../llm', () => ({
+  LLMProvider: jest.fn().mockImplementation(() => ({
+    createChatCompletion: jest.fn(),
+    createStreamingChatCompletion: jest.fn(),
+  })),
+}));
+
+// Mock the agent config loader
+jest.mock('../../config/agent-config-loader', () => ({
+  AgentConfigLoader: {
+    loadConfiguration: jest.fn().mockResolvedValue(null),
+  },
+}));
+
+// Mock the TMS tool factory
+jest.mock('../../tools/tms-tool-factory', () => ({
+  createTMSTools: jest.fn().mockResolvedValue([]),
+}));
+
+// Mock the TMS tool registry
+jest.mock('../../tools/tms-tool-registry', () => ({
+  getToolsForAgent: jest.fn().mockReturnValue([]),
+}));
+
+// Mock the knowledge base tools
+jest.mock('../../../knowledge-base', () => ({
+  knowledgeBaseTools: [],
+}));
+
 describe('OpenAIDebriefAgent', () => {
   let agent: OpenAIDebriefAgent;
   let mockContext: AgentContext;
 
   beforeEach(() => {
-    agent = new OpenAIDebriefAgent({
-      apiKey: 'test-key',
-      tools: {},
-    });
+    agent = new OpenAIDebriefAgent();
 
     mockContext = {
       conversationId: 'test-123',
@@ -39,7 +66,7 @@ describe('OpenAIDebriefAgent', () => {
       const result = agent['buildSystemMessage'](mockContext);
 
       expect(result).not.toContain('IMMEDIATELY use tms_get_dashboard_subscriptions');
-      expect(result).toContain('Wait for specific instructions about when to check for assessments');
+      expect(result).toContain('Check for completed assessments when instructed by the system');
       expect(result).toContain('You are the Debrief Agent');
       expect(result).toContain('Other instructions here');
 
@@ -61,7 +88,7 @@ describe('OpenAIDebriefAgent', () => {
       // Should not contain any instance of the instruction
       expect(result.match(/IMMEDIATELY use tms_get_dashboard_subscriptions/g)).toBeNull();
       // Should contain two instances of the replacement
-      const replacements = result.match(/Wait for specific instructions about when to check for assessments/g);
+      const replacements = result.match(/Check for completed assessments when instructed by the system/g);
       expect(replacements).toHaveLength(2);
 
       parentBuildSystemMessage.mockRestore();
