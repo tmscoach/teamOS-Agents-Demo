@@ -551,7 +551,12 @@ export default function AgentConfigPage() {
               <button
                 onClick={() => {
                   // Navigate to chat with this agent, forcing a new conversation
-                  window.open('/chat?agent=' + selectedAgent + '&new=true', '_blank');
+                  if (selectedAgent === 'DebriefAgent') {
+                    // Use specialized debrief interface
+                    window.open('/chat/debrief?agent=' + selectedAgent + '&reportType=TMP&subscriptionId=21989&new=true', '_blank');
+                  } else {
+                    window.open('/chat?agent=' + selectedAgent + '&new=true', '_blank');
+                  }
                 }}
                 style={{
                   padding: '10px 20px',
