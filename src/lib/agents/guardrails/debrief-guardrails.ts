@@ -129,7 +129,7 @@ export class DebriefGuardrails {
             } else {
               // In production, verify against real database
               // This would need proper implementation based on your subscription model
-              const { default: prisma } = await import('@/lib/db');
+              const { default: prisma } = await import('../../../../lib/db');
               
               // Check if user has access through their team
               const user = await prisma.user.findUnique({
