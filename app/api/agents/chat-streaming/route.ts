@@ -371,7 +371,7 @@ export async function POST(req: NextRequest) {
     // Special handling for DebriefAgent
     if (context.currentAgent === 'DebriefAgent') {
       // First message - inject subscription check instruction
-      if (context.messageCount === 0 || userMessageContent === '[User joined the conversation]') {
+      if (conversationMessages.length === 0 || userMessageContent === '[User joined the conversation]') {
         console.log(`[${context.currentAgent}] First message detected - injecting subscription check instruction`);
         userMessageContent = `The user has just joined the conversation. Please check what completed assessments they have available for debrief.
 

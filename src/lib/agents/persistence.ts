@@ -223,6 +223,39 @@ export class ConversationStore {
   }
 
   /**
+   * Get a conversation (alias for loadConversation)
+   */
+  async getConversation(conversationId: string) {
+    const result = await this.loadConversation(conversationId);
+    if (!result) return null;
+    
+    return {
+      ...result.context,
+      context: result.context,
+      userId: result.context.managerId
+    };
+  }
+
+  /**
+   * Get messages for a conversation
+   */
+  async getMessages(conversationId: string): Promise<Message[]> {
+    const messages = await this.prisma.message.findMany({
+      where: { conversationId },
+      orderBy: { timestamp: 'asc' }
+    });
+
+    return messages.map((msg: any) => ({
+      id: msg.id,
+      role: msg.role as Message['role'],
+      content: msg.content,
+      agent: msg.agent || undefined,
+      timestamp: msg.timestamp,
+      metadata: msg.metadata as Record<string, any> | undefined,
+    }));
+  }
+
+  /**
    * Update conversation context
    */
   async updateContext(

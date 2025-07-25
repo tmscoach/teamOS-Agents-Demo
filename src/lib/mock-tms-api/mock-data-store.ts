@@ -173,8 +173,37 @@ class MockDataStore {
   }
 
   getUserByToken(token: string): MockUser | undefined {
+    // First try direct token lookup
     const userId = this.tokenToUser.get(token);
-    return userId ? this.users.get(userId) : undefined;
+    if (userId) {
+      return this.users.get(userId);
+    }
+
+    // If not found, try to decode JWT and find user by ID
+    try {
+      const mockClient = new (require('./mock-api-client').MockTMSAPIClient)();
+      const claims = mockClient.decodeJWT(token);
+      if (claims && claims.sub) {
+        // Try to find user by ID from JWT sub claim
+        const user = this.users.get(claims.sub);
+        if (user) {
+          // Cache this token for future lookups
+          this.tokenToUser.set(token, user.id);
+          return user;
+        }
+        
+        // Try to find user by clerkUserId if sub is a clerk ID
+        const userByClerk = this.getUserByClerkId(claims.sub);
+        if (userByClerk) {
+          this.tokenToUser.set(token, userByClerk.id);
+          return userByClerk;
+        }
+      }
+    } catch (error) {
+      console.log('Failed to decode JWT:', error);
+    }
+    
+    return undefined;
   }
 
   getUser(userId: string): MockUser | undefined {

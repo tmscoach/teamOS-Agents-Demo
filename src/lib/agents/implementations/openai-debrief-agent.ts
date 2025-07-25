@@ -180,7 +180,6 @@ Remember: The goal is a <5 second response time after user confirms. Prioritize 
     console.log(`[${this.name}] Processing message:`, {
       message,
       conversationId: context.conversationId,
-      messageCount: context.messageCount,
       messageHistoryLength: context.messageHistory?.length || 0,
       managerId: context.managerId,
       organizationId: context.organizationId,
@@ -199,7 +198,7 @@ Remember: The goal is a <5 second response time after user confirms. Prioritize 
     }
     
     // Check if this is a confirmation message after we've already offered a debrief
-    const isConfirmation = context.messageCount > 0 && (
+    const isConfirmation = (context.messageHistory?.length || 0) > 0 && (
       message.toLowerCase().includes('yes') || 
       message.toLowerCase().includes('please') ||
       message.toLowerCase().includes('start') ||
@@ -239,7 +238,7 @@ User message: ${message}`;
     }
     
     // Check if this is the start of a conversation
-    if (!context.conversationId || context.messageCount === 0 || message.includes('[User joined')) {
+    if (!context.conversationId || (context.messageHistory?.length || 0) === 0 || message.includes('[User joined')) {
       // Add instruction to check for available reports
       const checkReportsPrompt = `The user has just joined the conversation. Please check what completed assessments they have available for debrief.
 
