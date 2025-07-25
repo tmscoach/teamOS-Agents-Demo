@@ -3,6 +3,13 @@
  * Parses HTML reports from TMS API into structured data for display
  */
 
+export interface ReportSection {
+  id: string;
+  title: string;
+  content: string;
+  html: string;
+}
+
 export interface ParsedReport {
   type: 'TMP' | 'QO2' | 'TeamSignals';
   title: string;
@@ -26,6 +33,7 @@ export interface ParsedReport {
   };
   subscriptionId?: string;
   rawHtml?: string;
+  sections?: ReportSection[];
 }
 
 export class ReportParser {
@@ -68,12 +76,17 @@ export class ReportParser {
       credits: {
         amount: 5000,
         badge: 'First Profile'
-      }
+      },
+      sections: []
     };
 
     // Extract profile information
-    // Look for major role section
-    const majorRoleElement = doc.querySelector('h2:contains("Major Role"), .major-role, [class*="major"]');
+    // Look for major role section - search through h2 elements
+    const h2Elements = Array.from(doc.querySelectorAll('h2'));
+    const majorRoleElement = h2Elements.find(h2 => 
+      h2.textContent?.includes('Major Role')
+    ) || doc.querySelector('.major-role, [class*="major"]');
+    
     if (majorRoleElement) {
       const roleText = majorRoleElement.nextElementSibling?.textContent || majorRoleElement.textContent || '';
       report.profile.majorRole = roleText.trim();
@@ -86,7 +99,10 @@ export class ReportParser {
     }
 
     // Extract related roles
-    const relatedRolesSection = doc.querySelector('h2:contains("Related Roles"), .related-roles');
+    const relatedRolesSection = h2Elements.find(h2 => 
+      h2.textContent?.includes('Related Roles')
+    ) || doc.querySelector('.related-roles');
+    
     if (relatedRolesSection) {
       const rolesList = relatedRolesSection.nextElementSibling;
       if (rolesList) {
@@ -97,7 +113,10 @@ export class ReportParser {
     }
 
     // Extract scores (Net Scores section)
-    const scoresSection = doc.querySelector('h2:contains("Net Scores"), .net-scores');
+    const scoresSection = h2Elements.find(h2 => 
+      h2.textContent?.includes('Net Scores')
+    ) || doc.querySelector('.net-scores');
+    
     if (scoresSection) {
       const scoresTable = scoresSection.nextElementSibling;
       if (scoresTable && scoresTable.tagName === 'TABLE') {
@@ -116,7 +135,10 @@ export class ReportParser {
     }
 
     // Extract key points/insights
-    const keyPointsSection = doc.querySelector('h2:contains("Key Points"), .key-points, h2:contains("Leadership Strengths")');
+    const keyPointsSection = h2Elements.find(h2 => 
+      h2.textContent?.includes('Key Points') || h2.textContent?.includes('Leadership Strengths')
+    ) || doc.querySelector('.key-points');
+    
     if (keyPointsSection) {
       const pointsList = keyPointsSection.nextElementSibling;
       if (pointsList) {
@@ -136,6 +158,31 @@ export class ReportParser {
       reading: 'Creative Leadership',
       goals: '2x Weekly challenges'
     };
+
+    // Extract all sections from the report
+    const sections = Array.from(doc.querySelectorAll('section')).map(section => {
+      const title = section.querySelector('h2')?.textContent?.trim() || '';
+      const content = section.textContent?.trim() || '';
+      const html = section.innerHTML;
+      
+      return {
+        id: section.id || title.toLowerCase().replace(/\s+/g, '-'),
+        title,
+        content,
+        html
+      };
+    }).filter(section => section.title); // Only include sections with titles
+    
+    report.sections = sections;
+
+    // Extract insights from key points section if available from sections
+    const keyPointsSectionFromSections = sections.find(s => s.id === 'keypoints' || s.title.includes('Key Points'));
+    if (keyPointsSectionFromSections && report.insights.length === 0) {
+      const listItems = Array.from(doc.querySelectorAll(`#${keyPointsSectionFromSections.id} li`));
+      if (listItems.length > 0) {
+        report.insights = listItems.map(li => li.textContent?.trim() || '').filter(Boolean);
+      }
+    }
 
     // Store raw HTML for reference
     report.rawHtml = doc.body.innerHTML;

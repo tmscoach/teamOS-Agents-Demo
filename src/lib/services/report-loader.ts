@@ -59,8 +59,9 @@ export class ReportLoader {
       // Parse the HTML into structured data
       const parsedReport = ReportParser.parseHtmlReport(html, reportType);
       
-      // Add subscription ID to the parsed report
+      // Add subscription ID and raw HTML to the parsed report
       parsedReport.subscriptionId = subscriptionId;
+      parsedReport.rawHtml = html;
       
       return parsedReport;
     } catch (error) {
@@ -70,6 +71,25 @@ export class ReportLoader {
       // Return fallback data for development
       const fallbackReport = this.getFallbackReport(reportType);
       fallbackReport.subscriptionId = subscriptionId;
+      
+      // Add some basic sections for testing
+      if (!fallbackReport.sections) {
+        fallbackReport.sections = [
+          {
+            id: 'overview',
+            title: 'Overview',
+            content: fallbackReport.profile.description || '',
+            html: `<h2>Overview</h2><p>${fallbackReport.profile.description || ''}</p>`
+          },
+          {
+            id: 'key-insights',
+            title: 'Key Insights',
+            content: fallbackReport.insights.join(' '),
+            html: `<h2>Key Insights</h2><ul>${fallbackReport.insights.map(i => `<li>${i}</li>`).join('')}</ul>`
+          }
+        ];
+      }
+      
       return fallbackReport;
     }
   }

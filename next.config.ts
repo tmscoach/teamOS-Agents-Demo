@@ -7,6 +7,20 @@ const nextConfig: NextConfig = {
     // TODO: Fix ESLint warnings and remove this configuration
     ignoreDuringBuilds: true,
   },
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'api-test.tms.global',
+        pathname: '/**',
+      },
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+        pathname: '/**',
+      }
+    ],
+  },
 }
 
 export default nextConfig

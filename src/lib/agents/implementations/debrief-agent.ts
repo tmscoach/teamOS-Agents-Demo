@@ -1,5 +1,6 @@
 import { TMSEnabledAgent } from './tms-enabled-agent';
 import { AgentContext, AgentResponse } from '../types';
+import { formatDebriefContext } from '../hooks/use-debrief-context';
 
 export class DebriefAgent extends TMSEnabledAgent {
   constructor() {
@@ -60,6 +61,21 @@ Remember to:
         condition: () => true
       }]
     });
+  }
+
+  /**
+   * Override to add debrief-specific context
+   */
+  protected buildSystemMessage(context: AgentContext): string {
+    const baseMessage = super.buildSystemMessage(context);
+    
+    // Add debrief-specific context if available
+    if (context.metadata?.isDebriefMode) {
+      const debriefContext = formatDebriefContext(context);
+      return `${baseMessage}\n\nContext: ${debriefContext}`;
+    }
+    
+    return baseMessage;
   }
 }
 

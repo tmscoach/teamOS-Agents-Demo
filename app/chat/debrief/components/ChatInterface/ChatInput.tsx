@@ -7,6 +7,7 @@ interface ChatInputProps {
   value: string;
   onChange: (value: string) => void;
   onSubmit: () => void;
+  onKeyPress?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
   disabled: boolean;
   placeholder: string;
   expanded: boolean;
@@ -15,7 +16,8 @@ interface ChatInputProps {
 export default function ChatInput({ 
   value, 
   onChange, 
-  onSubmit, 
+  onSubmit,
+  onKeyPress, 
   disabled, 
   placeholder,
   expanded 
@@ -29,16 +31,10 @@ export default function ChatInput({
 
   return (
     <form onSubmit={handleSubmit} className="w-full">
-      <div 
-        className="relative flex items-center gap-2 w-full bg-white rounded-md"
-        style={{
-          // Container for gradient border effect
-          padding: '2px'
-        }}
-      >
-        {/* Gradient Border */}
+      <div className="relative w-full">
+        {/* Gradient border wrapper */}
         <div 
-          className="absolute inset-0 rounded-md pointer-events-none"
+          className="absolute inset-0 rounded-md p-0.5"
           style={{
             background: `linear-gradient(152deg,
               rgba(255,243,3,1) 0%,
@@ -49,25 +45,21 @@ export default function ChatInput({
               rgba(2,181,230,1) 75%,
               rgba(1,161,114,1) 90%,
               rgba(162,211,111,1) 100%
-            )`,
-            // Mask technique for hollow border
-            WebkitMask: 'linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)',
-            WebkitMaskComposite: 'xor',
-            maskComposite: 'exclude',
-            padding: '2px'
+            )`
           }}
         />
         
-        {/* Input Content */}
-        <div className="relative flex items-center gap-2 w-full bg-white rounded-md px-3 py-2">
+        {/* Inner content */}
+        <div className="relative flex items-center gap-2 bg-white rounded-md px-3 py-2">
           <OscarIcon />
           <input
             type="text"
             value={value}
             onChange={(e) => onChange(e.target.value)}
+            onKeyPress={onKeyPress}
             placeholder={placeholder}
             disabled={disabled}
-            className="flex-1 text-sm text-gray-600 placeholder:text-gray-400 focus:outline-none bg-transparent"
+            className="flex-1 text-sm text-[#6b7280] placeholder:text-[#9ca3af] focus:outline-none bg-transparent font-['Inter',Helvetica] font-normal tracking-[0] leading-6"
           />
           {expanded && value.trim() && (
             <button

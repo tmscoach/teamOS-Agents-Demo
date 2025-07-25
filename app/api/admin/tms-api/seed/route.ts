@@ -58,9 +58,14 @@ export async function POST() {
 
     // Also create a user entry for the current logged-in Clerk user
     // This allows the DebriefAgent to find subscriptions for the actual user
-    // Use a known email that matches what's in the JWT token
-    const currentUserEmail = "rowan@teammanagementsystems.com"; // This matches the JWT token email
-    const currentUserName = session.sessionClaims?.name || session.sessionClaims?.firstName || "Rowan McCann";
+    // Get the actual email from session claims or use a default
+    const currentUserEmail = String(session.sessionClaims?.email || 
+                           session.sessionClaims?.primaryEmail || 
+                           "rowan@teammanagementsystems.com");
+    const currentUserName = String(session.sessionClaims?.name || 
+                          session.sessionClaims?.firstName || 
+                          session.sessionClaims?.fullName ||
+                          "Test User");
     const [firstName, ...lastNameParts] = currentUserName.split(' ');
     const lastName = lastNameParts.join(' ') || 'User';
     
@@ -79,7 +84,8 @@ export async function POST() {
     console.log('Seed: Created current user:', {
       id: currentUser.id,
       email: currentUser.email,
-      clerkUserId: session.userId
+      clerkUserId: session.userId,
+      sessionEmail: session.sessionClaims?.email
     });
 
     // Create test subscriptions with recorded IDs

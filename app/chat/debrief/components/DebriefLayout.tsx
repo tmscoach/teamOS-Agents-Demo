@@ -38,12 +38,14 @@ export default function DebriefLayout({ agentName, reportType, reportData }: Deb
 
       {/* Scrollable Content Area */}
       <div className="pt-[108px] pb-20 h-full overflow-y-auto bg-[#f1f5f94c]">
-        <div className="max-w-[1280px] mx-auto px-10 py-8">
-          <ReportViewer 
-            reportType={reportType} 
-            reportData={reportData}
-            onSectionChange={setVisibleSection}
-          />
+        <div className="w-full flex justify-center px-10 py-8">
+          <div className="flex flex-col gap-2.5">
+            <ReportViewer 
+              reportType={reportType} 
+              reportData={reportData}
+              onSectionChange={setVisibleSection}
+            />
+          </div>
         </div>
       </div>
 
@@ -54,6 +56,7 @@ export default function DebriefLayout({ agentName, reportType, reportData }: Deb
         visibleSection={visibleSection}
         expanded={chatExpanded}
         onToggle={() => setChatExpanded(!chatExpanded)}
+        reportData={reportData}
       />
     </div>
   );

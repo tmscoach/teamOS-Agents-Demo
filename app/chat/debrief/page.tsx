@@ -15,7 +15,7 @@ function DebriefPageLoading() {
   );
 }
 
-export default function DebriefPage() {
+function DebriefPageContent() {
   const searchParams = useSearchParams();
   const agentName = searchParams.get('agent') || 'DebriefAgent';
   const reportType = searchParams.get('reportType') || 'TMP';
@@ -52,24 +52,30 @@ export default function DebriefPage() {
     return <DebriefPageLoading />;
   }
 
-  if (error) {
+  if (error || !reportData) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="text-red-500">
           <p className="text-lg font-semibold">Error</p>
-          <p>{error}</p>
+          <p>{error || 'Failed to load report data'}</p>
         </div>
       </div>
     );
   }
 
   return (
+    <DebriefLayout 
+      agentName={agentName}
+      reportType={reportType as 'TMP' | 'QO2' | 'TeamSignals'}
+      reportData={reportData}
+    />
+  );
+}
+
+export default function DebriefPage() {
+  return (
     <Suspense fallback={<DebriefPageLoading />}>
-      <DebriefLayout 
-        agentName={agentName}
-        reportType={reportType as 'TMP' | 'QO2' | 'TeamSignals'}
-        reportData={reportData}
-      />
+      <DebriefPageContent />
     </Suspense>
   );
 }
