@@ -153,19 +153,27 @@ Remember: The goal is a <5 second response time after user confirms. Prioritize 
     
     // CRITICAL: Remove the auto-check instruction from the system message
     // This prevents the agent from immediately checking subscriptions before our processMessage logic
+    // The subscription checking is handled in processMessage() for better control
+    
+    // Replace the immediate check instruction with a controlled approach
     systemMessage = systemMessage.replace(
       /IMMEDIATELY use tms_get_dashboard_subscriptions to check for completed assessments/g,
-      'Wait for specific instructions about when to check for assessments'
+      'Check for completed assessments when instructed by the system'
     );
     
-    // Also remove any other variations of immediate checking
+    // Handle multi-line variations - use a more specific replacement
     systemMessage = systemMessage.replace(
       /When conversation starts:\s*\n\s*1\.\s*IMMEDIATELY use tms_get_dashboard_subscriptions/g,
-      'When conversation starts:\n1. Wait for specific instructions'
+      'When conversation starts:\n1. Check for assessments when instructed'
     );
     
-    console.log(`[${this.name}] Modified system message length:`, systemMessage.length);
-    console.log(`[${this.name}] System message preview after modification:`, systemMessage.substring(0, 500));
+    // Log the actual changes made (avoiding truncation in console)
+    const changes = {
+      originalLength: systemMessage.length,
+      immediateCheckRemoved: !systemMessage.includes('IMMEDIATELY use tms_get_dashboard_subscriptions'),
+      modifiedLength: systemMessage.length
+    };
+    console.log(`[${this.name}] System message modification complete:`, changes);
     
     return systemMessage;
   }
