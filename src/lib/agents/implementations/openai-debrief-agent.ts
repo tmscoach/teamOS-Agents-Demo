@@ -181,7 +181,10 @@ Remember: The goal is a <5 second response time after user confirms. Prioritize 
       message,
       conversationId: context.conversationId,
       messageCount: context.messageCount,
-      messageHistoryLength: context.messageHistory?.length || 0
+      messageHistoryLength: context.messageHistory?.length || 0,
+      managerId: context.managerId,
+      organizationId: context.organizationId,
+      userRole: context.userRole
     });
     
     // Debug message history
@@ -238,13 +241,17 @@ User message: ${message}`;
     // Check if this is the start of a conversation
     if (!context.conversationId || context.messageCount === 0 || message.includes('[User joined')) {
       // Add instruction to check for available reports
-      const checkReportsPrompt = `REMINDER: This is the start of a new conversation. 
-You MUST immediately use tms_get_dashboard_subscriptions to check for completed assessments.
-After checking, proactively offer to debrief any completed assessments you find.
+      const checkReportsPrompt = `The user has just joined the conversation. Please check what completed assessments they have available for debrief.
+
+IMPORTANT: Use tms_get_dashboard_subscriptions to check for completed assessments. Filter for assessments with status "Completed" that haven't been debriefed yet.
+
+If completed reports are available, proactively offer: "I see you have completed [assessment name]. Would you like to review your results and insights?"
+
+If no completed reports available, inform user: "I don't see any completed assessments ready for debrief. Would you like me to check your assessment status?"
 
 User message: ${message}`;
       
-      console.log(`[${this.name}] First message - checking for subscriptions`);
+      console.log(`[${this.name}] First message - adding instruction to check for subscriptions`);
       
       return super.processMessage(checkReportsPrompt, context);
     }
