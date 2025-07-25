@@ -32,19 +32,10 @@ export class OpenAIDebriefAgent extends OpenAIAgent {
       handoffDescription: 'Let me provide insights from your completed assessment',
       inputGuardrails: guardrails,
       instructions: () => {
-        // Get system prompt from config
-        let configPrompt = this.loadedConfig?.systemPrompt || 
-          `You are the TMS Debrief Agent. Your role is to provide comprehensive debriefs for completed assessments.`;
+        // This is only used when there's no loaded config
+        // The actual system prompt modification happens in buildSystemMessage()
+        return `You are the TMS Debrief Agent. Your role is to provide comprehensive debriefs for completed assessments.
         
-        // CRITICAL: Remove the auto-check instruction from config to prevent duplicate checks
-        configPrompt = configPrompt.replace(
-          /IMMEDIATELY use tms_get_dashboard_subscriptions to check for completed assessments/g,
-          'Wait for specific instructions about when to check for assessments'
-        );
-        
-        // Add TMP debrief instructions
-        const tmpDebriefInstructions = `
-
 ## TMP Debrief Flow - Optimized for Conversational Experience
 
 When conducting a TMP debrief, focus on creating a natural conversation:
@@ -74,8 +65,6 @@ When conducting a TMP debrief, focus on creating a natural conversation:
    - Thank the user and note how this information will guide their journey
 
 Remember: The goal is a <5 second response time after user confirms. Prioritize conversation flow over data completeness.`;
-        
-        return configPrompt + tmpDebriefInstructions;
       },
       tools: [],
       handoffs: [{
@@ -150,6 +139,35 @@ Remember: The goal is a <5 second response time after user confirms. Prioritize 
     } catch (error) {
       console.error(`[${this.name}] Failed to load TMS tools:`, error);
     }
+  }
+  
+  /**
+   * Override buildSystemMessage to modify the loaded configuration prompt
+   */
+  protected buildSystemMessage(context: AgentContext): string {
+    // First call the parent method to get the base system message
+    let systemMessage = super.buildSystemMessage(context);
+    
+    console.log(`[${this.name}] Original system message length:`, systemMessage.length);
+    console.log(`[${this.name}] System message preview before modification:`, systemMessage.substring(0, 500));
+    
+    // CRITICAL: Remove the auto-check instruction from the system message
+    // This prevents the agent from immediately checking subscriptions before our processMessage logic
+    systemMessage = systemMessage.replace(
+      /IMMEDIATELY use tms_get_dashboard_subscriptions to check for completed assessments/g,
+      'Wait for specific instructions about when to check for assessments'
+    );
+    
+    // Also remove any other variations of immediate checking
+    systemMessage = systemMessage.replace(
+      /When conversation starts:\s*\n\s*1\.\s*IMMEDIATELY use tms_get_dashboard_subscriptions/g,
+      'When conversation starts:\n1. Wait for specific instructions'
+    );
+    
+    console.log(`[${this.name}] Modified system message length:`, systemMessage.length);
+    console.log(`[${this.name}] System message preview after modification:`, systemMessage.substring(0, 500));
+    
+    return systemMessage;
   }
 
   /**
