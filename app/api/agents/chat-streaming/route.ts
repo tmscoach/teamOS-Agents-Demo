@@ -366,7 +366,79 @@ export async function POST(req: NextRequest) {
     }));
 
     // Handle empty message (initial greeting)
-    const userMessageContent = message || '[User joined the conversation]';
+    let userMessageContent = message || '[User joined the conversation]';
+    
+    // Special handling for DebriefAgent
+    if (context.currentAgent === 'DebriefAgent') {
+      // First message - inject subscription check instruction
+      if (context.messageCount === 0 || userMessageContent === '[User joined the conversation]') {
+        console.log(`[${context.currentAgent}] First message detected - injecting subscription check instruction`);
+        userMessageContent = `The user has just joined the conversation. Please check what completed assessments they have available for debrief.
+
+IMPORTANT: Use tms_get_dashboard_subscriptions to check for completed assessments. Filter for assessments with status "Completed" that haven't been debriefed yet.
+
+If completed reports are available, proactively offer: "I see you have completed [assessment name]. Would you like to review your results and insights?"
+
+If no completed reports available, inform user: "I don't see any completed assessments ready for debrief. Would you like me to check your assessment status?"
+
+User message: ${userMessageContent}`;
+      }
+      // Check if user is confirming after we've offered a debrief
+      else if (context.messageHistory?.length > 0) {
+        const lastAssistantMessage = [...context.messageHistory].reverse().find(msg => msg.role === 'assistant');
+        const isConfirmation = message && (
+          message.toLowerCase().includes('yes') || 
+          message.toLowerCase().includes('please') ||
+          message.toLowerCase().includes('start') ||
+          message.toLowerCase().includes('let\'s') ||
+          message.toLowerCase().includes('sure') ||
+          message.toLowerCase().includes('go ahead')
+        );
+        const hasOfferedDebrief = lastAssistantMessage?.content && (
+          lastAssistantMessage.content.includes('I see you have completed') ||
+          lastAssistantMessage.content.includes('Team Management Profile (TMP) assessment')
+        );
+        
+        if (isConfirmation && hasOfferedDebrief) {
+          console.log(`[${context.currentAgent}] User confirmed debrief - injecting skip-to-objectives instruction`);
+          
+          // Extract subscription ID from previous messages
+          let subscriptionId = null;
+          for (const msg of context.messageHistory) {
+            if (msg.content) {
+              // Look for subscription ID in tool results - try multiple patterns
+              const patterns = [
+                /"SubscriptionID":\s*(\d+)/,
+                /SubscriptionID":\s*(\d+)/,
+                /subscriptionId":\s*"?(\d+)"?/,
+                /subscription.*?(\d{5})/i  // Match any 5-digit number after "subscription"
+              ];
+              
+              for (const pattern of patterns) {
+                const match = msg.content.match(pattern);
+                if (match) {
+                  subscriptionId = match[1];
+                  console.log(`[${context.currentAgent}] Found subscription ID: ${subscriptionId}`);
+                  break;
+                }
+              }
+              
+              if (subscriptionId) break;
+            }
+          }
+          
+          userMessageContent = `The user has confirmed they want to start the TMP debrief. 
+DO NOT check subscriptions again - we already know they have a completed TMP assessment${subscriptionId ? ` with subscription ID: ${subscriptionId}` : ''}.
+Go directly to the debrief flow starting with: "Great! The purpose of our session is to learn more about yourself, explore your personal team management profile, and use that information as a catalyst to review and fine-tune how you work. To get started, what are your main objectives from the debrief session today?"
+
+DO NOT use tms_get_dashboard_subscriptions.
+DO NOT load the full report yet. Only load report data when needed to answer specific questions.
+${subscriptionId ? `IMPORTANT: When using tms_debrief_report, always include subscriptionId: '${subscriptionId}' in your parameters.` : ''}
+
+User message: ${message}`;
+        }
+      }
+    }
 
     console.log(`[${context.currentAgent}] Message history:`, conversationMessages.length, 'messages');
     console.log(`[${context.currentAgent}] User message:`, userMessageContent);

@@ -441,7 +441,7 @@ export const TMS_TOOL_REGISTRY: Record<string, TMSToolDefinition> = {
 
   tms_debrief_report: {
     name: 'tms_debrief_report',
-    description: 'Interactive debrief of assessment report with Q&A capability',
+    description: 'Interactive debrief of assessment report with Q&A capability. ALWAYS include subscriptionId from tms_get_dashboard_subscriptions',
     category: 'debrief',
     endpoint: '/api/v1/tms/debrief-report',
     method: 'POST',
@@ -451,7 +451,7 @@ export const TMS_TOOL_REGISTRY: Record<string, TMSToolDefinition> = {
       properties: {
         subscriptionId: {
           type: 'string',
-          description: 'The subscription ID for the completed assessment'
+          description: 'REQUIRED: The subscription ID for the completed assessment (e.g., "21989")'
         },
         query: {
           type: 'string',

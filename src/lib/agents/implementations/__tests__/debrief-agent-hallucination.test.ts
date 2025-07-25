@@ -35,7 +35,8 @@ describe('DebriefAgent Hallucination Fix', () => {
       teamId: 'team-123',
       transformationPhase: 'transformation',
       currentAgent: 'DebriefAgent',
-      messageHistory: []
+      messageHistory: [],
+      metadata: {}
     };
   });
 
@@ -78,7 +79,7 @@ describe('DebriefAgent Hallucination Fix', () => {
       const response = await agent.processMessage('What does ICAF stand for?', mockContext);
       
       // Verify knowledge base was searched
-      expect(mockSearchService.search).toHaveBeenCalledWith(
+      expect(mockSearchInstance.search).toHaveBeenCalledWith(
         expect.stringContaining('ICAF'),
         expect.objectContaining({ minRelevance: 0.3 })
       );
@@ -157,7 +158,7 @@ describe('DebriefAgent Hallucination Fix', () => {
       await agent.processMessage('Tell me about TMP dimensions', mockContext);
       
       // Verify search was called with lower threshold
-      expect(mockSearchService.search).toHaveBeenCalledWith(
+      expect(mockSearchInstance.search).toHaveBeenCalledWith(
         expect.any(String),
         expect.objectContaining({ minRelevance: 0.3 })
       );
