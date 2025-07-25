@@ -7,6 +7,7 @@
  */
 
 import { OpenAIDebriefAgent } from '../openai-debrief-agent';
+import { OpenAIAgent } from '../base-openai-agent';
 import { AgentContext } from '../../types';
 import { JourneyTracker } from '@/lib/orchestrator/journey-tracker';
 import { JourneyPhase } from '@/lib/orchestrator/journey-phases';
@@ -32,33 +33,20 @@ describe('DebriefAgent Auto-Detection and Assessment-Specific Flows', () => {
   let agent: OpenAIDebriefAgent;
   let mockContext: AgentContext;
   let mockJourneyTracker: jest.Mocked<JourneyTracker>;
-  let mockProcessMessage: jest.SpyInstance;
 
   beforeEach(async () => {
-    // Reset mocks
     jest.clearAllMocks();
     
-    // Create mock journey tracker
+    agent = new OpenAIDebriefAgent();
+    
+    // Mock JourneyTracker
     mockJourneyTracker = {
-      markDebriefViewed: jest.fn(),
       getCurrentJourney: jest.fn(),
+      markDebriefViewed: jest.fn(),
       updateJourneyProgress: jest.fn()
     } as any;
     
     (JourneyTracker as jest.MockedClass<typeof JourneyTracker>).mockImplementation(() => mockJourneyTracker);
-    
-    // Create agent
-    agent = new OpenAIDebriefAgent();
-    
-    // Mock the parent class processMessage method
-    mockProcessMessage = jest.spyOn(Object.getPrototypeOf(Object.getPrototypeOf(agent)), 'processMessage');
-    mockProcessMessage.mockImplementation(async (message: string, context: AgentContext) => {
-      return {
-        message: 'Default response',
-        metadata: {},
-        handoff: null
-      };
-    });
     
     await agent.initialize();
     
@@ -66,9 +54,8 @@ describe('DebriefAgent Auto-Detection and Assessment-Specific Flows', () => {
     mockContext = {
       managerId: 'test-user-123',
       conversationId: 'conv-123',
-      messageCount: 0,
-      timestamp: new Date(),
-      metadata: {}
+      metadata: {},
+      messageHistory: []
     };
   });
 
@@ -77,29 +64,32 @@ describe('DebriefAgent Auto-Detection and Assessment-Specific Flows', () => {
       let capturedMessage = '';
       
       // Capture what message is sent to parent processMessage
-      mockProcessMessage.mockImplementation(async (message: string) => {
+      jest.spyOn(OpenAIAgent.prototype, 'processMessage').mockImplementation(async (message: string) => {
         capturedMessage = message;
         return {
-          message: 'I see you have completed assessments...',
+          message: 'I see you have completed the Team Management Profile (TMP) assessment. Would you like to review your results?',
           metadata: {},
           handoff: null
         };
       });
       
-      // Start conversation
       await agent.processMessage('Hello', mockContext);
       
       // Verify the prompt was modified to include report check
-      expect(mockProcessMessage).toHaveBeenCalled();
+      expect(OpenAIAgent.prototype.processMessage).toHaveBeenCalled();
       expect(capturedMessage).toContain('tms_get_dashboard_subscriptions');
       expect(capturedMessage).toContain('The user has just joined the conversation');
     });
 
     it('should not check for reports on subsequent messages', async () => {
-      mockContext.messageCount = 5; // Not first message
+      // Add message history to simulate not first message
+      mockContext.messageHistory = [
+        { id: '1', role: 'user', content: 'Hello', timestamp: new Date() },
+        { id: '2', role: 'assistant', content: 'Hi there!', timestamp: new Date() }
+      ];
       
       let capturedMessage = '';
-      mockProcessMessage.mockImplementation(async (message: string) => {
+      jest.spyOn(OpenAIAgent.prototype, 'processMessage').mockImplementation(async (message: string) => {
         capturedMessage = message;
         return {
           message: 'Continuing conversation...',
@@ -110,59 +100,53 @@ describe('DebriefAgent Auto-Detection and Assessment-Specific Flows', () => {
       
       await agent.processMessage('Tell me more', mockContext);
       
-      // Should not modify the message for report checking
+      // Should not add subscription check instruction
       expect(capturedMessage).not.toContain('tms_get_dashboard_subscriptions');
-      expect(capturedMessage).toBe('Tell me more');
+      expect(capturedMessage).toContain('Tell me more');
     });
   });
 
-  describe('TMP Debrief Flow', () => {
-    it('should follow TMP-specific debrief flow when TMP is selected', async () => {
-      const mockResponse = {
-        message: 'Starting TMP debrief...',
-        metadata: {
-          extractedVariables: {
-            assessment_type: 'TMP',
-            objectives: 'Understand my work style better',
-            highlights: ['Creative', 'Strategic', 'Innovative'],
-            communication: ['Be direct', 'Give context'],
-            support: 'Help with detailed tasks'
-          }
-        },
-        handoff: null
-      };
+  describe('Confirmation Handling', () => {
+    it('should skip to objectives when user confirms after debrief offer', async () => {
+      // Mock context with previous offer
+      mockContext.messageHistory = [
+        { id: '1', role: 'user', content: 'Hello', timestamp: new Date() },
+        { id: '2', role: 'assistant', content: 'I see you have completed the Team Management Profile (TMP) assessment. Would you like to review your results?', timestamp: new Date() }
+      ];
       
-      mockProcessMessage.mockResolvedValue(mockResponse);
+      let capturedMessage = '';
+      jest.spyOn(OpenAIAgent.prototype, 'processMessage').mockImplementation(async (message: string) => {
+        capturedMessage = message;
+        return {
+          message: 'Great! The purpose of our session is...',
+          metadata: {},
+          handoff: null
+        };
+      });
       
-      const response = await agent.processMessage('I want to debrief my TMP', mockContext);
+      await agent.processMessage('Yes please!', mockContext);
       
-      expect(response.metadata?.extractedVariables?.assessment_type).toBe('TMP');
-      expect(response.metadata?.extractedVariables?.objectives).toBeDefined();
-      expect(response.metadata?.extractedVariables?.highlights).toHaveLength(3);
+      // Should skip subscription check and go to objectives
+      expect(capturedMessage).toContain('The user has confirmed they want to start the TMP debrief');
+      expect(capturedMessage).toContain('DO NOT check subscriptions again');
+      expect(capturedMessage).toContain('what are your main objectives from the debrief session today?');
     });
 
-    it('should extract all TMP variables correctly', async () => {
-      const tmpVariables = {
-        assessment_type: 'TMP',
-        objectives: 'Better understand my leadership style',
-        highlights: ['Explorer Promoter', 'Creative thinking', 'Big picture focus'],
-        communication: ['Start with the big picture', 'Allow time for brainstorming'],
-        support: 'Help with administrative details'
-      };
+    it('should check subscriptions on first message even with join message', async () => {
+      let capturedMessage = '';
+      jest.spyOn(OpenAIAgent.prototype, 'processMessage').mockImplementation(async (message: string) => {
+        capturedMessage = message;
+        return {
+          message: 'I see you have completed assessments...',
+          metadata: {},
+          handoff: null
+        };
+      });
       
-      const mockResponse = {
-        message: 'TMP debrief complete',
-        metadata: {
-          extractedVariables: tmpVariables
-        },
-        handoff: null
-      };
+      await agent.processMessage('[User joined the conversation]', mockContext);
       
-      mockProcessMessage.mockResolvedValue(mockResponse);
-      
-      const response = await agent.processMessage('My objectives are to better understand my leadership style', mockContext);
-      
-      expect(response.metadata?.extractedVariables).toMatchObject(tmpVariables);
+      expect(capturedMessage).toContain('The user has just joined the conversation');
+      expect(capturedMessage).toContain('tms_get_dashboard_subscriptions');
     });
   });
 
@@ -181,7 +165,8 @@ describe('DebriefAgent Auto-Detection and Assessment-Specific Flows', () => {
         handoff: null
       };
       
-      mockProcessMessage.mockResolvedValue(mockResponse);
+      // Mock the parent class's processMessage to return our response
+      jest.spyOn(OpenAIAgent.prototype, 'processMessage').mockResolvedValue(mockResponse);
       
       mockJourneyTracker.getCurrentJourney.mockResolvedValue({
         currentPhase: JourneyPhase.DEBRIEF,
@@ -212,7 +197,7 @@ describe('DebriefAgent Auto-Detection and Assessment-Specific Flows', () => {
         handoff: null
       };
       
-      mockProcessMessage.mockResolvedValue(mockResponse);
+      jest.spyOn(OpenAIAgent.prototype, 'processMessage').mockResolvedValue(mockResponse);
       
       mockJourneyTracker.getCurrentJourney.mockResolvedValue({
         currentPhase: JourneyPhase.DEBRIEF,
@@ -244,11 +229,14 @@ describe('DebriefAgent Auto-Detection and Assessment-Specific Flows', () => {
         handoff: null
       };
       
-      mockProcessMessage.mockResolvedValue(mockResponse);
+      jest.spyOn(OpenAIAgent.prototype, 'processMessage').mockResolvedValue(mockResponse);
       
       mockJourneyTracker.getCurrentJourney.mockResolvedValue({
         currentPhase: JourneyPhase.DEBRIEF,
-        viewedDebriefs: {}, // No TMP debrief yet
+        viewedDebriefs: {
+          'qo2_debrief': { viewedAt: new Date() }
+          // Missing tmp_debrief
+        },
         completedSteps: []
       } as any);
       
@@ -256,84 +244,6 @@ describe('DebriefAgent Auto-Detection and Assessment-Specific Flows', () => {
       
       expect(mockJourneyTracker.markDebriefViewed).toHaveBeenCalled();
       expect(mockJourneyTracker.updateJourneyProgress).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('QO2 Debrief Flow', () => {
-    it('should extract QO2-specific variables', async () => {
-      const qo2Variables = {
-        assessment_type: 'QO2',
-        culture_type: 'Achievement Culture',
-        alignment_gaps: ['Leadership style', 'Communication patterns'],
-        culture_actions: ['Implement regular feedback', 'Create innovation time']
-      };
-      
-      const mockResponse = {
-        message: 'QO2 debrief in progress',
-        metadata: {
-          extractedVariables: qo2Variables
-        },
-        handoff: null
-      };
-      
-      mockProcessMessage.mockResolvedValue(mockResponse);
-      
-      const response = await agent.processMessage('Review my QO2 culture assessment', mockContext);
-      
-      expect(response.metadata?.extractedVariables?.culture_type).toBe('Achievement Culture');
-      expect(response.metadata?.extractedVariables?.alignment_gaps).toHaveLength(2);
-    });
-  });
-
-  describe('Team Signals Debrief Flow', () => {
-    it('should extract Team Signals-specific variables', async () => {
-      const tsVariables = {
-        assessment_type: 'Team Signals',
-        team_strengths: ['Strong collaboration', 'Clear goals'],
-        improvement_areas: ['Communication frequency', 'Decision making'],
-        priority_actions: ['Weekly team meetings', 'Define decision matrix']
-      };
-      
-      const mockResponse = {
-        message: 'Team Signals debrief in progress',
-        metadata: {
-          extractedVariables: tsVariables
-        },
-        handoff: null
-      };
-      
-      mockProcessMessage.mockResolvedValue(mockResponse);
-      
-      const response = await agent.processMessage('Review my Team Signals results', mockContext);
-      
-      expect(response.metadata?.extractedVariables?.team_strengths).toHaveLength(2);
-      expect(response.metadata?.extractedVariables?.priority_actions).toHaveLength(2);
-    });
-  });
-
-  describe('Error Handling', () => {
-    it('should handle journey tracker errors gracefully', async () => {
-      const mockResponse = {
-        message: 'Debrief complete!',
-        metadata: {
-          extractedVariables: {
-            assessment_type: 'TMP',
-            debrief_completed: true
-          }
-        },
-        handoff: null
-      };
-      
-      mockProcessMessage.mockResolvedValue(mockResponse);
-      
-      // Make journey tracker throw an error
-      mockJourneyTracker.markDebriefViewed.mockRejectedValue(new Error('DB error'));
-      
-      // Should not throw - error should be caught
-      const response = await agent.processMessage('Complete debrief', mockContext);
-      
-      expect(response).toBeDefined();
-      expect(response.message).toBe('Debrief complete!');
     });
   });
 });

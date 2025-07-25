@@ -15,10 +15,18 @@ describe('DebriefAgent Hallucination Fix', () => {
   let agent: OpenAIDebriefAgent;
   let mockContext: AgentContext;
   
-  const mockSearchService = KnowledgeSearchService as jest.MockedClass<typeof KnowledgeSearchService>;
+  let mockSearchService: jest.Mocked<KnowledgeSearchService>;
 
   beforeEach(async () => {
     jest.clearAllMocks();
+    
+    // Create a mock instance
+    mockSearchService = {
+      search: jest.fn()
+    } as any;
+    
+    // Mock the constructor to return our instance
+    (KnowledgeSearchService as jest.MockedClass<typeof KnowledgeSearchService>).mockImplementation(() => mockSearchService);
     
     agent = new OpenAIDebriefAgent();
     await agent.initialize();
