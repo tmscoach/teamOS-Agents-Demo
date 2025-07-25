@@ -2,7 +2,14 @@
 
 import { Book, Clapperboard } from 'lucide-react';
 
-export default function Frame() {
+interface FrameProps {
+  recommendations: {
+    reading?: string;
+    goals?: string;
+  };
+}
+
+export default function Frame({ recommendations }: FrameProps) {
   return (
     <div className="flex items-start gap-2.5 w-full max-w-[737px]">
       {/* Suggested Reading Card */}
@@ -14,7 +21,7 @@ export default function Frame() {
           </div>
         </div>
         <div className="px-6 pb-6">
-          <p className="text-lg font-bold text-gray-900">Creative Leadership</p>
+          <p className="text-lg font-bold text-gray-900">{recommendations.reading || 'Coming soon'}</p>
         </div>
       </div>
 
@@ -28,8 +35,7 @@ export default function Frame() {
         </div>
         <div className="px-6 pb-6">
           <p className="text-2xl text-gray-900">
-            <span className="font-bold">2x </span>
-            <span className="font-normal">Weekly challenges</span>
+            {recommendations.goals || 'To be defined'}
           </p>
         </div>
       </div>

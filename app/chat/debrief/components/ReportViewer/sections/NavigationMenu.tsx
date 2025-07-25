@@ -3,30 +3,17 @@
 import { Lightbulb } from 'lucide-react';
 
 interface NavigationMenuProps {
-  reportType: 'TMP' | 'QO2' | 'TeamSignals';
+  profile: {
+    name: string;
+    tagline: string;
+    description: string;
+    majorRole?: string;
+    relatedRoles?: string[];
+  };
+  scores?: Record<string, number>;
 }
 
-export default function NavigationMenu({ reportType }: NavigationMenuProps) {
-  // Mock data for now - will be populated from parsed report
-  const profileData = {
-    TMP: {
-      title: 'Creator-Innovator',
-      subtitle: 'Strong intellectual curiosity.',
-      description: `Creator-Innovators are highly creative, intellectually curious individuals who excel at developing innovative solutions through deep analysis and theoretical thinking. They prefer working independently to fully develop ideas before sharing them, are most energised by design and conceptual challenges rather than implementation, and may become resistant when pressured or when their core ideas are challenged. While they bring valuable innovation and thorough analytical thinking to teams, they often struggle with communication timing and may provide overly detailed explanations, making them ideal for advisory or strategic roles where they can leverage their strengths without the pressure of day-to-day operational management.`
-    },
-    QO2: {
-      title: 'Strategic Leader',
-      subtitle: 'Results-driven and analytical.',
-      description: 'Strategic Leaders focus on long-term vision and organizational success...'
-    },
-    TeamSignals: {
-      title: 'Collaborative Team',
-      subtitle: 'High performance through trust.',
-      description: 'This team demonstrates strong collaborative patterns...'
-    }
-  };
-
-  const profile = profileData[reportType];
+export default function NavigationMenu({ profile, scores }: NavigationMenuProps) {
 
   return (
     <div className="flex flex-col w-full max-w-[737px] gap-2.5 p-6 bg-gray-50 rounded-md border border-gray-200 shadow-sm">
@@ -41,10 +28,10 @@ export default function NavigationMenu({ reportType }: NavigationMenuProps) {
             <Lightbulb className="w-7 h-7 text-gray-900 mb-5" />
             <div className="space-y-2">
               <h4 className="text-lg font-semibold text-gray-900">
-                {profile.title}
+                {profile.name}
               </h4>
               <p className="text-sm font-medium text-gray-900">
-                {profile.subtitle}
+                {profile.tagline}
               </p>
             </div>
           </div>
@@ -53,16 +40,26 @@ export default function NavigationMenu({ reportType }: NavigationMenuProps) {
         {/* Description */}
         <div className="flex-1 pl-2.5 pt-2">
           <p className="text-base font-semibold text-gray-900 mb-3">
-            You've matched the <span className="font-bold">{profile.title}</span> profile
+            You've matched the <span className="font-bold">{profile.name}</span> profile
           </p>
           <p className="text-sm text-gray-500 leading-5">
-            {profile.description.split(/(\*\*.*?\*\*)/).map((part, index) => {
-              if (part.startsWith('**') && part.endsWith('**')) {
-                return <span key={index} className="font-bold text-gray-700">{part.slice(2, -2)}</span>;
-              }
-              return part;
-            })}
+            {profile.description}
           </p>
+          
+          {/* Show scores if available */}
+          {scores && Object.keys(scores).length > 0 && (
+            <div className="mt-4 pt-4 border-t border-gray-200">
+              <p className="text-sm font-medium text-gray-700 mb-2">Net Scores:</p>
+              <div className="grid grid-cols-2 gap-2">
+                {Object.entries(scores).map(([dimension, score]) => (
+                  <div key={dimension} className="flex justify-between text-sm">
+                    <span className="text-gray-600">{dimension}:</span>
+                    <span className="font-medium text-gray-900">{score}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

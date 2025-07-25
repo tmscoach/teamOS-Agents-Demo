@@ -3,11 +3,12 @@
 import { useState } from 'react';
 import ReportViewer from './ReportViewer';
 import ChatInterface from './ChatInterface';
+import { ParsedReport } from '@/lib/utils/report-parser';
 
 interface DebriefLayoutProps {
   agentName: string;
   reportType: 'TMP' | 'QO2' | 'TeamSignals';
-  reportData: any;
+  reportData: ParsedReport;
 }
 
 export default function DebriefLayout({ agentName, reportType, reportData }: DebriefLayoutProps) {

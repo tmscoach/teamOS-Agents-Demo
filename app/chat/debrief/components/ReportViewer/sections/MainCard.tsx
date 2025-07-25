@@ -2,7 +2,14 @@
 
 import { Coins } from 'lucide-react';
 
-export default function MainCard() {
+interface MainCardProps {
+  credits?: {
+    amount: number;
+    badge?: string;
+  };
+}
+
+export default function MainCard({ credits }: MainCardProps) {
   return (
     <div className="flex flex-col w-full max-w-[737px] bg-white rounded-lg border border-gray-200 shadow-sm">
       <div className="p-6">
@@ -12,12 +19,14 @@ export default function MainCard() {
         <p className="text-sm text-gray-500 mb-4">
           This information can help you better understand your leadership styles.
         </p>
-        <div className="inline-flex items-center gap-2.5 px-3 py-1.5 bg-gray-50 rounded-md border border-gray-200 shadow-sm">
-          <Coins className="w-4 h-4 text-gray-600" />
-          <p className="text-sm font-medium text-gray-600">
-            You've earned +5000 credits and a new badge!
-          </p>
-        </div>
+        {credits && (
+          <div className="inline-flex items-center gap-2.5 px-3 py-1.5 bg-gray-50 rounded-md border border-gray-200 shadow-sm">
+            <Coins className="w-4 h-4 text-gray-600" />
+            <p className="text-sm font-medium text-gray-600">
+              You've earned +{credits.amount} credits{credits.badge && ` and a ${credits.badge}`}!
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

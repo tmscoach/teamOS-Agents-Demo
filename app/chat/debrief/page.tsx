@@ -4,6 +4,8 @@ import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import DebriefLayout from './components/DebriefLayout';
+import { ReportLoader } from '@/lib/services/report-loader';
+import { ParsedReport } from '@/lib/utils/report-parser';
 
 function DebriefPageLoading() {
   return (
@@ -20,24 +22,24 @@ export default function DebriefPage() {
   const subscriptionId = searchParams.get('subscriptionId');
   
   const [isLoading, setIsLoading] = useState(true);
-  const [reportData, setReportData] = useState(null);
+  const [reportData, setReportData] = useState<ParsedReport | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // For now, we'll simulate loading
-    // In Phase 4, this will call the actual report loading API
     const loadReport = async () => {
       try {
         setIsLoading(true);
-        // TODO: Implement actual report loading
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        setReportData({
-          type: reportType,
+        
+        // Load the report using ReportLoader service
+        const report = await ReportLoader.loadReport({
           subscriptionId: subscriptionId || '21989', // Default test subscription
-          loaded: true
+          reportType: reportType as 'TMP' | 'QO2' | 'TeamSignals'
         });
+        
+        setReportData(report);
       } catch (err) {
-        setError('Failed to load report');
+        console.error('Error loading report:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load report');
       } finally {
         setIsLoading(false);
       }

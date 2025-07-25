@@ -5,10 +5,11 @@ import MainCard from './sections/MainCard';
 import NavigationMenu from './sections/NavigationMenu';
 import Frame from './sections/Frame';
 import DbMainCard from './sections/DbMainCard';
+import { ParsedReport } from '@/lib/utils/report-parser';
 
 interface ReportViewerProps {
   reportType: 'TMP' | 'QO2' | 'TeamSignals';
-  reportData: any;
+  reportData: ParsedReport;
   onSectionChange: (section: string) => void;
 }
 
@@ -23,14 +24,12 @@ export default function ReportViewer({ reportType, reportData, onSectionChange }
     return () => window.removeEventListener('scroll', handleScroll);
   }, [onSectionChange]);
 
-  // For Phase 1, we'll show mock data
-  // In Phase 2, this will parse actual report HTML
   return (
     <div className="flex flex-col gap-2.5">
-      <MainCard />
-      <NavigationMenu reportType={reportType} />
-      <Frame />
-      <DbMainCard reportType={reportType} />
+      <MainCard credits={reportData.credits} />
+      <NavigationMenu profile={reportData.profile} scores={reportData.scores} />
+      <Frame recommendations={reportData.recommendations} />
+      <DbMainCard title={reportData.profile.name} insights={reportData.insights} />
     </div>
   );
 }
