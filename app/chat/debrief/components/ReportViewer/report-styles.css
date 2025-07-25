@@ -231,3 +231,60 @@
   font-style: italic;
   color: #4b5563;
 }
+
+/* TMP Report Specific Styles */
+
+/* TMP Role circles */
+.tms-report-content .imgholder img {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.tms-report-content .imgholder2 img {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* TMP Wheel positioning */
+.tms-report-content .graphwheel {
+  text-align: center;
+  margin: 2rem auto;
+}
+
+.tms-report-content .graphwheel2 {
+  display: inline-block;
+  margin-right: 2rem;
+  vertical-align: top;
+}
+
+/* TMP Loading animation */
+.tms-report-content .loadingimg {
+  display: inline-block;
+  margin: 2rem auto;
+}
+
+/* TMP Role sections */
+.tms-report-content .rolesection {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  margin: 1.5rem 0;
+}
+
+.tms-report-content .rolesection label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #6b7280;
+  margin: 0.5rem 0 0.25rem;
+}
+
+.tms-report-content .rolesection p {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin: 0;
+}
