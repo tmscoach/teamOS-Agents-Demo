@@ -401,12 +401,27 @@ User message: ${userMessageContent}`;
         
         if (isConfirmation && hasOfferedDebrief) {
           console.log(`[${context.currentAgent}] User confirmed debrief - injecting skip-to-objectives instruction`);
+          
+          // Extract subscription ID from previous messages
+          let subscriptionId = null;
+          for (const msg of context.messageHistory) {
+            if (msg.content) {
+              // Look for subscription ID in tool results
+              const subscriptionMatch = msg.content.match(/"SubscriptionID":\s*(\d+)/);
+              if (subscriptionMatch) {
+                subscriptionId = subscriptionMatch[1];
+                break;
+              }
+            }
+          }
+          
           userMessageContent = `The user has confirmed they want to start the TMP debrief. 
-DO NOT check subscriptions again - we already know they have a completed TMP assessment.
+DO NOT check subscriptions again - we already know they have a completed TMP assessment${subscriptionId ? ` with subscription ID: ${subscriptionId}` : ''}.
 Go directly to the debrief flow starting with: "Great! The purpose of our session is to learn more about yourself, explore your personal team management profile, and use that information as a catalyst to review and fine-tune how you work. To get started, what are your main objectives from the debrief session today?"
 
 DO NOT use tms_get_dashboard_subscriptions.
 DO NOT load the full report yet. Only load report data when needed to answer specific questions.
+${subscriptionId ? `IMPORTANT: When using tms_debrief_report, always include subscriptionId: '${subscriptionId}' in your parameters.` : ''}
 
 User message: ${message}`;
         }
