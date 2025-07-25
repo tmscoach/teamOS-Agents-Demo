@@ -92,7 +92,7 @@ describe('DebriefAgent Auto-Detection and Assessment-Specific Flows', () => {
       // Verify the prompt was modified to include report check
       expect(mockProcessMessage).toHaveBeenCalled();
       expect(capturedMessage).toContain('tms_get_dashboard_subscriptions');
-      expect(capturedMessage).toContain('REMINDER: This is the start of a new conversation');
+      expect(capturedMessage).toContain('The user has just joined the conversation');
     });
 
     it('should not check for reports on subsequent messages', async () => {

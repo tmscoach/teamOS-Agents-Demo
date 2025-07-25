@@ -406,12 +406,24 @@ User message: ${userMessageContent}`;
           let subscriptionId = null;
           for (const msg of context.messageHistory) {
             if (msg.content) {
-              // Look for subscription ID in tool results
-              const subscriptionMatch = msg.content.match(/"SubscriptionID":\s*(\d+)/);
-              if (subscriptionMatch) {
-                subscriptionId = subscriptionMatch[1];
-                break;
+              // Look for subscription ID in tool results - try multiple patterns
+              const patterns = [
+                /"SubscriptionID":\s*(\d+)/,
+                /SubscriptionID":\s*(\d+)/,
+                /subscriptionId":\s*"?(\d+)"?/,
+                /subscription.*?(\d{5})/i  // Match any 5-digit number after "subscription"
+              ];
+              
+              for (const pattern of patterns) {
+                const match = msg.content.match(pattern);
+                if (match) {
+                  subscriptionId = match[1];
+                  console.log(`[${context.currentAgent}] Found subscription ID: ${subscriptionId}`);
+                  break;
+                }
               }
+              
+              if (subscriptionId) break;
             }
           }
           
