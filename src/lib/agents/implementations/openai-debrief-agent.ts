@@ -155,31 +155,34 @@ Remember: The goal is a <5 second response time after user confirms. Prioritize 
     console.log(`[${this.name}] Processing message:`, {
       message,
       conversationId: context.conversationId,
-      messageCount: context.messageCount,
-      hasCheckedSubscriptions: context.metadata?.subscriptionsChecked,
-      availableReports: context.metadata?.availableReports
+      messageCount: context.messageCount
     });
     
-    // Check if we already have subscription data in context
-    const hasCheckedSubscriptions = context.metadata?.subscriptionsChecked;
-    const availableReports = context.metadata?.availableReports;
-    
-    // Check if user is confirming they want to start a debrief
-    const userConfirmsDebrief = (
+    // Check if this is a confirmation message after we've already offered a debrief
+    const isConfirmation = context.messageCount > 0 && (
       message.toLowerCase().includes('yes') || 
       message.toLowerCase().includes('please') ||
       message.toLowerCase().includes('start') ||
       message.toLowerCase().includes('let\'s') ||
-      message.toLowerCase().includes('sure')
-    ) && availableReports?.length > 0 && context.messageCount > 0;
+      message.toLowerCase().includes('sure') ||
+      message.toLowerCase().includes('go ahead')
+    );
     
-    // If user confirms debrief, skip re-checking and go directly to objectives
-    if (userConfirmsDebrief) {
-      const reportType = context.metadata?.selectedAssessment || 'TMP';
-      const skipToObjectivesPrompt = `The user has confirmed they want to start the ${reportType} debrief. 
-Skip checking subscriptions again - we already checked and found completed assessments.
+    // Check if the previous message history indicates we've already checked subscriptions
+    const hasAlreadyCheckedSubscriptions = context.messageHistory?.some(msg => 
+      msg.content && (
+        msg.content.includes('I see you have completed') ||
+        msg.content.includes('Team Management Profile (TMP) assessment')
+      )
+    );
+    
+    // If user is confirming and we've already checked subscriptions, skip to objectives
+    if (isConfirmation && hasAlreadyCheckedSubscriptions) {
+      const skipToObjectivesPrompt = `The user has confirmed they want to start the TMP debrief. 
+DO NOT check subscriptions again - we already know they have a completed TMP assessment.
 Go directly to the debrief flow starting with: "Great! The purpose of our session is to learn more about yourself, explore your personal team management profile, and use that information as a catalyst to review and fine-tune how you work. To get started, what are your main objectives from the debrief session today?"
 
+DO NOT use tms_get_dashboard_subscriptions.
 DO NOT load the full report yet. Only load report data when needed to answer specific questions.
 
 User message: ${message}`;
@@ -189,29 +192,18 @@ User message: ${message}`;
       return super.processMessage(skipToObjectivesPrompt, context);
     }
     
-    // Only check subscriptions if we haven't already
-    if (!hasCheckedSubscriptions && (!context.conversationId || context.messageCount === 0 || message.includes('[User joined'))) {
+    // Check if this is the start of a conversation
+    if (!context.conversationId || context.messageCount === 0 || message.includes('[User joined')) {
       // Add instruction to check for available reports
       const checkReportsPrompt = `REMINDER: This is the start of a new conversation. 
 You MUST immediately use tms_get_dashboard_subscriptions to check for completed assessments.
 After checking, proactively offer to debrief any completed assessments you find.
-Store the results in context for future reference.
 
 User message: ${message}`;
       
-      console.log(`[${this.name}] First check - looking for subscriptions`);
+      console.log(`[${this.name}] First message - checking for subscriptions`);
       
-      // Process with the modified message
-      const response = await super.processMessage(checkReportsPrompt, context);
-      
-      // Mark that we've checked subscriptions
-      response.metadata = {
-        ...response.metadata,
-        subscriptionsChecked: true,
-        availableReports: response.metadata?.extractedVariables?.available_reports || []
-      };
-      
-      return response;
+      return super.processMessage(checkReportsPrompt, context);
     }
     
     // Normal processing
