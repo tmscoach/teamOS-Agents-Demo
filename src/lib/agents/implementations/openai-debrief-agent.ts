@@ -155,8 +155,20 @@ Remember: The goal is a <5 second response time after user confirms. Prioritize 
     console.log(`[${this.name}] Processing message:`, {
       message,
       conversationId: context.conversationId,
-      messageCount: context.messageCount
+      messageCount: context.messageCount,
+      messageHistoryLength: context.messageHistory?.length || 0
     });
+    
+    // Debug message history
+    if (context.messageHistory) {
+      console.log(`[${this.name}] Message history:`, 
+        context.messageHistory.map((msg, idx) => ({
+          index: idx,
+          role: msg.role,
+          contentPreview: msg.content?.substring(0, 100) + '...'
+        }))
+      );
+    }
     
     // Check if this is a confirmation message after we've already offered a debrief
     const isConfirmation = context.messageCount > 0 && (
@@ -175,6 +187,12 @@ Remember: The goal is a <5 second response time after user confirms. Prioritize 
         msg.content.includes('Team Management Profile (TMP) assessment')
       )
     );
+    
+    console.log(`[${this.name}] Confirmation check:`, {
+      isConfirmation,
+      hasAlreadyCheckedSubscriptions,
+      willSkipToObjectives: isConfirmation && hasAlreadyCheckedSubscriptions
+    });
     
     // If user is confirming and we've already checked subscriptions, skip to objectives
     if (isConfirmation && hasAlreadyCheckedSubscriptions) {
