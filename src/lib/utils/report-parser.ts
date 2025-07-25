@@ -36,31 +36,89 @@ export interface ParsedReport {
   sections?: ReportSection[];
 }
 
+export interface ReportParseError {
+  error: string;
+  fallbackReport: ParsedReport;
+}
+
 export class ReportParser {
   /**
-   * Parse HTML report from TMS API
+   * Parse HTML report from TMS API with error handling
    */
   static parseHtmlReport(html: string, reportType: 'TMP' | 'QO2' | 'TeamSignals'): ParsedReport {
-    // Create a DOM parser for the HTML
-    const parser = new DOMParser();
-    const doc = parser.parseFromString(html, 'text/html');
-    
-    switch (reportType) {
-      case 'TMP':
-        return this.parseTMPReport(doc);
-      case 'QO2':
-        return this.parseQO2Report(doc);
-      case 'TeamSignals':
-        return this.parseTeamSignalsReport(doc);
-      default:
-        throw new Error(`Unsupported report type: ${reportType}`);
+    try {
+      // Validate input
+      if (!html || typeof html !== 'string') {
+        throw new Error('Invalid HTML input: expected non-empty string');
+      }
+
+      // Create a DOM parser for the HTML
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      
+      // Check for parser errors
+      const parserError = doc.querySelector('parsererror');
+      if (parserError) {
+        throw new Error(`HTML parsing failed: ${parserError.textContent}`);
+      }
+      
+      switch (reportType) {
+        case 'TMP':
+          return this.parseTMPReport(doc);
+        case 'QO2':
+          return this.parseQO2Report(doc);
+        case 'TeamSignals':
+          return this.parseTeamSignalsReport(doc);
+        default:
+          throw new Error(`Unsupported report type: ${reportType}`);
+      }
+    } catch (error) {
+      console.error(`Error parsing ${reportType} report:`, error);
+      
+      // Return a fallback report with error information
+      return this.createFallbackReport(reportType, html, error);
     }
   }
 
   /**
-   * Parse TMP (Team Management Profile) Report
+   * Create a fallback report when parsing fails
+   */
+  private static createFallbackReport(reportType: 'TMP' | 'QO2' | 'TeamSignals', html: string, error: unknown): ParsedReport {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown parsing error';
+    
+    return {
+      type: reportType,
+      title: `${reportType} Report`,
+      subtitle: 'Report parsing encountered an error',
+      profile: {
+        name: 'Unable to parse profile',
+        tagline: 'Please review the raw report below',
+        description: `Error: ${errorMessage}`
+      },
+      scores: {},
+      insights: [
+        'Report parsing failed - displaying raw content',
+        'Please contact support if this issue persists'
+      ],
+      recommendations: {
+        reading: 'Contact support for assistance',
+        goals: 'Review raw report data'
+      },
+      rawHtml: html,
+      sections: [{
+        id: 'raw-content',
+        title: 'Raw Report Content',
+        content: html.replace(/<[^>]*>/g, '').substring(0, 5000) + '...',
+        html: html
+      }]
+    };
+  }
+
+  /**
+   * Parse TMP (Team Management Profile) Report with error handling
    */
   private static parseTMPReport(doc: Document): ParsedReport {
+    try {
     const report: ParsedReport = {
       type: 'TMP',
       title: 'Team Management Profile',
@@ -184,10 +242,14 @@ export class ReportParser {
       }
     }
 
-    // Store raw HTML for reference
-    report.rawHtml = doc.body.innerHTML;
+      // Store raw HTML for reference
+      report.rawHtml = doc.body.innerHTML;
 
-    return report;
+      return report;
+    } catch (error) {
+      console.error('Error in parseTMPReport:', error);
+      throw error; // Re-throw to be caught by main handler
+    }
   }
 
   /**
@@ -243,19 +305,29 @@ export class ReportParser {
   }
 
   /**
-   * Extract text content from HTML safely
+   * Extract text content from HTML safely with error handling
    */
   private static extractText(element: Element | null): string {
-    if (!element) return '';
-    return element.textContent?.trim() || '';
+    try {
+      if (!element) return '';
+      return element.textContent?.trim() || '';
+    } catch (error) {
+      console.error('Error extracting text:', error);
+      return '';
+    }
   }
 
   /**
-   * Find element by text content
+   * Find element by text content with error handling
    */
   private static findElementByText(doc: Document, text: string): Element | null {
-    const xpath = `//*[contains(text(), '${text}')]`;
-    const result = doc.evaluate(xpath, doc, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
-    return result.singleNodeValue as Element | null;
+    try {
+      const xpath = `//*[contains(text(), '${text}')]`;
+      const result = doc.evaluate(xpath, doc, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null);
+      return result.singleNodeValue as Element | null;
+    } catch (error) {
+      console.error('Error finding element by text:', error);
+      return null;
+    }
   }
 }
