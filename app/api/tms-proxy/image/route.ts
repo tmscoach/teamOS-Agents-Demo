@@ -47,7 +47,21 @@ export async function GET(request: NextRequest) {
     });
 
     if (!response.ok) {
-      return new NextResponse('Failed to fetch image', { status: response.status });
+      console.log(`[Image Proxy] Failed to fetch image from ${imageUrl}: ${response.status}`);
+      
+      // Return a simple placeholder SVG for failed images
+      const placeholderSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300">
+        <rect width="400" height="300" fill="#f0f0f0" stroke="#ccc" stroke-width="2"/>
+        <text x="200" y="150" text-anchor="middle" font-family="Arial, sans-serif" font-size="16" fill="#666">Image Unavailable</text>
+        <text x="200" y="170" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#999">${url.pathname}</text>
+      </svg>`;
+      
+      return new NextResponse(placeholderSvg, {
+        headers: {
+          'Content-Type': 'image/svg+xml',
+          'Cache-Control': 'no-store',
+        },
+      });
     }
 
     const contentType = response.headers.get('content-type') || 'image/png';

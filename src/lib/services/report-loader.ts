@@ -13,16 +13,16 @@ interface ReportLoaderOptions {
 
 export class ReportLoader {
   private static readonly TEMPLATE_IDS = {
-    TMP: '1', // Template ID for TMP reports
-    QO2: '2', // Template ID for QO2 reports
-    TeamSignals: '3' // Template ID for Team Signals
+    TMP: '6', // Template ID for TMP reports
+    QO2: '10', // Template ID for QO2 reports
+    TeamSignals: '2' // Template ID for Team Signals
   };
 
   /**
    * Load and parse a report from TMS API
    */
   static async loadReport(options: ReportLoaderOptions): Promise<ParsedReport> {
-    const { subscriptionId, reportType } = options;
+    const { subscriptionId, reportType, managerId } = options;
     
     try {
       // Get the template ID for this report type
@@ -54,6 +54,32 @@ export class ReportLoader {
       
       if (!html) {
         throw new Error('No HTML content in response');
+      }
+
+      // Store the report for persistent access
+      try {
+        const storeResponse = await fetch('/api/reports/store', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            reportType,
+            subscriptionId,
+            templateId,
+            rawHtml: html,
+            organizationId: 'default', // TODO: Get from user context
+            teamId: managerId // TODO: Get actual team ID
+          })
+        });
+
+        if (storeResponse.ok) {
+          const storeData = await storeResponse.json();
+          console.log('Report stored successfully:', storeData.reportId);
+        }
+      } catch (error) {
+        // Don't fail if storage fails, just log
+        console.error('Failed to store report:', error);
       }
 
       // Parse the HTML into structured data
