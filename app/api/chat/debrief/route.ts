@@ -32,13 +32,20 @@ export async function POST(request: NextRequest) {
 
     // Get the request body
     const body = await request.json();
+    
+    // The useChat hook sends messages in a specific format
+    const messages = body.messages || [];
+    const lastMessage = messages[messages.length - 1];
+    const message = lastMessage?.content;
+    
+    // Extract our custom fields from the options
     const { 
-      message, 
       conversationId, 
       reportType = 'TMP',
       subscriptionId,
       visibleSection,
-      reportData 
+      reportData,
+      agentName 
     } = body;
 
     if (!message) {
@@ -200,12 +207,24 @@ ${visibleSection && visibleSection !== 'overview' ? `The user is currently viewi
 
     systemPrompt = `${systemPrompt}\n\nContext: ${debriefContext}`;
 
-    // Get conversation history
-    const messages = await conversationStore.getMessages(context.conversationId);
-    const formattedMessages = messages.map(msg => ({
-      role: msg.role as 'user' | 'assistant',
-      content: msg.content
-    }));
+    // Get conversation history from storage or use messages from useChat
+    let formattedMessages;
+    if (conversationId && messages.length <= 1) {
+      // If we have a conversation ID but only the current message, load history
+      const storedMessages = await conversationStore.getMessages(context.conversationId);
+      formattedMessages = storedMessages.map(msg => ({
+        role: msg.role as 'user' | 'assistant',
+        content: msg.content
+      }));
+    } else if (messages.length > 1) {
+      // Use messages from useChat (excluding the current one we just added)
+      formattedMessages = messages.slice(0, -1).map((msg: any) => ({
+        role: msg.role as 'user' | 'assistant',
+        content: msg.content
+      }));
+    } else {
+      formattedMessages = [];
+    }
 
     // Stream the response
     const result = await streamText({

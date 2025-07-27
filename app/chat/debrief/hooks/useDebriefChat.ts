@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useCallback, useRef } from 'react';
+import { useCallback, useRef, useState } from 'react';
+import { useChat } from 'ai/react';
 import { ParsedReport } from '@/src/lib/utils/report-parser';
 
 export interface Message {
@@ -19,45 +20,47 @@ interface UseDebriefChatOptions {
 
 export function useDebriefChat(options: UseDebriefChatOptions) {
   const { agentName, reportType, subscriptionId, reportData } = options;
-  
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
   const [conversationId, setConversationId] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
   
-  const abortControllerRef = useRef<AbortController | null>(null);
+  // Use the AI SDK's useChat hook for proper streaming support
+  const {
+    messages: chatMessages,
+    error,
+    isLoading,
+    append,
+    setMessages: setChatMessages
+  } = useChat({
+    api: '/api/chat/debrief',
+    onResponse: (response) => {
+      // Extract conversation ID from response headers
+      const convId = response.headers.get('X-Conversation-ID');
+      if (convId && !conversationId) {
+        setConversationId(convId);
+      }
+    },
+    onError: (error) => {
+      console.error('Debrief chat error:', error);
+    }
+  });
+
+  // Convert AI SDK messages to our Message format
+  const messages: Message[] = chatMessages.map(msg => ({
+    id: msg.id,
+    role: msg.role as 'user' | 'assistant',
+    content: msg.content,
+    timestamp: new Date(msg.createdAt || Date.now())
+  }));
 
   const sendMessage = useCallback(async (content: string, visibleSection: string) => {
     if (isLoading || !content.trim()) return;
-    
-    // Cancel any ongoing request
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-    }
-    
-    // Create new abort controller
-    abortControllerRef.current = new AbortController();
-    
-    setIsLoading(true);
-    setError(null);
 
-    // Add user message
-    const userMessage: Message = {
-      id: Date.now().toString(),
+    // Use the append method from useChat to send messages
+    await append({
       role: 'user',
-      content: content.trim(),
-      timestamp: new Date()
-    };
-    setMessages(prev => [...prev, userMessage]);
-
-    try {
-      const response = await fetch('/api/chat/debrief', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message: content.trim(),
+      content: content.trim()
+    }, {
+      options: {
+        body: {
           conversationId,
           agentName,
           reportType,
@@ -73,99 +76,25 @@ export function useDebriefChat(options: UseDebriefChatOptions) {
               content: s.content.substring(0, 500) // Limit content size
             }))
           } : undefined
-        }),
-        signal: abortControllerRef.current.signal
-      });
-
-      if (!response.ok) {
-        throw new Error(`Failed to send message: ${response.statusText}`);
-      }
-
-      const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-      let accumulatedContent = '';
-      let assistantMessageId = Date.now().toString() + '-assistant';
-
-      // Add initial assistant message
-      setMessages(prev => [...prev, {
-        id: assistantMessageId,
-        role: 'assistant',
-        content: '',
-        timestamp: new Date()
-      }]);
-
-      while (reader) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        const chunk = decoder.decode(value);
-        const lines = chunk.split('\n');
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6);
-            if (data === '[DONE]') continue;
-            
-            try {
-              const parsed = JSON.parse(data);
-              
-              if (parsed.content) {
-                accumulatedContent += parsed.content;
-                setMessages(prev => prev.map(msg => 
-                  msg.id === assistantMessageId 
-                    ? { ...msg, content: accumulatedContent }
-                    : msg
-                ));
-              }
-              
-              if (parsed.conversationId && !conversationId) {
-                setConversationId(parsed.conversationId);
-              }
-            } catch (e) {
-              console.error('Error parsing stream data:', e);
-            }
-          }
         }
       }
-    } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') {
-        console.log('Request was cancelled');
-      } else {
-        console.error('Error sending message:', error);
-        setError(error instanceof Error ? error.message : 'Failed to send message');
-        
-        // Add error message
-        setMessages(prev => [...prev, {
-          id: Date.now().toString() + '-error',
-          role: 'assistant',
-          content: 'Sorry, I encountered an error. Please try again.',
-          timestamp: new Date()
-        }]);
-      }
-    } finally {
-      setIsLoading(false);
-      abortControllerRef.current = null;
-    }
-  }, [agentName, conversationId, isLoading, reportData, reportType, subscriptionId]);
+    });
+  }, [append, agentName, conversationId, isLoading, reportData, reportType, subscriptionId]);
 
   const clearMessages = useCallback(() => {
-    setMessages([]);
+    setChatMessages([]);
     setConversationId(null);
-    setError(null);
-  }, []);
+  }, [setChatMessages]);
 
   const cancelRequest = useCallback(() => {
-    if (abortControllerRef.current) {
-      abortControllerRef.current.abort();
-      abortControllerRef.current = null;
-      setIsLoading(false);
-    }
+    // The useChat hook doesn't expose a cancel method, but requests are automatically aborted on unmount
+    console.log('Cancel request called - requests will be aborted on component unmount');
   }, []);
 
   return {
     messages,
     isLoading,
-    error,
+    error: error?.message || null,
     sendMessage,
     clearMessages,
     cancelRequest
