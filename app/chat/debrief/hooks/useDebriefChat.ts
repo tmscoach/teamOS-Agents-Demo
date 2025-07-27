@@ -31,6 +31,22 @@ export function useDebriefChat(options: UseDebriefChatOptions) {
     setMessages: setChatMessages
   } = useChat({
     api: '/api/chat/debrief',
+    body: {
+      conversationId,
+      agentName,
+      reportType,
+      subscriptionId,
+      reportData: reportData ? {
+        type: reportData.type,
+        title: reportData.title,
+        profile: reportData.profile,
+        sections: reportData.sections?.map(s => ({
+          id: s.id,
+          title: s.title,
+          content: s.content.substring(0, 500) // Limit content size
+        }))
+      } : undefined
+    },
     onResponse: (response) => {
       // Extract conversation ID from response headers
       const convId = response.headers.get('X-Conversation-ID');
@@ -59,27 +75,11 @@ export function useDebriefChat(options: UseDebriefChatOptions) {
       role: 'user',
       content: content.trim()
     }, {
-      options: {
-        body: {
-          conversationId,
-          agentName,
-          reportType,
-          subscriptionId,
-          visibleSection,
-          reportData: reportData ? {
-            type: reportData.type,
-            title: reportData.title,
-            profile: reportData.profile,
-            sections: reportData.sections?.map(s => ({
-              id: s.id,
-              title: s.title,
-              content: s.content.substring(0, 500) // Limit content size
-            }))
-          } : undefined
-        }
+      body: {
+        visibleSection
       }
     });
-  }, [append, agentName, conversationId, isLoading, reportData, reportType, subscriptionId]);
+  }, [append, isLoading]);
 
   const clearMessages = useCallback(() => {
     setChatMessages([]);

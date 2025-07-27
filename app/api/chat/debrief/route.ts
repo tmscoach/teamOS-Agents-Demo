@@ -33,6 +33,8 @@ export async function POST(request: NextRequest) {
     // Get the request body
     const body = await request.json();
     
+    console.log('[Debrief] Request body:', JSON.stringify(body, null, 2));
+    
     // The useChat hook sends messages in a specific format
     const messages = body.messages || [];
     const lastMessage = messages[messages.length - 1];
@@ -49,6 +51,7 @@ export async function POST(request: NextRequest) {
     } = body;
 
     if (!message) {
+      console.error('[Debrief] No message found in request');
       return new Response('Message is required', { status: 400 });
     }
 
