@@ -230,7 +230,10 @@ ${visibleSection && visibleSection !== 'overview' ? `The user is currently viewi
     const result = await streamText({
       model: aiOpenai('gpt-4o-mini'),
       system: systemPrompt,
-      messages: formattedMessages,
+      messages: formattedMessages.length > 0 ? formattedMessages : [{
+        role: 'user' as const,
+        content: message
+      }],
       temperature: 0.7,
       maxTokens: 2000,
       onFinish: async ({ text }) => {
