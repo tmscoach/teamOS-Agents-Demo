@@ -37,10 +37,9 @@ export async function POST(request: NextRequest) {
     
     // The useChat hook sends messages in a specific format
     const messages = body.messages || [];
-    const lastMessage = messages[messages.length - 1];
-    const message = lastMessage?.content;
+    const message = messages?.[messages.length - 1]?.content || '';
     
-    // Extract our custom fields from the options
+    // Extract our custom fields from the body
     const { 
       conversationId, 
       reportType = 'TMP',
