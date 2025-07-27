@@ -155,83 +155,49 @@ export async function POST(request: NextRequest) {
     // Create and initialize the DebriefAgent
     const agent = await createDebriefAgent();
     
-    // Build system message using agent's method
-    // @ts-ignore - accessing protected method
-    const systemMessage = agent.buildSystemMessage ? agent.buildSystemMessage(context) : null;
-    
-    // Extract system prompt or build default
-    let systemPrompt = systemMessage || '';
-    
-    if (!systemPrompt) {
-      // Fallback to basic instructions
-      // @ts-ignore - accessing protected property
-      systemPrompt = agent.instructions || 'You are a helpful assessment debrief assistant.';
-    }
-    
-    // Add debrief-specific context
-    let debriefContext = `
-You are currently helping the user understand their ${reportType} assessment report.
-${subscriptionId ? `The report is from subscription ${subscriptionId}.` : ''}
-${visibleSection && visibleSection !== 'overview' ? `The user is currently viewing the ${visibleSection} section.` : ''}
-`;
-
-    // Add report content to context if available
+    // Add report data to context metadata for the agent to use
     if (reportData) {
-      debriefContext += `\n\nReport Summary:`;
+      context.metadata.reportData = reportData;
+      context.metadata.reportType = reportType;
+      context.metadata.subscriptionId = subscriptionId;
+      context.metadata.visibleSection = visibleSection;
       
-      if (reportData.profile) {
-        debriefContext += `\nProfile: ${reportData.profile.name}`;
-        if (reportData.profile.majorRole) {
-          debriefContext += ` (Major Role: ${reportData.profile.majorRole})`;
-        }
-        if (reportData.profile.description) {
-          debriefContext += `\nDescription: ${reportData.profile.description}`;
-        }
-      }
-      
-      if (reportData.scores) {
-        debriefContext += `\n\nScores:`;
-        Object.entries(reportData.scores).forEach(([key, value]) => {
-          debriefContext += `\n- ${key}: ${value}`;
+      // Extract the actual report content from sections
+      let fullReportContent = '';
+      if (reportData.sections) {
+        reportData.sections.forEach((section: any) => {
+          fullReportContent += `\n\n## ${section.title}\n${section.content}`;
         });
       }
       
-      // If viewing a specific section, include its content
-      if (visibleSection && reportData.sections) {
-        const currentSection = reportData.sections.find((s: any) => s.id === visibleSection);
-        if (currentSection) {
-          debriefContext += `\n\nCurrent Section Content (${currentSection.title}):\n${currentSection.content.substring(0, 1000)}...`;
-        }
-      }
+      // Also add structured data about the report
+      context.metadata.reportSummary = {
+        name: reportData.profile?.name || 'Test User',
+        majorRole: reportData.profile?.majorRole || '',
+        relatedRoles: reportData.profile?.relatedRoles || [],
+        scores: reportData.scores || {},
+        fullContent: fullReportContent
+      };
+      
+      // Update the context in the store
+      await contextManager.setContext(context.conversationId, context);
     }
     
-    debriefContext += `\n\nProvide insights and answer questions about their results. Be specific and reference the actual data from their report when possible.`;
-
-    systemPrompt = `${systemPrompt}\n\nContext: ${debriefContext}`;
-
-    // Get conversation history from storage or use messages from useChat
-    let formattedMessages;
-    if (conversationId && messages.length <= 1) {
-      // If we have a conversation ID but only the current message, load history
-      const storedMessages = await conversationStore.getMessages(context.conversationId);
-      formattedMessages = storedMessages.map(msg => ({
-        role: msg.role as 'user' | 'assistant',
-        content: msg.content
-      }));
-    } else if (messages.length > 1) {
-      // Use messages from useChat (excluding the current one we just added)
-      formattedMessages = messages.slice(0, -1).map((msg: any) => ({
-        role: msg.role as 'user' | 'assistant',
-        content: msg.content
-      }));
-    } else {
-      formattedMessages = [];
-    }
-
-    // Stream the response
+    // Build system message using agent's method
+    // @ts-ignore - accessing protected method
+    const systemMessage = agent.buildSystemMessage ? agent.buildSystemMessage(context) : '';
+    
+    // Get conversation history
+    const conversationMessages = await conversationStore.getMessages(context.conversationId);
+    const formattedMessages = conversationMessages.map(msg => ({
+      role: msg.role as 'user' | 'assistant',
+      content: msg.content
+    }));
+    
+    // Stream the response with agent's configuration
     const result = await streamText({
       model: aiOpenai('gpt-4o-mini'),
-      system: systemPrompt,
+      system: systemMessage,
       messages: formattedMessages.length > 0 ? formattedMessages : [{
         role: 'user' as const,
         content: message
