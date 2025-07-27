@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
+import { prisma } from '@/lib/db/prisma';
+import { mockDataStore } from '@/src/lib/mock-tms-api/mock-data-store';
 
 // Define allowed domains for security
 const ALLOWED_DOMAINS = [
@@ -13,11 +16,19 @@ const ALLOWED_DOMAINS = [
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const imageUrl = searchParams.get('url');
+    let imageUrl = searchParams.get('url');
     
     if (!imageUrl) {
       return new NextResponse('Missing image URL', { status: 400 });
     }
+
+    // Decode HTML entities (like &amp; to &)
+    imageUrl = imageUrl
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#039;/g, "'");
 
     // Validate URL and domain for security
     let url: URL;
@@ -38,13 +49,78 @@ export async function GET(request: NextRequest) {
       return new NextResponse('Only HTTP(S) protocols allowed', { status: 400 });
     }
 
-    // Fetch the image from TMS API
-    const response = await fetch(imageUrl, {
-      headers: {
-        // Add any necessary headers for TMS API
-        'User-Agent': 'teamOS/1.0',
-      },
-    });
+    // Get the auth token - we'll use the same approach as the main TMS proxy
+    const session = await auth();
+    if (!session?.userId) {
+      return new NextResponse('Unauthorized', { status: 401 });
+    }
+
+    // For mock API, we need to get or generate a token
+    let bearerToken: string | null = null;
+    
+    // First check if we're using mock API
+    const apiMode = process.env.TMS_API_MODE || 'mock';
+    
+    if (apiMode === 'mock') {
+      // For mock mode, generate a token for the current user
+      const mockUser = mockDataStore.getUserByClerkId(session.userId);
+      if (mockUser) {
+        // Generate a mock JWT token
+        const { MockTMSClient } = await import('@/src/lib/mock-tms-api/mock-api-client');
+        const mockClient = new MockTMSClient();
+        bearerToken = mockClient.generateJWT({
+          sub: mockUser.id,
+          userId: mockUser.id,
+          userType: mockUser.userType || 'Respondent',
+          organisationId: mockUser.organizationId,
+          email: mockUser.email
+        });
+      }
+    } else {
+      // For live mode, get from database
+      const dbUser = await prisma.user.findUnique({
+        where: { clerkId: session.userId },
+        include: { TMSAuthToken: true }
+      });
+      
+      if (dbUser?.TMSAuthToken?.tmsJwtToken) {
+        bearerToken = dbUser.TMSAuthToken.tmsJwtToken;
+      }
+    }
+
+    // Log the request details for debugging
+    console.log(`[Image Proxy] Fetching: ${imageUrl}`);
+    console.log(`[Image Proxy] Has token: ${!!bearerToken}`);
+
+    // Prepare headers
+    const headers: HeadersInit = {
+      'User-Agent': 'teamOS/1.0',
+      'Accept': 'image/*',
+    };
+    
+    if (bearerToken) {
+      headers['Authorization'] = `Bearer ${bearerToken}`;
+    }
+
+    // Fetch the image from TMS API with timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+    
+    let response;
+    try {
+      response = await fetch(imageUrl, {
+        headers,
+        signal: controller.signal,
+      });
+    } catch (fetchError: any) {
+      console.error(`[Image Proxy] Fetch error:`, fetchError);
+      if (fetchError.name === 'AbortError') {
+        return new NextResponse('Request timeout', { status: 504 });
+      }
+      throw fetchError;
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     if (!response.ok) {
       console.log(`[Image Proxy] Failed to fetch image from ${imageUrl}: ${response.status}`);

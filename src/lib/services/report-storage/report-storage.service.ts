@@ -48,10 +48,16 @@ export class ReportStorageService {
         }
       });
 
-      // Queue async processing
-      this.processReportAsync(report.id).catch(error => {
-        console.error(`Failed to process report ${report.id}:`, error);
-      });
+      // Process immediately or queue async processing
+      if (options.processImmediately) {
+        // Process synchronously for immediate results
+        await this.processReportAsync(report.id, options.jwt);
+      } else {
+        // Queue async processing
+        this.processReportAsync(report.id).catch(error => {
+          console.error(`Failed to process report ${report.id}:`, error);
+        });
+      }
 
       return report.id;
     } catch (error) {
@@ -158,7 +164,7 @@ export class ReportStorageService {
   /**
    * Process report asynchronously
    */
-  private async processReportAsync(reportId: string): Promise<void> {
+  private async processReportAsync(reportId: string, jwt?: string): Promise<void> {
     try {
       // Update status to processing
       await this.prisma.userReport.update({
@@ -177,7 +183,8 @@ export class ReportStorageService {
       // 1. Download and store images
       const imageMap = await this.imageService.downloadReportImages(
         report.rawHtml,
-        reportId
+        reportId,
+        { userId: report.userId, jwt }
       );
 
       // 2. Store image records

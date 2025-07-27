@@ -25,6 +25,42 @@ export class ReportLoader {
     const { subscriptionId, reportType, managerId } = options;
     
     try {
+      // First, check if we have a stored report
+      console.log(`[ReportLoader] Checking for stored report with subscription ID: ${subscriptionId}`);
+      
+      try {
+        const storedReportResponse = await fetch(`/api/reports/subscription/${subscriptionId}`);
+        
+        if (storedReportResponse.ok) {
+          const storedData = await storedReportResponse.json();
+          
+          if (storedData.success && storedData.report) {
+            console.log('[ReportLoader] Found stored report, using cached version');
+            
+            // Use the processed HTML from storage
+            const html = storedData.report.html;
+            
+            // Parse the HTML into structured data
+            const parsedReport = ReportParser.parseHtmlReport(html, reportType);
+            
+            // Add subscription ID and raw HTML to the parsed report
+            parsedReport.subscriptionId = subscriptionId;
+            parsedReport.rawHtml = html;
+            
+            // Add stored report metadata
+            parsedReport.reportId = storedData.report.id;
+            parsedReport.isFromCache = true;
+            
+            return parsedReport;
+          }
+        }
+      } catch (error) {
+        console.log('[ReportLoader] No stored report found, will generate new one:', error);
+      }
+      
+      // If no stored report, generate via TMS API
+      console.log('[ReportLoader] Generating new report via TMS API');
+      
       // Get the template ID for this report type
       const templateId = this.TEMPLATE_IDS[reportType];
       
@@ -58,6 +94,31 @@ export class ReportLoader {
 
       // Store the report for persistent access
       try {
+        // Get JWT token from the TMS proxy response or generate for mock
+        let jwtToken = null;
+        
+        // Check if the response includes a JWT token
+        if (data._jwtToken) {
+          jwtToken = data._jwtToken;
+        } else {
+          // For mock API, we'll generate a JWT token
+          const apiMode = process.env.NEXT_PUBLIC_TMS_API_MODE || 'mock';
+          
+          if (apiMode === 'mock') {
+            // Get current user token from TMS auth endpoint
+            try {
+              const tokenResponse = await fetch('/api/admin/tms-auth/token');
+              
+              if (tokenResponse.ok) {
+                const tokenData = await tokenResponse.json();
+                jwtToken = tokenData.token;
+              }
+            } catch (error) {
+              console.error('Failed to get JWT token:', error);
+            }
+          }
+        }
+        
         const storeResponse = await fetch('/api/reports/store', {
           method: 'POST',
           headers: {
@@ -69,7 +130,9 @@ export class ReportLoader {
             templateId,
             rawHtml: html,
             organizationId: 'default', // TODO: Get from user context
-            teamId: managerId // TODO: Get actual team ID
+            teamId: managerId, // TODO: Get actual team ID
+            processImmediately: true, // Process images synchronously
+            jwt: jwtToken
           })
         });
 

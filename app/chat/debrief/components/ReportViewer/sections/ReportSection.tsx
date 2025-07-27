@@ -30,16 +30,8 @@ export default function ReportSection({ section, sectionNumber, isExpanded = tru
   const baseUrl = process.env.NEXT_PUBLIC_TMS_BASE_URL || 'https://api-test.tms.global';
   processedHtml = processedHtml.replace(/{{BASE_URL}}/g, baseUrl);
   
-  // Proxy images to avoid CORS issues and ensure proper display
-  processedHtml = processedHtml.replace(
-    /src="([^"]+)"/g,
-    (match, url) => {
-      if (url.includes('api-test.tms.global') || url.includes('GetGraph') || url.includes('Asset')) {
-        return `src="/api/tms-proxy/image?url=${encodeURIComponent(url)}"`;
-      }
-      return match;
-    }
-  );
+  // Images should already be replaced with local URLs by the report processing service
+  // No need to proxy anymore - images are served from /api/reports/images/
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden">

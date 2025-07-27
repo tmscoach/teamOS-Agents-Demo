@@ -6,11 +6,15 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { ReportStorageService } from '@/src/lib/services/report-storage/report-storage.service';
+import { PrismaClient } from '@/lib/generated/prisma';
+
+const prisma = new PrismaClient();
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  props: { params: Promise<{ id: string }> }
 ) {
+  const params = await props.params;
   try {
     const session = await auth();
     if (!session?.userId) {
@@ -25,9 +29,19 @@ export async function GET(
       );
     }
 
+    // Look up the database user by Clerk ID
+    const user = await prisma.user.findUnique({
+      where: { clerkId: session.userId },
+      select: { id: true }
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
     // Get the report
     const storageService = new ReportStorageService();
-    const report = await storageService.getReport(reportId, session.userId);
+    const report = await storageService.getReport(reportId, user.id);
 
     if (!report) {
       return NextResponse.json(

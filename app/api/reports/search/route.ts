@@ -6,12 +6,25 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { ReportStorageService } from '@/src/lib/services/report-storage/report-storage.service';
+import { PrismaClient } from '@/lib/generated/prisma';
+
+const prisma = new PrismaClient();
 
 export async function POST(request: Request) {
   try {
     const session = await auth();
     if (!session?.userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // Look up the database user by Clerk ID
+    const user = await prisma.user.findUnique({
+      where: { clerkId: session.userId },
+      select: { id: true }
+    });
+
+    if (!user) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
     const body = await request.json();
@@ -28,7 +41,7 @@ export async function POST(request: Request) {
     // Search reports
     const storageService = new ReportStorageService();
     const results = await storageService.searchReports({
-      userId: session.userId,
+      userId: user.id,
       query,
       reportTypes,
       limit: limit || 10

@@ -124,6 +124,43 @@ export async function POST(request: Request) {
       });
     }
 
+    // For HTML reports, trigger storage with immediate processing
+    if (tool === 'tms_generate_html_report' && response) {
+      try {
+        const reportType = parameters.subscriptionId.startsWith('219') ? 'TMP' : 
+                          parameters.subscriptionId.startsWith('218') ? 'QO2' : 'TEAM_SIGNALS';
+        
+        console.log('[TMS API Test] Storing HTML report for immediate processing...');
+        
+        const storeResponse = await fetch(`${request.url.replace('/api/admin/tms-api/test', '/api/reports/store')}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            cookie: request.headers.get('cookie') || ''
+          },
+          body: JSON.stringify({
+            reportType,
+            subscriptionId: parameters.subscriptionId,
+            templateId: parameters.templateId || '6',
+            rawHtml: response,
+            organizationId: 'default',
+            teamId: null,
+            processImmediately: true,
+            jwt: jwtToken
+          })
+        });
+
+        if (storeResponse.ok) {
+          const storeData = await storeResponse.json();
+          console.log('[TMS API Test] Report stored successfully:', storeData.reportId);
+        } else {
+          console.error('[TMS API Test] Failed to store report:', await storeResponse.text());
+        }
+      } catch (storeError) {
+        console.error('[TMS API Test] Error storing report:', storeError);
+      }
+    }
+
     return NextResponse.json(response);
   } catch (error) {
     console.error("Error executing test API call:", error);

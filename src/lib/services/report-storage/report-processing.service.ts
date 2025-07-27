@@ -254,7 +254,11 @@ export class ReportProcessingService {
           }
         });
         
-        start = end - overlap;
+        // Move to next chunk, ensuring progress even if overlap is larger than chunk
+        if (end >= section.content.length) {
+          break;
+        }
+        start = Math.max(start + 1, end - overlap);
       }
     }
 

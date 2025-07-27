@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
-import DebriefLayout from './components/DebriefLayout';
+import SimplifiedDebriefLayout from './components/SimplifiedDebriefLayout';
 import { ReportLoader } from '@/src/lib/services/report-loader';
 import { ParsedReport } from '@/src/lib/utils/report-parser';
 
@@ -64,9 +64,10 @@ function DebriefPageContent() {
   }
 
   return (
-    <DebriefLayout 
+    <SimplifiedDebriefLayout 
       agentName={agentName}
       reportType={reportType as 'TMP' | 'QO2' | 'TeamSignals'}
+      reportHtml={reportData.rawHtml || ''}
       reportData={reportData}
     />
   );

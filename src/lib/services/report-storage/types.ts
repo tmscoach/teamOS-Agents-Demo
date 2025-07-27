@@ -10,6 +10,8 @@ export interface StoreReportOptions {
   subscriptionId: string;
   templateId: string;
   rawHtml: string;
+  processImmediately?: boolean; // Process images and chunks synchronously
+  jwt?: string; // JWT token for image downloads
 }
 
 export interface ProcessedReport {
