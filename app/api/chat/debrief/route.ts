@@ -253,8 +253,11 @@ ${visibleSection && visibleSection !== 'overview' ? `The user is currently viewi
     });
 
     // Add conversation ID to response headers
-    const response = result.toTextStreamResponse();
-    response.headers.set('X-Conversation-ID', context.conversationId);
+    const response = result.toDataStreamResponse({
+      headers: {
+        'X-Conversation-ID': context.conversationId
+      }
+    });
     
     return response;
   } catch (error) {
