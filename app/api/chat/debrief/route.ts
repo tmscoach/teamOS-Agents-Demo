@@ -156,15 +156,31 @@ export async function POST(request: NextRequest) {
     const agent = await createDebriefAgent();
     
     // Add report data to context metadata for the agent to use
-    if (reportData) {
+    if (reportData || subscriptionId) {
+      // First, try to get the stored report ID
+      let reportId = null;
+      if (subscriptionId) {
+        const storedReport = await prisma.userReport.findFirst({
+          where: {
+            subscriptionId,
+            userId: dbUser.id,
+            processingStatus: 'COMPLETED'
+          },
+          select: { id: true }
+        });
+        reportId = storedReport?.id;
+      }
+      
+      context.metadata.reportId = reportId;
       context.metadata.reportData = reportData;
       context.metadata.reportType = reportType;
       context.metadata.subscriptionId = subscriptionId;
       context.metadata.visibleSection = visibleSection;
+      context.metadata.userId = dbUser.id;
       
       // Extract the actual report content from sections
       let fullReportContent = '';
-      if (reportData.sections) {
+      if (reportData?.sections) {
         reportData.sections.forEach((section: any) => {
           fullReportContent += `\n\n## ${section.title}\n${section.content}`;
         });
@@ -172,10 +188,10 @@ export async function POST(request: NextRequest) {
       
       // Also add structured data about the report
       context.metadata.reportSummary = {
-        name: reportData.profile?.name || 'Test User',
-        majorRole: reportData.profile?.majorRole || '',
-        relatedRoles: reportData.profile?.relatedRoles || [],
-        scores: reportData.scores || {},
+        name: reportData?.profile?.name || 'Test User',
+        majorRole: reportData?.profile?.majorRole || '',
+        relatedRoles: reportData?.profile?.relatedRoles || [],
+        scores: reportData?.scores || {},
         fullContent: fullReportContent
       };
       
