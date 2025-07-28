@@ -115,6 +115,11 @@ export function generateProfileSummary(report: ParsedReport | undefined): Profil
 export function generateSuggestedActions(report: ParsedReport | undefined): SuggestedAction[] {
   const baseActions: SuggestedAction[] = [
     {
+      id: 'osmos-help',
+      label: 'What can Osmos do for me?',
+      question: 'What can Osmos do for me?'
+    },
+    {
       id: 'highlights',
       label: '3 highlights about me',
       question: 'What are my top 3 strengths and highlights from my profile?'
@@ -131,28 +136,35 @@ export function generateSuggestedActions(report: ParsedReport | undefined): Sugg
     }
   ];
 
-  if (!report) return baseActions;
+  if (!report) return baseActions.slice(0, 4);
 
-  // Add report-type specific actions
+  // For report-specific actions, we'll replace the last base action
+  // This keeps us at exactly 4 suggestions total
+  const coreActions = baseActions.slice(0, 3); // Take first 3 base actions
+  
+  // Add report-type specific action as the 4th
   if (report.type === 'TMP' && report.profile.majorRole) {
-    baseActions.push({
+    coreActions.push({
       id: 'role-meaning',
       label: `Understanding my ${report.profile.majorRole} role`,
       question: `What does it mean to be a ${report.profile.majorRole} and how can I leverage this?`
     });
   } else if (report.type === 'QO2') {
-    baseActions.push({
+    coreActions.push({
       id: 'leadership',
       label: 'My leadership strengths',
       question: 'What are my key leadership strengths according to my QO² assessment?'
     });
   } else if (report.type === 'TeamSignals') {
-    baseActions.push({
+    coreActions.push({
       id: 'team-dynamics',
       label: 'Our team dynamics',
       question: 'What are the key dynamics and patterns in our team?'
     });
+  } else {
+    // If no specific action, use the 4th base action
+    coreActions.push(baseActions[3]);
   }
 
-  return baseActions.slice(0, 4); // Return max 4 actions
+  return coreActions;
 }
