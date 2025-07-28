@@ -4,7 +4,7 @@ import React, { useRef, useEffect, useState } from "react";
 import { UserButton } from "@clerk/nextjs";
 import MessageList from "@/app/chat/components/MessageList";
 import ChatInput from "@/app/chat/components/ChatInput";
-import RawReportViewer from './RawReportViewer';
+import StyledReportViewer from './StyledReportViewer';
 import ProfileSummary from './ChatInterface/ProfileSummary';
 import SuggestedActions from './ChatInterface/SuggestedActions';
 import { generateProfileSummary, generateSuggestedActions } from '@/src/lib/utils/report-summary';
@@ -151,7 +151,7 @@ export default function DebriefChatLayout({
           {/* Scrollable Report Content */}
           <div className="h-[calc(100vh-108px)] overflow-y-auto bg-white">
             <div className="w-full max-w-[900px] mx-auto px-6 py-8">
-              <RawReportViewer 
+              <StyledReportViewer 
                 html={reportHtml}
                 onSectionChange={onSectionChange}
               />
