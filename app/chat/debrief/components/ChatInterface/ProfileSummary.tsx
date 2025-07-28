@@ -24,7 +24,7 @@ export default function ProfileSummary({ title, role, bullets, userName }: Profi
             {bullets.slice(0, 3).map((bullet, index) => (
               <li key={index} className="text-xs text-gray-600 flex items-start">
                 <span className="mr-1.5 text-purple-500">•</span>
-                <span className="line-clamp-1">{bullet}</span>
+                <span className="line-clamp-2">{bullet}</span>
               </li>
             ))}
           </ul>

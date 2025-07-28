@@ -50,7 +50,11 @@ export function generateProfileSummary(report: ParsedReport | undefined): Profil
       const keyPoints = keyPointsSection.content
         .split('\n')
         .filter(line => line.trim().startsWith('You'))
-        .map(line => line.trim())
+        .map(line => {
+          // Ensure each line ends with proper punctuation
+          const trimmed = line.trim();
+          return trimmed.match(/[.!?]$/) ? trimmed : trimmed + '.';
+        })
         .slice(0, 3);
       
       if (keyPoints.length > 0) {
