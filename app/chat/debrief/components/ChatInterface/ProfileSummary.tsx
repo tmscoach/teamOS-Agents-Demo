@@ -3,24 +3,28 @@
 import { User } from 'lucide-react';
 import type { ProfileSummary as ProfileSummaryType } from '@/src/lib/utils/report-summary';
 
-interface ProfileSummaryProps extends ProfileSummaryType {}
+interface ProfileSummaryProps extends ProfileSummaryType {
+  userName?: string;
+}
 
-export default function ProfileSummary({ title, role, bullets }: ProfileSummaryProps) {
+export default function ProfileSummary({ title, role, bullets, userName }: ProfileSummaryProps) {
   return (
-    <div className="mx-4 mt-4 p-4 bg-gray-50 rounded-lg">
+    <div className="p-4 bg-purple-50 rounded-lg border border-purple-100">
       <div className="flex items-start gap-3">
-        <div className="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
-          <User className="w-5 h-5 text-gray-600" />
+        <div className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
+          <span className="text-white font-semibold text-sm">
+            {userName?.charAt(0) || 'U'}
+          </span>
         </div>
         <div className="flex-1">
-          <h3 className="text-sm font-semibold text-gray-900">
-            {title}: <span className="text-gray-700">{role}</span>
-          </h3>
+          <h4 className="font-semibold text-gray-900">
+            {title}: {role}
+          </h4>
           <ul className="mt-2 space-y-1">
             {bullets.map((bullet, index) => (
-              <li key={index} className="text-xs text-gray-600 flex items-start">
-                <span className="mr-2 mt-0.5">•</span>
-                <span className="flex-1">{bullet}</span>
+              <li key={index} className="text-sm text-gray-600 flex items-start">
+                <span className="mr-2 text-purple-600">•</span>
+                <span>{bullet}</span>
               </li>
             ))}
           </ul>
