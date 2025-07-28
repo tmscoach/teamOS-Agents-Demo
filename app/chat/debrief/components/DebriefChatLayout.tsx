@@ -4,7 +4,7 @@ import React, { useRef, useEffect, useState } from "react";
 import { UserButton } from "@clerk/nextjs";
 import MessageList from "@/app/chat/components/MessageList";
 import ChatInput from "@/app/chat/components/ChatInput";
-import StyledReportViewer from './StyledReportViewer';
+import InteractiveReportViewer from './InteractiveReportViewer';
 import ProfileSummary from './ChatInterface/ProfileSummary';
 import SuggestedActions from './ChatInterface/SuggestedActions';
 import { generateProfileSummary, generateSuggestedActions } from '@/src/lib/utils/report-summary';
@@ -55,6 +55,27 @@ export default function DebriefChatLayout({
       }, 100);
     }
   }, [messages, isLoading]);
+
+  // Handle image clicks from the report viewer
+  const handleImageClick = (question: string) => {
+    // Populate the input with the question
+    const event = {
+      target: { value: question }
+    } as React.ChangeEvent<HTMLInputElement>;
+    onInputChange(event);
+    
+    // Hide suggestions since user is interacting
+    setShowSuggestions(false);
+    
+    // Submit the form after a brief delay to ensure input is updated
+    setTimeout(() => {
+      const submitEvent = {
+        preventDefault: () => {},
+        currentTarget: { elements: { input: { value: question } } }
+      } as any as React.FormEvent<HTMLFormElement>;
+      onSubmit(submitEvent);
+    }, 100);
+  };
 
   return (
     <div className="bg-white min-h-screen w-full flex overflow-auto">
@@ -151,9 +172,10 @@ export default function DebriefChatLayout({
           {/* Scrollable Report Content */}
           <div className="h-[calc(100vh-108px)] overflow-y-auto bg-white">
             <div className="w-full max-w-[900px] mx-auto px-6 py-8">
-              <StyledReportViewer 
+              <InteractiveReportViewer 
                 html={reportHtml}
                 onSectionChange={onSectionChange}
+                onImageClick={handleImageClick}
               />
             </div>
           </div>
