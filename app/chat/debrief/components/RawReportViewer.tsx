@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useMemo } from 'react';
+import { useEffect, useRef, useMemo, memo } from 'react';
 
 interface RawReportViewerProps {
   html: string;
   onSectionChange: (section: string) => void;
 }
 
-export default function RawReportViewer({ html, onSectionChange }: RawReportViewerProps) {
+const RawReportViewer = memo(function RawReportViewer({ html, onSectionChange }: RawReportViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Sanitize HTML to remove problematic onclick handlers
@@ -56,7 +56,7 @@ export default function RawReportViewer({ html, onSectionChange }: RawReportView
     });
 
     return () => observer.disconnect();
-  }, [sanitizedHtml, onSectionChange]);
+  }, [onSectionChange]);
 
   return (
     <div 
@@ -65,4 +65,6 @@ export default function RawReportViewer({ html, onSectionChange }: RawReportView
       dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
     />
   );
-}
+});
+
+export default RawReportViewer;

@@ -224,6 +224,37 @@ describe('searchReportImages tool', () => {
       expect(result.output).toContain('Balanced distribution, Strong in relationships');
     });
 
+    it('should handle multi-word queries with AND logic', async () => {
+      const mockReport = { id: 'report-123' };
+      const mockImages = [
+        {
+          imageType: 'wheel',
+          altText: 'Work Preference Wheel',
+          detailedDescription: 'This shows the distribution of work preferences across sectors',
+          extractedData: null,
+          insights: []
+        }
+      ];
+
+      (prisma.userReport.findFirst as jest.Mock).mockResolvedValueOnce(mockReport);
+      (prisma.reportImage.findMany as jest.Mock).mockResolvedValueOnce(mockImages);
+
+      const result = await tool.execute(
+        { query: 'Work Preference Distribution' },
+        mockContext
+      );
+
+      expect(result.success).toBe(true);
+      expect(result.output).toContain('Found 1 image');
+      
+      // Check that the query was split into words with AND conditions
+      const findManyCall = (prisma.reportImage.findMany as jest.Mock).mock.calls[0][0];
+      expect(findManyCall.where.AND).toBeDefined();
+      expect(findManyCall.where.AND).toHaveLength(3); // "work", "preference", "distribution"
+      expect(findManyCall.where.AND[0].OR).toBeDefined();
+      expect(findManyCall.where.AND[0].OR[0].detailedDescription.contains).toBe('work');
+    });
+
     it('should handle database errors gracefully', async () => {
       (prisma.userReport.findFirst as jest.Mock).mockRejectedValueOnce(
         new Error('Database connection error')

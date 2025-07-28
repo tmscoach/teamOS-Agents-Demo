@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from 'react';
+import { useMemo, memo } from 'react';
 import RawReportViewer from './RawReportViewer';
 import styles from './StyledReportViewer.module.css';
 
@@ -9,7 +9,7 @@ interface StyledReportViewerProps {
   onSectionChange: (section: string) => void;
 }
 
-export default function StyledReportViewer({ html, onSectionChange }: StyledReportViewerProps) {
+const StyledReportViewer = memo(function StyledReportViewer({ html, onSectionChange }: StyledReportViewerProps) {
   // Enhance HTML with additional classes for styling
   const enhancedHtml = useMemo(() => {
     let enhanced = html;
@@ -55,4 +55,6 @@ export default function StyledReportViewer({ html, onSectionChange }: StyledRepo
       />
     </div>
   );
-}
+});
+
+export default StyledReportViewer;
