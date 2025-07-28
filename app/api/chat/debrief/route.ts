@@ -50,10 +50,9 @@ export async function POST(request: NextRequest) {
       agentName 
     } = body;
 
-    if (!message) {
-      console.error('[Debrief] No message found in request');
-      return new Response('Message is required', { status: 400 });
-    }
+    // Handle empty message for initial greeting (similar to chat-streaming route)
+    const isInitialGreeting = !message && messages.length === 1;
+    let userMessageContent = message || '[User joined the conversation]';
 
     // Get database user
     const userEmail = user.emailAddresses?.[0]?.emailAddress;
@@ -154,7 +153,7 @@ export async function POST(request: NextRequest) {
     const userMessage = {
       id: `msg-${Date.now()}`,
       role: 'user' as const,
-      content: message,
+      content: userMessageContent,
       timestamp: new Date()
     };
     await contextManager.addMessage(context.conversationId, userMessage);
@@ -427,7 +426,7 @@ export async function POST(request: NextRequest) {
         system: systemMessage,
         messages: formattedMessages.length > 0 ? formattedMessages : [{
           role: 'user' as const,
-          content: message
+          content: userMessageContent
         }],
         temperature: temperature,
         maxTokens: 2000,
