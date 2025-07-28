@@ -88,6 +88,7 @@ export default function ChatInterface({
       error={error}
       onSendMessage={handleSendMessage}
       inputRef={inputRef}
+      reportData={reportData}
     />
   );
 }

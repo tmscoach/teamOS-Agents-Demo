@@ -1,9 +1,13 @@
 "use client";
 
-import { useState, useEffect, useRef, RefObject } from 'react';
+import { useState, useEffect, useRef, RefObject, useMemo } from 'react';
 import { Send } from 'lucide-react';
 import OscarIcon from './OscarIcon';
 import ChatMessages from './ChatMessages';
+import ProfileSummary from './ProfileSummary';
+import SuggestedActions from './SuggestedActions';
+import { generateProfileSummary, generateSuggestedActions } from '@/src/lib/utils/report-summary';
+import type { ParsedReport } from '@/src/lib/utils/report-parser';
 import type { Message } from '../../hooks/useDebriefChat';
 
 interface ExpandedChatProps {
@@ -12,6 +16,7 @@ interface ExpandedChatProps {
   error: string | null;
   onSendMessage: (input: string) => void;
   inputRef: RefObject<HTMLInputElement | null>;
+  reportData?: ParsedReport;
 }
 
 export default function ExpandedChat({ 
@@ -19,10 +24,15 @@ export default function ExpandedChat({
   isLoading, 
   error,
   onSendMessage,
-  inputRef 
+  inputRef,
+  reportData
 }: ExpandedChatProps) {
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // Generate profile summary and suggested actions
+  const profileSummary = useMemo(() => generateProfileSummary(reportData), [reportData]);
+  const suggestedActions = useMemo(() => generateSuggestedActions(reportData), [reportData]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -50,8 +60,9 @@ export default function ExpandedChat({
       style={{
         bottom: '20px',
         right: '40px',
-        width: '432px',
-        height: '600px',
+        width: 'min(600px, 40vw)',
+        minWidth: '400px',
+        height: 'calc(100vh - 140px)',
         borderRadius: '6px 6px 0px 0px',
         border: '1px solid var(--shadcn-ui-border, #e5e7eb)',
         boxShadow: '0px 4px 6px -4px rgba(0, 0, 0, 0.1), 0px 10px 15px -3px rgba(0, 0, 0, 0.1)',
@@ -62,11 +73,22 @@ export default function ExpandedChat({
     >
       {/* Chat Header */}
       <div className="px-6 py-4 bg-white border-b border-gray-200" style={{ borderRadius: '6px 6px 0 0' }}>
-        <h3 className="text-lg font-semibold text-gray-900">Chat with Oskar</h3>
+        <div className="flex items-center gap-2">
+          <OscarIcon className="w-6 h-6" />
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900">Chat with OSmos</h3>
+            <p className="text-sm text-gray-500">Your AI team dynamics coach</p>
+          </div>
+        </div>
       </div>
       
       {/* Messages */}
       <div className="flex-1 overflow-y-auto bg-white">
+        {/* Profile Summary */}
+        {messages.length === 0 && reportData && (
+          <ProfileSummary {...profileSummary} />
+        )}
+        
         <ChatMessages messages={messages} />
         {error && (
           <div className="px-4 py-2 text-sm text-red-600 bg-red-50">
@@ -75,6 +97,17 @@ export default function ExpandedChat({
         )}
         <div ref={messagesEndRef} />
       </div>
+      
+      {/* Suggested Actions */}
+      {messages.length === 0 && suggestedActions.length > 0 && (
+        <SuggestedActions 
+          actions={suggestedActions} 
+          onActionClick={(question) => {
+            setInput(question);
+            inputRef.current?.focus();
+          }}
+        />
+      )}
       
       {/* Input Area at Bottom */}
       <div className="p-4 bg-white border-t border-gray-200">
@@ -96,7 +129,7 @@ export default function ExpandedChat({
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="Type your message..."
+              placeholder="Ask about your profile..."
               disabled={isLoading}
               className="flex-1 text-sm text-[#6b7280] placeholder:text-[#9ca3af] focus:outline-none bg-transparent font-['Inter',Helvetica] font-normal tracking-[0] leading-6"
             />
@@ -114,7 +147,7 @@ export default function ExpandedChat({
         </div>
         {isLoading && (
           <div className="mt-2 text-xs text-gray-500 text-center">
-            Oskar is thinking...
+            OSmos is thinking...
           </div>
         )}
       </div>
