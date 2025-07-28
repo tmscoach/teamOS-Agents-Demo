@@ -187,18 +187,40 @@ export class ReportStorageService {
         { userId: report.userId, jwt }
       );
 
-      // 2. Store image records
+      // 2. Store image records with vision analysis
       if (imageMap.size > 0) {
-        await this.prisma.reportImage.createMany({
-          data: Array.from(imageMap.entries()).map(([originalUrl, processed]) => ({
+        // Use individual creates to handle arrays and embeddings
+        for (const [originalUrl, processed] of imageMap.entries()) {
+          const imageData: any = {
             reportId,
             originalUrl,
             storagePath: processed.storagePath,
             imageType: processed.imageType,
             altText: processed.altText,
+            detailedDescription: processed.detailedDescription,
+            extractedData: processed.extractedData as Prisma.JsonObject,
+            insights: processed.insights || [],
             metadata: processed.metadata as Prisma.JsonObject
-          }))
-        });
+          };
+          
+          // Add embedding if available (using raw SQL for vector type)
+          if (processed.embedding && processed.embedding.length > 0) {
+            await this.prisma.$executeRaw`
+              INSERT INTO "ReportImage" 
+              (id, "reportId", "originalUrl", "storagePath", "imageType", "altText", 
+               "detailedDescription", "extractedData", insights, metadata, embedding, "createdAt")
+              VALUES 
+              (gen_random_uuid()::text, ${reportId}, ${originalUrl}, ${processed.storagePath}, 
+               ${processed.imageType}, ${processed.altText}, ${processed.detailedDescription}, 
+               ${JSON.stringify(processed.extractedData)}::jsonb, ${processed.insights}::text[], 
+               ${JSON.stringify(processed.metadata)}::jsonb, ${processed.embedding}::vector, NOW())
+            `;
+          } else {
+            await this.prisma.reportImage.create({
+              data: imageData
+            });
+          }
+        }
       }
 
       // 3. Replace image URLs in HTML

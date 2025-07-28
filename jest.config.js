@@ -20,7 +20,7 @@ const customJestConfig = {
     '^.+\\.(js|jsx|ts|tsx)$': ['babel-jest', { presets: ['next/babel'] }],
   },
   transformIgnorePatterns: [
-    '/node_modules/',
+    '/node_modules/(?!(@clerk|@ai-sdk|ai)/)',
     '^.+\\.module\\.(css|sass|scss)$',
   ],
   // Memory management

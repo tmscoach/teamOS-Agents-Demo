@@ -70,15 +70,27 @@ Remember to:
     // Initialize report search tools
     this.reportSearchTool = new SearchReportChunksSchema();
     this.reportContextTool = new GetReportContextSchema();
+    
+    console.log(`[${this.name}] Constructor completed, tools count: ${this.tools.length}`);
   }
   
   /**
-   * Override to add report search tools
+   * Override initialize to ensure report tools are always added
    */
-  protected async loadTools(): Promise<void> {
-    await super.loadTools();
+  async initialize(): Promise<void> {
+    console.log(`[${this.name}] Initialize called`);
+    // Call parent initialize first
+    await super.initialize();
     
-    // Add report-specific tools
+    // Always add report tools after initialization
+    this.addReportTools();
+  }
+  
+  /**
+   * Add report-specific tools
+   */
+  public addReportTools(): void {
+    // Add report-specific tools after configuration is loaded
     const reportTools: AgentTool[] = [
       {
         name: this.reportSearchTool.name,
@@ -96,7 +108,7 @@ Remember to:
     
     // Add to tools array
     this.tools.push(...reportTools);
-    console.log(`[${this.name}] Added ${reportTools.length} report search tools`);
+    console.log(`[${this.name}] Added ${reportTools.length} report search tools to total of ${this.tools.length} tools`);
   }
 
   /**

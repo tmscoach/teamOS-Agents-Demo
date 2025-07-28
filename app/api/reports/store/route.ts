@@ -34,6 +34,7 @@ export async function POST(request: Request) {
           clerkId: session.userId,
           email: session.user?.emailAddresses?.[0]?.emailAddress || `${session.userId}@temp.com`,
           name: session.user?.firstName ? `${session.user.firstName} ${session.user.lastName || ''}`.trim() : 'Unknown User',
+          role: 'TEAM_MEMBER',
           updatedAt: new Date()
         }
       });

@@ -4,11 +4,16 @@
  */
 
 import { createClient } from '@supabase/supabase-js';
+import { VisionAnalysisService } from './vision-analysis.service';
 
 interface ProcessedImage {
   storagePath: string;
   imageType: 'wheel' | 'graph' | 'asset';
   altText?: string;
+  detailedDescription?: string;
+  extractedData?: any;
+  insights?: string[];
+  embedding?: number[];
   metadata?: any;
 }
 
@@ -19,12 +24,14 @@ interface DownloadOptions {
 
 export class ImageDownloadService {
   private supabase;
+  private visionService: VisionAnalysisService;
 
   constructor() {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
     
     this.supabase = createClient(supabaseUrl, supabaseKey);
+    this.visionService = new VisionAnalysisService();
   }
 
   /**
@@ -148,10 +155,32 @@ export class ImageDownloadService {
       }
       console.log(`[Image Download] Successfully uploaded to ${storagePath}`);
 
+      // Analyze image with vision AI
+      let visionAnalysis = null;
+      let embedding = null;
+      
+      try {
+        console.log(`[Image Download] Starting vision analysis for ${imageType} image`);
+        visionAnalysis = await this.visionService.analyzeImage(imageData, imageType, metadata);
+        
+        // Generate embedding from the detailed description
+        if (visionAnalysis.detailedDescription) {
+          embedding = await this.visionService.generateImageEmbedding(visionAnalysis.detailedDescription);
+          console.log(`[Image Download] Generated embedding with ${embedding.length} dimensions`);
+        }
+      } catch (error) {
+        console.error(`[Image Download] Vision analysis failed:`, error);
+        // Continue without vision analysis
+      }
+
       return {
         storagePath,
         imageType,
         altText: this.generateAltText(imageType, metadata),
+        detailedDescription: visionAnalysis?.detailedDescription,
+        extractedData: visionAnalysis?.extractedData,
+        insights: visionAnalysis?.insights,
+        embedding,
         metadata
       };
     } catch (error) {

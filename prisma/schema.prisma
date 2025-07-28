@@ -311,18 +311,23 @@ model UserReport {
 }
 
 model ReportImage {
-  id           String      @id @default(dbgenerated("(gen_random_uuid())::text"))
-  reportId     String
-  originalUrl  String
-  storagePath  String
-  imageType    String
-  altText      String?
-  description  String?
-  metadata     Json?
-  createdAt    DateTime    @default(now())
-  UserReport   UserReport  @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  id                  String                @id @default(dbgenerated("(gen_random_uuid())::text"))
+  reportId            String
+  originalUrl         String
+  storagePath         String
+  imageType           String
+  altText             String?
+  description         String?               @db.Text
+  detailedDescription String?               @db.Text
+  extractedData       Json?
+  insights            String[]
+  metadata            Json?
+  embedding           Unsupported("vector(1536)")?
+  createdAt           DateTime              @default(now())
+  UserReport          UserReport            @relation(fields: [reportId], references: [id], onDelete: Cascade)
   
   @@index([reportId])
+  @@index([embedding], map: "report_image_embedding_idx")
 }
 
 model ReportChunk {
