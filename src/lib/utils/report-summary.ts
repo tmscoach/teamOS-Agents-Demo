@@ -25,36 +25,60 @@ export function generateProfileSummary(report: ParsedReport | undefined): Profil
     };
   }
 
-  const role = report.profile.majorRole || report.profile.tagline || "Professional";
+  // Extract role from report data - check sections if profile is empty
+  let role = report.profile.majorRole || report.profile.tagline;
+  
+  if (!role && report.sections) {
+    // Look for role in introduction section
+    const introSection = report.sections.find(s => s.id === 'introduction');
+    if (introSection) {
+      const majorRoleMatch = introSection.content.match(/Major Role(.+?)(?:\n|$)/);
+      if (majorRoleMatch) {
+        role = majorRoleMatch[1].trim();
+      }
+    }
+  }
+  
+  role = role || "Professional";
   const bullets: string[] = [];
 
   if (report.type === 'TMP') {
-    // For TMP reports, extract key characteristics
-    if (report.profile.description) {
-      // Split description into sentences and take the most relevant ones
+    // For TMP reports, look in the Key Points section first
+    const keyPointsSection = report.sections?.find(s => s.id === 'keypoints');
+    if (keyPointsSection) {
+      // Extract bullet points from key points section
+      const keyPoints = keyPointsSection.content
+        .split('\n')
+        .filter(line => line.trim().startsWith('You'))
+        .map(line => line.trim())
+        .slice(0, 3);
+      
+      if (keyPoints.length > 0) {
+        bullets.push(...keyPoints);
+      }
+    }
+    
+    // If not enough, check overview section
+    if (bullets.length < 3) {
+      const overviewSection = report.sections?.find(s => s.id === 'overview');
+      if (overviewSection) {
+        const sentences = overviewSection.content
+          .split(/[.!?]+/)
+          .map(s => s.trim())
+          .filter(s => s.length > 30 && !s.includes('Upholder-Maintainer'))
+          .slice(0, 3 - bullets.length);
+        bullets.push(...sentences);
+      }
+    }
+    
+    // Fallback to profile description if available
+    if (bullets.length < 3 && report.profile.description) {
       const sentences = report.profile.description
         .split(/[.!?]+/)
         .map(s => s.trim())
-        .filter(s => s.length > 20); // Filter out very short sentences
-      
-      // Prioritize sentences with key phrases
-      const priorityPhrases = ['excel', 'strong', 'ideal for', 'innovative', 'creative', 'analytical'];
-      const prioritizedSentences = sentences.sort((a, b) => {
-        const aScore = priorityPhrases.filter(phrase => 
-          a.toLowerCase().includes(phrase)
-        ).length;
-        const bScore = priorityPhrases.filter(phrase => 
-          b.toLowerCase().includes(phrase)
-        ).length;
-        return bScore - aScore;
-      });
-      
-      bullets.push(...prioritizedSentences.slice(0, 3));
-    }
-    
-    // If we don't have enough bullets from description, use insights
-    if (bullets.length < 3 && report.insights) {
-      bullets.push(...report.insights.slice(0, 3 - bullets.length));
+        .filter(s => s.length > 20)
+        .slice(0, 3 - bullets.length);
+      bullets.push(...sentences);
     }
   } else if (report.type === 'QO2') {
     // For QO2 reports, focus on leadership style
