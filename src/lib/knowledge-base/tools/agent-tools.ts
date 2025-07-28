@@ -31,11 +31,26 @@ export const knowledgeBaseTools: AgentTool[] = [
       const search = new KnowledgeBaseSearch();
       
       try {
-        const results = await search.search(params.query, {
+        console.log('[search_tms_knowledge] Searching for:', params.query, 'with options:', {
           documentTypes: params.document_types,
           limit: params.limit || 5,
-          minRelevance: parseFloat(process.env.KNOWLEDGE_BASE_MIN_RELEVANCE || '0.3')  // Configurable threshold
+          minRelevance: parseFloat(process.env.KNOWLEDGE_BASE_MIN_RELEVANCE || '0.1')
         });
+        
+        // Use hybrid search for better results - combines vector and keyword search
+        // For short queries (likely acronyms), also include the query itself as a keyword
+        const words = params.query.split(' ');
+        const keywords = params.query.length <= 5 
+          ? words // Include all words for short queries/acronyms
+          : words.filter((word: string) => word.length > 2);
+          
+        const results = await search.hybridSearch(params.query, keywords, {
+          documentTypes: params.document_types,
+          limit: params.limit || 5,
+          minRelevance: parseFloat(process.env.KNOWLEDGE_BASE_MIN_RELEVANCE || '0.1')  // Lower threshold for better recall
+        });
+        
+        console.log('[search_tms_knowledge] Found', results.length, 'results');
         
         await search.close();
         
@@ -90,7 +105,7 @@ export const knowledgeBaseTools: AgentTool[] = [
         const results = await search.search(query, {
           documentTypes: ['HANDBOOK'],
           limit: 3,
-          minRelevance: 0.5
+          minRelevance: 0.1
         });
         
         await search.close();
@@ -198,7 +213,7 @@ export const knowledgeBaseTools: AgentTool[] = [
           {
             documentTypes: ['HANDBOOK', 'RESEARCH'],
             limit: 5,
-            minRelevance: 0.5
+            minRelevance: 0.1
           }
         );
         
@@ -252,7 +267,7 @@ export const knowledgeBaseTools: AgentTool[] = [
         const results = await search.search(query, {
           documentTypes: ['RESEARCH', 'REPORT'],
           limit: 3,
-          minRelevance: 0.5
+          minRelevance: 0.1
         });
         
         await search.close();

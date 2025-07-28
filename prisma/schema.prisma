@@ -254,6 +254,7 @@ model User {
   TMSAuthToken              TMSAuthToken?
   Team_Team_managerIdToUser Team[]        @relation("Team_managerIdToUser")
   Team_User_teamIdToTeam    Team?         @relation("User_teamIdToTeam", fields: [teamId], references: [id])
+  UserReport                UserReport[]
 
   @@index([clerkId])
   @@index([journeyPhase])
@@ -281,6 +282,85 @@ model VariableExtraction {
   @@index([successful])
 }
 
+model UserReport {
+  id               String          @id @default(dbgenerated("(gen_random_uuid())::text"))
+  userId           String
+  teamId           String?
+  organizationId   String
+  reportType       ReportType
+  subscriptionId   String
+  templateId       String
+  rawHtml          String
+  processedHtml    String?
+  metadata         Json?
+  processingStatus ProcessingStatus @default(PENDING)
+  processedAt      DateTime?
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+  ReportImage      ReportImage[]
+  ReportChunk      ReportChunk[]
+  ReportAccessLog  ReportAccessLog[]
+  User             User            @relation(fields: [userId], references: [id])
+  
+  @@index([userId])
+  @@index([teamId])
+  @@index([organizationId])
+  @@index([reportType])
+  @@index([subscriptionId])
+  @@index([processingStatus])
+}
+
+model ReportImage {
+  id                  String                @id @default(dbgenerated("(gen_random_uuid())::text"))
+  reportId            String
+  originalUrl         String
+  storagePath         String
+  imageType           String
+  altText             String?
+  description         String?               @db.Text
+  detailedDescription String?               @db.Text
+  extractedData       Json?
+  insights            String[]
+  metadata            Json?
+  embedding           Unsupported("vector(1536)")?
+  createdAt           DateTime              @default(now())
+  UserReport          UserReport            @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  
+  @@index([reportId])
+  @@index([embedding], map: "report_image_embedding_idx")
+}
+
+model ReportChunk {
+  id           String                 @id @default(dbgenerated("(gen_random_uuid())::text"))
+  reportId     String
+  sectionId    String
+  sectionTitle String
+  content      String
+  chunkIndex   Int
+  charCount    Int
+  embedding    Unsupported("vector")?
+  metadata     Json?
+  createdAt    DateTime               @default(now())
+  UserReport   UserReport             @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  
+  @@index([reportId])
+  @@index([sectionId])
+  @@index([embedding], map: "report_chunk_embedding_idx")
+}
+
+model ReportAccessLog {
+  id         String      @id @default(dbgenerated("(gen_random_uuid())::text"))
+  reportId   String
+  accessedBy String
+  accessType AccessType
+  createdAt  DateTime    @default(now())
+  UserReport UserReport  @relation(fields: [reportId], references: [id])
+  
+  @@index([reportId])
+  @@index([accessedBy])
+  @@index([accessType])
+}
+
 enum DocumentType {
   HANDBOOK
   QUESTIONNAIRE
@@ -305,4 +385,24 @@ enum UserRole {
   TEAM_MEMBER
   MANAGER
   ADMIN
+}
+
+enum ReportType {
+  TMP
+  QO2
+  TEAM_SIGNALS
+  TEAM_SIGNALS_360
+}
+
+enum ProcessingStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum AccessType {
+  VIEW
+  SEARCH
+  SHARE
 }

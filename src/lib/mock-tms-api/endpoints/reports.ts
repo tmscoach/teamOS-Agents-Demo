@@ -234,7 +234,7 @@ export async function generateGraph(options: {
     } as TMSErrorResponse;
   }
 
-  // For mock implementation, fetch from live API using the provided JWT
+  // For mock implementation, try live API first but always fall back to mock on any error
   try {
     const liveApiUrl = `https://api-test.tms.global${options.endpoint}`;
     console.log('Fetching graph from live API:', liveApiUrl);
@@ -248,17 +248,15 @@ export async function generateGraph(options: {
     });
     
     if (!response.ok) {
-      throw {
-        error: 'GRAPH_GENERATION_FAILED',
-        message: `Live API returned ${response.status}: ${response.statusText}`
-      } as TMSErrorResponse;
+      console.log(`Live API returned ${response.status}, falling back to mock implementation`);
+      throw new Error(`Live API error: ${response.status}`);
     }
     
     // Get the image data as a buffer
     const arrayBuffer = await response.arrayBuffer();
     return Buffer.from(arrayBuffer);
   } catch (error: any) {
-    console.error('Graph generation error:', error);
+    console.log('Live API failed, using mock chart generator:', error.message);
     
     // Fallback to mock implementation
     const url = new URL(options.endpoint, 'https://api.tms.global');
@@ -275,6 +273,8 @@ export async function generateGraph(options: {
         params[key] = decodeURIComponent(value);
       }
     }
+
+    console.log(`Generating mock chart for ${chartType} with params:`, params);
 
     // Generate PNG based on chart type
     const { generateChartPNG } = await import('../chart-generator');

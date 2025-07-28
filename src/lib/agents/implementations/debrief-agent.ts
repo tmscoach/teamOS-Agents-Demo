@@ -1,8 +1,13 @@
 import { TMSEnabledAgent } from './tms-enabled-agent';
-import { AgentContext, AgentResponse } from '../types';
+import { AgentContext, AgentResponse, AgentTool } from '../types';
 import { formatDebriefContext } from '../hooks/use-debrief-context';
+import { SearchReportChunksSchema } from '../tools/search-report-chunks';
+import { GetReportContextSchema } from '../tools/get-report-context';
 
 export class DebriefAgent extends TMSEnabledAgent {
+  private reportSearchTool: SearchReportChunksSchema;
+  private reportContextTool: GetReportContextSchema;
+  
   constructor() {
     super({
       name: 'DebriefAgent',
@@ -61,6 +66,49 @@ Remember to:
         condition: () => true
       }]
     });
+    
+    // Initialize report search tools
+    this.reportSearchTool = new SearchReportChunksSchema();
+    this.reportContextTool = new GetReportContextSchema();
+    
+    console.log(`[${this.name}] Constructor completed, tools count: ${this.tools.length}`);
+  }
+  
+  /**
+   * Override initialize to ensure report tools are always added
+   */
+  async initialize(): Promise<void> {
+    console.log(`[${this.name}] Initialize called`);
+    // Call parent initialize first
+    await super.initialize();
+    
+    // Always add report tools after initialization
+    this.addReportTools();
+  }
+  
+  /**
+   * Add report-specific tools
+   */
+  public addReportTools(): void {
+    // Add report-specific tools after configuration is loaded
+    const reportTools: AgentTool[] = [
+      {
+        name: this.reportSearchTool.name,
+        description: this.reportSearchTool.description,
+        parameters: this.reportSearchTool.schema,
+        handler: async (params: any, context?: AgentContext) => this.reportSearchTool._call(params, context)
+      },
+      {
+        name: this.reportContextTool.name,
+        description: this.reportContextTool.description,
+        parameters: this.reportContextTool.schema,
+        handler: async (params: any, context?: AgentContext) => this.reportContextTool._call(params, context)
+      }
+    ];
+    
+    // Add to tools array
+    this.tools.push(...reportTools);
+    console.log(`[${this.name}] Added ${reportTools.length} report search tools to total of ${this.tools.length} tools`);
   }
 
   /**

@@ -7,12 +7,18 @@ import { AgentConfigLoader } from '../config/agent-config-loader';
 import { DebriefGuardrails, DebriefGuardrailConfig } from '../guardrails/debrief-guardrails';
 import { JourneyTracker } from '@/lib/orchestrator/journey-tracker';
 import { JourneyPhase } from '@/lib/orchestrator/journey-phases';
+import { createSearchReportChunksTool } from '../tools/search-report-chunks';
+import { createGetReportContextTool } from '../tools/get-report-context';
+import { createSearchReportImagesTool } from '../tools/search-report-images';
 
 /**
  * OpenAI-powered Debrief Agent with TMS tools and knowledge base
  */
 export class OpenAIDebriefAgent extends OpenAIAgent {
   private tmsTools: AgentTool[] = [];
+  private reportSearchTool: AgentTool;
+  private reportContextTool: AgentTool;
+  private reportImagesTool: AgentTool;
   private guardrailConfig: DebriefGuardrailConfig = {
     enableProfanityCheck: true,
     enableSafetyCheck: true,
@@ -32,39 +38,8 @@ export class OpenAIDebriefAgent extends OpenAIAgent {
       handoffDescription: 'Let me provide insights from your completed assessment',
       inputGuardrails: guardrails,
       instructions: () => {
-        // This is only used when there's no loaded config
-        // The actual system prompt modification happens in buildSystemMessage()
-        return `You are the TMS Debrief Agent. Your role is to provide comprehensive debriefs for completed assessments.
-        
-## TMP Debrief Flow - Optimized for Conversational Experience
-
-When conducting a TMP debrief, focus on creating a natural conversation:
-
-1. **Start Immediately with Objectives** (DO NOT load full report first)
-   - After user confirms debrief, immediately ask: "Great! The purpose of our session is to learn more about yourself, explore your personal team management profile, and use that information as a catalyst to review and fine-tune how you work. To get started, what are your main objectives from the debrief session today?"
-   - Suggest 3 example objectives if helpful
-   - Record response as $OBJECTIVES
-
-2. **Progressive Information Loading**
-   - Only use tms_debrief_report when you need specific information to answer questions
-   - Load profile details (roles, scores) only when discussing them specifically
-   - Keep the conversation flowing naturally without long pauses for data loading
-
-3. **Gather Key Insights** (in order):
-   - Highlights: "What are your 3 highlights from looking at your profile?"
-   - Communication: "What would be 2 suggestions that other people might follow to effectively communicate with you?"
-   - Support: "What is 1 area that other people might follow to support you better?"
-
-4. **Use Report Data Intelligently**
-   - When user mentions specific aspects, then load that data
-   - Example: If user asks about their Major Role, then query: "Show me the Major Role and Related Roles from the TMP report"
-   - Don't pre-load everything - let the conversation guide what data you need
-
-5. **Summary and Wrap-up**
-   - Summarize the captured objectives, highlights, communication tips, and support needs
-   - Thank the user and note how this information will guide their journey
-
-Remember: The goal is a <5 second response time after user confirms. Prioritize conversation flow over data completeness.`;
+        // Minimal fallback instructions - the real prompt comes from config
+        return `You are the TMS Debrief Agent.`;
       },
       tools: [],
       handoffs: [{
@@ -72,6 +47,11 @@ Remember: The goal is a <5 second response time after user confirms. Prioritize 
         condition: () => true
       }]
     });
+    
+    // Initialize report search tools
+    this.reportSearchTool = createSearchReportChunksTool();
+    this.reportContextTool = createGetReportContextTool();
+    this.reportImagesTool = createSearchReportImagesTool();
   }
 
   /**
@@ -96,6 +76,24 @@ Remember: The goal is a <5 second response time after user confirms. Prioritize 
       this.tools.push(...knowledgeBaseTools);
       console.log(`Knowledge base enabled for ${this.name}`);
     }
+    
+    // Always add report search tools
+    this.addReportTools();
+  }
+  
+  /**
+   * Add report-specific tools
+   */
+  private addReportTools(): void {
+    const reportTools: AgentTool[] = [
+      this.reportSearchTool,
+      this.reportContextTool,
+      this.reportImagesTool
+    ];
+    
+    // Add to tools array
+    this.tools.push(...reportTools);
+    console.log(`[${this.name}] Added ${reportTools.length} report search tools to total of ${this.tools.length} tools`);
   }
 
   /**
@@ -142,32 +140,27 @@ Remember: The goal is a <5 second response time after user confirms. Prioritize 
   }
   
   /**
-   * Override buildSystemMessage to modify the loaded configuration prompt
+   * Override buildSystemMessage to prevent duplicate instructions
    */
   protected buildSystemMessage(context: AgentContext): string {
-    // First call the parent method to get the base system message
-    let systemMessage = super.buildSystemMessage(context);
+    // If we have a loaded configuration with systemPrompt, use it without adding extra instructions
+    if (this.loadedConfig?.systemPrompt) {
+      let systemMessage = this.loadedConfig.systemPrompt;
+      
+      // Skip adding context-specific instructions to avoid duplicates
+      // The config already has all necessary instructions
+      
+      // Add context information using parent's method
+      // @ts-ignore - accessing protected method from parent
+      systemMessage += super.buildContextPrompt(context);
+      
+      // Add available tools and handoffs using parent's method
+      // @ts-ignore - accessing protected method from parent
+      return super.addToolsAndHandoffsToMessage(systemMessage);
+    }
     
-    console.log(`[${this.name}] Original system message length:`, systemMessage.length);
-    console.log(`[${this.name}] System message preview before modification:`, systemMessage.substring(0, 500));
-    
-    // CRITICAL: Remove the auto-check instruction from the system message
-    // This prevents the agent from immediately checking subscriptions before our processMessage logic
-    systemMessage = systemMessage.replace(
-      /IMMEDIATELY use tms_get_dashboard_subscriptions to check for completed assessments/g,
-      'Wait for specific instructions about when to check for assessments'
-    );
-    
-    // Also remove any other variations of immediate checking
-    systemMessage = systemMessage.replace(
-      /When conversation starts:\s*\n\s*1\.\s*IMMEDIATELY use tms_get_dashboard_subscriptions/g,
-      'When conversation starts:\n1. Wait for specific instructions'
-    );
-    
-    console.log(`[${this.name}] Modified system message length:`, systemMessage.length);
-    console.log(`[${this.name}] System message preview after modification:`, systemMessage.substring(0, 500));
-    
-    return systemMessage;
+    // Otherwise use parent implementation
+    return super.buildSystemMessage(context);
   }
 
   /**
@@ -197,63 +190,11 @@ Remember: The goal is a <5 second response time after user confirms. Prioritize 
       );
     }
     
-    // Check if this is a confirmation message after we've already offered a debrief
-    const isConfirmation = (context.messageHistory?.length || 0) > 0 && (
-      message.toLowerCase().includes('yes') || 
-      message.toLowerCase().includes('please') ||
-      message.toLowerCase().includes('start') ||
-      message.toLowerCase().includes('let\'s') ||
-      message.toLowerCase().includes('sure') ||
-      message.toLowerCase().includes('go ahead')
-    );
+    // Remove the old debrief flow logic completely
+    // The agent should use its configured system prompt for behavior
     
-    // Check if the previous message history indicates we've already checked subscriptions
-    const hasAlreadyCheckedSubscriptions = context.messageHistory?.some(msg => 
-      msg.content && (
-        msg.content.includes('I see you have completed') ||
-        msg.content.includes('Team Management Profile (TMP) assessment')
-      )
-    );
-    
-    console.log(`[${this.name}] Confirmation check:`, {
-      isConfirmation,
-      hasAlreadyCheckedSubscriptions,
-      willSkipToObjectives: isConfirmation && hasAlreadyCheckedSubscriptions
-    });
-    
-    // If user is confirming and we've already checked subscriptions, skip to objectives
-    if (isConfirmation && hasAlreadyCheckedSubscriptions) {
-      const skipToObjectivesPrompt = `The user has confirmed they want to start the TMP debrief. 
-DO NOT check subscriptions again - we already know they have a completed TMP assessment.
-Go directly to the debrief flow starting with: "Great! The purpose of our session is to learn more about yourself, explore your personal team management profile, and use that information as a catalyst to review and fine-tune how you work. To get started, what are your main objectives from the debrief session today?"
-
-DO NOT use tms_get_dashboard_subscriptions.
-DO NOT load the full report yet. Only load report data when needed to answer specific questions.
-
-User message: ${message}`;
-      
-      console.log(`[${this.name}] User confirmed debrief, skipping to objectives`);
-      
-      return super.processMessage(skipToObjectivesPrompt, context);
-    }
-    
-    // Check if this is the start of a conversation
-    if (!context.conversationId || (context.messageHistory?.length || 0) === 0 || message.includes('[User joined')) {
-      // Add instruction to check for available reports
-      const checkReportsPrompt = `The user has just joined the conversation. Please check what completed assessments they have available for debrief.
-
-IMPORTANT: Use tms_get_dashboard_subscriptions to check for completed assessments. Filter for assessments with status "Completed" that haven't been debriefed yet.
-
-If completed reports are available, proactively offer: "I see you have completed [assessment name]. Would you like to review your results and insights?"
-
-If no completed reports available, inform user: "I don't see any completed assessments ready for debrief. Would you like me to check your assessment status?"
-
-User message: ${message}`;
-      
-      console.log(`[${this.name}] First message - adding instruction to check for subscriptions`);
-      
-      return super.processMessage(checkReportsPrompt, context);
-    }
+    // For the first message, let the agent handle it based on its configured prompt
+    // No need to inject custom instructions
     
     // Normal processing
     const response = await super.processMessage(message, context);
