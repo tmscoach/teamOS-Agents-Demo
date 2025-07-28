@@ -1,10 +1,10 @@
 "use client";
 
-import React, { useRef, useEffect, useState } from "react";
+import React, { useRef, useEffect, useState, useMemo, memo } from "react";
 import { UserButton } from "@clerk/nextjs";
 import MessageList from "@/app/chat/components/MessageList";
 import ChatInput from "@/app/chat/components/ChatInput";
-import RawReportViewer from './RawReportViewer';
+import StyledReportViewer from './StyledReportViewer';
 import ProfileSummary from './ChatInterface/ProfileSummary';
 import SuggestedActions from './ChatInterface/SuggestedActions';
 import { generateProfileSummary, generateSuggestedActions } from '@/src/lib/utils/report-summary';
@@ -23,6 +23,54 @@ interface DebriefChatLayoutProps {
   onSectionChange?: (section: string) => void;
 }
 
+// Memoized report viewer section to prevent re-renders
+const ReportSection = memo(({ 
+  reportHtml, 
+  reportType, 
+  onSectionChange 
+}: { 
+  reportHtml: string; 
+  reportType: 'TMP' | 'QO2' | 'TeamSignals';
+  onSectionChange?: (section: string) => void;
+}) => {
+  return (
+    <>
+      {/* Fixed Header */}
+      <div className="sticky top-0 z-10 bg-white border-b border-[var(--shadcn-ui-border,#e5e7eb)]">
+        <div className="flex h-[108px] items-center justify-between px-6">
+          <header className="flex flex-col gap-1.5">
+            <h1 className="text-2xl font-semibold tracking-[-0.72px] text-gray-900">
+              {reportType === 'TMP' && 'Team Management Profile'}
+              {reportType === 'QO2' && 'QO² Assessment'}
+              {reportType === 'TeamSignals' && 'Team Signals Report'}
+            </h1>
+            <p className="text-sm text-gray-500">
+              Here's a summary of your {reportType} profile.
+            </p>
+          </header>
+          <div className="flex items-center gap-3">
+            <button className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
+              Done
+            </button>
+            <UserButton afterSignOutUrl="/sign-in" />
+          </div>
+        </div>
+      </div>
+
+      {/* Scrollable Report Content */}
+      <div className="h-[calc(100vh-108px)] overflow-y-auto bg-white">
+        <div className="w-full max-w-[900px] mx-auto px-6 py-8">
+          <StyledReportViewer 
+            html={reportHtml}
+            onSectionChange={onSectionChange}
+          />
+        </div>
+      </div>
+    </>
+  );
+});
+ReportSection.displayName = 'ReportSection';
+
 export default function DebriefChatLayout({
   messages,
   input,
@@ -38,8 +86,8 @@ export default function DebriefChatLayout({
   const [showSuggestions, setShowSuggestions] = useState(true);
   
   // Generate profile summary and suggested actions
-  const profileSummary = generateProfileSummary(reportData);
-  const suggestedActions = generateSuggestedActions(reportData);
+  const profileSummary = useMemo(() => generateProfileSummary(reportData), [reportData]);
+  const suggestedActions = useMemo(() => generateSuggestedActions(reportData), [reportData]);
 
   // Auto-scroll to bottom when new messages arrive or loading state changes
   useEffect(() => {
@@ -55,6 +103,7 @@ export default function DebriefChatLayout({
       }, 100);
     }
   }, [messages, isLoading]);
+
 
   return (
     <div className="bg-white min-h-screen w-full flex overflow-auto">
@@ -126,37 +175,11 @@ export default function DebriefChatLayout({
 
         {/* Right content area - Report Viewer */}
         <div className="flex-1 relative">
-          {/* Fixed Header */}
-          <div className="sticky top-0 z-10 bg-white border-b border-[var(--shadcn-ui-border,#e5e7eb)]">
-            <div className="flex h-[108px] items-center justify-between px-6">
-              <header className="flex flex-col gap-1.5">
-                <h1 className="text-2xl font-semibold tracking-[-0.72px] text-gray-900">
-                  {reportType === 'TMP' && 'Team Management Profile'}
-                  {reportType === 'QO2' && 'QO² Assessment'}
-                  {reportType === 'TeamSignals' && 'Team Signals Report'}
-                </h1>
-                <p className="text-sm text-gray-500">
-                  Here's a summary of your {reportType} profile.
-                </p>
-              </header>
-              <div className="flex items-center gap-3">
-                <button className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50">
-                  Done
-                </button>
-                <UserButton afterSignOutUrl="/sign-in" />
-              </div>
-            </div>
-          </div>
-
-          {/* Scrollable Report Content */}
-          <div className="h-[calc(100vh-108px)] overflow-y-auto bg-white">
-            <div className="w-full max-w-[900px] mx-auto px-6 py-8">
-              <RawReportViewer 
-                html={reportHtml}
-                onSectionChange={onSectionChange}
-              />
-            </div>
-          </div>
+          <ReportSection 
+            reportHtml={reportHtml}
+            reportType={reportType}
+            onSectionChange={onSectionChange}
+          />
         </div>
       </div>
     </div>

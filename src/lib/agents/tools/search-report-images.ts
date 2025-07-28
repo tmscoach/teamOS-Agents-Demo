@@ -94,11 +94,29 @@ export function createSearchReportImagesTool(): AgentTool {
             // Don't add any additional filters - return all images
             console.log('[search_report_images] Returning all images');
           } else {
-            whereClause.OR = [
-              { detailedDescription: { contains: query, mode: 'insensitive' } },
-              { altText: { contains: query, mode: 'insensitive' } },
-              // Note: Can't directly search in array fields with Prisma
-            ];
+            // Split query into words for better matching
+            const queryWords = query.toLowerCase().split(/\s+/);
+            
+            // If query has multiple words, search for each word independently
+            if (queryWords.length > 1) {
+              // Create OR conditions for each word
+              const wordConditions = queryWords.map(word => ({
+                OR: [
+                  { detailedDescription: { contains: word, mode: 'insensitive' } },
+                  { altText: { contains: word, mode: 'insensitive' } }
+                ]
+              }));
+              
+              // All words must be present (AND condition)
+              whereClause.AND = wordConditions;
+            } else {
+              // Single word search - original behavior
+              whereClause.OR = [
+                { detailedDescription: { contains: query, mode: 'insensitive' } },
+                { altText: { contains: query, mode: 'insensitive' } },
+                // Note: Can't directly search in array fields with Prisma
+              ];
+            }
           }
         }
         

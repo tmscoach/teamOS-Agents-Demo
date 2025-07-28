@@ -1,0 +1,175 @@
+/* Container styling */
+.reportContainer {
+  @apply w-full;
+}
+
+/* Global enhancements within report container */
+.reportContainer :global(.report-section) {
+  @apply mb-8 bg-white rounded-lg shadow-sm border border-gray-100 p-8;
+  @apply transition-all duration-200 ease-in-out;
+}
+
+.reportContainer :global(.report-section:hover) {
+  @apply shadow-md border-gray-200;
+}
+
+/* Card styling for bordered content blocks */
+.reportContainer :global(.report-card) {
+  @apply bg-white rounded-md shadow-sm p-6 mb-4;
+  @apply border-gray-200;
+}
+
+/* Introduction summary section styling */
+.reportContainer :global(.report-intro-summary) {
+  @apply bg-gradient-to-br from-gray-50 to-white p-6 rounded-lg mb-6;
+}
+
+/* Typography improvements */
+.reportContainer :global(h2) {
+  @apply text-2xl font-semibold text-gray-900 mb-4 tracking-tight;
+  @apply border-b border-gray-100 pb-2;
+}
+
+.reportContainer :global(h3) {
+  @apply text-xl font-semibold text-gray-800 mb-3;
+}
+
+.reportContainer :global(h4) {
+  @apply text-lg font-medium text-gray-700 mb-2;
+}
+
+.reportContainer :global(p) {
+  @apply text-gray-600 leading-relaxed mb-4;
+  line-height: 1.7;
+}
+
+.reportContainer :global(ul) {
+  @apply mb-4 space-y-2;
+}
+
+.reportContainer :global(li) {
+  @apply text-gray-600 leading-relaxed;
+}
+
+/* Enhance list paragraph styling */
+.reportContainer :global(.listparagraph) {
+  @apply pl-6 relative mb-3;
+  @apply before:content-['•'] before:absolute before:left-0 before:text-blue-500;
+}
+
+/* Table enhancements */
+.reportContainer :global(.report-roles-table) {
+  @apply overflow-hidden rounded-lg border border-gray-200 mb-6;
+}
+
+.reportContainer :global(.report-roles-table .row) {
+  @apply border-b border-gray-100 last:border-b-0;
+  @apply hover:bg-gray-50 transition-colors duration-150;
+}
+
+.reportContainer :global(.report-roles-table .role) {
+  @apply font-medium;
+}
+
+.reportContainer :global(.report-roles-table .description) {
+  @apply text-gray-600;
+}
+
+/* Bar graph styling */
+.reportContainer :global(.report-bar-graph) {
+  @apply bg-gray-50 p-6 rounded-lg mb-6;
+}
+
+.reportContainer :global(.report-bar-graph .graphrow) {
+  @apply mb-3 last:mb-0;
+}
+
+.reportContainer :global(.report-bar-graph .barholder) {
+  @apply rounded-md overflow-hidden shadow-inner;
+}
+
+/* Image enhancements */
+.reportContainer :global(img) {
+  @apply rounded-md shadow-sm;
+  @apply transition-all duration-200;
+}
+
+.reportContainer :global(img:hover) {
+  @apply transform scale-105 shadow-md;
+}
+
+/* Interactive images */
+.reportContainer :global(img[data-interactive="true"]) {
+  @apply cursor-pointer;
+}
+
+.reportContainer :global(img[data-interactive="true"]:hover) {
+  @apply ring-2 ring-blue-400 ring-offset-2;
+}
+
+/* Emphasis text */
+.reportContainer :global(.emphasis) {
+  @apply text-gray-800 font-medium italic;
+}
+
+/* Label styling */
+.reportContainer :global(label) {
+  @apply text-sm font-medium text-gray-500 uppercase tracking-wider;
+}
+
+/* Spacer elements */
+.reportContainer :global(.spacer) {
+  @apply my-6;
+}
+
+.reportContainer :global(.spacer24) {
+  @apply my-6;
+}
+
+/* Legend styling */
+.reportContainer :global(.legend) {
+  @apply bg-gray-100 p-4 rounded-md text-sm text-gray-600;
+}
+
+/* Summary area improvements */
+.reportContainer :global(.summaryarea) {
+  @apply space-y-4;
+}
+
+.reportContainer :global(.lineitem) {
+  @apply bg-white p-4 rounded-md shadow-sm border border-gray-100;
+  @apply hover:shadow-md transition-shadow duration-200;
+}
+
+/* Software details section */
+.reportContainer :global(.softwaredetails) {
+  @apply bg-gray-50 p-4 rounded-md text-sm;
+}
+
+/* Disclaimer section */
+.reportContainer :global(section#disclaimer) {
+  @apply text-sm text-gray-500 bg-gray-50 rounded-lg p-6 mt-8;
+}
+
+/* Add subtle animation to sections */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.reportContainer :global(.report-section) {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Print styles */
+@media print {
+  .reportContainer :global(.report-section) {
+    @apply shadow-none border-gray-300 break-inside-avoid;
+  }
+}

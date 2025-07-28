@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useChat } from 'ai/react';
 import DebriefChatLayout from './components/DebriefChatLayout';
@@ -21,17 +21,20 @@ export default function DebriefChatClient() {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const currentConversationIdRef = useRef<string | null>(null);
 
+  // Memoize the body object to prevent unnecessary re-renders
+  const chatBody = useMemo(() => ({
+    conversationId,
+    agentName,
+    reportType,
+    subscriptionId,
+    reportData,
+    visibleSection
+  }), [conversationId, agentName, reportType, subscriptionId, reportData, visibleSection]);
+
   // Use the useChat hook for streaming
   const { messages, input, handleInputChange, handleSubmit, isLoading, append } = useChat({
     api: '/api/chat/debrief',
-    body: {
-      conversationId,
-      agentName,
-      reportType,
-      subscriptionId,
-      reportData,
-      visibleSection
-    },
+    body: chatBody,
     onResponse(response) {
       // Extract conversation ID from headers
       const newConversationId = response.headers.get('X-Conversation-ID');
@@ -87,6 +90,14 @@ export default function DebriefChatClient() {
     }
   }, [reportData, messages.length, isLoading, append]);
 
+  // Memoize the report HTML to prevent unnecessary re-processing
+  const reportHtml = useMemo(() => reportData?.rawHtml || '', [reportData?.rawHtml]);
+  
+  // Memoize the section change callback
+  const handleSectionChange = useCallback((section: string) => {
+    setVisibleSection(section);
+  }, []);
+
   if (reportLoading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -113,10 +124,10 @@ export default function DebriefChatClient() {
       isLoading={isLoading}
       onInputChange={handleInputChange}
       onSubmit={handleSubmit}
-      reportHtml={reportData.rawHtml || ''}
+      reportHtml={reportHtml}
       reportData={reportData}
       reportType={reportType as 'TMP' | 'QO2' | 'TeamSignals'}
-      onSectionChange={setVisibleSection}
+      onSectionChange={handleSectionChange}
     />
   );
 }
