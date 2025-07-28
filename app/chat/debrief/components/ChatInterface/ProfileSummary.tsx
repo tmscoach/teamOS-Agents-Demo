@@ -9,22 +9,22 @@ interface ProfileSummaryProps extends ProfileSummaryType {
 
 export default function ProfileSummary({ title, role, bullets, userName }: ProfileSummaryProps) {
   return (
-    <div className="p-4 bg-purple-50 rounded-lg border border-purple-100">
+    <div className="p-3 bg-white/80 rounded-lg border border-gray-200/50 backdrop-blur-sm">
       <div className="flex items-start gap-3">
-        <div className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
-          <span className="text-white font-semibold text-sm">
-            {userName?.charAt(0) || 'U'}
+        <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
+          <span className="text-white font-semibold text-xs">
+            {userName?.charAt(0)?.toUpperCase() || 'U'}
           </span>
         </div>
         <div className="flex-1">
-          <h4 className="font-semibold text-gray-900">
-            {title}: {role}
+          <h4 className="text-sm font-semibold text-gray-900">
+            {role}
           </h4>
-          <ul className="mt-2 space-y-1">
-            {bullets.map((bullet, index) => (
-              <li key={index} className="text-sm text-gray-600 flex items-start">
-                <span className="mr-2 text-purple-600">•</span>
-                <span>{bullet}</span>
+          <ul className="mt-1 space-y-0.5">
+            {bullets.slice(0, 3).map((bullet, index) => (
+              <li key={index} className="text-xs text-gray-600 flex items-start">
+                <span className="mr-1.5 text-purple-500">•</span>
+                <span className="line-clamp-1">{bullet}</span>
               </li>
             ))}
           </ul>
