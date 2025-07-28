@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useMemo } from 'react';
 
 interface RawReportViewerProps {
   html: string;
@@ -9,6 +9,20 @@ interface RawReportViewerProps {
 
 export default function RawReportViewer({ html, onSectionChange }: RawReportViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Sanitize HTML to remove problematic onclick handlers
+  const sanitizedHtml = useMemo(() => {
+    // Remove onclick handlers that reference undefined variables
+    let cleaned = html.replace(/onclick="javascript:returnLocation\([^)]+\)"/g, '');
+    
+    // Also remove any inline scripts that might cause errors
+    cleaned = cleaned.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
+    
+    // Remove any remaining onclick attributes to be safe
+    cleaned = cleaned.replace(/onclick="[^"]*"/gi, '');
+    
+    return cleaned;
+  }, [html]);
 
   useEffect(() => {
     // Set up intersection observer for section tracking
@@ -42,13 +56,13 @@ export default function RawReportViewer({ html, onSectionChange }: RawReportView
     });
 
     return () => observer.disconnect();
-  }, [html, onSectionChange]);
+  }, [sanitizedHtml, onSectionChange]);
 
   return (
     <div 
       ref={containerRef}
       className="w-full"
-      dangerouslySetInnerHTML={{ __html: html }}
+      dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
     />
   );
 }
