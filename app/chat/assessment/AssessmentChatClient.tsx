@@ -70,6 +70,33 @@ export default function AssessmentChatClient() {
     },
     onError(error) {
       console.error('Chat error:', error);
+    },
+    onFinish(message) {
+      // Process tool calls from the assistant's response
+      if (message.toolInvocations) {
+        message.toolInvocations.forEach((invocation: any) => {
+          if (invocation.state === 'result' && invocation.result?.action) {
+            const action = invocation.result.action;
+            
+            switch (action.type) {
+              case 'SET_ANSWER':
+                // Update the answer for a specific question
+                handleAnswerChange(action.questionId, action.value);
+                break;
+              case 'NAVIGATE':
+                // Handle navigation
+                if (action.direction === 'next') {
+                  submitCurrentPage();
+                } else if (action.pageNumber && workflowState) {
+                  // Navigate to specific page
+                  // This would require implementing page navigation logic
+                  console.log('Navigate to page:', action.pageNumber);
+                }
+                break;
+            }
+          }
+        });
+      }
     }
   });
 

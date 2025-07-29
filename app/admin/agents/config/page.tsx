@@ -554,6 +554,9 @@ export default function AgentConfigPage() {
                   if (selectedAgent === 'DebriefAgent') {
                     // Use specialized debrief interface
                     window.open('/chat/debrief?agent=' + selectedAgent + '&reportType=TMP&subscriptionId=21989&new=true', '_blank');
+                  } else if (selectedAgent === 'AssessmentAgent') {
+                    // Use specialized assessment interface
+                    window.open('/chat/assessment?agent=' + selectedAgent + '&new=true', '_blank');
                   } else {
                     window.open('/chat?agent=' + selectedAgent + '&new=true', '_blank');
                   }

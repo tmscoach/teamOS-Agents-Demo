@@ -129,7 +129,20 @@ export async function POST(request: NextRequest) {
     const agent = await createAssessmentAgent();
 
     // Get agent configuration for prompts and model
-    const systemMessage = await agent.getSystemMessage(context);
+    let systemMessage = await agent.getSystemMessage(context);
+    
+    // Enhance system message with natural language parsing instructions
+    systemMessage += `
+
+IMPORTANT: When users give natural language commands for answering questions, parse them carefully:
+- "answer 2-1 for question 34" → Use answer_question tool with questionId: 34, value: "2-1"
+- "select 2-0 for the first question" → Find the first question ID and use answer_question tool
+- "go to next page" → Use navigate_page tool with direction: "next"
+- "previous page" → Use navigate_page tool with direction: "previous"
+- "explain question 35" → Use explain_question tool with questionId: 35
+
+Always confirm actions back to the user in a friendly way.`;
+    
     const modelName = 'gpt-4o-mini'; // Using fast model for assessments
 
     // Format messages for the AI SDK
@@ -167,7 +180,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Add assessment-specific tools
+    // Add assessment-specific tools with natural language processing
     tools.answer_question = tool({
       description: 'Answer a specific question in the assessment',
       parameters: z.object({
@@ -175,10 +188,24 @@ export async function POST(request: NextRequest) {
         value: z.string().describe('The answer value (e.g., "20" for 2-0, "12" for 1-2)')
       }),
       execute: async ({ questionId, value }) => {
-        // This would trigger the answer update in the UI
+        // Map natural language values to API values for seesaw questions
+        const valueMap: Record<string, string> = {
+          '2-0': '20',
+          '2-1': '21', 
+          '1-2': '12',
+          '0-2': '02'
+        };
+        
+        const mappedValue = valueMap[value] || value;
+        
         return {
           success: true,
-          message: `Set answer for question ${questionId} to ${value}`
+          message: `Set answer for question ${questionId} to ${value}`,
+          action: {
+            type: 'SET_ANSWER',
+            questionId,
+            value: mappedValue
+          }
         };
       }
     });
