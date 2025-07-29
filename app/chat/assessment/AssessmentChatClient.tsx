@@ -24,6 +24,11 @@ interface WorkflowState {
   questions: any[];
   navigationInfo: any;
   completionPercentage: number;
+  // Navigation tracking
+  nextPageId?: number | null;
+  nextSectionId?: number | null;
+  nextBaseContentId?: number | null;
+  pageDescription?: string;
 }
 
 export default function AssessmentChatClient() {
@@ -183,16 +188,22 @@ export default function AssessmentChatClient() {
         const data = await response.json();
         
         if (data.success && data.firstPageUrl) {
-          // Parse the first page URL and get the workflow process
-          const urlParts = data.firstPageUrl.split('/');
-          const [, , , subscriptionId, baseContentId, sectionId, pageId] = urlParts;
+          // Parse the first page URL: /Workflow/Process/{subscriptionId}/{baseContentId}/{sectionId}/{pageId}
+          const urlMatch = data.firstPageUrl.match(/\/Workflow\/Process\/(\d+)(?:\/(\d+))?(?:\/(\d+))?(?:\/(\d+))?/);
           
-          await getWorkflowPage(
-            subscriptionId,
-            parseInt(baseContentId),
-            parseInt(sectionId),
-            parseInt(pageId)
-          );
+          if (urlMatch) {
+            const [, subId, baseId, secId, pgId] = urlMatch;
+            
+            await getWorkflowPage(
+              subId,
+              baseId ? parseInt(baseId) : undefined,
+              secId ? parseInt(secId) : undefined,
+              pgId ? parseInt(pgId) : undefined
+            );
+          } else {
+            // Fallback: just get the initial workflow
+            await getWorkflowPage(assessment.subscriptionId);
+          }
         }
       } else {
         throw new Error('Failed to start workflow');
@@ -205,12 +216,26 @@ export default function AssessmentChatClient() {
 
   const getWorkflowPage = async (
     subscriptionId: string,
-    baseContentId: number,
-    sectionId: number,
-    pageId: number
+    baseContentId?: number,
+    sectionId?: number,
+    pageId?: number
   ) => {
     try {
-      const response = await fetch(`/api/mock-tms/workflow-process?subscriptionId=${subscriptionId}&baseContentId=${baseContentId}&sectionId=${sectionId}&pageId=${pageId}`);
+      // Build hierarchical URL
+      let url = `/api/mock-tms/workflow/process/${subscriptionId}`;
+      if (baseContentId !== undefined) {
+        url += `/${baseContentId}`;
+        if (sectionId !== undefined) {
+          url += `/${sectionId}`;
+          if (pageId !== undefined) {
+            url += `/${pageId}`;
+          }
+        }
+      }
+      
+      console.log('📍 Fetching workflow page:', url);
+      
+      const response = await fetch(url);
       
       if (response.ok) {
         const data = await response.json();
@@ -218,12 +243,17 @@ export default function AssessmentChatClient() {
         setWorkflowState({
           subscriptionId,
           workflowId: selectedAssessment?.workflowId || '',
-          currentPageId: pageId,
-          currentSectionId: sectionId,
-          baseContentId,
-          questions: data.questions || [],
+          currentPageId: data.PageID || data.pageId || pageId || 0,
+          currentSectionId: data.CurrentSectionID || data.sectionId || sectionId || 0,
+          baseContentId: data.BaseContentID || data.baseContentId || baseContentId || 0,
+          questions: data.Questions || data.questions || [],
           navigationInfo: data.navigationInfo || {},
-          completionPercentage: data.completionPercentage || 0
+          completionPercentage: data.completionPercentage || 0,
+          // Store navigation IDs
+          nextPageId: data.NextPageID || data.nextPageId,
+          nextSectionId: data.NextSectionID || data.nextSectionId,
+          nextBaseContentId: data.NextBaseContentID || data.nextBaseContentId,
+          pageDescription: data.Description || data.description
         });
         
         // Reset answers for new page
@@ -254,12 +284,18 @@ export default function AssessmentChatClient() {
         value
       }));
       
-      const response = await fetch('/api/mock-tms/update-workflow', {
+      const response = await fetch('/api/mock-tms/workflow/update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           subscriptionID: parseInt(workflowState.subscriptionId),
           pageID: workflowState.currentPageId,
+          currentPageID: workflowState.currentPageId,
+          currentSectionID: workflowState.currentSectionId,
+          baseContentID: workflowState.baseContentId,
+          nextPageID: workflowState.nextPageId,
+          nextSectionID: workflowState.nextSectionId,
+          nextBaseContentID: workflowState.nextBaseContentId,
           questions
         })
       });
@@ -267,19 +303,36 @@ export default function AssessmentChatClient() {
       if (response.ok) {
         const result = await response.json();
         
-        if (result === true) {
-          // Check if there's a next page
-          const nav = workflowState.navigationInfo;
-          if (nav?.canGoForward && nav?.nextPageId) {
-            await getWorkflowPage(
-              workflowState.subscriptionId,
-              nav.nextBaseContentId || workflowState.baseContentId,
-              nav.nextSectionId || workflowState.currentSectionId,
-              nav.nextPageId
-            );
-          } else if (workflowState.completionPercentage >= 100) {
+        if (result.workflow_updated) {
+          if (result.workflow_complete) {
             // Assessment complete - generate report
             await generateReport();
+          } else if (result.workflow_advanced) {
+            // Got next page data directly from the update response
+            setWorkflowState({
+              subscriptionId: workflowState.subscriptionId,
+              workflowId: workflowState.workflowId,
+              currentPageId: result.PageID || result.pageId,
+              currentSectionId: result.CurrentSectionID || result.sectionId,
+              baseContentId: result.BaseContentID || result.baseContentId,
+              questions: result.Questions || result.questions || [],
+              navigationInfo: result.navigationInfo || {},
+              completionPercentage: result.completionPercentage || 0,
+              // Update navigation IDs
+              nextPageId: result.NextPageID || result.nextPageId,
+              nextSectionId: result.NextSectionID || result.nextSectionId,
+              nextBaseContentId: result.NextBaseContentID || result.nextBaseContentId,
+              pageDescription: result.Description || result.description
+            });
+            
+            // Reset answers for new page
+            setCurrentAnswers({});
+            
+            // Notify user via chat
+            append({
+              role: 'assistant',
+              content: `✅ Progress saved! Moving to ${result.Description || 'next section'}.`
+            });
           }
         }
       } else {

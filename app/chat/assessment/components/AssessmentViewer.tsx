@@ -22,6 +22,11 @@ interface WorkflowState {
   questions: any[];
   navigationInfo: any;
   completionPercentage: number;
+  // Navigation tracking
+  nextPageId?: number | null;
+  nextSectionId?: number | null;
+  nextBaseContentId?: number | null;
+  pageDescription?: string;
 }
 
 interface AssessmentViewerProps {
@@ -80,6 +85,11 @@ export default function AssessmentViewer({
                 </span>
               </div>
             </div>
+            {workflowState.pageDescription && (
+              <p className="mt-2 text-lg font-medium text-gray-800">
+                {workflowState.pageDescription}
+              </p>
+            )}
           </div>
 
           {/* Questions */}

@@ -23,6 +23,11 @@ interface WorkflowState {
   questions: any[];
   navigationInfo: any;
   completionPercentage: number;
+  // Navigation tracking
+  nextPageId?: number | null;
+  nextSectionId?: number | null;
+  nextBaseContentId?: number | null;
+  pageDescription?: string;
 }
 
 interface AssessmentLayoutProps {
