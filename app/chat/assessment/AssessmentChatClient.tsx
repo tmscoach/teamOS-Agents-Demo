@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { useChat } from 'ai/react';
 import AssessmentLayout from './components/AssessmentLayout';
 import { Loader2 } from 'lucide-react';
-import { mockTMSClient } from '@/src/lib/mock-tms-api/mock-api-client';
+// Remove direct mock client import - we'll use API routes instead
 
 interface AssessmentSubscription {
   subscriptionId: string;
@@ -106,29 +106,32 @@ export default function AssessmentChatClient() {
       try {
         setLoading(true);
         
-        // Get JWT token from auth
-        const token = await mockTMSClient.getAuthToken();
-        
         if (directSubscriptionId) {
           // If direct subscription ID provided, skip dashboard and start workflow
           // This would be implemented with actual API calls
           setError('Direct subscription start not yet implemented');
         } else {
-          // Get available assessments from dashboard
-          const response = await mockTMSClient.callTool('tms_get_dashboard_subscriptions', {});
+          // Get available assessments from dashboard via API
+          const response = await fetch('/api/mock-tms/dashboard-subscriptions');
           
-          if (response.subscriptions) {
-            setAvailableAssessments(response.subscriptions);
+          if (response.ok) {
+            const data = await response.json();
             
-            // If assessment type specified, auto-select matching assessment
-            if (assessmentType) {
-              const matching = response.subscriptions.find(
-                (sub: AssessmentSubscription) => sub.assessmentType === assessmentType
-              );
-              if (matching) {
-                setSelectedAssessment(matching);
+            if (data.subscriptions) {
+              setAvailableAssessments(data.subscriptions);
+              
+              // If assessment type specified, auto-select matching assessment
+              if (assessmentType) {
+                const matching = data.subscriptions.find(
+                  (sub: AssessmentSubscription) => sub.assessmentType === assessmentType
+                );
+                if (matching) {
+                  setSelectedAssessment(matching);
+                }
               }
             }
+          } else {
+            throw new Error('Failed to load assessments');
           }
         }
       } catch (err) {
@@ -167,22 +170,32 @@ export default function AssessmentChatClient() {
 
   const startWorkflow = async (assessment: AssessmentSubscription) => {
     try {
-      const response = await mockTMSClient.callTool('tms_start_workflow', {
-        workflowId: assessment.workflowId,
-        subscriptionId: assessment.subscriptionId
+      const response = await fetch('/api/mock-tms/start-workflow', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          workflowId: assessment.workflowId,
+          subscriptionId: assessment.subscriptionId
+        })
       });
       
-      if (response.success && response.firstPageUrl) {
-        // Parse the first page URL and get the workflow process
-        const urlParts = response.firstPageUrl.split('/');
-        const [, , , subscriptionId, baseContentId, sectionId, pageId] = urlParts;
+      if (response.ok) {
+        const data = await response.json();
         
-        await getWorkflowPage(
-          subscriptionId,
-          parseInt(baseContentId),
-          parseInt(sectionId),
-          parseInt(pageId)
-        );
+        if (data.success && data.firstPageUrl) {
+          // Parse the first page URL and get the workflow process
+          const urlParts = data.firstPageUrl.split('/');
+          const [, , , subscriptionId, baseContentId, sectionId, pageId] = urlParts;
+          
+          await getWorkflowPage(
+            subscriptionId,
+            parseInt(baseContentId),
+            parseInt(sectionId),
+            parseInt(pageId)
+          );
+        }
+      } else {
+        throw new Error('Failed to start workflow');
       }
     } catch (err) {
       console.error('Error starting workflow:', err);
@@ -197,26 +210,27 @@ export default function AssessmentChatClient() {
     pageId: number
   ) => {
     try {
-      const response = await mockTMSClient.callTool('tms_get_workflow_process', {
-        subscriptionId,
-        baseContentId: baseContentId.toString(),
-        sectionId: sectionId.toString(),
-        pageId: pageId.toString()
-      });
+      const response = await fetch(`/api/mock-tms/workflow-process?subscriptionId=${subscriptionId}&baseContentId=${baseContentId}&sectionId=${sectionId}&pageId=${pageId}`);
       
-      setWorkflowState({
-        subscriptionId,
-        workflowId: selectedAssessment?.workflowId || '',
-        currentPageId: pageId,
-        currentSectionId: sectionId,
-        baseContentId,
-        questions: response.questions || [],
-        navigationInfo: response.navigationInfo || {},
-        completionPercentage: response.completionPercentage || 0
-      });
-      
-      // Reset answers for new page
-      setCurrentAnswers({});
+      if (response.ok) {
+        const data = await response.json();
+        
+        setWorkflowState({
+          subscriptionId,
+          workflowId: selectedAssessment?.workflowId || '',
+          currentPageId: pageId,
+          currentSectionId: sectionId,
+          baseContentId,
+          questions: data.questions || [],
+          navigationInfo: data.navigationInfo || {},
+          completionPercentage: data.completionPercentage || 0
+        });
+        
+        // Reset answers for new page
+        setCurrentAnswers({});
+      } else {
+        throw new Error('Failed to load workflow page');
+      }
     } catch (err) {
       console.error('Error getting workflow page:', err);
       setError(err instanceof Error ? err.message : 'Failed to load questions');
@@ -240,26 +254,36 @@ export default function AssessmentChatClient() {
         value
       }));
       
-      const response = await mockTMSClient.callTool('tms_update_workflow', {
-        subscriptionID: parseInt(workflowState.subscriptionId),
-        pageID: workflowState.currentPageId,
-        questions
+      const response = await fetch('/api/mock-tms/update-workflow', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subscriptionID: parseInt(workflowState.subscriptionId),
+          pageID: workflowState.currentPageId,
+          questions
+        })
       });
       
-      if (response === true) {
-        // Check if there's a next page
-        const nav = workflowState.navigationInfo;
-        if (nav?.canGoForward && nav?.nextPageId) {
-          await getWorkflowPage(
-            workflowState.subscriptionId,
-            nav.nextBaseContentId || workflowState.baseContentId,
-            nav.nextSectionId || workflowState.currentSectionId,
-            nav.nextPageId
-          );
-        } else if (workflowState.completionPercentage >= 100) {
-          // Assessment complete - generate report
-          await generateReport();
+      if (response.ok) {
+        const result = await response.json();
+        
+        if (result === true) {
+          // Check if there's a next page
+          const nav = workflowState.navigationInfo;
+          if (nav?.canGoForward && nav?.nextPageId) {
+            await getWorkflowPage(
+              workflowState.subscriptionId,
+              nav.nextBaseContentId || workflowState.baseContentId,
+              nav.nextSectionId || workflowState.currentSectionId,
+              nav.nextPageId
+            );
+          } else if (workflowState.completionPercentage >= 100) {
+            // Assessment complete - generate report
+            await generateReport();
+          }
         }
+      } else {
+        throw new Error('Failed to submit answers');
       }
     } catch (err) {
       console.error('Error submitting page:', err);
@@ -280,13 +304,25 @@ export default function AssessmentChatClient() {
       
       const templateId = templateMap[selectedAssessment.assessmentType] || '6';
       
-      const response = await mockTMSClient.callTool('tms_generate_html_report', {
-        subscriptionId: selectedAssessment.subscriptionId,
-        templateId
+      const response = await fetch('/api/mock-tms/generate-report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subscriptionId: selectedAssessment.subscriptionId,
+          templateId
+        })
       });
       
-      // TODO: Handle report generation and transition to debrief
-      console.log('Report generated:', response);
+      if (response.ok) {
+        const data = await response.json();
+        // TODO: Handle report generation and transition to debrief
+        console.log('Report generated:', data);
+        
+        // Could redirect to debrief with the generated report
+        // window.location.href = `/chat/debrief?subscriptionId=${selectedAssessment.subscriptionId}`;
+      } else {
+        throw new Error('Failed to generate report');
+      }
     } catch (err) {
       console.error('Error generating report:', err);
       setError(err instanceof Error ? err.message : 'Failed to generate report');
