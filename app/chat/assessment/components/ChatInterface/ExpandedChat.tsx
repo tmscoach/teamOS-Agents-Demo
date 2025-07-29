@@ -1,0 +1,142 @@
+"use client";
+
+import { RefObject } from 'react';
+import { Message } from 'ai';
+import { X, Send } from 'lucide-react';
+import OscarIcon from './OscarIcon';
+import MessageList from './MessageList';
+
+interface WorkflowState {
+  subscriptionId: string;
+  workflowId: string;
+  currentPageId: number;
+  currentSectionId: number;
+  baseContentId: number;
+  questions: any[];
+  navigationInfo: any;
+  completionPercentage: number;
+}
+
+interface ExpandedChatProps {
+  messages: Message[];
+  isLoading: boolean;
+  input: string;
+  handleInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  handleSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
+  inputRef: RefObject<HTMLInputElement>;
+  workflowState: WorkflowState | null;
+  assessmentType: string;
+  onToggle: () => void;
+}
+
+export default function ExpandedChat({
+  messages,
+  isLoading,
+  input,
+  handleInputChange,
+  handleSubmit,
+  inputRef,
+  workflowState,
+  assessmentType,
+  onToggle
+}: ExpandedChatProps) {
+  return (
+    <div 
+      id="chat-interface"
+      className="fixed top-0 right-0 w-[400px] h-screen z-40 flex flex-col bg-white border-l border-gray-200 shadow-xl animate-slideInRight"
+    >
+      {/* Gradient background overlay */}
+      <div className="absolute inset-0 bg-[linear-gradient(156deg,rgba(255,243,3,0.05)_0%,rgba(251,169,61,0.05)_15%,rgba(237,1,145,0.05)_30%,rgba(167,99,173,0.05)_45%,rgba(1,133,198,0.05)_60%,rgba(2,181,230,0.05)_75%,rgba(1,161,114,0.05)_90%,rgba(162,211,111,0.05)_100%)] pointer-events-none" />
+      
+      <div className="relative z-10 h-full flex flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <div className="flex items-center gap-3">
+            <OscarIcon className="!w-10 !h-10" />
+            <div>
+              <h3 className="font-semibold text-lg">
+                <span 
+                  className="bg-clip-text text-transparent"
+                  style={{
+                    backgroundImage: 'linear-gradient(to right, #FFF303 0%, #FBA93D 15%, #ED0191 30%, #A763AD 45%, #0185C6 60%, #02B5E6 75%, #01A172 90%, #A2D36F 100%)'
+                  }}
+                >
+                  OSmos
+                </span>
+              </h3>
+              <p className="text-sm text-gray-500">Assessment Assistant</p>
+            </div>
+          </div>
+          <button
+            onClick={onToggle}
+            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+            aria-label="Close chat"
+          >
+            <X className="w-5 h-5 text-gray-500" />
+          </button>
+        </div>
+
+        {/* Messages */}
+        <MessageList messages={messages} isLoading={isLoading} />
+
+        {/* Quick actions */}
+        {messages.length === 0 && workflowState && (
+          <div className="px-6 pb-4">
+            <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Quick actions</p>
+            <div className="space-y-2">
+              <button
+                onClick={() => {
+                  handleInputChange({ target: { value: `Help me understand question ${workflowState.questions[0]?.questionID}` } } as any);
+                  handleSubmit(new Event('submit') as any);
+                }}
+                className="w-full text-left text-sm px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                Help with current questions
+              </button>
+              <button
+                onClick={() => {
+                  handleInputChange({ target: { value: 'What does the rating scale mean?' } } as any);
+                  handleSubmit(new Event('submit') as any);
+                }}
+                className="w-full text-left text-sm px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                Explain rating scale
+              </button>
+              <button
+                onClick={() => {
+                  handleInputChange({ target: { value: `Tell me about the ${assessmentType} assessment` } } as any);
+                  handleSubmit(new Event('submit') as any);
+                }}
+                className="w-full text-left text-sm px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                About this assessment
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Input */}
+        <form onSubmit={handleSubmit} className="p-4 border-t border-gray-200">
+          <div className="flex gap-2">
+            <input
+              ref={inputRef}
+              type="text"
+              value={input}
+              onChange={handleInputChange}
+              placeholder="Ask about the assessment..."
+              className="flex-1 px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              disabled={isLoading}
+            />
+            <button
+              type="submit"
+              disabled={isLoading || !input.trim()}
+              className="p-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Send className="w-4 h-4" />
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}

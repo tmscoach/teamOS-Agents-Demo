@@ -1,0 +1,271 @@
+import { NextRequest } from 'next/server';
+import { currentUser } from '@/src/lib/auth/clerk-dev-wrapper';
+import { streamText, tool } from 'ai';
+import { openai as aiOpenai } from '@ai-sdk/openai';
+import { z } from 'zod';
+import { createAssessmentAgent } from '@/src/lib/agents/implementations/assessment-agent';
+import { ConversationStore, ContextManager, AgentContext } from '@/src/lib/agents';
+import prisma from '@/lib/db';
+
+// Initialize services
+let conversationStore: ConversationStore;
+let contextManager: ContextManager;
+let initialized = false;
+
+async function initializeServices() {
+  if (initialized) return;
+  
+  conversationStore = new ConversationStore(prisma);
+  contextManager = new ContextManager();
+  initialized = true;
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    // Initialize services
+    await initializeServices();
+    
+    // Get the authenticated user
+    const user = await currentUser();
+    if (!user) {
+      return new Response('Unauthorized', { status: 401 });
+    }
+
+    // Get the request body
+    const body = await request.json();
+    
+    console.log('[Assessment] Request body:', JSON.stringify(body, null, 2));
+    
+    // The useChat hook sends messages in a specific format
+    const messages = body.messages || [];
+    const message = messages?.[messages.length - 1]?.content || '';
+    
+    // Extract our custom fields from the body
+    const { 
+      conversationId, 
+      selectedAssessment,
+      workflowState,
+      visibleSection,
+      currentAnswers,
+      agentName 
+    } = body;
+
+    // Handle empty message for initial greeting
+    const isInitialGreeting = !message && messages.length === 1;
+    let userMessageContent = message || '[User joined the assessment]';
+
+    // Get database user
+    const userEmail = user.emailAddresses?.[0]?.emailAddress;
+    let dbUser = await prisma.user.findUnique({
+      where: { email: userEmail },
+      include: {
+        Team_Team_managerIdToUser: true
+      }
+    });
+
+    if (!dbUser) {
+      // Try by clerk ID
+      dbUser = await prisma.user.findUnique({
+        where: { clerkId: user.id },
+        include: {
+          Team_Team_managerIdToUser: true
+        }
+      });
+    }
+
+    if (!dbUser) {
+      return new Response('User not found', { status: 404 });
+    }
+
+    // Get or create conversation
+    let context: AgentContext;
+    
+    if (conversationId) {
+      const conversationData = await conversationStore.getConversation(conversationId);
+      if (!conversationData || conversationData.userId !== dbUser.id) {
+        return new Response('Conversation not found', { status: 404 });
+      }
+      context = conversationData.context;
+    } else {
+      // Create new conversation for assessment
+      let teamId = dbUser.Team_Team_managerIdToUser?.[0]?.id;
+      
+      if (!teamId) {
+        // Create a placeholder team ID for assessment sessions
+        teamId = `assessment_team_${dbUser.id}`;
+      }
+      
+      context = contextManager.createContext({
+        user: {
+          id: dbUser.id,
+          name: dbUser.firstName && dbUser.lastName
+            ? `${dbUser.firstName} ${dbUser.lastName}`
+            : dbUser.email || 'User',
+          email: dbUser.email || '',
+          role: dbUser.role || 'TEAM_MEMBER'
+        },
+        team: { id: teamId, name: 'Assessment Team' },
+        organization: { id: dbUser.organizationId || '', name: 'Organization' },
+        metadata: {
+          selectedAssessment,
+          workflowState,
+          currentAnswers,
+          visibleSection
+        },
+        platform: 'TEAMS'
+      });
+    }
+
+    // Update context with latest assessment state
+    context.metadata = {
+      ...context.metadata,
+      selectedAssessment,
+      workflowState,
+      currentAnswers,
+      visibleSection
+    };
+
+    // Create the assessment agent
+    const agent = await createAssessmentAgent();
+
+    // Get agent configuration for prompts and model
+    const systemMessage = await agent.getSystemMessage(context);
+    const modelName = 'gpt-4o-mini'; // Using fast model for assessments
+
+    // Format messages for the AI SDK
+    const formattedMessages = messages.map((msg: any) => ({
+      role: msg.role,
+      content: msg.content
+    }));
+
+    // If initial greeting, add context about the assessment
+    if (isInitialGreeting && selectedAssessment) {
+      userMessageContent = `I'm starting the ${selectedAssessment.assessmentType} assessment (${selectedAssessment.subscriptionId}).`;
+    }
+
+    // Add the current user message
+    if (userMessageContent) {
+      formattedMessages.push({
+        role: 'user',
+        content: userMessageContent
+      });
+    }
+
+    // Get tools from the agent
+    const agentTools = await agent.getTools(context);
+    
+    // Convert agent tools to AI SDK format
+    const tools: Record<string, any> = {};
+    for (const agentTool of agentTools) {
+      tools[agentTool.name] = tool({
+        description: agentTool.description,
+        parameters: agentTool.parameters,
+        execute: async (params: any) => {
+          const result = await agentTool.handler(params, context);
+          return result.data || result;
+        }
+      });
+    }
+
+    // Add assessment-specific tools
+    tools.answer_question = tool({
+      description: 'Answer a specific question in the assessment',
+      parameters: z.object({
+        questionId: z.number().describe('The ID of the question to answer'),
+        value: z.string().describe('The answer value (e.g., "20" for 2-0, "12" for 1-2)')
+      }),
+      execute: async ({ questionId, value }) => {
+        // This would trigger the answer update in the UI
+        return {
+          success: true,
+          message: `Set answer for question ${questionId} to ${value}`
+        };
+      }
+    });
+
+    tools.navigate_page = tool({
+      description: 'Navigate to a specific page in the assessment',
+      parameters: z.object({
+        direction: z.enum(['next', 'previous']).describe('Navigation direction'),
+        pageNumber: z.number().optional().describe('Specific page number to navigate to')
+      }),
+      execute: async ({ direction, pageNumber }) => {
+        return {
+          success: true,
+          message: pageNumber 
+            ? `Navigating to page ${pageNumber}`
+            : `Navigating to ${direction} page`
+        };
+      }
+    });
+
+    tools.explain_question = tool({
+      description: 'Explain what a specific question is measuring',
+      parameters: z.object({
+        questionId: z.number().describe('The ID of the question to explain')
+      }),
+      execute: async ({ questionId }) => {
+        const question = workflowState?.questions.find(q => q.questionID === questionId);
+        if (!question) {
+          return { error: 'Question not found' };
+        }
+        
+        // This would use knowledge base to explain the question
+        return {
+          questionId,
+          explanation: `This question measures your preference between "${question.statementA}" and "${question.statementB}".`
+        };
+      }
+    });
+
+    // Stream the response
+    const result = await streamText({
+      model: aiOpenai(modelName),
+      system: systemMessage,
+      messages: formattedMessages,
+      temperature: 0.7,
+      maxTokens: 2000,
+      tools: tools,
+      experimental_toolCallStreaming: true,
+      maxSteps: 3,
+      experimental_continueSteps: true
+    });
+
+    // Save conversation
+    const newConversationId = conversationId || `assessment_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    if (!conversationId) {
+      await conversationStore.createConversation({
+        id: newConversationId,
+        userId: dbUser.id,
+        teamId: context.team.id,
+        agentId: agent.id,
+        context: context,
+        messages: formattedMessages
+      });
+    } else {
+      await conversationStore.updateConversation(conversationId, {
+        messages: formattedMessages,
+        context: context
+      });
+    }
+
+    // Return the streaming response with conversation ID header
+    const response = result.toDataStreamResponse();
+    response.headers.set('X-Conversation-ID', newConversationId);
+    
+    return response;
+  } catch (error) {
+    console.error('[Assessment] Error:', error);
+    return new Response(
+      JSON.stringify({ 
+        error: 'Internal server error', 
+        details: error instanceof Error ? error.message : 'Unknown error' 
+      }), 
+      { 
+        status: 500,
+        headers: { 'Content-Type': 'application/json' }
+      }
+    );
+  }
+}

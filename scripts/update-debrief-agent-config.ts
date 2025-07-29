@@ -4,19 +4,9 @@
  * This removes the debrief flow and enables direct Q&A with report access
  */
 
-import { Clerk } from '@clerk/clerk-sdk-node';
 import fetch from 'node-fetch';
 
-const CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY;
 const BASE_URL = process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000';
-
-if (!CLERK_SECRET_KEY) {
-  console.error('❌ CLERK_SECRET_KEY is not set in environment variables');
-  process.exit(1);
-}
-
-// Initialize Clerk
-const clerk = new Clerk({ secretKey: CLERK_SECRET_KEY });
 
 // New system prompt that removes the debrief flow
 const NEW_SYSTEM_PROMPT = `You are the Debrief Agent for teamOS, an expert in TMS assessment interpretation and analysis.
@@ -38,6 +28,10 @@ You help users understand their TMS assessment reports by answering their questi
 ## Tools Available
 - \`get_report_context\`: Get a full summary of the user's report including scores and roles
 - \`search_report_chunks\`: Search for specific content within the report
+- \`search_report_images\`: Search and retrieve information from report images including wheels and graphs
+  - Use query="wheel" or query="Team Management Wheel" to find wheel images
+  - Valid imageTypes are: 'wheel', 'graph', or 'asset' (optional parameter)
+  - Set includeData=true to get extracted data points
 - \`search_tms_knowledge\`: Look up TMS concepts and methodologies (ALWAYS use limit: 5 or more)
 - \`get_assessment_methodology\`: Get detailed methodology information
 
@@ -65,6 +59,10 @@ You: E:15 represents your Extrovert score of 15. In the TMS methodology, this in
 User: "What does ICAF mean?"
 You: [Uses search_tms_knowledge with query="ICAF Creator-Innovator", limit=5]
 ICAF stands for Introverted Creative Advising Flexible. It's part of the 16-fold Team Management Wheel coding system and represents the Creator-Innovator role. People with this profile tend to be imaginative, independent thinkers who enjoy working on complex problems and developing innovative solutions.
+
+User: "Describe my wheel"
+You: [Uses search_report_images with query="wheel" or query="Team Management Wheel"]
+Your Team Management Wheel shows your work preference distribution across eight sectors. The highest concentration is in Maintaining at 19%, followed by Inspecting at 15%. This pattern indicates a strong preference for upholding standards and quality control...
 
 User: "Tell me about my weaknesses"
 You: Your report identifies these areas for development:
@@ -134,6 +132,7 @@ async function updateDebriefAgentConfig() {
           enabledTools: [
             'get_report_context',
             'search_report_chunks',
+            'search_report_images',
             'search_tms_knowledge',
             'get_assessment_methodology',
             'tms_get_dashboard_subscriptions',
@@ -157,8 +156,9 @@ async function updateDebriefAgentConfig() {
     console.log('\n🎉 DebriefAgent configuration has been updated!');
     console.log('The agent will now:');
     console.log('✅ Answer questions directly without a debrief flow');
-    console.log('✅ Have access to report search tools');
+    console.log('✅ Have access to report search tools including image search');
     console.log('✅ Use actual report data from stored reports');
+    console.log('✅ Search and describe wheel images and graphs');
     console.log('✅ Provide immediate, contextual responses');
 
   } catch (error) {
