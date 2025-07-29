@@ -1,10 +1,20 @@
 import { NextResponse } from 'next/server';
+import { getDashboardSubscriptions } from '@/src/lib/mock-tms-api/endpoints/subscriptions';
 import { mockTMSClient } from '@/src/lib/mock-tms-api/mock-api-client';
 
 export async function GET() {
   try {
-    const response = await mockTMSClient.callTool('tms_get_dashboard_subscriptions', {});
-    return NextResponse.json(response);
+    // Generate a mock JWT for the facilitator
+    const jwt = mockTMSClient.generateJWT({
+      userId: 'facilitator-123',
+      email: 'facilitator@example.com',
+      userType: 'Facilitator',
+      organisationId: 'org-123'
+    });
+    
+    const subscriptions = await getDashboardSubscriptions({ jwt });
+    
+    return NextResponse.json({ subscriptions });
   } catch (error) {
     console.error('Error getting dashboard subscriptions:', error);
     return NextResponse.json(

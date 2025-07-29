@@ -129,7 +129,8 @@ export async function POST(request: NextRequest) {
     const agent = await createAssessmentAgent();
 
     // Get agent configuration for prompts and model
-    let systemMessage = await agent.getSystemMessage(context);
+    // @ts-ignore - accessing protected method
+    let systemMessage = agent.buildSystemMessage ? agent.buildSystemMessage(context) : '';
     
     // Enhance system message with natural language parsing instructions
     systemMessage += `

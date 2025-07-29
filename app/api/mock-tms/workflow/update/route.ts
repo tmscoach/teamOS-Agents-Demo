@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { updateWorkflow, getWorkflowProcess } from '@/src/lib/mock-tms-api/endpoints/workflows';
 import { mockTMSClient } from '@/src/lib/mock-tms-api/mock-api-client';
 
 export async function POST(request: NextRequest) {
@@ -14,25 +15,25 @@ export async function POST(request: NextRequest) {
       questionsCount: body.questions?.length || 0
     });
     
-    // The mock API expects camelCase, but the real API uses PascalCase
-    // Convert to the expected format
-    const params = {
-      subscriptionId: body.subscriptionID || body.subscriptionId,
-      pageId: body.pageID || body.pageId,
-      currentPageId: body.currentPageID || body.currentPageId || body.pageID || body.pageId,
-      currentSectionId: body.currentSectionID || body.currentSectionId || body.sectionId,
-      baseContentId: body.baseContentID || body.baseContentId,
-      nextPageId: body.nextPageID || body.nextPageId || null,
-      nextSectionId: body.nextSectionID || body.nextSectionId || null,
-      nextBaseContentId: body.nextBaseContentID || body.nextBaseContentId || null,
-      questions: body.questions || []
-    };
+    // Generate mock JWT
+    const jwt = mockTMSClient.generateJWT({
+      userId: 'user-123',
+      email: 'user@example.com',
+      userType: 'Respondent',
+      organisationId: 'org-123'
+    });
     
-    const response = await mockTMSClient.callTool('tms_update_workflow', params);
+    // Call the update endpoint
+    const updateResult = await updateWorkflow({ data: body, jwt });
     
     // If update successful and we have navigation IDs, chain to get next page
-    if (response === true || response.success) {
-      const { nextPageId, nextSectionId, nextBaseContentId, subscriptionId, baseContentId, currentSectionId } = params;
+    if (updateResult === true) {
+      const nextPageId = body.nextPageID || body.nextPageId;
+      const nextSectionId = body.nextSectionID || body.nextSectionId;
+      const nextBaseContentId = body.nextBaseContentID || body.nextBaseContentId;
+      const subscriptionId = body.subscriptionID || body.subscriptionId;
+      const baseContentId = body.baseContentID || body.baseContentId;
+      const currentSectionId = body.currentSectionID || body.currentSectionId;
       
       // Check if workflow is complete
       if (!nextPageId && !nextSectionId && !nextBaseContentId) {
@@ -43,27 +44,24 @@ export async function POST(request: NextRequest) {
         });
       }
       
-      // Build hierarchical navigation params
-      let nextParams: any = { subscriptionId };
+      // Build endpoint for next page
+      let endpoint = `/Workflow/Process/${subscriptionId}`;
       
       if (nextPageId) {
         // Navigate to next page within current section
-        nextParams.baseContentId = baseContentId;
-        nextParams.sectionId = currentSectionId;
-        nextParams.pageId = nextPageId;
+        endpoint += `/${baseContentId}/${currentSectionId}/${nextPageId}`;
       } else if (nextSectionId) {
         // Navigate to next section
-        nextParams.baseContentId = baseContentId;
-        nextParams.sectionId = nextSectionId;
+        endpoint += `/${baseContentId}/${nextSectionId}`;
       } else if (nextBaseContentId) {
         // Navigate to next base content
-        nextParams.baseContentId = nextBaseContentId;
+        endpoint += `/${nextBaseContentId}`;
       }
       
-      console.log('🔗 Chaining to next page:', nextParams);
+      console.log('🔗 Chaining to next page:', endpoint);
       
       // Get the next page data
-      const nextResponse = await mockTMSClient.callTool('tms_get_workflow_process', nextParams);
+      const nextResponse = await getWorkflowProcess({ endpoint, jwt });
       
       return NextResponse.json({
         workflow_updated: true,
@@ -72,7 +70,7 @@ export async function POST(request: NextRequest) {
       });
     }
     
-    return NextResponse.json({ workflow_updated: response === true });
+    return NextResponse.json({ workflow_updated: updateResult === true });
   } catch (error) {
     console.error('Error updating workflow:', error);
     return NextResponse.json(

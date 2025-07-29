@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getWorkflowProcess } from '@/src/lib/mock-tms-api/endpoints/workflows';
 import { mockTMSClient } from '@/src/lib/mock-tms-api/mock-api-client';
 
 export async function GET(
@@ -8,29 +9,24 @@ export async function GET(
   try {
     const pathParams = params.params || [];
     
-    let toolParams: any = {};
-    
-    // Parse hierarchical path: /subscriptionId/baseContentId/sectionId/pageId
-    if (pathParams.length >= 1) {
-      toolParams.subscriptionId = parseInt(pathParams[0]);
-    }
-    if (pathParams.length >= 2) {
-      toolParams.baseContentId = parseInt(pathParams[1]);
-    }
-    if (pathParams.length >= 3) {
-      toolParams.sectionId = parseInt(pathParams[2]);
-    }
-    if (pathParams.length >= 4) {
-      toolParams.pageId = parseInt(pathParams[3]);
-    }
+    // Build endpoint path
+    const endpoint = `/Workflow/Process/${pathParams.join('/')}`;
     
     console.log('🔍 Hierarchical Navigation:', {
       path: pathParams.join('/'),
-      params: toolParams,
+      endpoint,
       depth: pathParams.length
     });
     
-    const response = await mockTMSClient.callTool('tms_get_workflow_process', toolParams);
+    // Generate mock JWT
+    const jwt = mockTMSClient.generateJWT({
+      userId: 'user-123',
+      email: 'user@example.com',
+      userType: 'Respondent',
+      organisationId: 'org-123'
+    });
+    
+    const response = await getWorkflowProcess({ endpoint, jwt });
     return NextResponse.json(response);
   } catch (error) {
     console.error('Error getting workflow process:', error);
