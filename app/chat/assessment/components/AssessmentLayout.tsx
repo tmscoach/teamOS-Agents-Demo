@@ -68,8 +68,8 @@ export default function AssessmentLayout({
   // If no assessment selected, show selector
   if (!selectedAssessment && availableAssessments.length > 0) {
     return (
-      <div className="flex h-screen">
-        <div className="flex-1 flex items-center justify-center bg-gray-50">
+      <div className="bg-gray-50 min-h-screen w-full flex justify-center relative">
+        <div className="w-[1280px] min-h-screen bg-white shadow-xl flex items-center justify-center">
           <AssessmentSelector
             assessments={availableAssessments}
             onSelect={onSelectAssessment}
@@ -93,9 +93,9 @@ export default function AssessmentLayout({
   }
 
   return (
-    <div className="flex h-screen">
-      {/* Main content area */}
-      <div className="flex-1 flex flex-col bg-gray-50 overflow-hidden">
+    <div className="bg-gray-50 min-h-screen w-full flex justify-center relative">
+      <div className="w-[1280px] min-h-screen bg-white shadow-xl">
+        {/* Main content area */}
         {selectedAssessment && workflowState && (
           <AssessmentViewer
             assessment={selectedAssessment}
@@ -107,7 +107,7 @@ export default function AssessmentLayout({
         )}
       </div>
 
-      {/* Chat interface */}
+      {/* Chat interface - positioned absolutely like Figma design */}
       <ChatInterface
         agentName="AssessmentAgent"
         assessmentType={selectedAssessment?.assessmentType || ''}

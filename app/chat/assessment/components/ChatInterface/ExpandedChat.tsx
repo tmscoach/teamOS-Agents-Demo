@@ -2,7 +2,7 @@
 
 import { RefObject } from 'react';
 import { Message } from 'ai';
-import { X, Send } from 'lucide-react';
+import { ChevronLeft, Send } from 'lucide-react';
 import OscarIcon from './OscarIcon';
 import MessageList from './MessageList';
 
@@ -43,7 +43,7 @@ export default function ExpandedChat({
   return (
     <div 
       id="chat-interface"
-      className="fixed top-0 right-0 w-[400px] h-screen z-40 flex flex-col bg-white border-l border-gray-200 shadow-xl animate-slideInRight"
+      className="fixed top-0 left-0 w-[399px] h-screen z-40 flex flex-col bg-white border-r border-gray-200 shadow-xl animate-slideInLeft"
     >
       {/* Gradient background overlay */}
       <div className="absolute inset-0 bg-[linear-gradient(156deg,rgba(255,243,3,0.05)_0%,rgba(251,169,61,0.05)_15%,rgba(237,1,145,0.05)_30%,rgba(167,99,173,0.05)_45%,rgba(1,133,198,0.05)_60%,rgba(2,181,230,0.05)_75%,rgba(1,161,114,0.05)_90%,rgba(162,211,111,0.05)_100%)] pointer-events-none" />
@@ -64,15 +64,15 @@ export default function ExpandedChat({
                   OSmos
                 </span>
               </h3>
-              <p className="text-sm text-gray-500">Assessment Assistant</p>
+              <p className="text-sm text-gray-500">Questionnaire Assistant</p>
             </div>
           </div>
           <button
             onClick={onToggle}
             className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-            aria-label="Close chat"
+            aria-label="Minimize chat"
           >
-            <X className="w-5 h-5 text-gray-500" />
+            <ChevronLeft className="w-5 h-5 text-gray-500" />
           </button>
         </div>
 
@@ -123,16 +123,16 @@ export default function ExpandedChat({
               type="text"
               value={input}
               onChange={handleInputChange}
-              placeholder="Ask about the assessment..."
+              placeholder="Ask about the questionnaire..."
               className="flex-1 px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               disabled={isLoading}
             />
             <button
               type="submit"
               disabled={isLoading || !input.trim()}
-              className="p-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Send className="w-4 h-4" />
+              Send
             </button>
           </div>
         </form>

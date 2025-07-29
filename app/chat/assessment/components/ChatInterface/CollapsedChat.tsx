@@ -13,7 +13,7 @@ export default function CollapsedChat({ onToggle, inputRef }: CollapsedChatProps
   return (
     <div 
       id="chat-interface"
-      className="fixed bottom-6 right-6 z-50"
+      className="fixed bottom-6 left-6 z-50"
       onClick={onToggle}
     >
       <button
@@ -27,7 +27,7 @@ export default function CollapsedChat({ onToggle, inputRef }: CollapsedChatProps
           <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-pulse" />
         </div>
         <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900">
-          Ask OSmos about your assessment
+          Ask OSmos about your questionnaire
         </span>
         <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
       </button>
