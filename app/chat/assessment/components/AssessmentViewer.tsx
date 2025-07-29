@@ -1,8 +1,8 @@
 "use client";
 
 import React from 'react';
-import { X } from 'lucide-react';
-import WorkflowQuestion from './WorkflowQuestion';
+import { DbHeader } from './DbHeader';
+import { Question } from './Question';
 import NavigationMenu from './NavigationMenu';
 
 interface AssessmentSubscription {
@@ -81,27 +81,8 @@ export default function AssessmentViewer({
 
   return (
     <div className="relative">
-      {/* Fixed header - matching Figma design */}
-      <div className="absolute w-full h-[108px] top-0 left-0 bg-white border-b border-gray-200 z-10">
-        <div className="flex w-full h-full items-center justify-between px-8">
-          <header className="flex flex-col gap-1">
-            <h1 className="font-semibold text-gray-900 text-2xl">
-              {getAssessmentTitle()}
-            </h1>
-            <p className="font-normal text-gray-500 text-sm">
-              {getAssessmentDescription()}
-            </p>
-          </header>
-
-          <button
-            onClick={handleClose}
-            className="flex items-center justify-center w-8 h-8 rounded hover:bg-gray-100 transition-colors"
-            aria-label="Close"
-          >
-            <X className="w-5 h-5 text-gray-500" />
-          </button>
-        </div>
-      </div>
+      {/* Header */}
+      <DbHeader onClose={handleClose} />
 
       {/* Main content area with fixed header offset */}
       <div className="flex items-start gap-8 px-10 pt-[140px] pb-10">
@@ -127,11 +108,14 @@ export default function AssessmentViewer({
           {/* Questions */}
           <div className="flex flex-col gap-4">
             {workflowState.questions.map((question) => (
-              <WorkflowQuestion
+              <Question
                 key={question.questionID}
-                question={question}
-                value={currentAnswers[question.questionID]}
-                onAnswerChange={onAnswerChange}
+                id={`q${question.questionID}`}
+                number={`Question ${question.description}`}
+                leftWord={question.statementA || ''}
+                rightWord={question.statementB || ''}
+                selectedValue={currentAnswers[question.questionID]}
+                onValueChange={(value) => onAnswerChange(question.questionID, value)}
               />
             ))}
           </div>

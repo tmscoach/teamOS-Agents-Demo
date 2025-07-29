@@ -35,35 +35,29 @@ export default function WorkflowQuestion({ question, onAnswerChange, value }: Wo
     const labels = ["2-0", "2-1", "1-2", "0-2"];
     
     return (
-      <div className="bg-white rounded-lg border border-gray-200 p-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">
-          {question.prompt} {question.description}
+      <div className="bg-white rounded-lg p-6 border border-gray-100">
+        <h3 className="text-sm text-gray-500 mb-4">
+          Question {question.description}
         </h3>
-        <div className="flex items-center justify-between gap-8">
-          <div className="flex-1 text-right">
-            <span className="text-gray-700 font-medium">{question.statementA}</span>
-          </div>
-          <div className="flex items-center gap-4">
+        <div className="flex items-center justify-between">
+          <span className="text-base font-medium text-gray-900 mr-8">{question.statementA}</span>
+          <div className="flex items-center gap-12">
             {options.map((option, index) => (
-              <label key={option} className="flex flex-col items-center cursor-pointer group">
+              <label key={option} className="flex flex-col items-center cursor-pointer">
+                <span className="text-sm text-gray-700 mb-2">{labels[index]}</span>
                 <input
                   type="radio"
                   name={`question-${question.questionID}`}
                   value={option}
                   checked={value === option}
                   onChange={() => handleChange(option)}
-                  className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500"
+                  className="w-5 h-5 text-gray-900 border-2 border-gray-300 focus:ring-2 focus:ring-gray-900"
                   disabled={!question.isEnabled}
                 />
-                <span className="mt-1 text-sm text-gray-600 group-hover:text-gray-900">
-                  {labels[index]}
-                </span>
               </label>
             ))}
           </div>
-          <div className="flex-1">
-            <span className="text-gray-700 font-medium">{question.statementB}</span>
-          </div>
+          <span className="text-base font-medium text-gray-900 ml-8">{question.statementB}</span>
         </div>
       </div>
     );

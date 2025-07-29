@@ -76,43 +76,57 @@ export default function ExpandedChat({
           </button>
         </div>
 
-        {/* Messages */}
-        <MessageList messages={messages} isLoading={isLoading} />
-
-        {/* Quick actions */}
-        {messages.length === 0 && workflowState && (
-          <div className="px-6 pb-4">
-            <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">Quick actions</p>
-            <div className="space-y-2">
-              <button
-                onClick={() => {
-                  handleInputChange({ target: { value: `Help me understand question ${workflowState.questions[0]?.questionID}` } } as any);
-                  handleSubmit(new Event('submit') as any);
-                }}
-                className="w-full text-left text-sm px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                Help with current questions
-              </button>
-              <button
-                onClick={() => {
-                  handleInputChange({ target: { value: 'What does the rating scale mean?' } } as any);
-                  handleSubmit(new Event('submit') as any);
-                }}
-                className="w-full text-left text-sm px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                Explain rating scale
-              </button>
-              <button
-                onClick={() => {
-                  handleInputChange({ target: { value: `Tell me about the ${assessmentType} assessment` } } as any);
-                  handleSubmit(new Event('submit') as any);
-                }}
-                className="w-full text-left text-sm px-3 py-2 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
-              >
-                About this assessment
-              </button>
+        {/* Messages or Welcome Screen */}
+        {messages.length === 0 ? (
+          <div className="flex-1 overflow-y-auto p-6">
+            <div className="text-center py-8">
+              <div className="inline-flex flex-col items-center gap-4">
+                <OscarIcon className="!w-16 !h-16" />
+                <div className="space-y-2">
+                  <p className="text-lg font-medium text-gray-900">Hi! I'm OSmos</p>
+                  <p className="text-sm text-gray-600 max-w-[280px]">
+                    I can help you understand the questionnaire and what each question measures. Ask me anything!
+                  </p>
+                </div>
+              </div>
+              
+              {/* Quick questions */}
+              <div className="mt-8 space-y-2">
+                <p className="text-xs text-gray-500 uppercase tracking-wide mb-3">QUICK QUESTIONS</p>
+                <div className="space-y-2">
+                  <button
+                    onClick={() => {
+                      handleInputChange({ target: { value: 'What does the rating scale mean?' } } as any);
+                      handleSubmit(new Event('submit') as any);
+                    }}
+                    className="w-full text-left text-sm px-4 py-3 bg-white hover:bg-gray-50 rounded-lg transition-colors border border-gray-200"
+                  >
+                    What does the rating scale mean?
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleInputChange({ target: { value: 'Help me understand Question 34' } } as any);
+                      handleSubmit(new Event('submit') as any);
+                    }}
+                    className="w-full text-left text-sm px-4 py-3 bg-white hover:bg-gray-50 rounded-lg transition-colors border border-gray-200"
+                  >
+                    Help me understand Question 34
+                  </button>
+                  <button
+                    onClick={() => {
+                      handleInputChange({ target: { value: "What's the purpose of these questions?" } } as any);
+                      handleSubmit(new Event('submit') as any);
+                    }}
+                    className="w-full text-left text-sm px-4 py-3 bg-white hover:bg-gray-50 rounded-lg transition-colors border border-gray-200"
+                  >
+                    What's the purpose of these questions?
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
+        ) : (
+          <MessageList messages={messages} isLoading={isLoading} />
         )}
 
         {/* Input */}

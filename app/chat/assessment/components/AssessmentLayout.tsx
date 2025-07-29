@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import ChatInterface from './ChatInterface';
+import { ChatPanelWrapper } from './ChatPanelWrapper';
 import AssessmentViewer from './AssessmentViewer';
 import AssessmentSelector from './AssessmentSelector';
 import { Message } from 'ai';
@@ -75,18 +75,12 @@ export default function AssessmentLayout({
             onSelect={onSelectAssessment}
           />
         </div>
-        <ChatInterface
-          agentName="AssessmentAgent"
-          assessmentType={selectedAssessment?.assessmentType || ''}
-          visibleSection={visibleSection}
-          expanded={chatExpanded}
-          onToggle={() => setChatExpanded(!chatExpanded)}
+        <ChatPanelWrapper
           messages={messages}
           input={input}
           handleInputChange={handleInputChange}
           handleSubmit={handleSubmit}
           isLoading={isLoading}
-          workflowState={workflowState}
         />
       </div>
     );
@@ -107,19 +101,13 @@ export default function AssessmentLayout({
         )}
       </div>
 
-      {/* Chat interface - positioned absolutely like Figma design */}
-      <ChatInterface
-        agentName="AssessmentAgent"
-        assessmentType={selectedAssessment?.assessmentType || ''}
-        visibleSection={visibleSection}
-        expanded={chatExpanded}
-        onToggle={() => setChatExpanded(!chatExpanded)}
+      {/* Chat Panel */}
+      <ChatPanelWrapper
         messages={messages}
         input={input}
         handleInputChange={handleInputChange}
         handleSubmit={handleSubmit}
         isLoading={isLoading}
-        workflowState={workflowState}
       />
     </div>
   );

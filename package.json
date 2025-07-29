@@ -25,6 +25,7 @@
     "@clerk/nextjs": "^6.23.3",
     "@clerk/themes": "^2.2.54",
     "@headlessui/react": "^2.2.4",
+    "@heroicons/react": "^2.2.0",
     "@prisma/client": "^6.11.1",
     "@radix-ui/react-dialog": "^1.1.14",
     "@radix-ui/react-label": "^2.1.7",
