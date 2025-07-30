@@ -96,24 +96,26 @@ export async function POST(request: NextRequest) {
     } else {
       // Create new conversation for assessment
       
-      context = contextManager.createContext({
-        user: {
-          id: dbUser.id,
-          name: dbUser.firstName && dbUser.lastName
-            ? `${dbUser.firstName} ${dbUser.lastName}`
-            : dbUser.email || 'User',
-          email: dbUser.email || '',
-          role: dbUser.role || 'TEAM_MEMBER'
-        },
-        team: { id: teamId, name: 'Assessment Team' },
-        organization: { id: dbUser.organizationId || '', name: 'Organization' },
+      context = await contextManager.createContext({
+        teamId: teamId,
+        managerId: dbUser.id,
+        initialAgent: agentName || 'AssessmentAgent',
+        transformationPhase: 'assessment' as any,
         metadata: {
           selectedAssessment,
           workflowState,
           currentAnswers,
-          visibleSection
-        },
-        platform: 'TEAMS'
+          visibleSection,
+          user: {
+            id: dbUser.id,
+            name: dbUser.name || dbUser.email || 'User',
+            email: dbUser.email || '',
+            role: dbUser.role || 'TEAM_MEMBER'
+          },
+          team: { id: teamId, name: 'Assessment Team' },
+          organization: { id: dbUser.organizationId || '', name: 'Organization' },
+          platform: 'TEAMS'
+        }
       });
     }
 
@@ -221,7 +223,7 @@ Always confirm actions back to the user in a friendly way.`;
         questionId: z.number().describe('The ID of the question to explain')
       }),
       execute: async ({ questionId }) => {
-        const question = workflowState?.questions.find(q => q.questionID === questionId);
+        const question = workflowState?.questions.find((q: any) => q.questionID === questionId);
         if (!question) {
           return { error: 'Question not found' };
         }

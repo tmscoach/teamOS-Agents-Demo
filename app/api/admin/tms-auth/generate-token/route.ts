@@ -19,8 +19,7 @@ export async function POST(request: Request) {
     const { mockTMSClient } = await import("@/src/lib/mock-tms-api/mock-api-client");
 
     // Find the mock user
-    const users = mockDataStore.getUsers();
-    const user = users.find((u: any) => u.id === userId);
+    const user = mockDataStore.users.get(userId);
     
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });

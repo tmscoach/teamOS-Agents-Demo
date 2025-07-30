@@ -1,5 +1,8 @@
 import { AgentConfigurationService } from '../agent-configuration';
-import { prismaMockMock } from '@/lib/__mocks__/db';
+import prisma from '@/lib/db';
+
+// Type assertion for the mocked prisma
+const prismaMock = prisma as any;
 
 describe('AgentConfigurationService', () => {
   beforeEach(() => {
