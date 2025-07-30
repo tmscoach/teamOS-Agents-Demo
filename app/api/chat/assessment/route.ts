@@ -349,6 +349,8 @@ INITIAL GREETING: When a user first joins (no assessment selected), you should:
     console.log('[Assessment] Using model:', agentModelName, 'temperature:', agentTemperature);
     console.log('[Assessment] Number of tools available:', Object.keys(tools).length);
     console.log('[Assessment] Tool names:', Object.keys(tools));
+    console.log('[Assessment] System message preview:', systemMessage.substring(0, 500) + '...');
+    console.log('[Assessment] Full system message length:', systemMessage.length);
 
     // Ensure we have at least one message
     const messagesToSend = formattedMessages.length > 0 ? formattedMessages : [{
