@@ -372,7 +372,8 @@ INITIAL GREETING: When a user first joins (no assessment selected), you should:
     }];
 
     // Stream the response
-    const result = await streamText({
+    try {
+      const result = await streamText({
       model: aiOpenai(agentModelName),
       system: systemMessage,
       messages: messagesToSend,
@@ -392,10 +393,25 @@ INITIAL GREETING: When a user first joins (no assessment selected), you should:
           toolResultCount: toolResults?.length,
           finishReason 
         });
+      },
+      onFinish: async ({ text, toolCalls, toolResults, finishReason, usage, error }: any) => {
+        console.log('[Assessment] Stream finished:', { 
+          hasText: !!text, 
+          textLength: text?.length,
+          toolCallCount: toolCalls?.length,
+          toolResultCount: toolResults?.length,
+          finishReason,
+          error: error?.message || error,
+          usage
+        });
+        
+        if (error) {
+          console.error('[Assessment] Stream error:', error);
+        }
       }
     });
 
-    // Save conversation
+      // Save conversation
     // Store conversation ID for response
     let responseConversationId = conversationId;
     
@@ -423,6 +439,14 @@ INITIAL GREETING: When a user first joins (no assessment selected), you should:
     response.headers.set('X-Conversation-ID', responseConversationId);
     
     return response;
+    } catch (streamError) {
+      console.error('[Assessment] Error in streamText:', streamError);
+      console.error('[Assessment] Error details:', {
+        message: streamError instanceof Error ? streamError.message : 'Unknown error',
+        stack: streamError instanceof Error ? streamError.stack : undefined
+      });
+      throw streamError;
+    }
   } catch (error) {
     console.error('[Assessment] Error:', error);
     return new Response(
