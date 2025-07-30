@@ -78,49 +78,10 @@ export default function AssessmentChatClient() {
   // Track if we're currently speaking to avoid overlaps
   const isSpeakingRef = useRef(false);
   
-  // Helper to speak text using Web Speech API for reliability
+  // Helper to speak text - disabled since we use OpenAI Realtime API
   const speakTextHelper = useCallback((text: string) => {
-    if (voiceModeEnabled && 'speechSynthesis' in window && !isSpeakingRef.current) {
-      try {
-        isSpeakingRef.current = true;
-        
-        // Cancel any ongoing speech
-        window.speechSynthesis.cancel();
-        
-        // Create utterance
-        const utterance = new SpeechSynthesisUtterance(text);
-        utterance.rate = 0.9;
-        utterance.pitch = 1.0;
-        utterance.volume = 1.0;
-        
-        // Set voice to match OpenAI if possible
-        const voices = window.speechSynthesis.getVoices();
-        const preferredVoice = voices.find(voice => 
-          voice.lang.startsWith('en') && (
-            voice.name.includes('Samantha') || // macOS
-            voice.name.includes('Microsoft') ||
-            voice.name.includes('Google')
-          )
-        );
-        if (preferredVoice) {
-          utterance.voice = preferredVoice;
-        }
-        
-        utterance.onend = () => {
-          isSpeakingRef.current = false;
-        };
-        
-        utterance.onerror = () => {
-          isSpeakingRef.current = false;
-        };
-        
-        // Speak the text
-        window.speechSynthesis.speak(utterance);
-      } catch (error) {
-        console.error('Failed to speak text:', error);
-        isSpeakingRef.current = false;
-      }
-    }
+    // Disabled - OpenAI Realtime API handles all voice output
+    console.log('[Voice] Text that would be spoken:', text);
   }, [voiceModeEnabled]);
 
   // Use the useChat hook for streaming
@@ -141,10 +102,7 @@ export default function AssessmentChatClient() {
       console.error('Chat error:', error);
     },
     onFinish(message) {
-      // If voice mode is enabled, speak the assistant's response
-      if (message.role === 'assistant' && message.content) {
-        speakTextHelper(message.content);
-      }
+      // Voice responses are handled by OpenAI Realtime API, not Web Speech
     },
     onToolCall: async ({ toolCall }) => {
       console.log('[Assessment] Tool called:', toolCall.toolName, toolCall.args);
