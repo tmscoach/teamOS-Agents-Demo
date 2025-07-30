@@ -373,43 +373,67 @@ INITIAL GREETING: When a user first joins (no assessment selected), you should:
 
     // Stream the response
     try {
-      const result = await streamText({
-      model: aiOpenai(agentModelName),
-      system: systemMessage,
-      messages: messagesToSend,
-      temperature: agentTemperature,
-      maxTokens: 2000,
-      tools: tools,
-      experimental_toolCallStreaming: true,
-      maxSteps: 5, // Allow more steps for tool usage
-      experimental_continueSteps: true,
-      onToolCall: ({ toolCall }: any) => {
-        console.log('[Assessment] Tool call initiated:', toolCall.toolName, toolCall.args);
-      },
-      onStepFinish: ({ stepType, toolCalls, toolResults, finishReason }: any) => {
-        console.log('[Assessment] Step finished:', { 
-          stepType, 
-          toolCallCount: toolCalls?.length,
-          toolResultCount: toolResults?.length,
-          finishReason 
-        });
-      },
-      onFinish: async ({ text, toolCalls, toolResults, finishReason, usage, error }: any) => {
-        console.log('[Assessment] Stream finished:', { 
-          hasText: !!text, 
-          textLength: text?.length,
-          toolCallCount: toolCalls?.length,
-          toolResultCount: toolResults?.length,
-          finishReason,
-          error: error?.message || error,
-          usage
-        });
-        
-        if (error) {
-          console.error('[Assessment] Stream error:', error);
-        }
+      const streamConfig: any = {
+        model: aiOpenai(agentModelName),
+        system: systemMessage,
+        messages: messagesToSend,
+        temperature: agentTemperature,
+        maxTokens: 2000,
+      };
+      
+      // Only add tools if we have them
+      if (tools && Object.keys(tools).length > 0) {
+        streamConfig.tools = tools;
+        streamConfig.experimental_toolCallStreaming = true; // Enable tool streaming
+        streamConfig.maxSteps = 5; // Allow multiple steps for tool calls and responses
+        streamConfig.experimental_continueSteps = true; // Continue after tool calls
+        console.log('[Assessment] Tools added to stream config:', Object.keys(tools).length);
       }
-    });
+      
+      const result = await streamText({
+        ...streamConfig,
+        onToolCall: ({ toolCall }: any) => {
+          console.log('[Assessment] Tool call initiated:', toolCall.toolName, toolCall.args);
+        },
+        onStepFinish: ({ stepType, toolCalls, toolResults, finishReason }: any) => {
+          console.log('[Assessment] Step finished:', { 
+            stepType, 
+            toolCallCount: toolCalls?.length,
+            toolResultCount: toolResults?.length,
+            finishReason 
+          });
+        },
+        onFinish: async ({ text, toolCalls, toolResults, finishReason, usage, error }: any) => {
+          console.log('[Assessment] Stream finished:', { 
+            hasText: !!text, 
+            textLength: text?.length,
+            toolCallCount: toolCalls?.length,
+            toolResultCount: toolResults?.length,
+            finishReason,
+            error: error?.message || error,
+            usage
+          });
+          
+          if (error) {
+            console.error('[Assessment] Stream error:', error);
+          }
+          
+          // If we have tool results but no text, create a fallback message
+          let finalContent = text;
+          if (!text && toolResults && toolResults.length > 0) {
+            console.log('[Assessment] No text response but have tool results, creating fallback');
+            const toolResult = toolResults[0];
+            if (toolResult && toolResult.result) {
+              if (typeof toolResult.result === 'string') {
+                finalContent = toolResult.result;
+              }
+            }
+            if (!finalContent) {
+              finalContent = 'I found the information you requested. The tool execution completed successfully.';
+            }
+          }
+        }
+      });
 
       // Save conversation
     // Store conversation ID for response
