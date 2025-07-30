@@ -213,6 +213,146 @@ describe('Assessment Chat Route', () => {
       expect(toolNames).toContain('answer_question');
       expect(toolNames).toContain('navigate_page');
       expect(toolNames).toContain('explain_question');
+      expect(toolNames).toContain('answer_multiple_questions');
+    });
+  });
+
+  describe('Bulk Answer Functionality', () => {
+    it('should include answer_multiple_questions tool', async () => {
+      const { streamText } = require('ai');
+      
+      const prisma = require('@/lib/db').default;
+      prisma.user.findUnique.mockResolvedValue({
+        id: 'db-user-123',
+        email: 'test@example.com',
+        Team_Team_managerIdToUser: []
+      });
+      
+      let capturedConfig: any;
+      streamText.mockImplementation((config: any) => {
+        capturedConfig = config;
+        return {
+          toDataStreamResponse: () => new Response('stream')
+        };
+      });
+
+      const request = new NextRequest('http://localhost:3000/api/chat/assessment', {
+        method: 'POST',
+        body: JSON.stringify({
+          messages: [{ role: 'user', content: 'answer all 2-0' }],
+          workflowState: { questions: [] }
+        })
+      });
+
+      await POST(request);
+
+      expect(capturedConfig.tools).toHaveProperty('answer_multiple_questions');
+      expect(capturedConfig.tools.answer_multiple_questions.description).toContain('Answer multiple questions at once');
+    });
+
+    it('should include bulk command examples in system prompt', async () => {
+      const { streamText } = require('ai');
+      
+      const prisma = require('@/lib/db').default;
+      prisma.user.findUnique.mockResolvedValue({
+        id: 'db-user-123',
+        email: 'test@example.com',
+        Team_Team_managerIdToUser: []
+      });
+      
+      let capturedConfig: any;
+      streamText.mockImplementation((config: any) => {
+        capturedConfig = config;
+        return {
+          toDataStreamResponse: () => new Response('stream')
+        };
+      });
+
+      const request = new NextRequest('http://localhost:3000/api/chat/assessment', {
+        method: 'POST',
+        body: JSON.stringify({
+          messages: [{ role: 'user', content: 'test' }],
+          workflowState: { questions: [] }
+        })
+      });
+
+      await POST(request);
+
+      expect(capturedConfig.system).toContain('BULK COMMANDS');
+      expect(capturedConfig.system).toContain('"answer all questions with 2-0"');
+      expect(capturedConfig.system).toContain('"answer questions 3-5 with 1-2"');
+    });
+
+    it('should include question ID mapping when workflow state is present', async () => {
+      const { streamText } = require('ai');
+      
+      const prisma = require('@/lib/db').default;
+      prisma.user.findUnique.mockResolvedValue({
+        id: 'db-user-123',
+        email: 'test@example.com',
+        Team_Team_managerIdToUser: []
+      });
+      
+      let capturedConfig: any;
+      streamText.mockImplementation((config: any) => {
+        capturedConfig = config;
+        return {
+          toDataStreamResponse: () => new Response('stream')
+        };
+      });
+
+      const request = new NextRequest('http://localhost:3000/api/chat/assessment', {
+        method: 'POST',
+        body: JSON.stringify({
+          messages: [{ role: 'user', content: 'answer 2-0 for question 1' }],
+          workflowState: {
+            questions: [
+              { QuestionID: 20, Number: "1", PrimaryWord: "Create", SecondaryWord: "Maintain", Type: 18 },
+              { QuestionID: 21, Number: "2", PrimaryWord: "Lead", SecondaryWord: "Follow", Type: 18 }
+            ]
+          }
+        })
+      });
+
+      await POST(request);
+
+      expect(capturedConfig.system).toContain('Current page questions and their IDs:');
+      expect(capturedConfig.system).toContain('Question 1 = ID 20');
+      expect(capturedConfig.system).toContain('Question 2 = ID 21');
+      expect(capturedConfig.system).toContain('CRITICAL: When user says "question 1", they mean the question with Number="1" or Prompt="1)", NOT QuestionID=1');
+    });
+
+    it('should support positional references in system prompt', async () => {
+      const { streamText } = require('ai');
+      
+      const prisma = require('@/lib/db').default;
+      prisma.user.findUnique.mockResolvedValue({
+        id: 'db-user-123',
+        email: 'test@example.com',
+        Team_Team_managerIdToUser: []
+      });
+      
+      let capturedConfig: any;
+      streamText.mockImplementation((config: any) => {
+        capturedConfig = config;
+        return {
+          toDataStreamResponse: () => new Response('stream')
+        };
+      });
+
+      const request = new NextRequest('http://localhost:3000/api/chat/assessment', {
+        method: 'POST',
+        body: JSON.stringify({
+          messages: [{ role: 'user', content: 'answer 2-0 for the first one' }],
+          workflowState: { questions: [] }
+        })
+      });
+
+      await POST(request);
+
+      expect(capturedConfig.system).toContain('POSITIONAL REFERENCES');
+      expect(capturedConfig.system).toContain('"the first one" or "first question" → Question with lowest Number/sortOrder on current page');
+      expect(capturedConfig.system).toContain('"the last one" or "last question" → Question with highest Number/sortOrder on current page');
     });
   });
 

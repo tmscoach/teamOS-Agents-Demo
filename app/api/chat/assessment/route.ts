@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
 
     // Handle empty message for initial greeting
     const isInitialGreeting = !message && messages.length === 1;
-    let userMessageContent = message || 'Hello! I just joined the assessment session. Please introduce yourself and explain what assessments are available.';
+    let userMessageContent = message || 'Hello!';
 
     // Get database user
     const userEmail = user.emailAddresses?.[0]?.emailAddress;
@@ -173,10 +173,61 @@ Available tools include knowledge base search - USE THEM!`;
     // Additional instructions for assessment navigation
     systemMessage += `
 
+CRITICAL: Never respond to or act on messages that say "✅ Progress saved! Moving to..." - these are system confirmations, not user requests.
+
 For assessment navigation and interaction:
+
+SINGLE QUESTION COMMANDS:
 - "answer 2-1 for question 34" → Use answer_question tool 
-- "go to next page" → Use navigate_page tool
+- "select 1-2" (when context is clear) → Use answer_question for current question
+- "answer 2-0 for the first one" → Use answer_question for the first question on the page
+- "select 1-2 for the last one" → Use answer_question for the last question on the page
+
+BULK COMMANDS - YOU MUST UNDERSTAND THESE:
+- "answer all questions with 2-0" or "respond 2-0 for all items" → Use answer_multiple_questions with ALL question IDs from current page
+- "answer 2-1 for all" or "all 2-1" → Use answer_multiple_questions with ALL question IDs
+- "answer questions 3-5 with 1-2" or "questions 3 through 5 select 0-2" → Use answer_multiple_questions with questionIds [3,4,5]
+- "complete this page with 2-0 then next" → First use answer_multiple_questions for all unanswered questions, then navigate_page
+- "answer the rest with 1-2" → Use answer_multiple_questions for only unanswered questions
+
+NAVIGATION:
+- "go to next page" or "next" → Use navigate_page tool with direction: "next"
+- "previous page" or "back" → Use navigate_page tool with direction: "previous"
+
+QUESTION HELP:
 - "explain question 35" → FIRST use knowledge base tools to search for what the question measures
+
+IMPORTANT PARSING RULES:
+1. When user says "all questions" - get ALL question IDs from workflowState (Type 18 questions only)
+2. When user gives a range like "3-5" or "3 to 5" - map these question numbers to their actual IDs
+3. When user says "the rest" - find questions without answers in currentAnswers
+4. Always confirm bulk actions: "✅ Updated 5 questions with answer 2-0"
+5. CRITICAL: When user says "question 1", they mean the question with Number="1" or Prompt="1)", NOT QuestionID=1
+   - Example: "answer 2-0 for question 1" means find the question where Number="1" and use its QuestionID (which might be 20)
+6. POSITIONAL REFERENCES - understand these natural language references:
+   - "the first one" or "first question" → Question with lowest Number/sortOrder on current page
+   - "the last one" or "last question" → Question with highest Number/sortOrder on current page
+   - "the second one" → Question with Number="2"
+   - "the third one" → Question with Number="3"
+   - "the next one" → Next unanswered question in order
+
+Current page questions and their IDs:
+${workflowState?.questions?.filter((q: any) => q.Type === 18).map((q: any) => {
+  const qId = q.questionID || q.QuestionID;
+  const qNum = q.Number || q.Prompt?.replace(')', '') || 'Unknown';
+  return `Question ${qNum} = ID ${qId}`;
+}).join(', ') || 'none'}
+
+QUESTION NUMBER TO ID MAPPING for this page:
+${(() => {
+  const mapping: Record<string, number> = {};
+  workflowState?.questions?.filter((q: any) => q.Type === 18).forEach((q: any) => {
+    const qId = q.questionID || q.QuestionID;
+    const qNum = q.Number || q.Prompt?.replace(')', '') || 'Unknown';
+    mapping[qNum] = qId;
+  });
+  return JSON.stringify(mapping, null, 2);
+})()}
 
 Remember: ANY question about TMS content requires knowledge base search FIRST.`;
 
@@ -304,6 +355,32 @@ Remember: ANY question about TMS content requires knowledge base search FIRST.`;
             questionId,
             value: mappedValue
           }
+        };
+      }
+    });
+
+    tools.answer_multiple_questions = tool({
+      description: 'Answer multiple questions at once with the same value. Use this for bulk operations like "answer all questions with 2-0" or "answer questions 3-5 with 1-2"',
+      parameters: z.object({
+        questionIds: z.array(z.number()).describe('Array of question IDs to answer'),
+        value: z.string().describe('The answer value to apply to all questions (e.g., "2-0", "1-2")')
+      }),
+      execute: async ({ questionIds, value }) => {
+        // Map natural language values to API values for seesaw questions
+        const valueMap: Record<string, string> = {
+          '2-0': '20',
+          '2-1': '21', 
+          '1-2': '12',
+          '0-2': '02'
+        };
+        
+        const mappedValue = valueMap[value] || value;
+        
+        return {
+          success: true,
+          message: `Setting ${questionIds.length} questions to ${value}`,
+          questionIds,
+          value: mappedValue
         };
       }
     });

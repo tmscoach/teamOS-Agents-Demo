@@ -1,6 +1,6 @@
 "use client";
 
-import { RefObject } from 'react';
+import React, { RefObject } from 'react';
 import { Message } from 'ai';
 import { ChevronLeft, Send } from 'lucide-react';
 import OscarIcon from './OscarIcon';
@@ -40,6 +40,12 @@ export default function ExpandedChat({
   assessmentType,
   onToggle
 }: ExpandedChatProps) {
+  // Auto-focus input after message is sent
+  React.useEffect(() => {
+    if (!isLoading && inputRef.current) {
+      inputRef.current.focus();
+    }
+  }, [isLoading, inputRef]);
   return (
     <div 
       id="chat-interface"
@@ -52,19 +58,13 @@ export default function ExpandedChat({
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <div className="flex items-center gap-3">
-            <OscarIcon className="!w-10 !h-10" />
+            <div className="relative">
+              <OscarIcon className="w-8 h-8" />
+              <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
+            </div>
             <div>
-              <h3 className="font-semibold text-lg">
-                <span 
-                  className="bg-clip-text text-transparent"
-                  style={{
-                    backgroundImage: 'linear-gradient(to right, #FFF303 0%, #FBA93D 15%, #ED0191 30%, #A763AD 45%, #0185C6 60%, #02B5E6 75%, #01A172 90%, #A2D36F 100%)'
-                  }}
-                >
-                  OSmos
-                </span>
-              </h3>
-              <p className="text-sm text-gray-500">Questionnaire Assistant</p>
+              <h3 className="text-base font-semibold text-gray-900">Chat with OSmos</h3>
+              <p className="text-sm text-gray-500">Your assessment guide</p>
             </div>
           </div>
           <button
@@ -95,27 +95,55 @@ export default function ExpandedChat({
                 <p className="text-xs text-gray-500 uppercase tracking-wide mb-3">QUICK QUESTIONS</p>
                 <div className="space-y-2">
                   <button
-                    onClick={() => {
-                      handleInputChange({ target: { value: 'What does the rating scale mean?' } } as any);
-                      handleSubmit(new Event('submit') as any);
+                    onClick={(e) => {
+                      e.preventDefault();
+                      const syntheticEvent = {
+                        target: { value: 'What does the rating scale mean?' }
+                      } as React.ChangeEvent<HTMLInputElement>;
+                      handleInputChange(syntheticEvent);
+                      // Submit on next tick to ensure state updates
+                      setTimeout(() => {
+                        const form = document.querySelector('#chat-interface form') as HTMLFormElement;
+                        if (form) {
+                          form.requestSubmit();
+                        }
+                      }, 0);
                     }}
                     className="w-full text-left text-sm px-4 py-3 bg-white hover:bg-gray-50 rounded-lg transition-colors border border-gray-200"
                   >
                     What does the rating scale mean?
                   </button>
                   <button
-                    onClick={() => {
-                      handleInputChange({ target: { value: 'Help me understand Question 34' } } as any);
-                      handleSubmit(new Event('submit') as any);
+                    onClick={(e) => {
+                      e.preventDefault();
+                      const syntheticEvent = {
+                        target: { value: 'How should I approach these questions?' }
+                      } as React.ChangeEvent<HTMLInputElement>;
+                      handleInputChange(syntheticEvent);
+                      setTimeout(() => {
+                        const form = document.querySelector('#chat-interface form') as HTMLFormElement;
+                        if (form) {
+                          form.requestSubmit();
+                        }
+                      }, 0);
                     }}
                     className="w-full text-left text-sm px-4 py-3 bg-white hover:bg-gray-50 rounded-lg transition-colors border border-gray-200"
                   >
-                    Help me understand Question 34
+                    How should I approach these questions?
                   </button>
                   <button
-                    onClick={() => {
-                      handleInputChange({ target: { value: "What's the purpose of these questions?" } } as any);
-                      handleSubmit(new Event('submit') as any);
+                    onClick={(e) => {
+                      e.preventDefault();
+                      const syntheticEvent = {
+                        target: { value: "What's the purpose of these questions?" }
+                      } as React.ChangeEvent<HTMLInputElement>;
+                      handleInputChange(syntheticEvent);
+                      setTimeout(() => {
+                        const form = document.querySelector('#chat-interface form') as HTMLFormElement;
+                        if (form) {
+                          form.requestSubmit();
+                        }
+                      }, 0);
                     }}
                     className="w-full text-left text-sm px-4 py-3 bg-white hover:bg-gray-50 rounded-lg transition-colors border border-gray-200"
                   >

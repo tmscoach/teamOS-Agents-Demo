@@ -25,9 +25,10 @@ interface QuestionRendererProps {
   question: WorkflowQuestion;
   value?: string;
   onValueChange: (value: string) => void;
+  isUpdating?: boolean;
 }
 
-export function QuestionRenderer({ question, value, onValueChange }: QuestionRendererProps) {
+export function QuestionRenderer({ question, value, onValueChange, isUpdating = false }: QuestionRendererProps) {
   // Type 18: Seesaw (Forced-pair questions) - TMP style
   if (question.Type === 18) {
     // Map API values to display labels
@@ -46,6 +47,7 @@ export function QuestionRenderer({ question, value, onValueChange }: QuestionRen
         rightWord={question.StatementB || ''}
         selectedValue={value || ''}
         onValueChange={onValueChange}
+        isUpdating={isUpdating}
       />
     );
   }
