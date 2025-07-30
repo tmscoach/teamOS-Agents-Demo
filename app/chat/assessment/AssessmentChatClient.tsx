@@ -73,6 +73,34 @@ export default function AssessmentChatClient() {
     }
   });
 
+  // Helper to speak text using Web Speech API
+  const speakTextHelper = useCallback((text: string) => {
+    if (voiceModeEnabled && 'speechSynthesis' in window) {
+      // Cancel any ongoing speech
+      window.speechSynthesis.cancel();
+      
+      // Create utterance
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.rate = 1.0;
+      utterance.pitch = 1.0;
+      utterance.volume = 1.0;
+      
+      // Optional: Choose a specific voice if available
+      const voices = window.speechSynthesis.getVoices();
+      const preferredVoice = voices.find(voice => 
+        voice.name.includes('Microsoft') || 
+        voice.name.includes('Google') ||
+        voice.name.includes('Alex') // macOS
+      );
+      if (preferredVoice) {
+        utterance.voice = preferredVoice;
+      }
+      
+      // Speak the text
+      window.speechSynthesis.speak(utterance);
+    }
+  }, [voiceModeEnabled]);
+
   // Use the useChat hook for streaming
   const { messages, input, handleInputChange, handleSubmit, isLoading, append } = useChat({
     api: '/api/chat/assessment',
@@ -91,9 +119,10 @@ export default function AssessmentChatClient() {
       console.error('Chat error:', error);
     },
     onFinish(message) {
-      // For now, we'll rely on the Realtime API's own responses
-      // The assessment agent's text responses will be shown in the UI
-      // Voice responses will come directly from the Realtime API
+      // If voice mode is enabled, speak the assistant's response
+      if (message.role === 'assistant' && message.content) {
+        speakTextHelper(message.content);
+      }
     },
     onToolCall: async ({ toolCall }) => {
       console.log('[Assessment] Tool called:', toolCall.toolName, toolCall.args);
@@ -413,10 +442,12 @@ export default function AssessmentChatClient() {
             setIsCompleting(true);
             
             // Add completion message to chat
+            const completionMessage = '🎉 Congratulations! You have completed the assessment. Generating your report...';
             append({
               role: 'assistant',
-              content: '🎉 Congratulations! You have completed the assessment. Generating your report...'
+              content: completionMessage
             });
+            speakTextHelper(completionMessage);
             
             // Give user time to see the message
             setTimeout(async () => {
@@ -448,10 +479,12 @@ export default function AssessmentChatClient() {
             // Only notify via chat if not triggered by agent tool
             // The agent will provide its own message when using navigate_page tool
             if (!triggeredByAgent) {
+              const progressMessage = `✅ Progress saved! Moving to ${result.Description || 'next section'}.`;
               append({
                 role: 'assistant',
-                content: `✅ Progress saved! Moving to ${result.Description || 'next section'}.`
+                content: progressMessage
               });
+              speakTextHelper(progressMessage);
             }
           }
         }
@@ -469,10 +502,12 @@ export default function AssessmentChatClient() {
     
     try {
       // Update chat with report generation status
+      const processingMessage = '📊 Processing your responses and generating your personalized report...';
       append({
         role: 'assistant',
-        content: '📊 Processing your responses and generating your personalized report...'
+        content: processingMessage
       });
+      speakTextHelper(processingMessage);
       // Get template ID from constants
       const templateId = TEMPLATE_ID_MAP[selectedAssessment.AssessmentType] || '6';
       
@@ -490,10 +525,12 @@ export default function AssessmentChatClient() {
         console.log('Report generated:', data);
         
         // Show final success message
+        const successMessage = '✅ Report generated successfully! Redirecting to your debrief session...';
         append({
           role: 'assistant',
-          content: '✅ Report generated successfully! Redirecting to your debrief session...'
+          content: successMessage
         });
+        speakTextHelper(successMessage);
         
         // Delay redirect to show success message
         setTimeout(() => {
@@ -509,10 +546,12 @@ export default function AssessmentChatClient() {
       setIsCompleting(false);
       
       // Show error in chat
+      const errorMessage = '❌ Sorry, there was an error generating your report. Please try again or contact support.';
       append({
         role: 'assistant',
-        content: '❌ Sorry, there was an error generating your report. Please try again or contact support.'
+        content: errorMessage
       });
+      speakTextHelper(errorMessage);
     }
   };
   
@@ -580,15 +619,17 @@ export default function AssessmentChatClient() {
           case 'exitVoice':
             stopVoiceRef.current?.();
             setVoiceModeEnabled(false);
+            const exitMessage = 'Voice mode disabled. You can type your responses.';
             append({
               role: 'assistant',
-              content: 'Voice mode disabled. You can type your responses.'
+              content: exitMessage
             });
+            speakTextHelper(exitMessage);
             break;
         }
         break;
     }
-  }, [workflowState, append, submitCurrentPage]);
+  }, [workflowState, append, submitCurrentPage, speakTextHelper]);
   
   // Helper to format answer values for display
   const formatAnswerValue = (value: string): string => {
@@ -620,6 +661,10 @@ export default function AssessmentChatClient() {
     } else if (voiceModeEnabled) {
       await stopVoice();
       setVoiceModeEnabled(false);
+      // Stop any ongoing speech
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
     }
   }, [voiceState, voiceModeEnabled, hasShownVoiceEntry, startVoice, stopVoice]);
   
