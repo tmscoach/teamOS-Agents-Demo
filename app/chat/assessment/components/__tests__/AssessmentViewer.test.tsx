@@ -90,11 +90,12 @@ describe('AssessmentViewer', () => {
     jest.clearAllMocks();
   });
 
-  it('renders header, navigation menu, and questions', () => {
+  it('renders header, progress bar, and questions', () => {
     render(<AssessmentViewer {...defaultProps} />);
 
     expect(screen.getByTestId('db-header')).toBeInTheDocument();
-    expect(screen.getByTestId('navigation-menu')).toBeInTheDocument();
+    // Check for progress bar instead of navigation menu
+    expect(screen.getByText('Page 3 of 12')).toBeInTheDocument();
     expect(screen.getByTestId('question-1')).toBeInTheDocument();
     expect(screen.getByTestId('question-2')).toBeInTheDocument();
     expect(screen.getByTestId('question-3')).toBeInTheDocument();
@@ -120,13 +121,14 @@ describe('AssessmentViewer', () => {
     expect(screen.queryByText('Answer the following questions about your team')).not.toBeInTheDocument();
   });
 
-  it('passes correct props to NavigationMenu', () => {
+  it('displays progress information correctly', () => {
     render(<AssessmentViewer {...defaultProps} />);
 
-    expect(screen.getByTestId('assessment-type')).toHaveTextContent('TMP');
-    expect(screen.getByTestId('current-page')).toHaveTextContent('Page 3');
-    expect(screen.getByTestId('total-pages')).toHaveTextContent('of 12');
-    expect(screen.getByTestId('completion')).toHaveTextContent('25%');
+    // Check that progress bar is rendered with correct page info
+    expect(screen.getByText('Page 3 of 12')).toBeInTheDocument();
+    
+    // Check that instructions are shown
+    expect(screen.getByText('Which word in each pair bests describes you?')).toBeInTheDocument();
   });
 
   it('calls onAnswerChange when question is answered', () => {
@@ -252,7 +254,7 @@ describe('AssessmentViewer', () => {
       { type: 'Unknown', expected: 'Unknown Assessment' }
     ];
 
-    assessmentTypes.forEach(({ type, expected }) => {
+    assessmentTypes.forEach(({ type }) => {
       const props = {
         ...defaultProps,
         assessment: { ...mockAssessment, AssessmentType: type }
