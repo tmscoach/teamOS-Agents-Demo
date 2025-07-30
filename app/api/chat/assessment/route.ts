@@ -130,6 +130,10 @@ export async function POST(request: NextRequest) {
 
     // Create the assessment agent
     const agent = await createAssessmentAgent();
+    
+    // Get agent's tools after initialization
+    const agentTools = agent.tools || [];
+    console.log('[Assessment] Agent tools available:', agentTools.map((t: any) => t.name));
 
     // Get agent configuration for prompts and model
     // @ts-ignore - accessing protected method
@@ -145,7 +149,18 @@ IMPORTANT: When users give natural language commands for answering questions, pa
 - "previous page" → Use navigate_page tool with direction: "previous"
 - "explain question 35" → Use explain_question tool with questionId: 35
 
-Always confirm actions back to the user in a friendly way.`;
+Always confirm actions back to the user in a friendly way.
+
+You have access to TMS knowledge base tools. When users ask about:
+- What a question measures or means
+- The methodology behind assessments
+- Why certain questions are asked
+- The theory or research behind TMS
+- The difference between answer options (e.g., "persuade" vs "sell")
+
+Use the knowledge base tools to provide accurate, cited information.
+Always cite your sources (e.g., "According to the TMP Handbook...").
+If you can't find specific information, provide a helpful general response.`;
     
     const modelName = 'gpt-4o-mini'; // Using fast model for assessments
 
@@ -170,6 +185,82 @@ Always confirm actions back to the user in a friendly way.`;
 
     // Create tools object for assessment-specific tools
     const tools: Record<string, any> = {};
+    
+    // Convert agent tools to AI SDK format
+    if (agentTools.length > 0) {
+      // Helper function to convert JSON schema to Zod schema
+      const createZodSchema = (jsonSchema: any): any => {
+        if (jsonSchema.type === 'object') {
+          const shape: any = {};
+          if (jsonSchema.properties) {
+            for (const [key, value] of Object.entries(jsonSchema.properties)) {
+              const prop = value as any;
+              if (prop.type === 'string') {
+                if (prop.enum) {
+                  shape[key] = z.enum(prop.enum as [string, ...string[]]);
+                } else {
+                  shape[key] = jsonSchema.required?.includes(key) ? z.string() : z.string().optional();
+                }
+              } else if (prop.type === 'number') {
+                shape[key] = jsonSchema.required?.includes(key) ? z.number() : z.number().optional();
+              } else if (prop.type === 'boolean') {
+                shape[key] = jsonSchema.required?.includes(key) ? z.boolean() : z.boolean().optional();
+              } else if (prop.type === 'array') {
+                if (prop.items?.type === 'string') {
+                  shape[key] = jsonSchema.required?.includes(key) 
+                    ? z.array(z.string()) 
+                    : z.array(z.string()).optional();
+                } else {
+                  shape[key] = z.array(z.any()).optional();
+                }
+              } else if (prop.type === 'object') {
+                shape[key] = z.object({}).optional();
+              }
+            }
+          }
+          return z.object(shape);
+        }
+        return z.any();
+      };
+      
+      // Convert each agent tool
+      for (const agentTool of agentTools) {
+        tools[agentTool.name] = tool({
+          description: agentTool.description,
+          parameters: createZodSchema(agentTool.parameters),
+          execute: async (params: any) => {
+            console.log(`[Assessment] Executing tool: ${agentTool.name}`, params);
+            try {
+              const result = await agentTool.execute(params, context);
+              console.log(`[Assessment] Tool result:`, JSON.stringify(result, null, 2));
+              
+              // Extract the appropriate response from the tool result
+              if (result.success && result.output) {
+                // If output is a string, use it directly
+                if (typeof result.output === 'string') {
+                  return result.output;
+                }
+                // Otherwise, stringify the output
+                return JSON.stringify(result.output);
+              }
+              
+              // If there's an error, return it
+              if (result.error) {
+                return result.error;
+              }
+              
+              // Default fallback
+              return 'Tool execution completed';
+            } catch (error) {
+              console.error(`[Assessment] Tool execution error:`, error);
+              return `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`;
+            }
+          }
+        });
+      }
+      
+      console.log('[Assessment] Converted agent tools:', Object.keys(tools));
+    }
 
     // Add assessment-specific tools with natural language processing
     tools.answer_question = tool({
@@ -229,12 +320,14 @@ Always confirm actions back to the user in a friendly way.`;
         }
         
         // This would use knowledge base to explain the question
-        return {
-          questionId,
-          explanation: `This question measures your preference between "${question.statementA}" and "${question.statementB}".`
-        };
+        return `Question ${questionId} asks you to choose between "${question.statementA}" and "${question.statementB}". I'll search the knowledge base for a detailed explanation of what this measures.`;
       }
     });
+
+    // Add instruction about using tools properly
+    if (Object.keys(tools).length > 0) {
+      systemMessage += '\n\nCRITICAL: When using tools, ALWAYS provide a complete response to the user. Never end your response after just calling a tool. Interpret and explain the results in a helpful, conversational way.';
+    }
 
     // Stream the response
     const result = await streamText({
