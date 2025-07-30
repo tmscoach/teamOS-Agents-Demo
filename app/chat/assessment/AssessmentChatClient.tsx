@@ -74,13 +74,21 @@ export default function AssessmentChatClient() {
     }
   });
 
+  // Track if we're currently speaking to avoid overlaps
+  const isSpeakingRef = useRef(false);
+  
   // Helper to speak text using OpenAI Realtime API
   const speakTextHelper = useCallback(async (text: string) => {
-    if (voiceModeEnabled && sendAssistantMessage) {
+    if (voiceModeEnabled && sendAssistantMessage && !isSpeakingRef.current) {
       try {
+        isSpeakingRef.current = true;
         await sendAssistantMessage(text);
+        // Add a small delay to prevent rapid successive calls
+        await new Promise(resolve => setTimeout(resolve, 500));
       } catch (error) {
         console.error('Failed to speak text via Realtime API:', error);
+      } finally {
+        isSpeakingRef.current = false;
       }
     }
   }, [voiceModeEnabled, sendAssistantMessage]);

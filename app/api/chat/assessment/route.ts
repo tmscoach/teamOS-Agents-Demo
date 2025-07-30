@@ -177,22 +177,27 @@ CRITICAL: Never respond to or act on messages that say "✅ Progress saved! Movi
 
 VOICE MODE SPECIFIC BEHAVIOR:
 When user asks to "read out the current questions" or similar:
-1. List ALL seesaw questions (Type 18) on the current page
-2. For each question, state:
-   - The question number
-   - Left statement (Statement A)
-   - Right statement (Statement B)
-   - Ask which they prefer: "2-0 for strongly left, 2-1 for slightly left, 1-2 for slightly right, or 0-2 for strongly right"
+1. List ALL seesaw questions (Type 18) on the current page FROM THE WORKFLOW STATE
+2. For each question, use the ACTUAL statementA and statementB from the question data
+3. NEVER make up or invent questions - only use what's in workflowState.questions
 
-Example response:
+ACTUAL QUESTIONS ON THIS PAGE:
+${workflowState?.questions?.filter((q: any) => q.Type === 18).map((q: any) => {
+  const qNum = q.Number || q.Prompt?.replace(')', '') || 'Unknown';
+  return `
+Question ${qNum}: 
+Left: ${q.StatementA || q.statementA}
+Right: ${q.StatementB || q.statementB}`;
+}).join('\n') || 'No questions available'}
+
+When reading questions, format like:
 "Here are the questions on this page:
 
 Question 1: 
-Left: I find talking things over with others helps me come to decisions
-Right: I prefer to be left alone to come to decisions
+Left: [ACTUAL StatementA from workflow]
+Right: [ACTUAL StatementB from workflow]
 Please answer 2-0 for strongly left, 2-1 for slightly left, 1-2 for slightly right, or 0-2 for strongly right.
 
-Question 2:
 [continue for all questions]"
 
 For assessment navigation and interaction:

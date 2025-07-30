@@ -208,27 +208,33 @@ export class RealtimeConnectionManager {
       throw new Error('Not connected to Realtime API');
     }
 
+    // Skip very short messages to avoid unnecessary audio
+    if (text.length < 5) {
+      console.log('Skipping very short message:', text);
+      return;
+    }
+
     console.log('Sending assistant message to be spoken:', text.substring(0, 100) + '...');
 
-    // Create a user message asking the assistant to speak the text
+    // Directly create an assistant message with the text to be spoken
     await this.rt.send({
       type: 'conversation.item.create',
       item: {
         type: 'message',
-        role: 'user',
+        role: 'assistant',
         content: [{ 
           type: 'input_text', 
-          text: `Please speak the following text exactly as written: "${text}"` 
+          text: text
         }],
       },
     });
 
-    // Request a response with audio
+    // Request audio generation for this message
     await this.rt.send({
       type: 'response.create',
       response: {
-        modalities: ['audio', 'text'],
-        instructions: 'Read the provided text exactly as written. Do not add any additional commentary.',
+        modalities: ['audio'],
+        instructions: 'Generate audio for the assistant message.',
       }
     });
   }
