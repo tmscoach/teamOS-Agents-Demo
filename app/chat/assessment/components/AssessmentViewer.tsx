@@ -51,11 +51,11 @@ export default function AssessmentViewer({
       <DbHeader onClose={handleClose} />
 
       {/* Main content area with fixed header offset - matches Figma layout */}
-      <div className="flex items-start gap-4 px-10 pt-[140px] pb-6 w-full h-[calc(100vh-109px)]">
+      <div className="flex flex-col lg:flex-row items-start gap-4 px-4 sm:px-6 lg:px-10 pt-[140px] pb-6 w-full h-[calc(100vh-109px)]">
         {/* Left Navigation/Instructions - matches Figma NavigationMenu */}
-        <div className="flex flex-col w-[250px] flex-shrink-0 items-start gap-2">
+        <div className="flex flex-col w-full lg:w-[250px] lg:flex-shrink-0 items-start gap-2">
           {/* Progress bar */}
-          <div className="w-[234px] h-2 bg-[#55637d33] rounded-full overflow-hidden">
+          <div className="w-full lg:w-[234px] h-2 bg-[#55637d33] rounded-full overflow-hidden">
             <div
               className="h-full bg-[#a7c0e3] transition-all duration-300"
               style={{ width: `${(((workflowState.currentPageNumber || 1) - 1) / ((workflowState.totalPages || 12) - 1)) * 100}%` }}
@@ -65,8 +65,8 @@ export default function AssessmentViewer({
             Page {workflowState.currentPageNumber || 1} of {workflowState.totalPages || 12}
           </div>
           
-          {/* Instructions */}
-          <div className="flex flex-col items-start gap-2 pt-4">
+          {/* Instructions - hidden on small screens */}
+          <div className="hidden sm:flex flex-col items-start gap-2 pt-4">
             <h3 className="text-base font-medium text-gray-900 leading-5">
               Which word in each pair bests describes you?
             </h3>
@@ -79,7 +79,7 @@ export default function AssessmentViewer({
         </div>
 
         {/* Right Questions area - matches Figma Frame */}
-        <div className="flex flex-col flex-1 items-start gap-8 pl-[30px] pr-[30px] max-w-[900px]">
+        <div className="flex flex-col flex-1 items-start gap-8 lg:pl-[30px] w-full max-w-full lg:max-w-[900px]">
 
           {/* Questions */}
           <div className="flex flex-col gap-4 self-stretch w-full">
