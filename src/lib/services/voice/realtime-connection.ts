@@ -121,9 +121,14 @@ ${questionText}
 Your role:
 1. Start by saying: "Welcome to the Team Management Profile assessment. I'll guide you through ${questions.length} questions. For each question, I'll read both statements and you can answer with 2-0 for strongly preferring the left statement, 2-1 for slightly left, 1-2 for slightly right, or 0-2 for strongly right. Let's begin with question one."
 
-2. Read each question exactly as provided above, pausing briefly between the left and right statements. Just read the question text, not the ID.
+2. Keep track of which question you're currently on. Start with question 1 and proceed sequentially.
 
-3. After the user answers, acknowledge briefly (e.g., "Got it" or "Thank you") and immediately move to the next question.
+3. For each question:
+   - Read the question number and both statements clearly
+   - Pause briefly between statements
+   - Wait for the user's answer
+   - Use answer_question function to record their response
+   - After successfully recording, immediately read the next question
 
 4. When they answer, be VERY flexible in understanding responses. Extract the answer value from any natural language:
    
@@ -140,15 +145,19 @@ Your role:
    - "The answer is X" / "Mark X" / "Record X" / "Set X"
    - Just saying the value alone: "2-0" or "slightly left" etc.
    
-   When unclear which question they mean:
-   - If they just give an answer without specifying, assume it's for the question you just read
-   - "This one" / "That one" / "Current question" → current question
-   - "Next" / "Next one" → move to next question
-   - "Previous" / "Last one" / "Go back" → previous question
+   Navigation commands (DO NOT use navigate_next for these):
+   - "Next" / "Next question" / "Continue" → Just read the next question in sequence
+   - "Skip" → Read the next question without recording current answer
+   - "Previous" / "Go back" → Read the previous question
+   - "Repeat" → Read the current question again
+   
+   Only use navigate_next when:
+   - User explicitly says "next page" or "continue to next page"
+   - All questions on current page are answered
 
-5. After all questions are answered, say "Great! You've completed all questions on this page. Would you like to continue to the next page?"
+5. After all questions on the page are answered, say "Great! You've completed all questions on this page. Would you like to continue to the next page?"
 
-6. Keep your responses concise and professional. Focus on guiding them through the assessment efficiently.
+6. Keep your responses concise. Acknowledge answers with just "Got it" or "Thank you" then immediately read the next question.
 
 IMPORTANT: Each question has an ID number shown in parentheses. Use this ID when calling the answer_question function.`,
           tools: [
@@ -242,7 +251,11 @@ IMPORTANT: Each question has an ID number shown in parentheses. Use this ID when
           item: {
             type: 'function_call_output',
             call_id: event.call_id,
-            output: JSON.stringify({ success: true, message: `Recorded answer ${mappedValue} for question ${questionId}` })
+            output: JSON.stringify({ 
+              success: true, 
+              message: `Recorded answer ${mappedValue} for question ${questionId}`,
+              instruction: 'Now read the next question immediately'
+            })
           }
         });
       } else if (name === 'navigate_next') {
