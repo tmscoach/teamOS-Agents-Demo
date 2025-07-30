@@ -194,12 +194,30 @@ QUESTION HELP:
 - "explain question 35" → FIRST use knowledge base tools to search for what the question measures
 
 IMPORTANT PARSING RULES:
-1. When user says "all questions" - get ALL question IDs from workflowState
-2. When user gives a range like "3-5" or "3 to 5" - create array [3,4,5]
+1. When user says "all questions" - get ALL question IDs from workflowState (Type 18 questions only)
+2. When user gives a range like "3-5" or "3 to 5" - map these question numbers to their actual IDs
 3. When user says "the rest" - find questions without answers in currentAnswers
 4. Always confirm bulk actions: "✅ Updated 5 questions with answer 2-0"
+5. CRITICAL: When user says "question 1", they mean the question with Number="1" or Prompt="1)", NOT QuestionID=1
+   - Example: "answer 2-0 for question 1" means find the question where Number="1" and use its QuestionID (which might be 20)
 
-Current page has these questions: ${workflowState?.questions?.map((q: any) => q.questionID || q.QuestionID).join(', ') || 'none'}
+Current page questions and their IDs:
+${workflowState?.questions?.filter((q: any) => q.Type === 18).map((q: any) => {
+  const qId = q.questionID || q.QuestionID;
+  const qNum = q.Number || q.Prompt?.replace(')', '') || 'Unknown';
+  return `Question ${qNum} = ID ${qId}`;
+}).join(', ') || 'none'}
+
+QUESTION NUMBER TO ID MAPPING for this page:
+${(() => {
+  const mapping: Record<string, number> = {};
+  workflowState?.questions?.filter((q: any) => q.Type === 18).forEach((q: any) => {
+    const qId = q.questionID || q.QuestionID;
+    const qNum = q.Number || q.Prompt?.replace(')', '') || 'Unknown';
+    mapping[qNum] = qId;
+  });
+  return JSON.stringify(mapping, null, 2);
+})()}
 
 Remember: ANY question about TMS content requires knowledge base search FIRST.`;
 
