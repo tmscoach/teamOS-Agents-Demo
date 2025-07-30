@@ -16,19 +16,18 @@ export async function POST(request: Request) {
 
     // Import server-side modules dynamically
     const { mockDataStore } = await import("@/src/lib/mock-tms-api/mock-data-store");
-    const { MockTMSClient } = await import("@/src/lib/mock-tms-api/mock-api-client");
+    const { mockTMSClient } = await import("@/src/lib/mock-tms-api/mock-api-client");
 
     // Find the mock user
-    const users = mockDataStore.getAllUsers();
-    const user = users.find(u => u.id === userId);
+    const users = mockDataStore.getUsers();
+    const user = users.find((u: any) => u.id === userId);
     
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
     // Generate JWT token
-    const mockClient = new MockTMSClient();
-    const token = mockClient.generateJWT({
+    const token = mockTMSClient.generateJWT({
       sub: user.id,
       userId: user.id,
       userType: user.userType || 'Respondent',

@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
       });
     }
     
-    return NextResponse.json({ workflow_updated: updateResult === true });
+    return NextResponse.json({ workflow_updated: updateResult });
   } catch (error) {
     console.error('Error updating workflow:', error);
     return NextResponse.json(

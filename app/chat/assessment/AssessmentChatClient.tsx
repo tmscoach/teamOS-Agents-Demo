@@ -59,14 +59,16 @@ export default function AssessmentChatClient() {
     onFinish(message) {
       // Process tool calls from the assistant's response
       if (message.toolInvocations) {
-        message.toolInvocations.forEach((invocation: ToolInvocation) => {
+        message.toolInvocations.forEach((invocation) => {
           if (invocation.state === 'result' && invocation.result?.action) {
             const action = invocation.result.action;
             
             switch (action.type) {
               case 'SET_ANSWER':
                 // Update the answer for a specific question
-                handleAnswerChange(action.questionId, action.value);
+                if (action.questionId !== undefined) {
+                  handleAnswerChange(action.questionId, action.value);
+                }
                 break;
               case 'NAVIGATE':
                 // Handle navigation
@@ -236,12 +238,12 @@ export default function AssessmentChatClient() {
         console.log('Questions received:', questions);
         if (questions.length > 0) {
           console.log('First question details:', questions[0]);
-          console.log('Question types:', questions.map(q => ({ id: q.questionID, type: q.type })));
+          console.log('Question types:', questions.map((q: any) => ({ id: q.questionID, type: q.type })));
         }
         
         setWorkflowState({
           subscriptionId,
-          workflowId: selectedAssessment?.WorkflowID?.toString() || selectedAssessment?.workflowId || '',
+          workflowId: selectedAssessment?.WorkflowID?.toString() || '',
           currentPageId: data.PageID || data.pageId || pageId || 0,
           currentSectionId: data.CurrentSectionID || data.sectionId || sectionId || 0,
           baseContentId: data.BaseContentID || data.baseContentId || baseContentId || 0,

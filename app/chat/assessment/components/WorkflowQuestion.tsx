@@ -18,12 +18,12 @@ export default function WorkflowQuestion({ question, onAnswerChange, value }: Wo
   const description = question.description || question.Description || '';
   const statementA = question.statementA || question.StatementA || '';
   const statementB = question.statementB || question.StatementB || '';
-  const listOptions = listOptions || question.ListOptions || [];
-  const listValues = listValues || question.ListValues || [];
+  const listOptions = question.listOptions || question.ListOptions || [];
+  const listValues = question.listValues || question.ListValues || [];
   const isRequired = question.isRequired ?? question.IsRequired ?? false;
   const isEnabled = question.isEnabled ?? question.IsEnabled ?? true;
   const maxLength = question.maxLength || question.MaxLength;
-  const useHorizontalLayout = useHorizontalLayout || question.UseHorizontalLayout;
+  const useHorizontalLayout = question.useHorizontalLayout || question.UseHorizontalLayout;
   
   const handleChange = (newValue: string) => {
     onAnswerChange(questionId, newValue);
@@ -93,7 +93,7 @@ export default function WorkflowQuestion({ question, onAnswerChange, value }: Wo
         disabled={!isEnabled}
       >
         <option value="">Select...</option>
-        {listOptions?.map((option, index) => (
+        {listOptions?.map((option: string, index: number) => (
           <option key={index} value={listValues?.[index] || option}>
             {option}
           </option>
@@ -142,7 +142,7 @@ export default function WorkflowQuestion({ question, onAnswerChange, value }: Wo
       <label className="flex items-center cursor-pointer">
         <input
           type="checkbox"
-          checked={value === 'true' || value === true}
+          checked={value === 'true'}
           onChange={(e) => handleChange(e.target.checked.toString())}
           className="w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
           required={isRequired}
@@ -156,9 +156,9 @@ export default function WorkflowQuestion({ question, onAnswerChange, value }: Wo
   // Type 16: Multiple Choice
   const renderMultipleChoice = () => {
     // Check if this should use horizontal layout (like QO2 questionnaire)
-    const useHorizontalLayout = useHorizontalLayout;
+    const shouldUseHorizontalLayout = useHorizontalLayout;
     
-    if (useHorizontalLayout) {
+    if (shouldUseHorizontalLayout) {
       // Horizontal layout for QO2-style questions
       return (
         <div className="bg-white rounded-lg border border-gray-200 p-4">
@@ -169,7 +169,7 @@ export default function WorkflowQuestion({ question, onAnswerChange, value }: Wo
             </div>
             {/* Radio buttons in a row */}
             <div className="col-span-7 flex justify-around">
-              {listOptions?.map((option, index) => (
+              {listOptions?.map((option: string, index: number) => (
                 <label key={index} className="flex flex-col items-center cursor-pointer group">
                   <input
                     type="radio"
@@ -196,7 +196,7 @@ export default function WorkflowQuestion({ question, onAnswerChange, value }: Wo
         <div className="bg-white rounded-lg border border-gray-200 p-6">
           <h3 className="text-lg font-medium text-gray-900 mb-4">{prompt}</h3>
           <div className="space-y-3">
-            {listOptions?.map((option, index) => (
+            {listOptions?.map((option: string, index: number) => (
               <label key={index} className="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded">
                 <input
                   type="radio"
@@ -229,7 +229,7 @@ export default function WorkflowQuestion({ question, onAnswerChange, value }: Wo
     <div className="mb-4">
       <div 
         className="text-gray-700 prose max-w-none" 
-        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(question.prompt) }} 
+        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(prompt) }} 
       />
     </div>
   );

@@ -27,7 +27,10 @@ export default function AssessmentViewer({
 }: AssessmentViewerProps) {
   const allQuestionsAnswered = workflowState.questions
     .filter((q: WorkflowQuestion) => (q.IsRequired || q.isRequired) && (q.IsEnabled !== false))
-    .every((q: WorkflowQuestion) => currentAnswers[q.QuestionID || q.questionID || 0]);
+    .every((q: WorkflowQuestion) => {
+      const questionId = q.QuestionID || q.questionID || 0;
+      return currentAnswers[questionId];
+    });
 
   const handleClose = () => {
     // Navigate back to dashboard or home
@@ -70,14 +73,17 @@ export default function AssessmentViewer({
 
           {/* Questions */}
           <div className="flex flex-col gap-4">
-            {workflowState.questions.map((question: WorkflowQuestion) => (
-              <QuestionRenderer
-                key={question.QuestionID || question.questionID}
-                question={question}
-                value={currentAnswers[question.QuestionID || question.questionID]}
-                onValueChange={(value) => onAnswerChange(question.QuestionID || question.questionID, value)}
-              />
-            ))}
+            {workflowState.questions.map((question: WorkflowQuestion) => {
+              const questionId = question.QuestionID || question.questionID || 0;
+              return (
+                <QuestionRenderer
+                  key={questionId}
+                  question={question}
+                  value={currentAnswers[questionId]}
+                  onValueChange={(value) => onAnswerChange(questionId, value)}
+                />
+              );
+            })}
           </div>
 
           {/* Submit button - matching Figma style */}

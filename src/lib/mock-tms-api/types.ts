@@ -162,9 +162,12 @@ export interface TMSErrorResponse {
 // JWT Token Claims
 export interface TMSJWTClaims {
   sub: string; // userId
+  userId?: string; // Alternative userId field
   UserType: 'Facilitator' | 'Respondent';
+  userType?: 'Facilitator' | 'Respondent'; // Alternative case
   respondentID?: string;
   nameid: string; // email
+  email?: string; // Alternative email field
   organisationId: string;
   clerkUserId?: string; // Clerk integration
   exp: number;

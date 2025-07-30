@@ -21,7 +21,9 @@ export async function POST(request: NextRequest) {
     }
     
     // Return the first page URL
-    const firstPageUrl = `/Workflow/Process/${subscriptionId}/${assessment.baseContentId}/${assessment.startSection}/${assessment.startPage}`;
+    const firstSection = assessment.sections?.[0]?.sectionId || 2;
+    const firstPage = assessment.sections?.[0]?.pages?.[0] || 2;
+    const firstPageUrl = `/Workflow/Process/${subscriptionId}/${assessment.baseContentId}/${firstSection}/${firstPage}`;
     
     return NextResponse.json({
       success: true,

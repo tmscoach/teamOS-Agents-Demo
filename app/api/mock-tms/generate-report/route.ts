@@ -20,9 +20,12 @@ export async function POST(request: NextRequest) {
     if (!mockUser) {
       // Create a default facilitator user for report generation
       const defaultUser = {
+        sub: `user-${Date.now()}`,
         userId: `user-${Date.now()}`,
         email: 'facilitator@example.com',
-        userType: 'Facilitator',
+        nameid: 'facilitator@example.com',
+        UserType: 'Facilitator' as const,
+        userType: 'Facilitator' as const,
         organisationId: `org-${Date.now()}`
       };
       
@@ -31,16 +34,21 @@ export async function POST(request: NextRequest) {
     } else {
       // Generate mock JWT for the actual user
       jwt = mockTMSClient.generateJWT({
+        sub: mockUser.id,
         userId: mockUser.id,
         email: mockUser.email,
+        nameid: mockUser.email,
+        UserType: mockUser.userType || 'Facilitator',
         userType: mockUser.userType || 'Facilitator',
         organisationId: mockUser.organizationId
       });
     }
     
     const response = await generateHTMLReport({ 
-      templateId: body.templateId,
-      subscriptionId: body.subscriptionId,
+      data: {
+        templateId: body.templateId,
+        subscriptionId: body.subscriptionId
+      },
       jwt 
     });
     
