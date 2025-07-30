@@ -26,8 +26,8 @@ export function Question({
         {number}
       </div>
 
-      <div className="flex items-center justify-between p-4 relative self-stretch w-full bg-white rounded-lg border border-gray-200 shadow-sm">
-        <div className="text-right w-[140px] font-medium text-gray-900 text-sm leading-5">
+      <div className="flex items-center justify-between p-4 relative self-stretch w-full bg-white rounded-lg border border-gray-200 shadow-sm min-h-[56px]">
+        <div className="text-right w-[140px] font-medium text-gray-900 text-sm leading-5 pr-6 flex-shrink-0">
           {leftWord}
         </div>
 
@@ -35,10 +35,10 @@ export function Question({
           value={selectedValue}
           onChange={onValueChange}
           options={['2-0', '2-1', '1-2', '0-2']}
-          className="flex items-center gap-10"
+          className="flex items-center gap-10 flex-shrink-0"
         />
 
-        <div className="w-[140px] font-medium text-gray-900 text-sm leading-5">
+        <div className="w-[140px] font-medium text-gray-900 text-sm leading-5 pl-6 flex-shrink-0">
           {rightWord}
         </div>
       </div>

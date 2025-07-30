@@ -83,17 +83,25 @@ export default function AssessmentViewer({
 
           {/* Questions */}
           <div className="flex flex-col gap-4">
-            {workflowState.questions.map((question: WorkflowQuestion) => {
-              const questionId = question.QuestionID || question.questionID || 0;
-              return (
-                <QuestionRenderer
-                  key={questionId}
-                  question={question}
-                  value={currentAnswers[questionId]}
-                  onValueChange={(value) => onAnswerChange(questionId, value)}
-                />
-              );
-            })}
+            {workflowState.questions
+              .filter((question: WorkflowQuestion) => {
+                // For TMP assessments, only show seesaw questions (Type 18)
+                if (assessment.AssessmentType === 'TMP') {
+                  return (question.Type || question.type) === 18;
+                }
+                return true;
+              })
+              .map((question: WorkflowQuestion) => {
+                const questionId = question.QuestionID || question.questionID || 0;
+                return (
+                  <QuestionRenderer
+                    key={questionId}
+                    question={question}
+                    value={currentAnswers[questionId]}
+                    onValueChange={(value) => onAnswerChange(questionId, value)}
+                  />
+                );
+              })}
           </div>
 
           {/* Submit button - matching Figma style */}
