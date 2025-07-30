@@ -69,10 +69,15 @@ export default function MessageList({ messages, isLoading }: MessageListProps) {
               <div className="max-w-[80%]">
                 <div className="flex items-start gap-2 mb-1">
                   <OscarIcon className="!w-5 !h-5 mt-0.5" />
-                  <span className="text-xs text-gray-500">OSmos</span>
+                  <span className="text-xs text-gray-500">OSmos is thinking...</span>
                 </div>
-                <div className="bg-gray-100 rounded-lg px-4 py-2">
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                <div className="bg-gray-100 rounded-lg px-4 py-3 flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
+                  <div className="flex gap-1">
+                    <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                  </div>
                 </div>
               </div>
             </div>
