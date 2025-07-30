@@ -431,7 +431,7 @@ export default function AssessmentChatClient() {
               role: 'assistant',
               content: completionMessage
             });
-            await speakTextHelper(completionMessage);
+            speakTextHelper(completionMessage);
             
             // Give user time to see the message
             setTimeout(async () => {
@@ -468,7 +468,7 @@ export default function AssessmentChatClient() {
                 role: 'assistant',
                 content: progressMessage
               });
-              await speakTextHelper(progressMessage);
+              speakTextHelper(progressMessage);
             }
           }
         }
@@ -491,7 +491,7 @@ export default function AssessmentChatClient() {
         role: 'assistant',
         content: processingMessage
       });
-      await speakTextHelper(processingMessage);
+      speakTextHelper(processingMessage);
       // Get template ID from constants
       const templateId = TEMPLATE_ID_MAP[selectedAssessment.AssessmentType] || '6';
       
@@ -514,7 +514,7 @@ export default function AssessmentChatClient() {
           role: 'assistant',
           content: successMessage
         });
-        await speakTextHelper(successMessage);
+        speakTextHelper(successMessage);
         
         // Delay redirect to show success message
         setTimeout(() => {
@@ -535,7 +535,7 @@ export default function AssessmentChatClient() {
         role: 'assistant',
         content: errorMessage
       });
-      await speakTextHelper(errorMessage);
+      speakTextHelper(errorMessage);
     }
   };
   
@@ -608,7 +608,7 @@ export default function AssessmentChatClient() {
               role: 'assistant',
               content: exitMessage
             });
-            await speakTextHelper(exitMessage);
+            speakTextHelper(exitMessage);
             break;
         }
         break;
