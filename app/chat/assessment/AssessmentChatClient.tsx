@@ -63,7 +63,6 @@ export default function AssessmentChatClient() {
     audioLevel,
     startVoice,
     stopVoice,
-    speakText,
     getContextualHelp
   } = useVoiceNavigation({
     onCommand: (command) => handleVoiceCommandRef.current?.(command),
@@ -92,15 +91,9 @@ export default function AssessmentChatClient() {
       console.error('Chat error:', error);
     },
     onFinish(message) {
-      // If voice mode is enabled and session is active, speak the assistant's response
-      if (voiceModeEnabled && voiceState !== 'idle' && message.role === 'assistant' && message.content) {
-        // Add a small delay to ensure we're not speaking over ourselves
-        setTimeout(() => {
-          speakText(message.content).catch(error => {
-            console.error('Failed to speak response:', error);
-          });
-        }, 100);
-      }
+      // For now, we'll rely on the Realtime API's own responses
+      // The assessment agent's text responses will be shown in the UI
+      // Voice responses will come directly from the Realtime API
     },
     onToolCall: async ({ toolCall }) => {
       console.log('[Assessment] Tool called:', toolCall.toolName, toolCall.args);
@@ -645,20 +638,17 @@ export default function AssessmentChatClient() {
       
       // When voice mode starts, ask the agent to read the current questions
       if (workflowState && workflowState.questions.length > 0) {
-        // Announce that voice mode is active first
-        await speakText("Voice mode activated. I'll read out the questions for you.");
-        
-        // Then ask the agent to read questions
+        // Ask the agent to announce voice mode and read questions
         append({
           role: 'user',
-          content: 'Please read out the current questions on this page'
+          content: 'Voice mode is now active. Please read out the current questions on this page'
         });
       }
     } catch (error) {
       console.error('Failed to start voice mode:', error);
       setVoiceModeEnabled(false);
     }
-  }, [startVoice, workflowState, append, speakText]);
+  }, [startVoice, workflowState, append]);
   
   const handleVoicePermissionDeny = useCallback(() => {
     setShowVoicePermission(false);

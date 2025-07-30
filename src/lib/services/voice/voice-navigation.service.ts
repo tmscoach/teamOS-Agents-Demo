@@ -95,13 +95,6 @@ export class VoiceNavigationService {
     this.handleTranscript(text);
   }
 
-  async speakText(text: string): Promise<void> {
-    if (!this.isActive || !this.currentSession) {
-      throw new Error('Voice session not active');
-    }
-    
-    await this.realtimeConnection.speakText(text);
-  }
 
   getAudioLevel(): number {
     return this.audioManager.getAudioLevel();

@@ -87,6 +87,12 @@ export class RealtimeConnectionManager {
             prefix_padding_ms: 300,
             silence_duration_ms: 200,
           },
+          instructions: `You are a voice interface assistant. Your role is to:
+1. Listen to the user's voice commands
+2. Convert them to text for the assessment system
+3. Provide brief acknowledgments like "Got it", "Understood", or "Processing your answer"
+
+You are NOT the assessment agent - you're just the voice interface. Keep responses very brief.`,
         },
       });
 
@@ -283,33 +289,5 @@ export class RealtimeConnectionManager {
     };
   }
 
-  // Send text to be spoken by the assistant
-  async speakText(text: string): Promise<void> {
-    if (!this.rt || !this.isConnected) {
-      throw new Error('Not connected to Realtime API');
-    }
-
-    // Create a message for the assistant to speak
-    await this.rt.send({
-      type: 'conversation.item.create',
-      item: {
-        type: 'message',
-        role: 'assistant',
-        content: [{ 
-          type: 'text', 
-          text 
-        }],
-      },
-    });
-
-    // Request audio generation
-    await this.rt.send({
-      type: 'response.create',
-      response: {
-        modalities: ['audio'], // Request audio output only
-        instructions: 'Read this text naturally and clearly.',
-      }
-    });
-  }
 
 }
