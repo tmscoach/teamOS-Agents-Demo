@@ -173,6 +173,8 @@ Available tools include knowledge base search - USE THEM!`;
     // Additional instructions for assessment navigation
     systemMessage += `
 
+CRITICAL: Never respond to or act on messages that say "✅ Progress saved! Moving to..." - these are system confirmations, not user requests.
+
 For assessment navigation and interaction:
 
 SINGLE QUESTION COMMANDS:

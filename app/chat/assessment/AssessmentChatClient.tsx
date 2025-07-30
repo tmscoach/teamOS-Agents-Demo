@@ -25,7 +25,6 @@ export default function AssessmentChatClient() {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const currentConversationIdRef = useRef<string | null>(null);
   const [isCompleting, setIsCompleting] = useState(false);
-  const [isNavigatingViaAgent, setIsNavigatingViaAgent] = useState(false);
 
   // Track answers for the current page
   const [currentAnswers, setCurrentAnswers] = useState<Record<number, string>>({});
@@ -122,9 +121,7 @@ export default function AssessmentChatClient() {
             const { direction, pageNumber } = toolCall.args as { direction?: string; pageNumber?: number };
             
             if (direction === 'next') {
-              setIsNavigatingViaAgent(true);
-              await submitCurrentPage();
-              setIsNavigatingViaAgent(false);
+              await submitCurrentPage(true); // Pass true to indicate agent triggered
               return { success: true, message: 'Navigating to next page' };
             } else if (direction === 'previous' && workflowState) {
               // TODO: Implement previous page navigation
@@ -346,7 +343,7 @@ export default function AssessmentChatClient() {
     }));
   }, []);
 
-  const submitCurrentPage = async () => {
+  const submitCurrentPage = async (triggeredByAgent = false) => {
     if (!workflowState) return;
     
     try {
@@ -415,7 +412,7 @@ export default function AssessmentChatClient() {
             
             // Only notify via chat if not triggered by agent tool
             // The agent will provide its own message when using navigate_page tool
-            if (!isNavigatingViaAgent) {
+            if (!triggeredByAgent) {
               append({
                 role: 'assistant',
                 content: `✅ Progress saved! Moving to ${result.Description || 'next section'}.`
