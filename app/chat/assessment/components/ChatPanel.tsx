@@ -162,11 +162,11 @@ export function ChatPanel({ className = "" }: ChatPanelProps) {
         }}
         onMouseDown={handleMouseDown}
       >
-        <div className="relative">
+        <div className="relative group">
           <div 
-            className="absolute inset-0 rounded-lg"
+            className="absolute inset-0 rounded-lg opacity-60 group-hover:opacity-100 transition-opacity"
             style={{
-              background: 'linear-gradient(158deg, rgba(255,243,3,0.05) 0%, rgba(251,169,61,0.05) 15%, rgba(237,1,145,0.05) 30%, rgba(167,99,173,0.05) 45%, rgba(1,133,198,0.05) 60%, rgba(2,181,230,0.05) 75%, rgba(1,161,114,0.05) 90%, rgba(162,211,111,0.05) 100%)'
+              background: 'linear-gradient(158deg, rgba(255,243,3,0.1) 0%, rgba(251,169,61,0.1) 15%, rgba(237,1,145,0.1) 30%, rgba(167,99,173,0.1) 45%, rgba(1,133,198,0.1) 60%, rgba(2,181,230,0.1) 75%, rgba(1,161,114,0.1) 90%, rgba(162,211,111,0.1) 100%)'
             }}
           />
           <input
@@ -174,12 +174,14 @@ export function ChatPanel({ className = "" }: ChatPanelProps) {
             placeholder="Ask Oskar about your profile"
             onClick={() => setIsExpanded(true)}
             readOnly
-            className="relative w-[300px] px-4 py-3 pl-12 pr-10 bg-white/90 backdrop-blur-sm rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="relative w-[313px] h-[46px] px-4 py-2.5 pl-10 bg-white/95 backdrop-blur-[10px] rounded-lg border border-gray-200/80 shadow-[0_2px_8px_rgba(0,0,0,0.08)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.12)] transition-all duration-200 cursor-pointer text-[13px] placeholder-gray-500 focus:outline-none"
+            style={{
+              fontFamily: 'Inter, system-ui, -apple-system, sans-serif'
+            }}
           />
-          <div className="absolute left-3 top-1/2 -translate-y-1/2">
-            <Oscar1 className="!w-6 !h-6" />
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center justify-center w-6 h-6">
+            <Oscar1 className="!w-5 !h-5" />
           </div>
-          <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-pulse" />
         </div>
       </div>
     );

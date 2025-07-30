@@ -21,13 +21,13 @@ export function Question({
   className
 }: QuestionProps) {
   return (
-    <div className={clsx('flex flex-col items-start gap-2', className)}>
-      <div className="text-sm font-normal text-gray-500 mb-1">
+    <div className={clsx('flex flex-col items-start gap-2.5', className)}>
+      <div className="text-sm font-medium text-gray-500 leading-5">
         {number}
       </div>
 
-      <div className="flex items-center justify-between p-6 relative self-stretch w-full bg-white rounded-lg border border-gray-200 shadow-sm">
-        <div className="text-right w-[160px] font-normal text-gray-900 text-base">
+      <div className="flex items-center justify-between p-4 relative self-stretch w-full bg-white rounded-lg border border-gray-200 shadow-sm">
+        <div className="text-right w-[140px] font-medium text-gray-900 text-sm leading-5">
           {leftWord}
         </div>
 
@@ -35,10 +35,10 @@ export function Question({
           value={selectedValue}
           onChange={onValueChange}
           options={['2-0', '2-1', '1-2', '0-2']}
-          className="flex items-center gap-12"
+          className="flex items-center gap-10"
         />
 
-        <div className="w-[160px] font-normal text-gray-900 text-base">
+        <div className="w-[140px] font-medium text-gray-900 text-sm leading-5">
           {rightWord}
         </div>
       </div>
