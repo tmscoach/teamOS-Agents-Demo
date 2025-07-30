@@ -114,7 +114,7 @@ export class RealtimeConnectionManager {
             threshold: 0.5,
             prefix_padding_ms: 300,
             silence_duration_ms: 200,
-            create_response: false,  // Disable automatic responses to prevent duplicates
+            create_response: true,  // Enable automatic responses when user stops speaking
           },
           instructions: `You are OSmos, the Team Assessment Assistant conducting a voice-based questionnaire.
 
@@ -259,6 +259,17 @@ IMPORTANT:
     
     this.eventHandlersSetup = true;
 
+    // Handle speech detection events
+    this.rt.on('input_audio_buffer.speech_started', (event) => {
+      console.log('[Voice] Speech started');
+      this.config.onStateChange?.('listening');
+    });
+
+    this.rt.on('input_audio_buffer.speech_stopped', (event) => {
+      console.log('[Voice] Speech stopped');
+      // Server will automatically create response with create_response: true
+    });
+
     // Handle transcription updates
     this.rt.on('conversation.item.input_audio_transcription.completed', (event) => {
       const transcript = event.transcript;
@@ -305,19 +316,7 @@ IMPORTANT:
           }
         });
         
-        // Small delay to ensure function result is processed before triggering response
-        setTimeout(() => {
-          if (!this.isGeneratingResponse) {
-            this.isGeneratingResponse = true;
-            // Manually trigger response since we disabled auto-response
-            this.rt.send({
-              type: 'response.create',
-              response: {
-                modalities: ['audio', 'text'],
-              }
-            });
-          }
-        }, 100);
+        // Don't manually trigger response - server will auto-respond after function result
       } else if (name === 'answer_multiple_questions') {
         const { questionIds, value } = JSON.parse(args);
         console.log(`Recording ${questionIds.length} answers with value ${value}`);
@@ -352,18 +351,7 @@ IMPORTANT:
           }
         });
         
-        // Trigger response after a delay
-        setTimeout(() => {
-          if (!this.isGeneratingResponse) {
-            this.isGeneratingResponse = true;
-            this.rt.send({
-              type: 'response.create',
-              response: {
-                modalities: ['audio', 'text'],
-              }
-            });
-          }
-        }, 100);
+        // Don't manually trigger response - server will auto-respond after function result
       } else if (name === 'navigate_next') {
         console.log('Navigation to next page requested');
         // Handle navigation if needed
@@ -460,6 +448,29 @@ IMPORTANT:
       this.audioBuffer = [];
       this.config.onStateChange?.('listening');
     }
+  }
+
+  async commitAudio(): Promise<void> {
+    if (!this.rt || !this.isConnected) {
+      throw new Error('Not connected to Realtime API');
+    }
+
+    // Send any remaining buffered audio
+    if (this.audioBuffer.length > 0) {
+      const combinedBuffer = this.combineAudioBuffers();
+      
+      await this.rt.send({
+        type: 'input_audio_buffer.append',
+        audio: this.encodeAudioToBase64(combinedBuffer),
+      });
+
+      this.audioBuffer = [];
+    }
+
+    // Commit the audio buffer to trigger response
+    await this.rt.send({
+      type: 'input_audio_buffer.commit',
+    });
   }
 
   async sendText(text: string): Promise<void> {

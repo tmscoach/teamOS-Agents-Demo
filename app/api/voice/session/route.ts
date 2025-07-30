@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
           threshold: 0.5,
           prefix_padding_ms: 300,
           silence_duration_ms: 200,
-          create_response: false,  // Disable automatic responses to prevent duplicates
+          create_response: true,  // Enable automatic responses when user stops speaking
         },
       }),
     });
