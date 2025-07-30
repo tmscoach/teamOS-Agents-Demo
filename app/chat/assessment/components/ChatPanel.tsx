@@ -3,20 +3,43 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Oscar1 } from "./Oscar1";
 import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
+import { Message } from 'ai';
+import { Loader2 } from 'lucide-react';
 
 interface ChatPanelProps {
   className?: string;
+  messages?: Message[];
+  input?: string;
+  handleInputChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  handleSubmit?: (e: React.FormEvent<HTMLFormElement>) => void;
+  isLoading?: boolean;
 }
 
-export function ChatPanel({ className = "" }: ChatPanelProps) {
+export function ChatPanel({ 
+  className = "",
+  messages: aiMessages,
+  input: aiInput,
+  handleInputChange: aiHandleInputChange,
+  handleSubmit: aiHandleSubmit,
+  isLoading
+}: ChatPanelProps) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [messages, setMessages] = useState<Array<{ id: string; text: string; sender: "user" | "osmos" }>>([]);
-  const [inputValue, setInputValue] = useState("");
+  // Use AI messages if provided, otherwise fall back to local state
+  const [localMessages, setLocalMessages] = useState<Array<{ id: string; text: string; sender: "user" | "osmos" }>>([]);
+  const [localInputValue, setLocalInputValue] = useState("");
+  
+  // Use AI props if provided
+  const messages = aiMessages || localMessages;
+  const inputValue = aiInput !== undefined ? aiInput : localInputValue;
+  const setInputValue = aiHandleInputChange ? 
+    (value: string) => aiHandleInputChange({ target: { value } } as any) : 
+    setLocalInputValue;
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const dragRef = useRef<HTMLDivElement>(null);
   const initialPos = useRef({ x: 0, y: 0 });
   const dragStart = useRef({ x: 0, y: 0 });
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
@@ -48,6 +71,11 @@ export function ChatPanel({ className = "" }: ChatPanelProps) {
     };
   }, [isDragging]);
 
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
   const handleDragStart = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -60,25 +88,31 @@ export function ChatPanel({ className = "" }: ChatPanelProps) {
     e.preventDefault();
     if (!inputValue.trim()) return;
 
-    const userMessage = {
-      id: Date.now().toString(),
-      text: inputValue,
-      sender: "user" as const
-    };
-
-    setMessages([...messages, userMessage]);
-    setInputValue("");
-
-    // Simulate OSmos response
-    setTimeout(() => {
-      const response = generateResponse(inputValue);
-      const osmosMessage = {
-        id: (Date.now() + 1).toString(),
-        text: response,
-        sender: "osmos" as const
+    // Use AI submit if provided
+    if (aiHandleSubmit) {
+      aiHandleSubmit(e);
+    } else {
+      // Fall back to local handling only if no AI handler
+      const userMessage = {
+        id: Date.now().toString(),
+        text: inputValue,
+        sender: "user" as const
       };
-      setMessages(prev => [...prev, osmosMessage]);
-    }, 800);
+
+      setLocalMessages([...localMessages, userMessage]);
+      setLocalInputValue("");
+
+      // Simulate OSmos response
+      setTimeout(() => {
+        const response = generateResponse(inputValue);
+        const osmosMessage = {
+          id: (Date.now() + 1).toString(),
+          text: response,
+          sender: "osmos" as const
+        };
+        setLocalMessages(prev => [...prev, osmosMessage]);
+      }, 800);
+    }
   };
 
   const generateResponse = (input: string): string => {
@@ -246,35 +280,51 @@ export function ChatPanel({ className = "" }: ChatPanelProps) {
               </div>
             </div>
           ) : (
-            messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex ${message.sender === "user" ? "justify-end" : "justify-start"}`}
-              >
-                <div className={`max-w-[80%] ${message.sender === "user" ? "order-2" : "order-1"}`}>
-                  {message.sender === "osmos" && (
-                    <div className="flex items-start gap-2 mb-1">
-                      <Oscar1 className="!w-5 !h-5 mt-0.5" />
-                      <span className="text-xs text-gray-500">OSmos</span>
-                    </div>
-                  )}
-                  <div
-                    className={`px-4 py-2 rounded-lg text-sm ${
-                      message.sender === "user"
-                        ? "bg-gray-900 text-white"
-                        : "bg-gray-100 text-gray-900"
-                    }`}
-                  >
-                    {message.text.split('\n').map((line, i) => (
-                      <React.Fragment key={i}>
-                        {line}
-                        {i < message.text.split('\n').length - 1 && <br />}
-                      </React.Fragment>
+            messages.map((message) => {
+              // Handle both AI Message format and local message format
+              const isAIMessage = 'role' in message;
+              const isUser = isAIMessage ? message.role === 'user' : message.sender === 'user';
+              const content = isAIMessage ? message.content : message.text;
+              const id = isAIMessage ? message.id : message.id;
+              
+              return (
+                <div
+                  key={id}
+                  className={`flex ${isUser ? "justify-end" : "justify-start"}`}
+                >
+                  <div className={`max-w-[80%] ${isUser ? "order-2" : "order-1"}`}>
+                    {!isUser && (
+                      <div className="flex items-start gap-2 mb-1">
+                        <Oscar1 className="!w-5 !h-5 mt-0.5" />
+                        <span className="text-xs text-gray-500">OSmos</span>
+                      </div>
+                    )}
+                    <div
+                      className={`px-4 py-2 rounded-lg text-sm ${
+                        isUser
+                          ? "bg-gray-900 text-white"
+                          : "bg-gray-100 text-gray-900"
+                      }`}
+                    >
+                      {content.split('\n').map((line, i) => (
+                        <React.Fragment key={i}>
+                          {line}
+                          {i < content.split('\n').length - 1 && <br />}
+                        </React.Fragment>
                     ))}
                   </div>
                 </div>
               </div>
-            ))
+              );
+            })
+          )}
+          <div ref={messagesEndRef} />
+          {/* Loading indicator */}
+          {isLoading && (
+            <div className="flex items-center gap-2 px-6 py-3 bg-gray-50 border-t">
+              <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
+              <span className="text-sm text-gray-500">OSmos is thinking...</span>
+            </div>
           )}
         </div>
 
@@ -284,13 +334,15 @@ export function ChatPanel({ className = "" }: ChatPanelProps) {
             <input
               type="text"
               value={inputValue}
-              onChange={(e) => setInputValue(e.target.value)}
+              onChange={aiHandleInputChange || ((e) => setInputValue(e.target.value))}
               placeholder="Ask about the questionnaire..."
               className="flex-1 px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              disabled={isLoading}
             />
             <button
               type="submit"
-              className="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors"
+              className="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isLoading || !inputValue.trim()}
             >
               Send
             </button>

@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
 
     // Handle empty message for initial greeting
     const isInitialGreeting = !message && messages.length === 1;
-    let userMessageContent = message || '[User joined the assessment]';
+    let userMessageContent = message || 'Hello! I just joined the assessment session. Please introduce yourself and explain what assessments are available.';
 
     // Get database user
     const userEmail = user.emailAddresses?.[0]?.emailAddress;
@@ -130,24 +130,55 @@ export async function POST(request: NextRequest) {
 
     // Create the assessment agent
     const agent = await createAssessmentAgent();
-
-    // Get agent configuration for prompts and model
-    // @ts-ignore - accessing protected method
-    let systemMessage = agent.buildSystemMessage ? agent.buildSystemMessage(context) : '';
     
-    // Enhance system message with natural language parsing instructions
+    // Get agent's tools after initialization
+    const agentTools = agent.tools || [];
+    console.log('[Assessment] Agent tools available:', agentTools.map((t: any) => t.name));
+
+    // Build system message that prioritizes knowledge base usage
+    // DO NOT use agent.buildSystemMessage as it may contain overriding instructions
+    let systemMessage = `You are OSmos, the TMS Assessment Agent. 
+
+MANDATORY BEHAVIOR - YOU MUST FOLLOW THESE RULES:
+
+1. When ANY user asks ANYTHING about:
+   - TMS methodology or concepts
+   - Assessment details (TMP, QO2, Team Signals)
+   - What a question measures
+   - The TMP handbook or any TMS documentation
+   - How assessments work
+   - Questionnaire items or scoring
+   
+   YOU MUST:
+   a) IMMEDIATELY use the knowledge base tools BEFORE responding
+   b) Search using the appropriate tool:
+      - search_tms_knowledge: For general TMS concepts and methodologies
+      - get_assessment_methodology: For specific assessment details
+      - get_questionnaire_items: For specific questionnaire items
+   c) Base your ENTIRE response on the search results
+   d) Cite your sources (e.g., "According to the TMP Handbook...")
+
+2. NEVER provide information about TMS without searching first
+3. NEVER make up or guess information about assessments
+4. If knowledge base search fails, say "I need to search for that information but encountered an issue"
+
+Current context:
+- User: ${context.metadata?.user?.name || 'User'}
+- Team: ${context.metadata?.team?.name || 'Team'}
+- Assessment: ${selectedAssessment?.assessmentType || 'None selected'}
+- Page: ${workflowState?.currentPageId || 'N/A'}
+
+Available tools include knowledge base search - USE THEM!`;
+    
+    // Additional instructions for assessment navigation
     systemMessage += `
 
-IMPORTANT: When users give natural language commands for answering questions, parse them carefully:
-- "answer 2-1 for question 34" → Use answer_question tool with questionId: 34, value: "2-1"
-- "select 2-0 for the first question" → Find the first question ID and use answer_question tool
-- "go to next page" → Use navigate_page tool with direction: "next"
-- "previous page" → Use navigate_page tool with direction: "previous"
-- "explain question 35" → Use explain_question tool with questionId: 35
+For assessment navigation and interaction:
+- "answer 2-1 for question 34" → Use answer_question tool 
+- "go to next page" → Use navigate_page tool
+- "explain question 35" → FIRST use knowledge base tools to search for what the question measures
 
-Always confirm actions back to the user in a friendly way.`;
-    
-    const modelName = 'gpt-4o-mini'; // Using fast model for assessments
+Remember: ANY question about TMS content requires knowledge base search FIRST.`;
 
     // Format messages for the AI SDK
     const formattedMessages = messages.map((msg: any) => ({
@@ -170,6 +201,82 @@ Always confirm actions back to the user in a friendly way.`;
 
     // Create tools object for assessment-specific tools
     const tools: Record<string, any> = {};
+    
+    // Convert agent tools to AI SDK format
+    if (agentTools.length > 0) {
+      // Helper function to convert JSON schema to Zod schema
+      const createZodSchema = (jsonSchema: any): any => {
+        if (jsonSchema.type === 'object') {
+          const shape: any = {};
+          if (jsonSchema.properties) {
+            for (const [key, value] of Object.entries(jsonSchema.properties)) {
+              const prop = value as any;
+              if (prop.type === 'string') {
+                if (prop.enum) {
+                  shape[key] = z.enum(prop.enum as [string, ...string[]]);
+                } else {
+                  shape[key] = jsonSchema.required?.includes(key) ? z.string() : z.string().optional();
+                }
+              } else if (prop.type === 'number') {
+                shape[key] = jsonSchema.required?.includes(key) ? z.number() : z.number().optional();
+              } else if (prop.type === 'boolean') {
+                shape[key] = jsonSchema.required?.includes(key) ? z.boolean() : z.boolean().optional();
+              } else if (prop.type === 'array') {
+                if (prop.items?.type === 'string') {
+                  shape[key] = jsonSchema.required?.includes(key) 
+                    ? z.array(z.string()) 
+                    : z.array(z.string()).optional();
+                } else {
+                  shape[key] = z.array(z.any()).optional();
+                }
+              } else if (prop.type === 'object') {
+                shape[key] = z.object({}).optional();
+              }
+            }
+          }
+          return z.object(shape);
+        }
+        return z.any();
+      };
+      
+      // Convert each agent tool
+      for (const agentTool of agentTools) {
+        tools[agentTool.name] = tool({
+          description: agentTool.description,
+          parameters: createZodSchema(agentTool.parameters),
+          execute: async (params: any) => {
+            console.log(`[Assessment] Executing tool: ${agentTool.name}`, params);
+            try {
+              const result = await agentTool.execute(params, context);
+              console.log(`[Assessment] Tool result:`, JSON.stringify(result, null, 2));
+              
+              // Extract the appropriate response from the tool result
+              if (result.success && result.output) {
+                // If output is a string, use it directly
+                if (typeof result.output === 'string') {
+                  return result.output;
+                }
+                // Otherwise, stringify the output
+                return JSON.stringify(result.output);
+              }
+              
+              // If there's an error, return it
+              if (result.error) {
+                return result.error;
+              }
+              
+              // Default fallback
+              return 'Tool execution completed';
+            } catch (error) {
+              console.error(`[Assessment] Tool execution error:`, error);
+              return `Error executing tool: ${error instanceof Error ? error.message : 'Unknown error'}`;
+            }
+          }
+        });
+      }
+      
+      console.log('[Assessment] Converted agent tools:', Object.keys(tools));
+    }
 
     // Add assessment-specific tools with natural language processing
     tools.answer_question = tool({
@@ -229,27 +336,98 @@ Always confirm actions back to the user in a friendly way.`;
         }
         
         // This would use knowledge base to explain the question
-        return {
-          questionId,
-          explanation: `This question measures your preference between "${question.statementA}" and "${question.statementB}".`
-        };
+        return `Question ${questionId} asks you to choose between "${question.statementA}" and "${question.statementB}". I'll search the knowledge base for a detailed explanation of what this measures.`;
       }
     });
 
-    // Stream the response
-    const result = await streamText({
-      model: aiOpenai(modelName),
-      system: systemMessage,
-      messages: formattedMessages,
-      temperature: 0.7,
-      maxTokens: 2000,
-      tools: tools,
-      experimental_toolCallStreaming: true,
-      maxSteps: 3,
-      experimental_continueSteps: true
-    });
+    // Add instruction about using tools properly
+    if (Object.keys(tools).length > 0) {
+      systemMessage += '\n\nCRITICAL: When using tools, ALWAYS provide a complete response to the user. Never end your response after just calling a tool. Interpret and explain the results in a helpful, conversational way.';
+    }
+    
+    // Get model and temperature from agent config
+    // @ts-ignore - accessing protected properties
+    const agentModelName = agent.model || 'gpt-4o-mini';
+    // Use lower temperature to ensure instruction following for knowledge base usage
+    const agentTemperature = 0.3; // Lower temperature for more consistent tool usage
+    
+    console.log('[Assessment] Using model:', agentModelName, 'temperature:', agentTemperature);
+    console.log('[Assessment] Number of tools available:', Object.keys(tools).length);
+    console.log('[Assessment] Tool names:', Object.keys(tools));
+    console.log('[Assessment] System message preview:', systemMessage.substring(0, 500) + '...');
+    console.log('[Assessment] Full system message length:', systemMessage.length);
 
-    // Save conversation
+    // Ensure we have at least one message
+    const messagesToSend = formattedMessages.length > 0 ? formattedMessages : [{
+      role: 'user' as const,
+      content: userMessageContent || '[User joined the assessment]'
+    }];
+
+    // Stream the response
+    try {
+      const streamConfig: any = {
+        model: aiOpenai(agentModelName),
+        system: systemMessage,
+        messages: messagesToSend,
+        temperature: agentTemperature,
+        maxTokens: 2000,
+      };
+      
+      // Only add tools if we have them
+      if (tools && Object.keys(tools).length > 0) {
+        streamConfig.tools = tools;
+        streamConfig.experimental_toolCallStreaming = true; // Enable tool streaming
+        streamConfig.maxSteps = 5; // Allow multiple steps for tool calls and responses
+        streamConfig.experimental_continueSteps = true; // Continue after tool calls
+        console.log('[Assessment] Tools added to stream config:', Object.keys(tools).length);
+      }
+      
+      const result = await streamText({
+        ...streamConfig,
+        onToolCall: ({ toolCall }: any) => {
+          console.log('[Assessment] Tool call initiated:', toolCall.toolName, toolCall.args);
+        },
+        onStepFinish: ({ stepType, toolCalls, toolResults, finishReason }: any) => {
+          console.log('[Assessment] Step finished:', { 
+            stepType, 
+            toolCallCount: toolCalls?.length,
+            toolResultCount: toolResults?.length,
+            finishReason 
+          });
+        },
+        onFinish: async ({ text, toolCalls, toolResults, finishReason, usage, error }: any) => {
+          console.log('[Assessment] Stream finished:', { 
+            hasText: !!text, 
+            textLength: text?.length,
+            toolCallCount: toolCalls?.length,
+            toolResultCount: toolResults?.length,
+            finishReason,
+            error: error?.message || error,
+            usage
+          });
+          
+          if (error) {
+            console.error('[Assessment] Stream error:', error);
+          }
+          
+          // If we have tool results but no text, create a fallback message
+          let finalContent = text;
+          if (!text && toolResults && toolResults.length > 0) {
+            console.log('[Assessment] No text response but have tool results, creating fallback');
+            const toolResult = toolResults[0];
+            if (toolResult && toolResult.result) {
+              if (typeof toolResult.result === 'string') {
+                finalContent = toolResult.result;
+              }
+            }
+            if (!finalContent) {
+              finalContent = 'I found the information you requested. The tool execution completed successfully.';
+            }
+          }
+        }
+      });
+
+      // Save conversation
     // Store conversation ID for response
     let responseConversationId = conversationId;
     
@@ -277,6 +455,14 @@ Always confirm actions back to the user in a friendly way.`;
     response.headers.set('X-Conversation-ID', responseConversationId);
     
     return response;
+    } catch (streamError) {
+      console.error('[Assessment] Error in streamText:', streamError);
+      console.error('[Assessment] Error details:', {
+        message: streamError instanceof Error ? streamError.message : 'Unknown error',
+        stack: streamError instanceof Error ? streamError.stack : undefined
+      });
+      throw streamError;
+    }
   } catch (error) {
     console.error('[Assessment] Error:', error);
     return new Response(

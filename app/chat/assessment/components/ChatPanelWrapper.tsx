@@ -19,9 +19,14 @@ export function ChatPanelWrapper({
   handleSubmit, 
   isLoading 
 }: ChatPanelWrapperProps) {
-  // For now, we'll use the Figma ChatPanel as-is for the exact styling
-  // In a production version, we would modify ChatPanel to accept these props
-  // and integrate with the actual AI responses
-  
-  return <ChatPanel />;
+  // Pass the actual AI chat props to ChatPanel
+  return (
+    <ChatPanel 
+      messages={messages}
+      input={input}
+      handleInputChange={handleInputChange}
+      handleSubmit={handleSubmit}
+      isLoading={isLoading}
+    />
+  );
 }
