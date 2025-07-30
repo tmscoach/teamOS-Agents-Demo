@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
 
     // Handle empty message for initial greeting
     const isInitialGreeting = !message && messages.length === 1;
-    let userMessageContent = message || 'Hello! I just joined the assessment session. Please introduce yourself and explain what assessments are available.';
+    let userMessageContent = message || 'Hello!';
 
     // Get database user
     const userEmail = user.emailAddresses?.[0]?.emailAddress;
