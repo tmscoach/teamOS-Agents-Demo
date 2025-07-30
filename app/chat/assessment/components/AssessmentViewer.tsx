@@ -53,7 +53,7 @@ export default function AssessmentViewer({
       {/* Main content area with fixed header offset - matches Figma layout */}
       <div className="flex items-start gap-4 px-10 pt-[140px] pb-6 w-full h-[calc(100vh-109px)]">
         {/* Left Navigation/Instructions - matches Figma NavigationMenu */}
-        <div className="flex flex-col w-[250px] items-start gap-2">
+        <div className="flex flex-col w-[250px] flex-shrink-0 items-start gap-2">
           {/* Progress bar */}
           <div className="w-[234px] h-2 bg-[#55637d33] rounded-full overflow-hidden">
             <div
@@ -79,7 +79,7 @@ export default function AssessmentViewer({
         </div>
 
         {/* Right Questions area - matches Figma Frame */}
-        <div className="flex flex-col w-[822px] items-start gap-8 pl-[30px]">
+        <div className="flex flex-col flex-1 items-start gap-8 pl-[30px] pr-[30px] max-w-[900px]">
 
           {/* Questions */}
           <div className="flex flex-col gap-4 self-stretch w-full">
