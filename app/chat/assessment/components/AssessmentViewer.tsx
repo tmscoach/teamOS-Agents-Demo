@@ -50,37 +50,36 @@ export default function AssessmentViewer({
       {/* Header */}
       <DbHeader onClose={handleClose} />
 
-      {/* Main content area with fixed header offset */}
-      <div className="flex flex-col px-10 pt-[140px] pb-10 max-w-4xl mx-auto w-full">
-        {/* Progress bar section */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-2">
-            <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden mr-4">
-              <div
-                className="h-full bg-blue-500 transition-all duration-300"
-                style={{ width: `${(((workflowState.currentPageNumber || 1) - 1) / ((workflowState.totalPages || 12) - 1)) * 100}%` }}
-              />
-            </div>
-            <span className="text-sm text-gray-600 whitespace-nowrap">
-              Page {workflowState.currentPageNumber || 1} of {workflowState.totalPages || 12}
-            </span>
+      {/* Main content area with fixed header offset - matches Figma layout */}
+      <div className="flex items-start gap-4 px-10 pt-[140px] pb-6 w-full h-[calc(100vh-109px)]">
+        {/* Left Navigation/Instructions - matches Figma NavigationMenu */}
+        <div className="flex flex-col w-[250px] items-start gap-2">
+          {/* Progress bar */}
+          <div className="w-[234px] h-2 bg-[#55637d33] rounded-full overflow-hidden">
+            <div
+              className="h-full bg-[#a7c0e3] transition-all duration-300"
+              style={{ width: `${(((workflowState.currentPageNumber || 1) - 1) / ((workflowState.totalPages || 12) - 1)) * 100}%` }}
+            />
+          </div>
+          <div className="text-sm font-medium text-gray-700 whitespace-nowrap">
+            Page {workflowState.currentPageNumber || 1} of {workflowState.totalPages || 12}
           </div>
           
           {/* Instructions */}
-          <div className="mt-4">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+          <div className="flex flex-col items-start gap-2 pt-4">
+            <h3 className="text-base font-medium text-gray-900 leading-5">
               Which word in each pair bests describes you?
             </h3>
-            <ul className="text-sm text-gray-600 space-y-1">
-              <li>• If you definitely prefer the statement on the left, select 2-0</li>
-              <li>• If you definitely prefer the statement on the right, select 0-2</li>
-              <li>• If you find it difficult to decide which statement you prefer, select 2-1 or 1-2 to the left or right of the preferred statement</li>
-            </ul>
+            <div className="text-sm text-gray-600 leading-5">
+              • If you definitely prefer the statement on the left, select 2-0<br/>
+              • If you definitely prefer the statement on the right, select 0-2<br/>
+              • If you find it difficult to decide which statement you prefer, select 2-1 or 1-2 to the left or right of the preferred statement
+            </div>
           </div>
         </div>
 
-        {/* Questions area */}
-        <div className="flex flex-col gap-6">
+        {/* Right Questions area - matches Figma Frame */}
+        <div className="flex flex-col flex-1 items-start gap-8 pl-[30px]">
 
           {/* Questions */}
           <div className="flex flex-col gap-4">

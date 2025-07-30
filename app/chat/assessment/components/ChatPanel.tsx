@@ -68,8 +68,10 @@ export function ChatPanel({ className = "" }: ChatPanelProps) {
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    // Don't start drag if clicking the button itself
-    if ((e.target as HTMLElement).closest('button')) {
+    // Don't start drag if clicking the input or button
+    if ((e.target as HTMLElement).closest('button') || 
+        (e.target as HTMLElement).closest('input') ||
+        (e.target as HTMLElement).tagName === 'INPUT') {
       return;
     }
     
@@ -161,17 +163,23 @@ export function ChatPanel({ className = "" }: ChatPanelProps) {
         onMouseDown={handleMouseDown}
       >
         <div className="relative">
+          <div 
+            className="absolute inset-0 rounded-lg"
+            style={{
+              background: 'linear-gradient(158deg, rgba(255,243,3,0.05) 0%, rgba(251,169,61,0.05) 15%, rgba(237,1,145,0.05) 30%, rgba(167,99,173,0.05) 45%, rgba(1,133,198,0.05) 60%, rgba(2,181,230,0.05) 75%, rgba(1,161,114,0.05) 90%, rgba(162,211,111,0.05) 100%)'
+            }}
+          />
           <input
             type="text"
             placeholder="Ask Oskar about your profile"
             onClick={() => setIsExpanded(true)}
             readOnly
-            className="w-[300px] px-4 py-3 pl-12 pr-10 bg-white rounded-lg border border-gray-300 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+            className="relative w-[300px] px-4 py-3 pl-12 pr-10 bg-white/90 backdrop-blur-sm rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
           <div className="absolute left-3 top-1/2 -translate-y-1/2">
             <Oscar1 className="!w-6 !h-6" />
           </div>
-          <ChevronRightIcon className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+          <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-pulse" />
         </div>
       </div>
     );
