@@ -6,6 +6,7 @@ import AssessmentViewer from './AssessmentViewer';
 import AssessmentSelector from './AssessmentSelector';
 import { Message } from 'ai';
 import { AssessmentSubscription, WorkflowState } from '../types';
+import { VoiceState } from '@/src/lib/services/voice';
 
 
 interface AssessmentLayoutProps {
@@ -25,6 +26,9 @@ interface AssessmentLayoutProps {
   visibleSection: string;
   isCompleting?: boolean;
   updatingQuestions?: Set<number>;
+  voiceState?: VoiceState;
+  onVoiceToggle?: () => void;
+  audioLevel?: number;
 }
 
 export default function AssessmentLayout({
@@ -43,7 +47,10 @@ export default function AssessmentLayout({
   onSectionChange,
   visibleSection,
   isCompleting = false,
-  updatingQuestions = new Set()
+  updatingQuestions = new Set(),
+  voiceState,
+  onVoiceToggle,
+  audioLevel
 }: AssessmentLayoutProps) {
   const [chatExpanded, setChatExpanded] = useState(false);
 
@@ -92,6 +99,9 @@ export default function AssessmentLayout({
         handleInputChange={handleInputChange}
         handleSubmit={handleSubmit}
         isLoading={isLoading}
+        voiceState={voiceState}
+        onVoiceToggle={onVoiceToggle}
+        audioLevel={audioLevel}
       />
     </div>
   );

@@ -7,6 +7,9 @@ import AssessmentLayout from './components/AssessmentLayout';
 import { Loader2 } from 'lucide-react';
 import { WORKFLOW_ID_MAP, TEMPLATE_ID_MAP, DEFAULT_DEBRIEF_AGENT } from './constants';
 import { AssessmentSubscription, WorkflowState, ToolInvocation } from './types';
+import { useVoiceNavigation } from './hooks/useVoiceNavigation';
+import { VoiceCommand } from '@/src/lib/services/voice';
+import { VoiceModeEntry, VoiceIndicator, TranscriptDisplay, VoicePermissionDialog, VoiceCommandHelp } from './components/voice';
 // Remove direct mock client import - we'll use API routes instead
 
 
@@ -25,6 +28,12 @@ export default function AssessmentChatClient() {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const currentConversationIdRef = useRef<string | null>(null);
   const [isCompleting, setIsCompleting] = useState(false);
+  
+  // Voice mode state
+  const [voiceModeEnabled, setVoiceModeEnabled] = useState(false);
+  const [showVoicePermission, setShowVoicePermission] = useState(false);
+  const [showVoiceHelp, setShowVoiceHelp] = useState(false);
+  const [hasShownVoiceEntry, setHasShownVoiceEntry] = useState(false);
 
   // Track answers for the current page
   const [currentAnswers, setCurrentAnswers] = useState<Record<number, string>>({});
@@ -41,12 +50,33 @@ export default function AssessmentChatClient() {
 
   // Track which questions are being updated for visual feedback
   const [updatingQuestions, setUpdatingQuestions] = useState<Set<number>>(new Set());
+  
+  // Create refs to avoid dependency issues
+  const handleVoiceCommandRef = useRef<(command: VoiceCommand) => void>(null!);
+  const stopVoiceRef = useRef<() => Promise<void>>(null!);
+  
+  // Initialize voice navigation hook early
+  const {
+    voiceState,
+    transcript,
+    lastCommand,
+    audioLevel,
+    startVoice,
+    stopVoice,
+    getContextualHelp
+  } = useVoiceNavigation({
+    onCommand: (command) => handleVoiceCommandRef.current?.(command),
+    onTranscript: (text) => console.log('Voice transcript:', text),
+    onError: (error) => {
+      console.error('Voice error:', error);
+      setError(error.message);
+    }
+  });
 
   // Use the useChat hook for streaming
   const { messages, input, handleInputChange, handleSubmit, isLoading, append } = useChat({
     api: '/api/chat/assessment',
     body: chatBody,
-    experimental_onToolCall: true,
     onResponse(response) {
       // Extract conversation ID from headers
       const newConversationId = response.headers.get('X-Conversation-ID');
@@ -480,7 +510,162 @@ export default function AssessmentChatClient() {
       });
     }
   };
+  
+  // Handle voice commands
+  const handleVoiceCommand = useCallback((command: VoiceCommand) => {
+    console.log('Voice command received:', command);
+    
+    switch (command.type) {
+      case 'navigation':
+        if (command.parameters?.target === 'next') {
+          submitCurrentPage();
+        } else if (command.parameters?.target === 'previous') {
+          // TODO: Implement previous page navigation
+          append({
+            role: 'assistant',
+            content: 'Going back to the previous page is not yet implemented.'
+          });
+        } else if (command.parameters?.target === 'skip') {
+          // Skip to next without submitting
+          if (workflowState?.navigationInfo?.nextPageUrl) {
+            // TODO: Navigate without submitting
+            append({
+              role: 'assistant',
+              content: 'Skipping questions is not recommended. Please answer all questions for accurate results.'
+            });
+          }
+        }
+        break;
+        
+      case 'answer':
+        if (command.parameters?.value && workflowState) {
+          // Find the current question being displayed
+          const visibleQuestions = workflowState.questions.filter(q => {
+            const qType = q.type || q.Type;
+            return qType !== undefined && [18, 8, 4, 6, 7, 14, 16].includes(qType);
+          });
+          
+          if (visibleQuestions.length === 1) {
+            // Single question visible - answer it
+            const questionId = visibleQuestions[0].id || visibleQuestions[0].QuestionID || visibleQuestions[0].questionID;
+            if (questionId !== undefined) {
+              handleAnswerChange(questionId, command.parameters.value);
+            }
+            append({
+              role: 'assistant',
+              content: `✓ Set answer to ${formatAnswerValue(command.parameters.value)}`
+            });
+          } else {
+            // Multiple questions - need clarification
+            append({
+              role: 'assistant',
+              content: 'Please specify which question you want to answer, or use the mouse to select it.'
+            });
+          }
+        }
+        break;
+        
+      case 'action':
+        switch (command.parameters?.target) {
+          case 'repeat':
+            // Read current question again
+            if (workflowState && workflowState.questions.length > 0) {
+              const currentQ = workflowState.questions.find(q => {
+                const qType = q.type || q.Type;
+                return qType !== undefined && [18, 8, 4, 6, 7, 14, 16].includes(qType);
+              });
+              if (currentQ) {
+                const prompt = currentQ.prompt || currentQ.Prompt || currentQ.text || currentQ.Text || '';
+                append({
+                  role: 'assistant',
+                  content: `Current question: ${prompt}`
+                });
+              }
+            }
+            break;
+            
+          case 'help':
+            setShowVoiceHelp(true);
+            break;
+            
+          case 'exitVoice':
+            stopVoiceRef.current?.();
+            setVoiceModeEnabled(false);
+            append({
+              role: 'assistant',
+              content: 'Voice mode disabled. You can type your responses.'
+            });
+            break;
+        }
+        break;
+        
+      case 'unknown':
+        // Suggest similar commands
+        append({
+          role: 'assistant',
+          content: `I didn't understand "${command.command}". Try saying "help" for available commands.`
+        });
+        break;
+    }
+  }, [workflowState, handleAnswerChange, append, submitCurrentPage]);
+  
+  // Helper to format answer values for display
+  const formatAnswerValue = (value: string): string => {
+    const valueMap: Record<string, string> = {
+      '20': '2-0 (Strongly left)',
+      '21': '2-1 (Slightly left)', 
+      '12': '1-2 (Slightly right)',
+      '02': '0-2 (Strongly right)',
+      'yes': 'Yes',
+      'no': 'No'
+    };
+    return valueMap[value] || value;
+  };
 
+  // Handle voice mode toggling
+  const handleVoiceToggle = useCallback(() => {
+    if (voiceState === 'idle' && !voiceModeEnabled) {
+      // Show permission dialog first time
+      if (!hasShownVoiceEntry) {
+        setShowVoicePermission(true);
+      } else {
+        startVoice();
+        setVoiceModeEnabled(true);
+      }
+    } else if (voiceModeEnabled) {
+      stopVoice();
+      setVoiceModeEnabled(false);
+    }
+  }, [voiceState, voiceModeEnabled, hasShownVoiceEntry, startVoice, stopVoice]);
+  
+  // Handle voice permission response
+  const handleVoicePermissionAllow = useCallback(() => {
+    setShowVoicePermission(false);
+    setHasShownVoiceEntry(true);
+    startVoice();
+    setVoiceModeEnabled(true);
+  }, [startVoice]);
+  
+  const handleVoicePermissionDeny = useCallback(() => {
+    setShowVoicePermission(false);
+    setHasShownVoiceEntry(true);
+  }, []);
+  
+  // Handle voice entry dismissal
+  const handleVoiceEntryDismiss = useCallback(() => {
+    setHasShownVoiceEntry(true);
+  }, []);
+  
+  // Update the refs when functions change
+  useEffect(() => {
+    handleVoiceCommandRef.current = handleVoiceCommand;
+  }, [handleVoiceCommand]);
+  
+  // Update stopVoice ref when it's available
+  useEffect(() => {
+    stopVoiceRef.current = stopVoice;
+  }, [stopVoice]);
+  
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -506,23 +691,74 @@ export default function AssessmentChatClient() {
   }
 
   return (
-    <AssessmentLayout
-      messages={messages}
-      input={input}
-      handleInputChange={handleInputChange}
-      handleSubmit={handleSubmit}
-      isLoading={isLoading}
-      availableAssessments={availableAssessments}
-      selectedAssessment={selectedAssessment}
-      onSelectAssessment={setSelectedAssessment}
-      workflowState={workflowState}
-      currentAnswers={currentAnswers}
-      onAnswerChange={handleAnswerChange}
-      onSubmitPage={submitCurrentPage}
-      onSectionChange={setVisibleSection}
-      visibleSection={visibleSection}
-      isCompleting={isCompleting}
-      updatingQuestions={updatingQuestions}
-    />
+    <>
+      {/* Voice mode entry banner */}
+      {selectedAssessment && !hasShownVoiceEntry && (
+        <VoiceModeEntry
+          onStartVoice={() => {
+            setHasShownVoiceEntry(true);
+            setShowVoicePermission(true);
+          }}
+          onDismiss={handleVoiceEntryDismiss}
+        />
+      )}
+      
+      {/* Voice indicator */}
+      {voiceModeEnabled && (
+        <div className="fixed top-4 right-4 z-50">
+          <VoiceIndicator 
+            voiceState={voiceState} 
+            transcript={transcript}
+          />
+        </div>
+      )}
+      
+      {/* Voice transcript display */}
+      {voiceModeEnabled && transcript && (
+        <div className="fixed bottom-24 right-4 z-40 max-w-md">
+          <TranscriptDisplay
+            transcript={transcript}
+            lastCommand={lastCommand}
+            isListening={voiceState === 'listening'}
+          />
+        </div>
+      )}
+      
+      {/* Voice permission dialog */}
+      <VoicePermissionDialog
+        isOpen={showVoicePermission}
+        onAllow={handleVoicePermissionAllow}
+        onDeny={handleVoicePermissionDeny}
+      />
+      
+      {/* Voice command help */}
+      <VoiceCommandHelp
+        isOpen={showVoiceHelp}
+        onClose={() => setShowVoiceHelp(false)}
+        questionType={workflowState?.questions[0]?.type === 18 ? 'seesaw' : 'general'}
+      />
+      
+      <AssessmentLayout
+        messages={messages}
+        input={input}
+        handleInputChange={handleInputChange}
+        handleSubmit={handleSubmit}
+        isLoading={isLoading}
+        availableAssessments={availableAssessments}
+        selectedAssessment={selectedAssessment}
+        onSelectAssessment={setSelectedAssessment}
+        workflowState={workflowState}
+        currentAnswers={currentAnswers}
+        onAnswerChange={handleAnswerChange}
+        onSubmitPage={submitCurrentPage}
+        onSectionChange={setVisibleSection}
+        visibleSection={visibleSection}
+        isCompleting={isCompleting}
+        updatingQuestions={updatingQuestions}
+        voiceState={voiceState}
+        onVoiceToggle={handleVoiceToggle}
+        audioLevel={audioLevel}
+      />
+    </>
   );
 }

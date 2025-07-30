@@ -3,10 +3,15 @@
 import { RefObject, useState, useEffect, useRef } from 'react';
 import OscarIcon from './OscarIcon';
 import { ChevronRight } from 'lucide-react';
+import { VoiceToggle } from '../voice';
+import { VoiceState } from '@/src/lib/services/voice';
 
 interface CollapsedChatProps {
   onToggle: () => void;
   inputRef: RefObject<HTMLInputElement | null>;
+  voiceState?: VoiceState;
+  onVoiceToggle?: () => void;
+  audioLevel?: number;
 }
 
 interface Position {
@@ -16,7 +21,13 @@ interface Position {
 
 const STORAGE_KEY = 'collapsed-chat-position';
 
-export default function CollapsedChat({ onToggle, inputRef }: CollapsedChatProps) {
+export default function CollapsedChat({ 
+  onToggle, 
+  inputRef,
+  voiceState = 'idle',
+  onVoiceToggle,
+  audioLevel = 0
+}: CollapsedChatProps) {
   const [position, setPosition] = useState<Position>({ x: 24, y: 24 });
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
@@ -112,6 +123,15 @@ export default function CollapsedChat({ onToggle, inputRef }: CollapsedChatProps
         <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900">
           Ask Oskar about your profile
         </span>
+        {onVoiceToggle && (
+          <VoiceToggle
+            voiceState={voiceState}
+            onToggle={onVoiceToggle}
+            audioLevel={audioLevel}
+            size="sm"
+            className="ml-2"
+          />
+        )}
         <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
       </button>
     </div>
