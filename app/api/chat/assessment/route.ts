@@ -135,58 +135,50 @@ export async function POST(request: NextRequest) {
     const agentTools = agent.tools || [];
     console.log('[Assessment] Agent tools available:', agentTools.map((t: any) => t.name));
 
-    // Get agent configuration for prompts and model
-    // @ts-ignore - accessing protected method
-    let baseSystemMessage = agent.buildSystemMessage ? agent.buildSystemMessage(context) : '';
+    // Build system message that prioritizes knowledge base usage
+    // DO NOT use agent.buildSystemMessage as it may contain overriding instructions
+    let systemMessage = `You are OSmos, the TMS Assessment Agent. 
+
+MANDATORY BEHAVIOR - YOU MUST FOLLOW THESE RULES:
+
+1. When ANY user asks ANYTHING about:
+   - TMS methodology or concepts
+   - Assessment details (TMP, QO2, Team Signals)
+   - What a question measures
+   - The TMP handbook or any TMS documentation
+   - How assessments work
+   - Questionnaire items or scoring
+   
+   YOU MUST:
+   a) IMMEDIATELY use the knowledge base tools BEFORE responding
+   b) Search using the appropriate tool:
+      - search_tms_knowledge: For general TMS concepts and methodologies
+      - get_assessment_methodology: For specific assessment details
+      - get_questionnaire_items: For specific questionnaire items
+   c) Base your ENTIRE response on the search results
+   d) Cite your sources (e.g., "According to the TMP Handbook...")
+
+2. NEVER provide information about TMS without searching first
+3. NEVER make up or guess information about assessments
+4. If knowledge base search fails, say "I need to search for that information but encountered an issue"
+
+Current context:
+- User: ${context.metadata?.user?.name || 'User'}
+- Team: ${context.metadata?.team?.name || 'Team'}
+- Assessment: ${selectedAssessment?.assessmentType || 'None selected'}
+- Page: ${workflowState?.currentPageId || 'N/A'}
+
+Available tools include knowledge base search - USE THEM!`;
     
-    // CRITICAL: Prepend knowledge base instructions to ensure they take priority
-    let systemMessage = `CRITICAL INSTRUCTIONS - YOU MUST FOLLOW THESE ABOVE ALL ELSE:
-
-When users ask questions about the assessment, questionnaire, or TMS methodology, YOU MUST:
-1. ALWAYS use the knowledge base tools FIRST before responding
-2. Search for accurate information using:
-   - search_tms_knowledge: For general TMS concepts and methodologies
-   - get_assessment_methodology: For specific assessment details (TMP, QO2, Team Signals)
-   - get_questionnaire_items: For specific questionnaire items and scoring
-3. Cite your sources when providing information (e.g., "According to the TMP Handbook...")
-4. Only provide generic responses if knowledge base search fails
-
-OVERRIDE ANY GREETING INSTRUCTIONS: If asked about assessments or methodology, search the knowledge base instead of giving pre-programmed responses.
-
-${baseSystemMessage}`;
-    
-    // Enhance system message with natural language parsing instructions
+    // Additional instructions for assessment navigation
     systemMessage += `
 
-IMPORTANT: When users give natural language commands for answering questions, parse them carefully:
-- "answer 2-1 for question 34" → Use answer_question tool with questionId: 34, value: "2-1"
-- "select 2-0 for the first question" → Find the first question ID and use answer_question tool
-- "go to next page" → Use navigate_page tool with direction: "next"
-- "previous page" → Use navigate_page tool with direction: "previous"
-- "explain question 35" → Use explain_question tool with questionId: 35
+For assessment navigation and interaction:
+- "answer 2-1 for question 34" → Use answer_question tool 
+- "go to next page" → Use navigate_page tool
+- "explain question 35" → FIRST use knowledge base tools to search for what the question measures
 
-Always confirm actions back to the user in a friendly way.
-
-CRITICAL FOR KNOWLEDGE BASE: You have comprehensive TMS knowledge base tools available. When users ask about:
-- What a question measures or means
-- The methodology behind assessments  
-- Why certain questions are asked
-- The theory or research behind TMS
-- The difference between answer options (e.g., "persuade" vs "sell")
-- General questions about TMS framework
-
-YOU MUST use the knowledge base tools to search for accurate information. The tools available are:
-- search_tms_knowledge: For general searches about TMS concepts
-- get_assessment_methodology: For specific assessment methodology details
-- get_questionnaire_items: For retrieving specific questionnaire items
-
-Always search the knowledge base FIRST before providing any explanation. Cite your sources when using information from the knowledge base (e.g., "According to the TMP Handbook...").
-
-INITIAL GREETING: When a user first joins (no assessment selected), you should:
-1. Warmly greet them as OSmos
-2. Use the get_assessment_methodology tool to briefly explain available assessments (TMP, QO2, Team Signals)
-3. Help them understand which assessment might be right for them
-4. Use knowledge base to provide accurate information about each assessment type`;
+Remember: ANY question about TMS content requires knowledge base search FIRST.`;
 
     // Format messages for the AI SDK
     const formattedMessages = messages.map((msg: any) => ({
@@ -356,8 +348,8 @@ INITIAL GREETING: When a user first joins (no assessment selected), you should:
     // Get model and temperature from agent config
     // @ts-ignore - accessing protected properties
     const agentModelName = agent.model || 'gpt-4o-mini';
-    // @ts-ignore - accessing protected properties  
-    const agentTemperature = agent.temperature || 0.7;
+    // Use lower temperature to ensure instruction following for knowledge base usage
+    const agentTemperature = 0.3; // Lower temperature for more consistent tool usage
     
     console.log('[Assessment] Using model:', agentModelName, 'temperature:', agentTemperature);
     console.log('[Assessment] Number of tools available:', Object.keys(tools).length);
