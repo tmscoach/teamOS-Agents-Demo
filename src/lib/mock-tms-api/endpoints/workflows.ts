@@ -140,6 +140,9 @@ export async function getWorkflowProcess(options: {
     CurrentSectionID: state.currentSectionId,
     CurrentPageID: navigationInfo.currentPageId,
     SubscriptionID: parseInt(subscriptionId),
+    completionPercentage: state.completionPercentage || 0,
+    currentPageNumber: pageNumber,
+    totalPages: assessment.totalPages,
   };
 
   // Add navigation fields

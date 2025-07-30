@@ -254,7 +254,9 @@ export default function AssessmentChatClient() {
           nextPageId: data.NextPageID || data.nextPageId,
           nextSectionId: data.NextSectionID || data.nextSectionId,
           nextBaseContentId: data.NextBaseContentID || data.nextBaseContentId,
-          pageDescription: data.Description || data.description
+          pageDescription: data.Description || data.description,
+          currentPageNumber: data.currentPageNumber,
+          totalPages: data.totalPages
         });
         
         // Reset answers for new page
@@ -334,7 +336,9 @@ export default function AssessmentChatClient() {
               nextPageId: result.NextPageID || result.nextPageId,
               nextSectionId: result.NextSectionID || result.nextSectionId,
               nextBaseContentId: result.NextBaseContentID || result.nextBaseContentId,
-              pageDescription: result.Description || result.description
+              pageDescription: result.Description || result.description,
+              currentPageNumber: result.currentPageNumber,
+              totalPages: result.totalPages
             });
             
             // Reset answers for new page

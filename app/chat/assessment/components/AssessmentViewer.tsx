@@ -56,8 +56,8 @@ export default function AssessmentViewer({
         <div className="w-[280px] flex-shrink-0">
           <NavigationMenu
             assessmentType={assessment.AssessmentType}
-            currentPage={workflowState.currentPageId}
-            totalPages={workflowState.navigationInfo?.totalPages || 12}
+            currentPage={workflowState.currentPageNumber || 1}
+            totalPages={workflowState.totalPages || workflowState.navigationInfo?.totalPages || 12}
             completionPercentage={workflowState.completionPercentage}
           />
         </div>

@@ -77,6 +77,8 @@ export interface WorkflowState {
   nextSectionId?: number | null;
   nextBaseContentId?: number | null;
   pageDescription?: string;
+  currentPageNumber?: number;
+  totalPages?: number;
 }
 
 // Assessment subscription type
