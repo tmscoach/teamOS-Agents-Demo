@@ -241,7 +241,7 @@ IMPORTANT: Each question has an ID number shown in parentheses. Use this ID when
     });
 
     // Handle function calls from the assistant
-    this.rt.on('response.function_call_arguments.done', (event) => {
+    this.rt.on('response.function_call_arguments.done', async (event) => {
       console.log('Function call received:', event);
       const { name, arguments: args } = event;
       
@@ -293,7 +293,7 @@ IMPORTANT: Each question has an ID number shown in parentheses. Use this ID when
       } else if (name === 'navigate_next') {
         console.log('Navigation to next page requested');
         // Handle navigation if needed
-        this.rt.send({
+        await this.rt.send({
           type: 'conversation.item.create',
           item: {
             type: 'function_call_output',
