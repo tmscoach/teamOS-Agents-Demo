@@ -137,10 +137,23 @@ export async function POST(request: NextRequest) {
 
     // Get agent configuration for prompts and model
     // @ts-ignore - accessing protected method
-    let systemMessage = agent.buildSystemMessage ? agent.buildSystemMessage(context) : '';
+    let baseSystemMessage = agent.buildSystemMessage ? agent.buildSystemMessage(context) : '';
     
-    // Important: The knowledge base instructions are already included via KnowledgeEnabledAgent.getInstructions()
-    // We only need to add assessment-specific instructions here
+    // CRITICAL: Prepend knowledge base instructions to ensure they take priority
+    let systemMessage = `CRITICAL INSTRUCTIONS - YOU MUST FOLLOW THESE ABOVE ALL ELSE:
+
+When users ask questions about the assessment, questionnaire, or TMS methodology, YOU MUST:
+1. ALWAYS use the knowledge base tools FIRST before responding
+2. Search for accurate information using:
+   - search_tms_knowledge: For general TMS concepts and methodologies
+   - get_assessment_methodology: For specific assessment details (TMP, QO2, Team Signals)
+   - get_questionnaire_items: For specific questionnaire items and scoring
+3. Cite your sources when providing information (e.g., "According to the TMP Handbook...")
+4. Only provide generic responses if knowledge base search fails
+
+OVERRIDE ANY GREETING INSTRUCTIONS: If asked about assessments or methodology, search the knowledge base instead of giving pre-programmed responses.
+
+${baseSystemMessage}`;
     
     // Enhance system message with natural language parsing instructions
     systemMessage += `
