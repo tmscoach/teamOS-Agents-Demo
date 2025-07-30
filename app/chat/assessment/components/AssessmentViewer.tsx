@@ -79,10 +79,10 @@ export default function AssessmentViewer({
         </div>
 
         {/* Right Questions area - matches Figma Frame */}
-        <div className="flex flex-col flex-1 items-start gap-8 pl-[30px]">
+        <div className="flex flex-col w-[822px] items-start gap-8 pl-[30px]">
 
           {/* Questions */}
-          <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-4 self-stretch w-full">
             {workflowState.questions
               .filter((question: WorkflowQuestion) => {
                 // For TMP assessments, only show seesaw questions (Type 18)
