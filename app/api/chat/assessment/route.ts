@@ -161,8 +161,6 @@ You have access to TMS knowledge base tools. When users ask about:
 Use the knowledge base tools to provide accurate, cited information.
 Always cite your sources (e.g., "According to the TMP Handbook...").
 If you can't find specific information, provide a helpful general response.`;
-    
-    const modelName = 'gpt-4o-mini'; // Using fast model for assessments
 
     // Format messages for the AI SDK
     const formattedMessages = messages.map((msg: any) => ({
@@ -328,18 +326,45 @@ If you can't find specific information, provide a helpful general response.`;
     if (Object.keys(tools).length > 0) {
       systemMessage += '\n\nCRITICAL: When using tools, ALWAYS provide a complete response to the user. Never end your response after just calling a tool. Interpret and explain the results in a helpful, conversational way.';
     }
+    
+    // Get model and temperature from agent config
+    // @ts-ignore - accessing protected properties
+    const agentModelName = agent.model || 'gpt-4o-mini';
+    // @ts-ignore - accessing protected properties  
+    const agentTemperature = agent.temperature || 0.7;
+    
+    console.log('[Assessment] Using model:', agentModelName, 'temperature:', agentTemperature);
+    console.log('[Assessment] Number of tools available:', Object.keys(tools).length);
+    console.log('[Assessment] Tool names:', Object.keys(tools));
+
+    // Ensure we have at least one message
+    const messagesToSend = formattedMessages.length > 0 ? formattedMessages : [{
+      role: 'user' as const,
+      content: userMessageContent || '[User joined the assessment]'
+    }];
 
     // Stream the response
     const result = await streamText({
-      model: aiOpenai(modelName),
+      model: aiOpenai(agentModelName),
       system: systemMessage,
-      messages: formattedMessages,
-      temperature: 0.7,
+      messages: messagesToSend,
+      temperature: agentTemperature,
       maxTokens: 2000,
       tools: tools,
       experimental_toolCallStreaming: true,
-      maxSteps: 3,
-      experimental_continueSteps: true
+      maxSteps: 5, // Allow more steps for tool usage
+      experimental_continueSteps: true,
+      onToolCall: ({ toolCall }: any) => {
+        console.log('[Assessment] Tool call initiated:', toolCall.toolName, toolCall.args);
+      },
+      onStepFinish: ({ stepType, toolCalls, toolResults, finishReason }: any) => {
+        console.log('[Assessment] Step finished:', { 
+          stepType, 
+          toolCallCount: toolCalls?.length,
+          toolResultCount: toolResults?.length,
+          finishReason 
+        });
+      }
     });
 
     // Save conversation
