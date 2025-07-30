@@ -9,12 +9,22 @@ export class RealtimeConnectionManager {
   private audioContext: AudioContext | null = null;
   private audioQueue: Float32Array[] = [];
   private isPlaying = false;
+  private workflowState: any = null;
+  private onAnswerUpdate?: (questionId: number, value: string) => void;
   
   constructor(private config: VoiceConfig) {
     // Initialize Web Audio API for audio playback
     if (typeof window !== 'undefined' && window.AudioContext) {
       this.audioContext = new AudioContext();
     }
+  }
+
+  setWorkflowState(state: any) {
+    this.workflowState = state;
+  }
+
+  setAnswerUpdateCallback(callback: (questionId: number, value: string) => void) {
+    this.onAnswerUpdate = callback;
   }
 
   async connect(): Promise<void> {
@@ -27,6 +37,9 @@ export class RealtimeConnectionManager {
         headers: {
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({
+          workflowState: this.workflowState, // Pass workflow state to server
+        }),
       });
       
       if (!sessionResponse.ok) {
@@ -68,9 +81,20 @@ export class RealtimeConnectionManager {
         }
       });
       
-      // Configure session
-      // Session configuration is already set on the server side when creating the token
-      // We can still update it if needed
+      // Build instructions with the actual questions
+      const questions = this.workflowState?.questions?.filter((q: any) => q.Type === 18) || [];
+      const questionMapping: Record<string, number> = {};
+      
+      const questionText = questions.map((q: any) => {
+        const qId = q.questionID || q.QuestionID;
+        const qNum = q.Number || q.Prompt?.replace(')', '') || 'Unknown';
+        questionMapping[qNum] = qId;
+        return `Question ${qNum} (ID: ${qId}): Left statement: "${q.StatementA || q.statementA}", Right statement: "${q.StatementB || q.statementB}"`;
+      }).join('\n');
+      
+      console.log('Question mapping:', questionMapping);
+
+      // Configure session with full assessment context
       await this.rt.send({
         type: 'session.update',
         session: {
@@ -87,22 +111,77 @@ export class RealtimeConnectionManager {
             prefix_padding_ms: 300,
             silence_duration_ms: 200,
           },
-          instructions: `You are OSmos, the Team Assessment Assistant. Your role is to:
-- Acknowledge user input briefly when they speak
-- Read out assessment responses that are provided to you
-- Speak clearly and at a moderate pace
-- When reading questions, pause briefly between each one
-- Maintain a helpful and professional tone`,
+          instructions: `You are OSmos, the Team Assessment Assistant conducting a voice-based questionnaire.
+
+CRITICAL: You are conducting a TMP (Team Management Profile) assessment with these exact questions:
+${questionText}
+
+Your role:
+1. Start by saying: "Welcome to the Team Management Profile assessment. I'll guide you through ${questions.length} questions. For each question, I'll read both statements and you can answer with 2-0 for strongly preferring the left statement, 2-1 for slightly left, 1-2 for slightly right, or 0-2 for strongly right. Let's begin with question one."
+
+2. Read each question exactly as provided above, pausing briefly between the left and right statements. Just read the question text, not the ID.
+
+3. After the user answers, acknowledge briefly (e.g., "Got it" or "Thank you") and immediately move to the next question.
+
+4. When they answer, use the answer_question function with the correct questionId (the ID number in parentheses) and map their response:
+   - If they say "2-0" or "strongly left", use value "20"
+   - If they say "2-1" or "slightly left", use value "21"
+   - If they say "1-2" or "slightly right", use value "12"
+   - If they say "0-2" or "strongly right", use value "02"
+
+5. After all questions are answered, say "Great! You've completed all questions on this page. Would you like to continue to the next page?"
+
+6. Keep your responses concise and professional. Focus on guiding them through the assessment efficiently.
+
+IMPORTANT: Each question has an ID number shown in parentheses. Use this ID when calling the answer_question function.`,
+          tools: [
+            {
+              type: 'function',
+              name: 'answer_question',
+              description: 'Record the user\'s answer to a question',
+              parameters: {
+                type: 'object',
+                properties: {
+                  questionId: { type: 'integer', description: 'The ID of the question' },
+                  value: { type: 'string', description: 'The answer value (20, 21, 12, or 02)' }
+                },
+                required: ['questionId', 'value']
+              }
+            },
+            {
+              type: 'function', 
+              name: 'navigate_next',
+              description: 'Navigate to the next page of questions',
+              parameters: { type: 'object', properties: {} }
+            }
+          ]
         },
       });
 
       this.isConnected = true;
       this.config.onStateChange?.('ready');
+      
+      // Start the conversation immediately
+      await this.startAssessmentConversation();
     } catch (error) {
       this.config.onStateChange?.('error');
       this.config.onError?.(error as Error);
       throw error;
     }
+  }
+
+  async startAssessmentConversation(): Promise<void> {
+    if (!this.rt || !this.isConnected) {
+      throw new Error('Not connected to Realtime API');
+    }
+
+    // Trigger the assistant to start the conversation
+    await this.rt.send({
+      type: 'response.create',
+      response: {
+        modalities: ['audio', 'text'],
+      }
+    });
   }
 
   private setupEventHandlers(): void {
@@ -113,6 +192,52 @@ export class RealtimeConnectionManager {
       const transcript = event.transcript;
       if (transcript) {
         this.config.onTranscript?.(transcript);
+      }
+    });
+
+    // Handle function calls from the assistant
+    this.rt.on('response.function_call_arguments.done', (event) => {
+      console.log('Function call received:', event);
+      const { name, arguments: args } = event;
+      
+      if (name === 'answer_question') {
+        const { questionId, value } = JSON.parse(args);
+        console.log(`Recording answer: Question ${questionId} = ${value}`);
+        
+        // Map the value format (20, 21, 12, 02) to display format
+        const valueMap: Record<string, string> = {
+          '20': '2-0',
+          '21': '2-1',
+          '12': '1-2',
+          '02': '0-2'
+        };
+        const mappedValue = valueMap[value] || value;
+        
+        // Call the answer update callback if provided
+        if (this.onAnswerUpdate) {
+          this.onAnswerUpdate(questionId, value);
+        }
+        
+        // Send function call result back
+        this.rt.send({
+          type: 'conversation.item.create',
+          item: {
+            type: 'function_call_output',
+            call_id: event.call_id,
+            output: JSON.stringify({ success: true, message: `Recorded answer ${mappedValue} for question ${questionId}` })
+          }
+        });
+      } else if (name === 'navigate_next') {
+        console.log('Navigation to next page requested');
+        // Handle navigation if needed
+        this.rt.send({
+          type: 'conversation.item.create',
+          item: {
+            type: 'function_call_output',
+            call_id: event.call_id,
+            output: JSON.stringify({ success: true, message: 'Navigating to next page' })
+          }
+        });
       }
     });
 
@@ -202,42 +327,6 @@ export class RealtimeConnectionManager {
     await this.rt.send({ type: 'response.create' });
   }
 
-  // Send assistant message to be spoken by the Realtime API
-  async sendAssistantMessage(text: string): Promise<void> {
-    if (!this.rt || !this.isConnected) {
-      throw new Error('Not connected to Realtime API');
-    }
-
-    // Skip very short messages to avoid unnecessary audio
-    if (text.length < 5) {
-      console.log('Skipping very short message:', text);
-      return;
-    }
-
-    console.log('Sending assistant message to be spoken:', text.substring(0, 100) + '...');
-
-    // Directly create an assistant message with the text to be spoken
-    await this.rt.send({
-      type: 'conversation.item.create',
-      item: {
-        type: 'message',
-        role: 'assistant',
-        content: [{ 
-          type: 'input_text', 
-          text: text
-        }],
-      },
-    });
-
-    // Request audio generation for this message
-    await this.rt.send({
-      type: 'response.create',
-      response: {
-        modalities: ['audio'],
-        instructions: 'Generate audio for the assistant message.',
-      }
-    });
-  }
 
   async disconnect(): Promise<void> {
     if (this.rt) {

@@ -31,7 +31,6 @@ export interface UseVoiceNavigationReturn {
   pauseVoice: () => Promise<void>;
   resumeVoice: () => Promise<void>;
   sendTextCommand: (text: string) => Promise<void>;
-  sendAssistantMessage: (text: string) => Promise<void>;
   
   // Helpers
   getContextualHelp: (questionType: string) => string[];
@@ -81,19 +80,26 @@ export function useVoiceNavigation(
     setVoiceState('error');
   }, [options]);
 
+  // Create voice service early but don't start it
+  useEffect(() => {
+    if (!voiceServiceRef.current) {
+      const config: VoiceConfig = {
+        apiKey: options.apiKey,
+        onTranscript: handleTranscript,
+        onCommand: handleCommand,
+        onStateChange: handleStateChange,
+        onError: handleError,
+      };
+      
+      voiceServiceRef.current = new VoiceNavigationService(config);
+    }
+  }, [options.apiKey, handleTranscript, handleCommand, handleStateChange, handleError]);
+
   const startVoice = useCallback(async () => {
     try {
-      // Create voice service if it doesn't exist
+      // Ensure voice service exists
       if (!voiceServiceRef.current) {
-        const config: VoiceConfig = {
-          apiKey: options.apiKey,
-          onTranscript: handleTranscript,
-          onCommand: handleCommand,
-          onStateChange: handleStateChange,
-          onError: handleError,
-        };
-        
-        voiceServiceRef.current = new VoiceNavigationService(config);
+        throw new Error('Voice service not initialized');
       }
 
       // Start the session
@@ -111,7 +117,7 @@ export function useVoiceNavigation(
     } catch (error) {
       handleError(error as Error);
     }
-  }, [options.apiKey, handleTranscript, handleCommand, handleStateChange, handleError]);
+  }, [handleError]);
 
   const stopVoice = useCallback(async () => {
     if (!voiceServiceRef.current) return;
@@ -165,15 +171,6 @@ export function useVoiceNavigation(
     }
   }, [handleError]);
 
-  const sendAssistantMessage = useCallback(async (text: string) => {
-    if (!voiceServiceRef.current) return;
-    
-    try {
-      await voiceServiceRef.current.sendAssistantMessage(text);
-    } catch (error) {
-      handleError(error as Error);
-    }
-  }, [handleError]);
 
   const getContextualHelp = useCallback((questionType: string): string[] => {
     if (!voiceServiceRef.current) {
@@ -197,7 +194,6 @@ export function useVoiceNavigation(
     pauseVoice,
     resumeVoice,
     sendTextCommand,
-    sendAssistantMessage,
     
     // Helpers
     getContextualHelp,

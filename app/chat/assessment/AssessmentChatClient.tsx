@@ -690,26 +690,26 @@ export default function AssessmentChatClient() {
     setHasShownVoiceEntry(true);
     
     try {
+      // Set up the voice service with workflow state before starting
+      if (voiceServiceRef.current && workflowState) {
+        voiceServiceRef.current.setWorkflowState(workflowState);
+        voiceServiceRef.current.setAnswerUpdateCallback((questionId, value) => {
+          console.log(`Voice updated answer: Question ${questionId} = ${value}`);
+          handleAnswerChange(questionId, value);
+        });
+      }
+      
       // Wait for voice session to start
       await startVoice();
       setVoiceModeEnabled(true);
       
-      // Small delay to ensure session is fully initialized
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
-      // When voice mode starts, ask the agent to read the current questions
-      if (workflowState && workflowState.questions.length > 0) {
-        // Ask the agent to announce voice mode and read questions
-        append({
-          role: 'user',
-          content: 'Voice mode is now active. Please read out the current questions on this page'
-        });
-      }
+      // The Realtime API will now start the conversation automatically
+      // No need to send a message to the chat
     } catch (error) {
       console.error('Failed to start voice mode:', error);
       setVoiceModeEnabled(false);
     }
-  }, [startVoice, workflowState, append]);
+  }, [startVoice, workflowState, handleAnswerChange]);
   
   const handleVoicePermissionDeny = useCallback(() => {
     setShowVoicePermission(false);

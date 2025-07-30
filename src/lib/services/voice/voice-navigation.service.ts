@@ -21,6 +21,14 @@ export class VoiceNavigationService {
     this.commandProcessor = new VoiceCommandProcessor();
   }
 
+  setWorkflowState(state: any) {
+    this.realtimeConnection.setWorkflowState(state);
+  }
+
+  setAnswerUpdateCallback(callback: (questionId: number, value: string) => void) {
+    this.realtimeConnection.setAnswerUpdateCallback(callback);
+  }
+
   async startSession(): Promise<void> {
     try {
       // Initialize session
@@ -95,13 +103,6 @@ export class VoiceNavigationService {
     this.handleTranscript(text);
   }
 
-  async sendAssistantMessage(text: string): Promise<void> {
-    if (!this.isActive || !this.currentSession) {
-      throw new Error('Voice session not active');
-    }
-    
-    await this.realtimeConnection.sendAssistantMessage(text);
-  }
 
 
   getAudioLevel(): number {

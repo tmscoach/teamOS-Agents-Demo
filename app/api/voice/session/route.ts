@@ -9,6 +9,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
+    // Get workflow state from request body
+    const body = await request.json();
+    const { workflowState } = body;
+
     // Check if we have an API key
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
@@ -20,6 +24,7 @@ export async function POST(request: NextRequest) {
     }
     
     console.log('Creating ephemeral session with API key:', apiKey.substring(0, 10) + '...');
+    console.log('Workflow state questions:', workflowState?.questions?.length || 0);
     
     // Create ephemeral session token with OpenAI
     const response = await fetch('https://api.openai.com/v1/realtime/sessions', {
@@ -32,7 +37,7 @@ export async function POST(request: NextRequest) {
         model: 'gpt-4o-realtime-preview-2024-12-17',
         modalities: ['text', 'audio'],
         voice: 'alloy',
-        instructions: 'You are OSmos, the Team Assessment Assistant helping users complete questionnaires through voice interaction. Acknowledge user input briefly, and when asked to speak text, read it out clearly and naturally.',
+        instructions: 'You are OSmos, the Team Assessment Assistant. You will receive detailed instructions when the session starts.',
         turn_detection: {
           type: 'server_vad',
           threshold: 0.5,
