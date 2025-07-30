@@ -5,6 +5,7 @@ export class RealtimeConnectionManager {
   private rt: OpenAIRealtimeWebSocket | null = null;
   private audioBuffer: Int16Array[] = [];
   private isConnected = false;
+  private sessionToken: string | null = null;
   
   constructor(private config: VoiceConfig) {}
 
@@ -12,9 +13,26 @@ export class RealtimeConnectionManager {
     try {
       this.config.onStateChange?.('connecting');
       
-      // Initialize OpenAI Realtime WebSocket
+      // First, get an ephemeral session token from our API
+      const sessionResponse = await fetch('/api/voice/session', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!sessionResponse.ok) {
+        throw new Error('Failed to create voice session');
+      }
+      
+      const sessionData = await sessionResponse.json();
+      this.sessionToken = sessionData.session.token;
+      
+      // Initialize OpenAI Realtime WebSocket with ephemeral token
       this.rt = new OpenAIRealtimeWebSocket({
         model: this.config.model || 'gpt-4o-realtime-preview-2024-12-17',
+        apiKey: this.sessionToken,
+        dangerouslyAllowBrowser: true, // Safe because we're using ephemeral tokens
       });
 
       // Set up event handlers
@@ -31,11 +49,12 @@ export class RealtimeConnectionManager {
       });
       
       // Configure session
+      // Session configuration is already set on the server side when creating the token
+      // We can still update it if needed
       await this.rt.send({
         type: 'session.update',
         session: {
           modalities: ['text', 'audio'],
-          instructions: this.getSystemInstructions(),
           voice: 'alloy',
           input_audio_format: 'pcm16',
           output_audio_format: 'pcm16',
@@ -188,22 +207,4 @@ export class RealtimeConnectionManager {
     return btoa(binary);
   }
 
-  private getSystemInstructions(): string {
-    return `You are OSmos, the Team Assessment Assistant. You are conducting a voice-based assessment.
-
-Your role is to:
-1. Read assessment questions clearly and at a comfortable pace
-2. For seesaw questions, read both statements and ask which one the user prefers more
-3. Accept natural language responses and map them to the appropriate answer values
-4. Provide confirmation of answers before moving to the next question
-5. Be encouraging and supportive throughout the assessment
-
-For seesaw questions:
-- "Strongly prefer left/first" = 2-0
-- "Slightly prefer left/first" = 2-1  
-- "Slightly prefer right/second" = 1-2
-- "Strongly prefer right/second" = 0-2
-
-Always maintain a warm, conversational tone and help users feel comfortable with the voice interface.`;
-  }
 }
