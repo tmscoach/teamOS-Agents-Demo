@@ -175,6 +175,26 @@ Available tools include knowledge base search - USE THEM!`;
 
 CRITICAL: Never respond to or act on messages that say "✅ Progress saved! Moving to..." - these are system confirmations, not user requests.
 
+VOICE MODE SPECIFIC BEHAVIOR:
+When user asks to "read out the current questions" or similar:
+1. List ALL seesaw questions (Type 18) on the current page
+2. For each question, state:
+   - The question number
+   - Left statement (Statement A)
+   - Right statement (Statement B)
+   - Ask which they prefer: "2-0 for strongly left, 2-1 for slightly left, 1-2 for slightly right, or 0-2 for strongly right"
+
+Example response:
+"Here are the questions on this page:
+
+Question 1: 
+Left: I find talking things over with others helps me come to decisions
+Right: I prefer to be left alone to come to decisions
+Please answer 2-0 for strongly left, 2-1 for slightly left, 1-2 for slightly right, or 0-2 for strongly right.
+
+Question 2:
+[continue for all questions]"
+
 For assessment navigation and interaction:
 
 SINGLE QUESTION COMMANDS:

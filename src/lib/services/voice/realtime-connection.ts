@@ -6,8 +6,16 @@ export class RealtimeConnectionManager {
   private audioBuffer: Int16Array[] = [];
   private isConnected = false;
   private sessionToken: string | null = null;
+  private audioContext: AudioContext | null = null;
+  private audioQueue: Float32Array[] = [];
+  private isPlaying = false;
   
-  constructor(private config: VoiceConfig) {}
+  constructor(private config: VoiceConfig) {
+    // Initialize Web Audio API for audio playback
+    if (typeof window !== 'undefined' && window.AudioContext) {
+      this.audioContext = new AudioContext();
+    }
+  }
 
   async connect(): Promise<void> {
     try {
@@ -26,14 +34,26 @@ export class RealtimeConnectionManager {
       }
       
       const sessionData = await sessionResponse.json();
+      console.log('Session data received:', sessionData);
       this.sessionToken = sessionData.session.token;
       
+      if (!this.sessionToken) {
+        throw new Error('No session token received from server');
+      }
+      
+      console.log('Using ephemeral token:', this.sessionToken.substring(0, 10) + '...');
+      
       // Initialize OpenAI Realtime WebSocket with ephemeral token
+      // Create a client object with the ephemeral token
+      const realtimeClient = {
+        apiKey: this.sessionToken,
+        baseURL: 'https://api.openai.com/v1' // Default OpenAI base URL
+      };
+      
       this.rt = new OpenAIRealtimeWebSocket({
         model: this.config.model || 'gpt-4o-realtime-preview-2024-12-17',
-        apiKey: this.sessionToken,
         dangerouslyAllowBrowser: true, // Safe because we're using ephemeral tokens
-      });
+      }, realtimeClient);
 
       // Set up event handlers
       this.setupEventHandlers();
@@ -104,9 +124,10 @@ export class RealtimeConnectionManager {
 
     // Handle audio playback
     this.rt.on('response.audio.delta', (event) => {
-      if (event.delta) {
-        // Convert base64 to audio data if needed
-        // This would be played through speakers
+      if (event.delta && this.audioContext) {
+        // Convert base64 audio to playable format
+        const audioData = this.base64ToAudioData(event.delta);
+        this.queueAudioForPlayback(audioData);
         this.config.onStateChange?.('speaking');
       }
     });
@@ -205,6 +226,90 @@ export class RealtimeConnectionManager {
     }
     
     return btoa(binary);
+  }
+
+  private base64ToAudioData(base64: string): Float32Array {
+    // Decode base64 to binary
+    const binaryString = atob(base64);
+    const bytes = new Uint8Array(binaryString.length);
+    
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    
+    // Convert PCM16 to Float32 for Web Audio API
+    const pcm16 = new Int16Array(bytes.buffer);
+    const float32 = new Float32Array(pcm16.length);
+    
+    for (let i = 0; i < pcm16.length; i++) {
+      float32[i] = pcm16[i] / 32768.0; // Convert to -1.0 to 1.0 range
+    }
+    
+    return float32;
+  }
+
+  private queueAudioForPlayback(audioData: Float32Array): void {
+    this.audioQueue.push(audioData);
+    
+    if (!this.isPlaying) {
+      this.playNextAudioChunk();
+    }
+  }
+
+  private async playNextAudioChunk(): Promise<void> {
+    if (!this.audioContext || this.audioQueue.length === 0) {
+      this.isPlaying = false;
+      return;
+    }
+    
+    this.isPlaying = true;
+    const audioData = this.audioQueue.shift()!;
+    
+    // Create audio buffer
+    const audioBuffer = this.audioContext.createBuffer(1, audioData.length, 24000); // 24kHz mono
+    audioBuffer.copyToChannel(audioData, 0);
+    
+    // Create and connect audio source
+    const source = this.audioContext.createBufferSource();
+    source.buffer = audioBuffer;
+    source.connect(this.audioContext.destination);
+    
+    // Play the audio
+    source.start();
+    
+    // Queue next chunk when this one finishes
+    source.onended = () => {
+      this.playNextAudioChunk();
+    };
+  }
+
+  // Send text to be spoken by the assistant
+  async speakText(text: string): Promise<void> {
+    if (!this.rt || !this.isConnected) {
+      throw new Error('Not connected to Realtime API');
+    }
+
+    // Create a message for the assistant to speak
+    await this.rt.send({
+      type: 'conversation.item.create',
+      item: {
+        type: 'message',
+        role: 'assistant',
+        content: [{ 
+          type: 'text', 
+          text 
+        }],
+      },
+    });
+
+    // Request audio generation
+    await this.rt.send({
+      type: 'response.create',
+      response: {
+        modalities: ['audio'], // Request audio output only
+        instructions: 'Read this text naturally and clearly.',
+      }
+    });
   }
 
 }

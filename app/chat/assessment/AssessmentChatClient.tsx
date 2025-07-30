@@ -63,6 +63,7 @@ export default function AssessmentChatClient() {
     audioLevel,
     startVoice,
     stopVoice,
+    speakText,
     getContextualHelp
   } = useVoiceNavigation({
     onCommand: (command) => handleVoiceCommandRef.current?.(command),
@@ -89,6 +90,12 @@ export default function AssessmentChatClient() {
     },
     onError(error) {
       console.error('Chat error:', error);
+    },
+    onFinish(message) {
+      // If voice mode is enabled, speak the assistant's response
+      if (voiceModeEnabled && message.role === 'assistant' && message.content) {
+        speakText(message.content).catch(console.error);
+      }
     },
     onToolCall: async ({ toolCall }) => {
       console.log('[Assessment] Tool called:', toolCall.toolName, toolCall.args);
@@ -515,73 +522,57 @@ export default function AssessmentChatClient() {
   const handleVoiceCommand = useCallback((command: VoiceCommand) => {
     console.log('Voice command received:', command);
     
+    // For voice commands, we should send the raw transcript to the assessment agent
+    // The agent has its own natural language understanding and tools
+    if (command.type === 'unknown' && command.command) {
+      // Send the raw voice input as a user message to the assessment agent
+      append({
+        role: 'user',
+        content: command.command
+      });
+      return;
+    }
+    
+    // Handle specific recognized commands for quick actions
     switch (command.type) {
       case 'navigation':
         if (command.parameters?.target === 'next') {
           submitCurrentPage();
         } else if (command.parameters?.target === 'previous') {
-          // TODO: Implement previous page navigation
+          // Send to agent to handle
           append({
-            role: 'assistant',
-            content: 'Going back to the previous page is not yet implemented.'
+            role: 'user',
+            content: 'Go to the previous page'
           });
         } else if (command.parameters?.target === 'skip') {
-          // Skip to next without submitting
-          if (workflowState?.navigationInfo?.nextPageUrl) {
-            // TODO: Navigate without submitting
-            append({
-              role: 'assistant',
-              content: 'Skipping questions is not recommended. Please answer all questions for accurate results.'
-            });
-          }
+          // Send to agent to handle
+          append({
+            role: 'user',
+            content: 'Skip this question'
+          });
         }
         break;
         
       case 'answer':
         if (command.parameters?.value && workflowState) {
-          // Find the current question being displayed
-          const visibleQuestions = workflowState.questions.filter(q => {
-            const qType = q.type || q.Type;
-            return qType !== undefined && [18, 8, 4, 6, 7, 14, 16].includes(qType);
+          // Instead of handling directly, send to the agent
+          // This allows the agent to use its tools properly
+          const value = command.parameters.value;
+          append({
+            role: 'user',
+            content: `Answer ${value}`
           });
-          
-          if (visibleQuestions.length === 1) {
-            // Single question visible - answer it
-            const questionId = visibleQuestions[0].id || visibleQuestions[0].QuestionID || visibleQuestions[0].questionID;
-            if (questionId !== undefined) {
-              handleAnswerChange(questionId, command.parameters.value);
-            }
-            append({
-              role: 'assistant',
-              content: `✓ Set answer to ${formatAnswerValue(command.parameters.value)}`
-            });
-          } else {
-            // Multiple questions - need clarification
-            append({
-              role: 'assistant',
-              content: 'Please specify which question you want to answer, or use the mouse to select it.'
-            });
-          }
         }
         break;
         
       case 'action':
         switch (command.parameters?.target) {
           case 'repeat':
-            // Read current question again
-            if (workflowState && workflowState.questions.length > 0) {
-              const currentQ = workflowState.questions.find(q => {
-                const qType = q.type || q.Type;
-                return qType !== undefined && [18, 8, 4, 6, 7, 14, 16].includes(qType);
-              });
-              if (currentQ) {
-                const prompt = currentQ.prompt || currentQ.Prompt || currentQ.text || currentQ.Text || '';
-                append({
-                  role: 'assistant',
-                  content: `Current question: ${prompt}`
-                });
-              }
-            }
+            // Send to agent
+            append({
+              role: 'user',
+              content: 'Repeat the current question'
+            });
             break;
             
           case 'help':
@@ -598,16 +589,8 @@ export default function AssessmentChatClient() {
             break;
         }
         break;
-        
-      case 'unknown':
-        // Suggest similar commands
-        append({
-          role: 'assistant',
-          content: `I didn't understand "${command.command}". Try saying "help" for available commands.`
-        });
-        break;
     }
-  }, [workflowState, handleAnswerChange, append, submitCurrentPage]);
+  }, [workflowState, append, submitCurrentPage]);
   
   // Helper to format answer values for display
   const formatAnswerValue = (value: string): string => {
@@ -644,7 +627,18 @@ export default function AssessmentChatClient() {
     setHasShownVoiceEntry(true);
     startVoice();
     setVoiceModeEnabled(true);
-  }, [startVoice]);
+    
+    // When voice mode starts, ask the agent to read the current questions
+    if (workflowState && workflowState.questions.length > 0) {
+      append({
+        role: 'user',
+        content: 'Please read out the current questions on this page'
+      });
+      
+      // Also announce that voice mode is active
+      speakText("Voice mode activated. I'll read out the questions for you.").catch(console.error);
+    }
+  }, [startVoice, workflowState, append, speakText]);
   
   const handleVoicePermissionDeny = useCallback(() => {
     setShowVoicePermission(false);
