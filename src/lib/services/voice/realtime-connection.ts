@@ -9,6 +9,7 @@ export class RealtimeConnectionManager {
   private audioContext: AudioContext | null = null;
   private audioQueue: Float32Array[] = [];
   private isPlaying = false;
+  private nextStartTime = 0;
   private workflowState: any = null;
   private onAnswerUpdate?: (questionId: number, value: string) => void;
   
@@ -271,6 +272,8 @@ IMPORTANT: Each question has an ID number shown in parentheses. Use this ID when
 
     // Handle response completion
     this.rt.on('response.done', () => {
+      // Reset audio timing for next response
+      this.nextStartTime = 0;
       this.config.onStateChange?.('ready');
     });
 
@@ -389,7 +392,8 @@ IMPORTANT: Each question has an ID number shown in parentheses. Use this ID when
   private queueAudioForPlayback(audioData: Float32Array): void {
     this.audioQueue.push(audioData);
     
-    if (!this.isPlaying) {
+    // Start playback after we have a small buffer to prevent stuttering
+    if (!this.isPlaying && this.audioQueue.length >= 2) {
       this.playNextAudioChunk();
     }
   }
@@ -412,8 +416,15 @@ IMPORTANT: Each question has an ID number shown in parentheses. Use this ID when
     source.buffer = audioBuffer;
     source.connect(this.audioContext.destination);
     
-    // Play the audio
-    source.start();
+    // Schedule audio playback for seamless streaming
+    const currentTime = this.audioContext.currentTime;
+    const startTime = Math.max(currentTime, this.nextStartTime);
+    
+    // Play the audio at the scheduled time
+    source.start(startTime);
+    
+    // Update next start time to create continuous playback
+    this.nextStartTime = startTime + audioBuffer.duration;
     
     // Queue next chunk when this one finishes
     source.onended = () => {
