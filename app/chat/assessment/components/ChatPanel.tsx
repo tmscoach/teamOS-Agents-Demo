@@ -162,25 +162,33 @@ export function ChatPanel({ className = "" }: ChatPanelProps) {
         }}
         onMouseDown={handleMouseDown}
       >
-        <div className="relative group">
-          <div 
-            className="absolute inset-0 rounded-lg opacity-60 group-hover:opacity-100 transition-opacity"
-            style={{
-              background: 'linear-gradient(158deg, rgba(255,243,3,0.1) 0%, rgba(251,169,61,0.1) 15%, rgba(237,1,145,0.1) 30%, rgba(167,99,173,0.1) 45%, rgba(1,133,198,0.1) 60%, rgba(2,181,230,0.1) 75%, rgba(1,161,114,0.1) 90%, rgba(162,211,111,0.1) 100%)'
-            }}
-          />
-          <input
-            type="text"
-            placeholder="Ask Oskar about your profile"
-            onClick={() => setIsExpanded(true)}
-            readOnly
-            className="relative w-[313px] h-[46px] px-4 py-2.5 pl-10 bg-white/95 backdrop-blur-[10px] rounded-lg border border-gray-200/80 shadow-[0_2px_8px_rgba(0,0,0,0.08)] hover:shadow-[0_4px_12px_rgba(0,0,0,0.12)] transition-all duration-200 cursor-pointer text-[13px] placeholder-gray-500 focus:outline-none"
-            style={{
-              fontFamily: 'Inter, system-ui, -apple-system, sans-serif'
-            }}
-          />
-          <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center justify-center w-6 h-6">
-            <Oscar1 className="!w-5 !h-5" />
+        <div 
+          className="relative"
+          style={{
+            padding: '4px',
+            background: 'linear-gradient(90deg, #FFF303 0%, #FBA93D 14.29%, #ED0191 28.57%, #A763AD 42.86%, #0185C6 57.14%, #02B5E6 71.43%, #01A172 85.71%, #A2D36F 100%)',
+            borderRadius: '12px',
+          }}
+        >
+          <div className="relative bg-white rounded-lg">
+            <input
+              type="text"
+              placeholder="Ask Oskar about your profile"
+              onClick={() => setIsExpanded(true)}
+              readOnly
+              className="w-[313px] h-[46px] px-4 py-3 pl-12 bg-transparent rounded-lg cursor-pointer text-[14px] text-gray-700 placeholder-gray-600 focus:outline-none font-medium"
+              style={{
+                fontFamily: 'Inter, system-ui, -apple-system, sans-serif'
+              }}
+            />
+            <div className="absolute left-3 top-1/2 -translate-y-1/2">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 2C10.0222 2 8.08879 2.58649 6.4443 3.6853C4.79981 4.78412 3.51809 6.3459 2.76121 8.17317C2.00433 10.0004 1.8063 12.0111 2.19215 13.9509C2.578 15.8907 3.53041 17.6725 4.92894 19.0711C6.32746 20.4696 8.10929 21.422 10.0491 21.8079C11.9889 22.1937 13.9996 21.9957 15.8268 21.2388C17.6541 20.4819 19.2159 19.2002 20.3147 17.5557C21.4135 15.9112 22 13.9778 22 12C22 10.6868 21.7413 9.38642 21.2388 8.17317C20.7363 6.95991 19.9997 5.85752 19.0711 4.92893C18.1425 4.00035 17.0401 3.26375 15.8268 2.76121C14.6136 2.25866 13.3132 2 12 2Z" fill="#10B981"/>
+                <path d="M8 12C8 12 9.5 14 12 14C14.5 14 16 12 16 12" stroke="white" strokeWidth="2" strokeLinecap="round"/>
+                <circle cx="9" cy="9" r="1" fill="white"/>
+                <circle cx="15" cy="9" r="1" fill="white"/>
+              </svg>
+            </div>
           </div>
         </div>
       </div>
