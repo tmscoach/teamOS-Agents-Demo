@@ -92,9 +92,14 @@ export default function AssessmentChatClient() {
       console.error('Chat error:', error);
     },
     onFinish(message) {
-      // If voice mode is enabled, speak the assistant's response
-      if (voiceModeEnabled && message.role === 'assistant' && message.content) {
-        speakText(message.content).catch(console.error);
+      // If voice mode is enabled and session is active, speak the assistant's response
+      if (voiceModeEnabled && voiceState !== 'idle' && message.role === 'assistant' && message.content) {
+        // Add a small delay to ensure we're not speaking over ourselves
+        setTimeout(() => {
+          speakText(message.content).catch(error => {
+            console.error('Failed to speak response:', error);
+          });
+        }, 100);
       }
     },
     onToolCall: async ({ toolCall }) => {
@@ -606,37 +611,52 @@ export default function AssessmentChatClient() {
   };
 
   // Handle voice mode toggling
-  const handleVoiceToggle = useCallback(() => {
+  const handleVoiceToggle = useCallback(async () => {
     if (voiceState === 'idle' && !voiceModeEnabled) {
       // Show permission dialog first time
       if (!hasShownVoiceEntry) {
         setShowVoicePermission(true);
       } else {
-        startVoice();
-        setVoiceModeEnabled(true);
+        try {
+          await startVoice();
+          setVoiceModeEnabled(true);
+        } catch (error) {
+          console.error('Failed to start voice:', error);
+        }
       }
     } else if (voiceModeEnabled) {
-      stopVoice();
+      await stopVoice();
       setVoiceModeEnabled(false);
     }
   }, [voiceState, voiceModeEnabled, hasShownVoiceEntry, startVoice, stopVoice]);
   
   // Handle voice permission response
-  const handleVoicePermissionAllow = useCallback(() => {
+  const handleVoicePermissionAllow = useCallback(async () => {
     setShowVoicePermission(false);
     setHasShownVoiceEntry(true);
-    startVoice();
-    setVoiceModeEnabled(true);
     
-    // When voice mode starts, ask the agent to read the current questions
-    if (workflowState && workflowState.questions.length > 0) {
-      append({
-        role: 'user',
-        content: 'Please read out the current questions on this page'
-      });
+    try {
+      // Wait for voice session to start
+      await startVoice();
+      setVoiceModeEnabled(true);
       
-      // Also announce that voice mode is active
-      speakText("Voice mode activated. I'll read out the questions for you.").catch(console.error);
+      // Small delay to ensure session is fully initialized
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // When voice mode starts, ask the agent to read the current questions
+      if (workflowState && workflowState.questions.length > 0) {
+        // Announce that voice mode is active first
+        await speakText("Voice mode activated. I'll read out the questions for you.");
+        
+        // Then ask the agent to read questions
+        append({
+          role: 'user',
+          content: 'Please read out the current questions on this page'
+        });
+      }
+    } catch (error) {
+      console.error('Failed to start voice mode:', error);
+      setVoiceModeEnabled(false);
     }
   }, [startVoice, workflowState, append, speakText]);
   
