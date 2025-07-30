@@ -1,5 +1,5 @@
 import { OpenAIRealtimeWebSocket } from 'openai/beta/realtime/websocket';
-import { VoiceConfig, VoiceState, RealtimeConnection } from './types';
+import { VoiceConfig } from './types';
 
 export class RealtimeConnectionManager {
   private rt: OpenAIRealtimeWebSocket | null = null;
@@ -61,10 +61,10 @@ export class RealtimeConnectionManager {
       // The WebSocket will connect automatically when we start sending messages
       // Wait for the socket to be ready
       await new Promise<void>((resolve) => {
-        if (this.rt.socket.readyState === WebSocket.OPEN) {
+        if (this.rt?.socket.readyState === WebSocket.OPEN) {
           resolve();
         } else {
-          this.rt.socket.addEventListener('open', () => resolve(), { once: true });
+          this.rt?.socket.addEventListener('open', () => resolve(), { once: true });
         }
       });
       
@@ -200,6 +200,34 @@ export class RealtimeConnectionManager {
     });
 
     await this.rt.send({ type: 'response.create' });
+  }
+
+  // Send assistant message to be spoken by the Realtime API
+  async sendAssistantMessage(text: string): Promise<void> {
+    if (!this.rt || !this.isConnected) {
+      throw new Error('Not connected to Realtime API');
+    }
+
+    // Create the assistant message
+    await this.rt.send({
+      type: 'conversation.item.create',
+      item: {
+        type: 'message',
+        role: 'assistant',
+        content: [{ 
+          type: 'input_text', 
+          text 
+        }],
+      },
+    });
+
+    // Request the assistant to speak this message with audio output
+    await this.rt.send({
+      type: 'response.create',
+      response: {
+        modalities: ['audio'], // Only request audio output to speak the message
+      }
+    });
   }
 
   async disconnect(): Promise<void> {

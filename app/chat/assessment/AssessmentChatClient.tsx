@@ -63,7 +63,8 @@ export default function AssessmentChatClient() {
     audioLevel,
     startVoice,
     stopVoice,
-    getContextualHelp
+    getContextualHelp,
+    sendAssistantMessage
   } = useVoiceNavigation({
     onCommand: (command) => handleVoiceCommandRef.current?.(command),
     onTranscript: (text) => console.log('Voice transcript:', text),
@@ -73,33 +74,16 @@ export default function AssessmentChatClient() {
     }
   });
 
-  // Helper to speak text using Web Speech API
-  const speakTextHelper = useCallback((text: string) => {
-    if (voiceModeEnabled && 'speechSynthesis' in window) {
-      // Cancel any ongoing speech
-      window.speechSynthesis.cancel();
-      
-      // Create utterance
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.rate = 1.0;
-      utterance.pitch = 1.0;
-      utterance.volume = 1.0;
-      
-      // Optional: Choose a specific voice if available
-      const voices = window.speechSynthesis.getVoices();
-      const preferredVoice = voices.find(voice => 
-        voice.name.includes('Microsoft') || 
-        voice.name.includes('Google') ||
-        voice.name.includes('Alex') // macOS
-      );
-      if (preferredVoice) {
-        utterance.voice = preferredVoice;
+  // Helper to speak text using OpenAI Realtime API
+  const speakTextHelper = useCallback(async (text: string) => {
+    if (voiceModeEnabled && sendAssistantMessage) {
+      try {
+        await sendAssistantMessage(text);
+      } catch (error) {
+        console.error('Failed to speak text via Realtime API:', error);
       }
-      
-      // Speak the text
-      window.speechSynthesis.speak(utterance);
     }
-  }, [voiceModeEnabled]);
+  }, [voiceModeEnabled, sendAssistantMessage]);
 
   // Use the useChat hook for streaming
   const { messages, input, handleInputChange, handleSubmit, isLoading, append } = useChat({
@@ -447,7 +431,7 @@ export default function AssessmentChatClient() {
               role: 'assistant',
               content: completionMessage
             });
-            speakTextHelper(completionMessage);
+            await speakTextHelper(completionMessage);
             
             // Give user time to see the message
             setTimeout(async () => {
@@ -484,7 +468,7 @@ export default function AssessmentChatClient() {
                 role: 'assistant',
                 content: progressMessage
               });
-              speakTextHelper(progressMessage);
+              await speakTextHelper(progressMessage);
             }
           }
         }
@@ -507,7 +491,7 @@ export default function AssessmentChatClient() {
         role: 'assistant',
         content: processingMessage
       });
-      speakTextHelper(processingMessage);
+      await speakTextHelper(processingMessage);
       // Get template ID from constants
       const templateId = TEMPLATE_ID_MAP[selectedAssessment.AssessmentType] || '6';
       
@@ -530,7 +514,7 @@ export default function AssessmentChatClient() {
           role: 'assistant',
           content: successMessage
         });
-        speakTextHelper(successMessage);
+        await speakTextHelper(successMessage);
         
         // Delay redirect to show success message
         setTimeout(() => {
@@ -551,7 +535,7 @@ export default function AssessmentChatClient() {
         role: 'assistant',
         content: errorMessage
       });
-      speakTextHelper(errorMessage);
+      await speakTextHelper(errorMessage);
     }
   };
   
@@ -624,7 +608,7 @@ export default function AssessmentChatClient() {
               role: 'assistant',
               content: exitMessage
             });
-            speakTextHelper(exitMessage);
+            await speakTextHelper(exitMessage);
             break;
         }
         break;
@@ -661,10 +645,6 @@ export default function AssessmentChatClient() {
     } else if (voiceModeEnabled) {
       await stopVoice();
       setVoiceModeEnabled(false);
-      // Stop any ongoing speech
-      if ('speechSynthesis' in window) {
-        window.speechSynthesis.cancel();
-      }
     }
   }, [voiceState, voiceModeEnabled, hasShownVoiceEntry, startVoice, stopVoice]);
   

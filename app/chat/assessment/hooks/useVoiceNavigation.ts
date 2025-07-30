@@ -31,6 +31,7 @@ export interface UseVoiceNavigationReturn {
   pauseVoice: () => Promise<void>;
   resumeVoice: () => Promise<void>;
   sendTextCommand: (text: string) => Promise<void>;
+  sendAssistantMessage: (text: string) => Promise<void>;
   
   // Helpers
   getContextualHelp: (questionType: string) => string[];
@@ -164,6 +165,16 @@ export function useVoiceNavigation(
     }
   }, [handleError]);
 
+  const sendAssistantMessage = useCallback(async (text: string) => {
+    if (!voiceServiceRef.current) return;
+    
+    try {
+      await voiceServiceRef.current.sendAssistantMessage(text);
+    } catch (error) {
+      handleError(error as Error);
+    }
+  }, [handleError]);
+
   const getContextualHelp = useCallback((questionType: string): string[] => {
     if (!voiceServiceRef.current) {
       return [];
@@ -186,6 +197,7 @@ export function useVoiceNavigation(
     pauseVoice,
     resumeVoice,
     sendTextCommand,
+    sendAssistantMessage,
     
     // Helpers
     getContextualHelp,

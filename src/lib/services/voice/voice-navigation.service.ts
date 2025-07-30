@@ -1,7 +1,7 @@
 import { AudioManager } from './audio-manager';
 import { RealtimeConnectionManager } from './realtime-connection';
 import { VoiceCommandProcessor } from './voice-commands';
-import { VoiceConfig, VoiceState, VoiceCommand, VoiceSession } from './types';
+import { VoiceConfig, VoiceState, VoiceSession } from './types';
 
 export class VoiceNavigationService {
   private audioManager: AudioManager;
@@ -93,6 +93,14 @@ export class VoiceNavigationService {
   async sendTextCommand(text: string): Promise<void> {
     await this.realtimeConnection.sendText(text);
     this.handleTranscript(text);
+  }
+
+  async sendAssistantMessage(text: string): Promise<void> {
+    if (!this.isActive || !this.currentSession) {
+      throw new Error('Voice session not active');
+    }
+    
+    await this.realtimeConnection.sendAssistantMessage(text);
   }
 
 
