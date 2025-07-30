@@ -31,7 +31,14 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         model: 'gpt-4o-realtime-preview-2024-12-17',
         modalities: ['text', 'audio'],
-        instructions: 'You are OSmos, the Team Assessment Assistant helping users complete questionnaires through voice interaction.',
+        voice: 'alloy',
+        instructions: 'You are OSmos, the Team Assessment Assistant helping users complete questionnaires through voice interaction. Acknowledge user input briefly, and when asked to speak text, read it out clearly and naturally.',
+        turn_detection: {
+          type: 'server_vad',
+          threshold: 0.5,
+          prefix_padding_ms: 300,
+          silence_duration_ms: 200,
+        },
       }),
     });
 

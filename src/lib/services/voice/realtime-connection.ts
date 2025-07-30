@@ -87,12 +87,12 @@ export class RealtimeConnectionManager {
             prefix_padding_ms: 300,
             silence_duration_ms: 200,
           },
-          instructions: `You are a minimal voice interface. Only respond with very brief acknowledgments:
-- When user speaks a command: say "Okay" or "Got it"
-- When user gives an answer: say "Noted" or "Received"
-- Keep responses under 3 words
-- Do NOT explain, elaborate, or provide any assessment information
-- You are just acknowledging that you heard them`,
+          instructions: `You are OSmos, the Team Assessment Assistant. Your role is to:
+- Acknowledge user input briefly when they speak
+- Read out assessment responses that are provided to you
+- Speak clearly and at a moderate pace
+- When reading questions, pause briefly between each one
+- Maintain a helpful and professional tone`,
         },
       });
 
@@ -208,24 +208,27 @@ export class RealtimeConnectionManager {
       throw new Error('Not connected to Realtime API');
     }
 
-    // Create the assistant message
+    console.log('Sending assistant message to be spoken:', text.substring(0, 100) + '...');
+
+    // Create a user message asking the assistant to speak the text
     await this.rt.send({
       type: 'conversation.item.create',
       item: {
         type: 'message',
-        role: 'assistant',
+        role: 'user',
         content: [{ 
           type: 'input_text', 
-          text 
+          text: `Please speak the following text exactly as written: "${text}"` 
         }],
       },
     });
 
-    // Request the assistant to speak this message with audio output
+    // Request a response with audio
     await this.rt.send({
       type: 'response.create',
       response: {
-        modalities: ['audio'], // Only request audio output to speak the message
+        modalities: ['audio', 'text'],
+        instructions: 'Read the provided text exactly as written. Do not add any additional commentary.',
       }
     });
   }
