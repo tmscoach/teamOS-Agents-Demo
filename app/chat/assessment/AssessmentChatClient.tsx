@@ -691,6 +691,13 @@ export default function AssessmentChatClient() {
     stopVoiceRef.current = stopVoice;
   }, [stopVoice]);
   
+  // Update voice workflow state when it changes
+  useEffect(() => {
+    if (voiceModeEnabled && workflowState) {
+      setVoiceWorkflowState(workflowState);
+    }
+  }, [voiceModeEnabled, workflowState, setVoiceWorkflowState]);
+  
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">

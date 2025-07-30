@@ -139,7 +139,14 @@ Your role:
    - "2-0", "2 0", "two zero", "20", "strongly left", "strong left", "all the way left" → use value "20"
    - "2-1", "2 1", "two one", "21", "slightly left", "slight left", "a bit left", "somewhat left", "left" → use value "21"
    - "1-2", "1 2", "one two", "12", "slightly right", "slight right", "a bit right", "somewhat right", "right" → use value "12"
-   - "0-2", "0 2", "zero two", "02", "strongly right", "strong right", "all the way right" → use value "02"
+   - "0-2", "0 2", "zero two", "02", "zero 2", "strongly right", "strong right", "all the way right" → use value "02"
+   
+   CRITICAL: When user says "02" or "zero two", this means 0-2 (strongly right), NOT 2-0!
+   
+   Multiple answers in sequence:
+   - If user provides multiple values like "2 0 2 1 1 2 0 2 2 1", parse each pair as an answer for questions in order
+   - "2 0" = first question gets "20", "2 1" = second question gets "21", etc.
+   - Apply answers to questions in the order they appear on the current page
    
    IMPORTANT: Be flexible with phrasing. Extract the answer from ANY of these patterns:
    - "Enter X" / "Put X" / "Answer X" / "Select X" / "Choose X" / "Pick X" / "Go with X"
@@ -147,6 +154,7 @@ Your role:
    - "I think X" / "I'd say X" / "Probably X" / "Definitely X" / "Make it X"
    - "The answer is X" / "Mark X" / "Record X" / "Set X"
    - Just saying the value alone: "2-0" or "slightly left" etc.
+   - "X for all" / "X for all questions" → Use answer_multiple_questions function
    
    Navigation commands (DO NOT use navigate_next for these):
    - "Next" / "Next question" / "Continue" → Just read the next question in sequence
@@ -162,7 +170,10 @@ Your role:
 
 6. Keep your responses concise. Acknowledge answers with just "Got it" or "Thank you" then immediately read the next question.
 
-IMPORTANT: Each question has an ID number shown in parentheses. Use this ID when calling the answer_question function.`,
+IMPORTANT: 
+- Each question has an ID number shown in parentheses. Use this ID when calling the answer_question function.
+- For "answer all" or "X for all questions", collect all question IDs from the current page and use answer_multiple_questions
+- The questions on this page have these IDs: ${questions.map(q => q.QuestionID || q.questionID).join(', ')}`,
           tools: [
             {
               type: 'function',
@@ -175,6 +186,23 @@ IMPORTANT: Each question has an ID number shown in parentheses. Use this ID when
                   value: { type: 'string', description: 'The answer value (20, 21, 12, or 02)' }
                 },
                 required: ['questionId', 'value']
+              }
+            },
+            {
+              type: 'function',
+              name: 'answer_multiple_questions',
+              description: 'Record the same answer for multiple questions at once',
+              parameters: {
+                type: 'object',
+                properties: {
+                  questionIds: { 
+                    type: 'array', 
+                    items: { type: 'integer' },
+                    description: 'Array of question IDs to answer'
+                  },
+                  value: { type: 'string', description: 'The answer value (20, 21, 12, or 02) to apply to all questions' }
+                },
+                required: ['questionIds', 'value']
               }
             },
             {
@@ -282,6 +310,52 @@ IMPORTANT: Each question has an ID number shown in parentheses. Use this ID when
           if (!this.isGeneratingResponse) {
             this.isGeneratingResponse = true;
             // Manually trigger response since we disabled auto-response
+            this.rt.send({
+              type: 'response.create',
+              response: {
+                modalities: ['audio', 'text'],
+              }
+            });
+          }
+        }, 100);
+      } else if (name === 'answer_multiple_questions') {
+        const { questionIds, value } = JSON.parse(args);
+        console.log(`Recording ${questionIds.length} answers with value ${value}`);
+        
+        // Map the value format
+        const valueMap: Record<string, string> = {
+          '20': '2-0',
+          '21': '2-1',
+          '12': '1-2',
+          '02': '0-2'
+        };
+        const mappedValue = valueMap[value] || value;
+        
+        // Call the answer update callback for each question
+        if (this.onAnswerUpdate && questionIds.length > 0) {
+          for (const questionId of questionIds) {
+            this.onAnswerUpdate(questionId, value);
+          }
+        }
+        
+        // Send function call result back
+        await this.rt.send({
+          type: 'conversation.item.create',
+          item: {
+            type: 'function_call_output',
+            call_id: event.call_id,
+            output: JSON.stringify({ 
+              success: true, 
+              message: `Recorded answer ${mappedValue} for ${questionIds.length} questions`,
+              instruction: 'Now read the next question or ask if they want to continue to the next page'
+            })
+          }
+        });
+        
+        // Trigger response after a delay
+        setTimeout(() => {
+          if (!this.isGeneratingResponse) {
+            this.isGeneratingResponse = true;
             this.rt.send({
               type: 'response.create',
               response: {
