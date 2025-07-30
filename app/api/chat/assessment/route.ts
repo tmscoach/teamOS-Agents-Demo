@@ -80,6 +80,13 @@ export async function POST(request: NextRequest) {
     // Get or create conversation
     let context: AgentContext;
     
+    // Determine team ID for the user
+    let teamId = dbUser.Team_Team_managerIdToUser?.[0]?.id;
+    if (!teamId) {
+      // Create a placeholder team ID for assessment sessions
+      teamId = `assessment_team_${dbUser.id}`;
+    }
+    
     if (conversationId) {
       const conversationData = await conversationStore.getConversation(conversationId);
       if (!conversationData || conversationData.userId !== dbUser.id) {
@@ -88,12 +95,6 @@ export async function POST(request: NextRequest) {
       context = conversationData.context;
     } else {
       // Create new conversation for assessment
-      let teamId = dbUser.Team_Team_managerIdToUser?.[0]?.id;
-      
-      if (!teamId) {
-        // Create a placeholder team ID for assessment sessions
-        teamId = `assessment_team_${dbUser.id}`;
-      }
       
       context = contextManager.createContext({
         user: {
@@ -165,21 +166,8 @@ Always confirm actions back to the user in a friendly way.`;
       });
     }
 
-    // Get tools from the agent
-    const agentTools = await agent.getTools(context);
-    
-    // Convert agent tools to AI SDK format
+    // Create tools object for assessment-specific tools
     const tools: Record<string, any> = {};
-    for (const agentTool of agentTools) {
-      tools[agentTool.name] = tool({
-        description: agentTool.description,
-        parameters: agentTool.parameters,
-        execute: async (params: any) => {
-          const result = await agentTool.handler(params, context);
-          return result.data || result;
-        }
-      });
-    }
 
     // Add assessment-specific tools with natural language processing
     tools.answer_question = tool({
@@ -260,27 +248,31 @@ Always confirm actions back to the user in a friendly way.`;
     });
 
     // Save conversation
-    const newConversationId = conversationId || `assessment_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    // Store conversation ID for response
+    let responseConversationId = conversationId;
     
     if (!conversationId) {
-      await conversationStore.createConversation({
-        id: newConversationId,
-        userId: dbUser.id,
-        teamId: context.team.id,
-        agentId: agent.id,
-        context: context,
-        messages: formattedMessages
-      });
-    } else {
-      await conversationStore.updateConversation(conversationId, {
-        messages: formattedMessages,
-        context: context
-      });
+      // Create new conversation using the same pattern as debrief
+      responseConversationId = await conversationStore.createConversation(
+        teamId,
+        dbUser.id,
+        {
+          initialAgent: 'AssessmentAgent',
+          phase: 'assessment' as any,
+          metadata: {
+            selectedAssessment,
+            workflowState,
+            currentAnswers,
+            visibleSection,
+            startedAt: new Date().toISOString()
+          }
+        }
+      );
     }
 
     // Return the streaming response with conversation ID header
     const response = result.toDataStreamResponse();
-    response.headers.set('X-Conversation-ID', newConversationId);
+    response.headers.set('X-Conversation-ID', responseConversationId);
     
     return response;
   } catch (error) {

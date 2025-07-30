@@ -1,22 +1,9 @@
 "use client";
 
 import React from 'react';
+import DOMPurify from 'dompurify';
+import { WorkflowQuestion as Question } from '../types';
 
-interface Question {
-  questionID: number;
-  type: number;
-  description: string;
-  prompt: string;
-  statementA?: string;
-  statementB?: string;
-  listOptions?: string[];
-  listValues?: string[];
-  isRequired: boolean;
-  isEnabled: boolean;
-  maxLength?: number;
-  value?: any;
-  useHorizontalLayout?: boolean;
-}
 
 interface WorkflowQuestionProps {
   question: Question;
@@ -25,8 +12,21 @@ interface WorkflowQuestionProps {
 }
 
 export default function WorkflowQuestion({ question, onAnswerChange, value }: WorkflowQuestionProps) {
+  const questionId = question.questionID || question.QuestionID || 0;
+  const questionType = question.type || question.Type || 0;
+  const prompt = question.prompt || question.Prompt || '';
+  const description = question.description || question.Description || '';
+  const statementA = question.statementA || question.StatementA || '';
+  const statementB = question.statementB || question.StatementB || '';
+  const listOptions = listOptions || question.ListOptions || [];
+  const listValues = listValues || question.ListValues || [];
+  const isRequired = question.isRequired ?? question.IsRequired ?? false;
+  const isEnabled = question.isEnabled ?? question.IsEnabled ?? true;
+  const maxLength = question.maxLength || question.MaxLength;
+  const useHorizontalLayout = useHorizontalLayout || question.UseHorizontalLayout;
+  
   const handleChange = (newValue: string) => {
-    onAnswerChange(question.questionID, newValue);
+    onAnswerChange(questionId, newValue);
   };
 
   // Type 18: Seesaw (Forced-pair questions) - Used in TMP
@@ -37,27 +37,27 @@ export default function WorkflowQuestion({ question, onAnswerChange, value }: Wo
     return (
       <div className="bg-white rounded-lg p-6 border border-gray-100">
         <h3 className="text-sm text-gray-500 mb-4">
-          Question {question.description}
+          Question {description}
         </h3>
         <div className="flex items-center justify-between">
-          <span className="text-base font-medium text-gray-900 mr-8">{question.statementA}</span>
+          <span className="text-base font-medium text-gray-900 mr-8">{statementA}</span>
           <div className="flex items-center gap-12">
             {options.map((option, index) => (
               <label key={option} className="flex flex-col items-center cursor-pointer">
                 <span className="text-sm text-gray-700 mb-2">{labels[index]}</span>
                 <input
                   type="radio"
-                  name={`question-${question.questionID}`}
+                  name={`question-${questionId}`}
                   value={option}
                   checked={value === option}
                   onChange={() => handleChange(option)}
                   className="w-5 h-5 text-gray-900 border-2 border-gray-300 focus:ring-2 focus:ring-gray-900"
-                  disabled={!question.isEnabled}
+                  disabled={!isEnabled}
                 />
               </label>
             ))}
           </div>
-          <span className="text-base font-medium text-gray-900 ml-8">{question.statementB}</span>
+          <span className="text-base font-medium text-gray-900 ml-8">{statementB}</span>
         </div>
       </div>
     );
@@ -66,13 +66,13 @@ export default function WorkflowQuestion({ question, onAnswerChange, value }: Wo
   // Type 8: Yes/No
   const renderYesNo = () => (
     <div className="bg-white rounded-lg border border-gray-200 p-6">
-      <h3 className="text-lg font-medium text-gray-900 mb-4">{question.prompt}</h3>
+      <h3 className="text-lg font-medium text-gray-900 mb-4">{prompt}</h3>
       <select
         value={value || ''}
         onChange={(e) => handleChange(e.target.value)}
         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-        required={question.isRequired}
-        disabled={!question.isEnabled}
+        required={isRequired}
+        disabled={!isEnabled}
       >
         <option value="">Select...</option>
         <option value="Yes">Yes</option>
@@ -84,17 +84,17 @@ export default function WorkflowQuestion({ question, onAnswerChange, value }: Wo
   // Type 4: Dropdown
   const renderDropdown = () => (
     <div className="bg-white rounded-lg border border-gray-200 p-6">
-      <h3 className="text-lg font-medium text-gray-900 mb-4">{question.prompt}</h3>
+      <h3 className="text-lg font-medium text-gray-900 mb-4">{prompt}</h3>
       <select
         value={value || ''}
         onChange={(e) => handleChange(e.target.value)}
         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-        required={question.isRequired}
-        disabled={!question.isEnabled}
+        required={isRequired}
+        disabled={!isEnabled}
       >
         <option value="">Select...</option>
-        {question.listOptions?.map((option, index) => (
-          <option key={index} value={question.listValues?.[index] || option}>
+        {listOptions?.map((option, index) => (
+          <option key={index} value={listValues?.[index] || option}>
             {option}
           </option>
         ))}
@@ -105,16 +105,16 @@ export default function WorkflowQuestion({ question, onAnswerChange, value }: Wo
   // Type 6: Text Field
   const renderTextField = () => (
     <div className="bg-white rounded-lg border border-gray-200 p-6">
-      <h3 className="text-lg font-medium text-gray-900 mb-4">{question.prompt}</h3>
+      <h3 className="text-lg font-medium text-gray-900 mb-4">{prompt}</h3>
       <input
         type="text"
         value={value || ''}
         onChange={(e) => handleChange(e.target.value)}
-        maxLength={question.maxLength}
+        maxLength={maxLength}
         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
         placeholder="Enter your answer..."
-        required={question.isRequired}
-        disabled={!question.isEnabled}
+        required={isRequired}
+        disabled={!isEnabled}
       />
     </div>
   );
@@ -122,7 +122,7 @@ export default function WorkflowQuestion({ question, onAnswerChange, value }: Wo
   // Type 7: Text Area
   const renderTextArea = () => (
     <div className="bg-white rounded-lg border border-gray-200 p-6">
-      <h3 className="text-lg font-medium text-gray-900 mb-4">{question.prompt}</h3>
+      <h3 className="text-lg font-medium text-gray-900 mb-4">{prompt}</h3>
       <textarea
         value={value || ''}
         onChange={(e) => handleChange(e.target.value)}
@@ -130,8 +130,8 @@ export default function WorkflowQuestion({ question, onAnswerChange, value }: Wo
         rows={4}
         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
         placeholder="Enter your response..."
-        required={question.isRequired}
-        disabled={!question.isEnabled}
+        required={isRequired}
+        disabled={!isEnabled}
       />
     </div>
   );
@@ -145,10 +145,10 @@ export default function WorkflowQuestion({ question, onAnswerChange, value }: Wo
           checked={value === 'true' || value === true}
           onChange={(e) => handleChange(e.target.checked.toString())}
           className="w-5 h-5 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500"
-          required={question.isRequired}
-          disabled={!question.isEnabled}
+          required={isRequired}
+          disabled={!isEnabled}
         />
-        <span className="ml-3 text-gray-900">{question.prompt}</span>
+        <span className="ml-3 text-gray-900">{prompt}</span>
       </label>
     </div>
   );
@@ -156,7 +156,7 @@ export default function WorkflowQuestion({ question, onAnswerChange, value }: Wo
   // Type 16: Multiple Choice
   const renderMultipleChoice = () => {
     // Check if this should use horizontal layout (like QO2 questionnaire)
-    const useHorizontalLayout = question.useHorizontalLayout;
+    const useHorizontalLayout = useHorizontalLayout;
     
     if (useHorizontalLayout) {
       // Horizontal layout for QO2-style questions
@@ -165,21 +165,21 @@ export default function WorkflowQuestion({ question, onAnswerChange, value }: Wo
           <div className="grid grid-cols-12 gap-4 items-center">
             {/* Question text */}
             <div className="col-span-5">
-              <p className="text-gray-900">{question.prompt}</p>
+              <p className="text-gray-900">{prompt}</p>
             </div>
             {/* Radio buttons in a row */}
             <div className="col-span-7 flex justify-around">
-              {question.listOptions?.map((option, index) => (
+              {listOptions?.map((option, index) => (
                 <label key={index} className="flex flex-col items-center cursor-pointer group">
                   <input
                     type="radio"
-                    name={`question-${question.questionID}`}
-                    value={question.listValues?.[index] || option}
-                    checked={value === (question.listValues?.[index] || option)}
+                    name={`question-${questionId}`}
+                    value={listValues?.[index] || option}
+                    checked={value === (listValues?.[index] || option)}
                     onChange={(e) => handleChange(e.target.value)}
                     className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500"
-                    required={question.isRequired}
-                    disabled={!question.isEnabled}
+                    required={isRequired}
+                    disabled={!isEnabled}
                   />
                   <span className="mt-1 text-xs text-gray-600 text-center whitespace-nowrap group-hover:text-gray-900">
                     {option}
@@ -194,19 +194,19 @@ export default function WorkflowQuestion({ question, onAnswerChange, value }: Wo
       // Vertical layout (default)
       return (
         <div className="bg-white rounded-lg border border-gray-200 p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">{question.prompt}</h3>
+          <h3 className="text-lg font-medium text-gray-900 mb-4">{prompt}</h3>
           <div className="space-y-3">
-            {question.listOptions?.map((option, index) => (
+            {listOptions?.map((option, index) => (
               <label key={index} className="flex items-center cursor-pointer hover:bg-gray-50 p-2 rounded">
                 <input
                   type="radio"
-                  name={`question-${question.questionID}`}
-                  value={question.listValues?.[index] || option}
-                  checked={value === (question.listValues?.[index] || option)}
+                  name={`question-${questionId}`}
+                  value={listValues?.[index] || option}
+                  checked={value === (listValues?.[index] || option)}
                   onChange={(e) => handleChange(e.target.value)}
                   className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 focus:ring-blue-500"
-                  required={question.isRequired}
-                  disabled={!question.isEnabled}
+                  required={isRequired}
+                  disabled={!isEnabled}
                 />
                 <span className="ml-3 text-gray-700">{option}</span>
               </label>
@@ -220,19 +220,22 @@ export default function WorkflowQuestion({ question, onAnswerChange, value }: Wo
   // Type 0: Heading
   const renderHeading = () => (
     <div className="mb-4">
-      <h2 className="text-xl font-bold text-gray-900">{question.prompt}</h2>
+      <h2 className="text-xl font-bold text-gray-900">{prompt}</h2>
     </div>
   );
 
   // Type 19/20: Paragraph/HTML
   const renderParagraph = () => (
     <div className="mb-4">
-      <div className="text-gray-700 prose max-w-none" dangerouslySetInnerHTML={{ __html: question.prompt }} />
+      <div 
+        className="text-gray-700 prose max-w-none" 
+        dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(question.prompt) }} 
+      />
     </div>
   );
 
   // Main render function based on question type
-  switch (question.type) {
+  switch (questionType) {
     case 18: return renderSeesaw();      // TMP seesaw questions
     case 8: return renderYesNo();
     case 4: return renderDropdown();
@@ -246,8 +249,8 @@ export default function WorkflowQuestion({ question, onAnswerChange, value }: Wo
     default: 
       return (
         <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-          <p className="text-red-600">Unsupported question type: {question.type}</p>
-          <p className="text-sm text-gray-600 mt-1">{question.prompt}</p>
+          <p className="text-red-600">Unsupported question type: {questionType}</p>
+          <p className="text-sm text-gray-600 mt-1">{prompt}</p>
         </div>
       );
   }

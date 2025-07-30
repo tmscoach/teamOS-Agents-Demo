@@ -71,11 +71,17 @@ export async function getWorkflowProcess(options: {
   }
 
   // Get or create workflow state
+  console.log('📊 Workflow state manager instance:', workflowStateManager.constructor.name);
+  console.log('📊 Existing states:', Array.from(workflowStateManager.getAllStates().keys()));
+  
   const state = workflowStateManager.getOrCreateWorkflowState(
     subscriptionId,
     subscription.workflowId,
     baseContentId
   );
+  
+  console.log('📊 State created/retrieved for subscription:', subscriptionId);
+  console.log('📊 All states after creation:', Array.from(workflowStateManager.getAllStates().keys()));
 
   // Navigate to requested page if provided
   if (pageId && sectionId) {
@@ -210,6 +216,10 @@ export async function updateWorkflow(options: {
     questionID: q.questionID,
     value: q.value
   }));
+
+  console.log('📊 [Update] Workflow state manager instance:', workflowStateManager.constructor.name);
+  console.log('📊 [Update] Existing states before update:', Array.from(workflowStateManager.getAllStates().keys()));
+  console.log('📊 [Update] Trying to update subscription:', subscriptionID.toString());
 
   workflowStateManager.updateWorkflowState(
     subscriptionID.toString(),

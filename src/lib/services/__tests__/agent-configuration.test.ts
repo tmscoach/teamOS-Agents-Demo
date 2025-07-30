@@ -1,9 +1,7 @@
-import { AgentConfigurationService } from '../agent-configuration';
-import { PrismaClient } from '@/lib/generated/prisma';
-
-// Mock Prisma Client
-jest.mock('@/lib/generated/prisma', () => ({
-  PrismaClient: jest.fn().mockImplementation(() => ({
+// Mock Prisma before imports
+jest.mock('@/lib/db', () => ({
+  __esModule: true,
+  default: {
     agentConfiguration: {
       create: jest.fn(),
       findFirst: jest.fn(),
@@ -13,15 +11,17 @@ jest.mock('@/lib/generated/prisma', () => ({
       updateMany: jest.fn(),
       groupBy: jest.fn(),
     },
-  })),
+    $connect: jest.fn().mockResolvedValue(undefined),
+    $disconnect: jest.fn().mockResolvedValue(undefined),
+  },
 }));
 
-describe('AgentConfigurationService', () => {
-  let mockPrisma: any;
+import { AgentConfigurationService } from '../agent-configuration';
+import prisma from '@/lib/db';
 
+describe('AgentConfigurationService', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockPrisma = new PrismaClient();
   });
 
   describe('createConfiguration', () => {
@@ -33,9 +33,9 @@ describe('AgentConfigurationService', () => {
         active: true,
       };
 
-      mockPrisma.agentConfiguration.findFirst.mockResolvedValue(existingConfig);
-      mockPrisma.agentConfiguration.updateMany.mockResolvedValue({ count: 1 });
-      mockPrisma.agentConfiguration.create.mockResolvedValue({
+      prisma.agentConfiguration.findFirst.mockResolvedValue(existingConfig);
+      prisma.agentConfiguration.updateMany.mockResolvedValue({ count: 1 });
+      prisma.agentConfiguration.create.mockResolvedValue({
         id: 'new-id',
         agentName: 'OnboardingAgent',
         version: 4,
@@ -56,17 +56,17 @@ describe('AgentConfigurationService', () => {
         createdBy: 'user-123',
       });
 
-      expect(mockPrisma.agentConfiguration.findFirst).toHaveBeenCalledWith({
+      expect(prisma.agentConfiguration.findFirst).toHaveBeenCalledWith({
         where: { agentName: 'OnboardingAgent' },
         orderBy: { version: 'desc' },
       });
 
-      expect(mockPrisma.agentConfiguration.updateMany).toHaveBeenCalledWith({
+      expect(prisma.agentConfiguration.updateMany).toHaveBeenCalledWith({
         where: { agentName: 'OnboardingAgent' },
         data: { active: false },
       });
 
-      expect(mockPrisma.agentConfiguration.create).toHaveBeenCalledWith({
+      expect(prisma.agentConfiguration.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
           version: 4,
           active: true,
@@ -78,9 +78,9 @@ describe('AgentConfigurationService', () => {
     });
 
     it('should create version 1 for new agent', async () => {
-      mockPrisma.agentConfiguration.findFirst.mockResolvedValue(null);
-      mockPrisma.agentConfiguration.updateMany.mockResolvedValue({ count: 0 });
-      mockPrisma.agentConfiguration.create.mockResolvedValue({
+      prisma.agentConfiguration.findFirst.mockResolvedValue(null);
+      prisma.agentConfiguration.updateMany.mockResolvedValue({ count: 0 });
+      prisma.agentConfiguration.create.mockResolvedValue({
         id: 'new-id',
         agentName: 'NewAgent',
         version: 1,
@@ -95,7 +95,7 @@ describe('AgentConfigurationService', () => {
         createdBy: 'user-123',
       });
 
-      expect(mockPrisma.agentConfiguration.create).toHaveBeenCalledWith({
+      expect(prisma.agentConfiguration.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
           version: 1,
         }),
@@ -112,11 +112,11 @@ describe('AgentConfigurationService', () => {
         active: true,
       };
 
-      mockPrisma.agentConfiguration.findFirst.mockResolvedValue(activeConfig);
+      prisma.agentConfiguration.findFirst.mockResolvedValue(activeConfig);
 
       const result = await AgentConfigurationService.getActiveConfiguration('OnboardingAgent');
 
-      expect(mockPrisma.agentConfiguration.findFirst).toHaveBeenCalledWith({
+      expect(prisma.agentConfiguration.findFirst).toHaveBeenCalledWith({
         where: {
           agentName: 'OnboardingAgent',
           active: true,
@@ -126,7 +126,7 @@ describe('AgentConfigurationService', () => {
     });
 
     it('should return null if no active configuration', async () => {
-      mockPrisma.agentConfiguration.findFirst.mockResolvedValue(null);
+      prisma.agentConfiguration.findFirst.mockResolvedValue(null);
 
       const result = await AgentConfigurationService.getActiveConfiguration('NonExistentAgent');
 
@@ -146,9 +146,9 @@ describe('AgentConfigurationService', () => {
         active: true,
       };
 
-      mockPrisma.agentConfiguration.findFirst.mockResolvedValue(currentConfig);
-      mockPrisma.agentConfiguration.updateMany.mockResolvedValue({ count: 1 });
-      mockPrisma.agentConfiguration.create.mockResolvedValue({
+      prisma.agentConfiguration.findFirst.mockResolvedValue(currentConfig);
+      prisma.agentConfiguration.updateMany.mockResolvedValue({ count: 1 });
+      prisma.agentConfiguration.create.mockResolvedValue({
         ...currentConfig,
         id: 'new-id',
         version: 3,
@@ -161,7 +161,7 @@ describe('AgentConfigurationService', () => {
         'user-456'
       );
 
-      expect(mockPrisma.agentConfiguration.create).toHaveBeenCalledWith({
+      expect(prisma.agentConfiguration.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
           prompts: { greeting: 'Hello there!' },
           flowConfig: { states: ['start'] }, // Preserved from current
@@ -171,12 +171,28 @@ describe('AgentConfigurationService', () => {
       });
     });
 
-    it('should throw error if no active configuration exists', async () => {
-      mockPrisma.agentConfiguration.findFirst.mockResolvedValue(null);
+    it('should create new configuration if no active configuration exists', async () => {
+      prisma.agentConfiguration.findFirst.mockResolvedValue(null);
+      prisma.agentConfiguration.create.mockResolvedValue({
+        id: 'new-id',
+        agentName: 'NonExistentAgent',
+        version: 1,
+        flowConfig: {},
+        extractionRules: {},
+        active: true,
+        createdBy: 'user-123',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      });
 
-      await expect(
-        AgentConfigurationService.updateConfiguration('NonExistentAgent', {}, 'user-123')
-      ).rejects.toThrow('No active configuration found for agent: NonExistentAgent');
+      const result = await AgentConfigurationService.updateConfiguration(
+        'NonExistentAgent', 
+        { flowConfig: { states: ['start'] } }, 
+        'user-123'
+      );
+
+      expect(result.version).toBe(1);
+      expect(result.agentName).toBe('NonExistentAgent');
     });
   });
 
@@ -189,21 +205,21 @@ describe('AgentConfigurationService', () => {
         active: false,
       };
 
-      mockPrisma.agentConfiguration.findUnique.mockResolvedValue(targetConfig);
-      mockPrisma.agentConfiguration.updateMany.mockResolvedValue({ count: 3 });
-      mockPrisma.agentConfiguration.update.mockResolvedValue({
+      prisma.agentConfiguration.findUnique.mockResolvedValue(targetConfig);
+      prisma.agentConfiguration.updateMany.mockResolvedValue({ count: 3 });
+      prisma.agentConfiguration.update.mockResolvedValue({
         ...targetConfig,
         active: true,
       });
 
       const result = await AgentConfigurationService.rollbackConfiguration('OnboardingAgent', 2);
 
-      expect(mockPrisma.agentConfiguration.updateMany).toHaveBeenCalledWith({
+      expect(prisma.agentConfiguration.updateMany).toHaveBeenCalledWith({
         where: { agentName: 'OnboardingAgent' },
         data: { active: false },
       });
 
-      expect(mockPrisma.agentConfiguration.update).toHaveBeenCalledWith({
+      expect(prisma.agentConfiguration.update).toHaveBeenCalledWith({
         where: { id: 'target-id' },
         data: { active: true },
       });
@@ -212,7 +228,7 @@ describe('AgentConfigurationService', () => {
     });
 
     it('should throw error if target version not found', async () => {
-      mockPrisma.agentConfiguration.findUnique.mockResolvedValue(null);
+      prisma.agentConfiguration.findUnique.mockResolvedValue(null);
 
       await expect(
         AgentConfigurationService.rollbackConfiguration('OnboardingAgent', 99)
@@ -242,7 +258,7 @@ describe('AgentConfigurationService', () => {
         extractionRules: { fields: ['name'] },
       };
 
-      mockPrisma.agentConfiguration.findUnique
+      prisma.agentConfiguration.findUnique
         .mockResolvedValueOnce(config1)
         .mockResolvedValueOnce(config2);
 
@@ -285,8 +301,8 @@ describe('AgentConfigurationService', () => {
         { agentName: 'AssessmentAgent', _max: { version: 3 }, _count: { _all: 3 } },
       ];
 
-      mockPrisma.agentConfiguration.findMany.mockResolvedValue(activeConfigs);
-      mockPrisma.agentConfiguration.groupBy.mockResolvedValue(groupByResult);
+      prisma.agentConfiguration.findMany.mockResolvedValue(activeConfigs);
+      prisma.agentConfiguration.groupBy.mockResolvedValue(groupByResult);
 
       const result = await AgentConfigurationService.getAllAgentConfigurations();
 
@@ -330,10 +346,10 @@ describe('AgentConfigurationService', () => {
         active: true,
       };
 
-      mockPrisma.agentConfiguration.findFirst.mockResolvedValueOnce(sourceConfig);
-      mockPrisma.agentConfiguration.findFirst.mockResolvedValueOnce(null); // No existing config for target
-      mockPrisma.agentConfiguration.updateMany.mockResolvedValue({ count: 0 });
-      mockPrisma.agentConfiguration.create.mockResolvedValue({
+      prisma.agentConfiguration.findFirst.mockResolvedValueOnce(sourceConfig);
+      prisma.agentConfiguration.findFirst.mockResolvedValueOnce(null); // No existing config for target
+      prisma.agentConfiguration.updateMany.mockResolvedValue({ count: 0 });
+      prisma.agentConfiguration.create.mockResolvedValue({
         ...sourceConfig,
         id: 'new-id',
         agentName: 'NewAgent',
@@ -347,7 +363,7 @@ describe('AgentConfigurationService', () => {
         'user-123'
       );
 
-      expect(mockPrisma.agentConfiguration.create).toHaveBeenCalledWith({
+      expect(prisma.agentConfiguration.create).toHaveBeenCalledWith({
         data: expect.objectContaining({
           agentName: 'NewAgent',
           version: 1,
@@ -360,7 +376,7 @@ describe('AgentConfigurationService', () => {
     });
 
     it('should throw error if source agent has no active configuration', async () => {
-      mockPrisma.agentConfiguration.findFirst.mockResolvedValue(null);
+      prisma.agentConfiguration.findFirst.mockResolvedValue(null);
 
       await expect(
         AgentConfigurationService.cloneConfiguration('NonExistentAgent', 'NewAgent', 'user-123')

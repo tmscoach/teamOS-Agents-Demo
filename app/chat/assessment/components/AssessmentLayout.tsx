@@ -5,30 +5,8 @@ import { ChatPanelWrapper } from './ChatPanelWrapper';
 import AssessmentViewer from './AssessmentViewer';
 import AssessmentSelector from './AssessmentSelector';
 import { Message } from 'ai';
+import { AssessmentSubscription, WorkflowState } from '../types';
 
-interface AssessmentSubscription {
-  subscriptionId: string;
-  workflowId: string;
-  workflowName: string;
-  assessmentType: string;
-  status: string;
-}
-
-interface WorkflowState {
-  subscriptionId: string;
-  workflowId: string;
-  currentPageId: number;
-  currentSectionId: number;
-  baseContentId: number;
-  questions: any[];
-  navigationInfo: any;
-  completionPercentage: number;
-  // Navigation tracking
-  nextPageId?: number | null;
-  nextSectionId?: number | null;
-  nextBaseContentId?: number | null;
-  pageDescription?: string;
-}
 
 interface AssessmentLayoutProps {
   messages: Message[];
@@ -45,6 +23,7 @@ interface AssessmentLayoutProps {
   onSubmitPage: () => void;
   onSectionChange: (section: string) => void;
   visibleSection: string;
+  isCompleting?: boolean;
 }
 
 export default function AssessmentLayout({
@@ -61,7 +40,8 @@ export default function AssessmentLayout({
   onAnswerChange,
   onSubmitPage,
   onSectionChange,
-  visibleSection
+  visibleSection,
+  isCompleting = false
 }: AssessmentLayoutProps) {
   const [chatExpanded, setChatExpanded] = useState(false);
 
@@ -97,6 +77,7 @@ export default function AssessmentLayout({
             currentAnswers={currentAnswers}
             onAnswerChange={onAnswerChange}
             onSubmitPage={onSubmitPage}
+            isCompleting={isCompleting}
           />
         )}
       </div>

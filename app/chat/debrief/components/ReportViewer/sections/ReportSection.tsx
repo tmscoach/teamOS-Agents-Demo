@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from 'react';
+import DOMPurify from 'dompurify';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { ReportSection as ReportSectionType } from '@/src/lib/utils/report-parser';
 
@@ -55,7 +56,7 @@ export default function ReportSection({ section, sectionNumber, isExpanded = tru
           {/* Render HTML content safely */}
           <div 
             className="tms-report-content prose prose-sm max-w-none"
-            dangerouslySetInnerHTML={{ __html: processedHtml }}
+            dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(processedHtml) }}
           />
         </div>
       )}

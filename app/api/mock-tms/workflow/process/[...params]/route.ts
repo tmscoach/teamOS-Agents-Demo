@@ -4,10 +4,11 @@ import { mockTMSClient } from '@/src/lib/mock-tms-api/mock-api-client';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { params: string[] } }
+  { params }: { params: Promise<{ params: string[] }> }
 ) {
   try {
-    const pathParams = params.params || [];
+    const resolvedParams = await params;
+    const pathParams = resolvedParams.params || [];
     
     // Build endpoint path
     const endpoint = `/Workflow/Process/${pathParams.join('/')}`;
@@ -18,12 +19,24 @@ export async function GET(
       depth: pathParams.length
     });
     
-    // Generate mock JWT
+    // Get the current user from mock data store
+    const { mockDataStore } = await import('@/src/lib/mock-tms-api/mock-data-store');
+    const currentUser = mockDataStore.getUserByEmail('facilitator@example.com');
+    
+    if (!currentUser) {
+      return NextResponse.json(
+        { error: 'User not found. Please ensure data is seeded.' },
+        { status: 401 }
+      );
+    }
+    
+    // Generate mock JWT with actual user data
     const jwt = mockTMSClient.generateJWT({
-      userId: 'user-123',
-      email: 'user@example.com',
-      userType: 'Respondent',
-      organisationId: 'org-123'
+      sub: currentUser.id,
+      userId: currentUser.id,
+      email: currentUser.email,
+      UserType: currentUser.userType,
+      organisationId: currentUser.organizationId
     });
     
     const response = await getWorkflowProcess({ endpoint, jwt });

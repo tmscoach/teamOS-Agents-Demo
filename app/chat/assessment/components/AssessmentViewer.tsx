@@ -2,32 +2,11 @@
 
 import React from 'react';
 import { DbHeader } from './DbHeader';
-import { Question } from './Question';
+import { QuestionRenderer } from './QuestionRenderer';
 import NavigationMenu from './NavigationMenu';
+import { ASSESSMENT_DISPLAY_NAMES, ASSESSMENT_DESCRIPTIONS } from '../constants';
+import { AssessmentSubscription, WorkflowState, WorkflowQuestion } from '../types';
 
-interface AssessmentSubscription {
-  subscriptionId: string;
-  workflowId: string;
-  workflowName: string;
-  assessmentType: string;
-  status: string;
-}
-
-interface WorkflowState {
-  subscriptionId: string;
-  workflowId: string;
-  currentPageId: number;
-  currentSectionId: number;
-  baseContentId: number;
-  questions: any[];
-  navigationInfo: any;
-  completionPercentage: number;
-  // Navigation tracking
-  nextPageId?: number | null;
-  nextSectionId?: number | null;
-  nextBaseContentId?: number | null;
-  pageDescription?: string;
-}
 
 interface AssessmentViewerProps {
   assessment: AssessmentSubscription;
@@ -35,6 +14,7 @@ interface AssessmentViewerProps {
   currentAnswers: Record<number, string>;
   onAnswerChange: (questionId: number, value: string) => void;
   onSubmitPage: () => void;
+  isCompleting?: boolean;
 }
 
 export default function AssessmentViewer({
@@ -42,11 +22,12 @@ export default function AssessmentViewer({
   workflowState,
   currentAnswers,
   onAnswerChange,
-  onSubmitPage
+  onSubmitPage,
+  isCompleting = false
 }: AssessmentViewerProps) {
   const allQuestionsAnswered = workflowState.questions
-    .filter(q => q.isRequired && q.isEnabled)
-    .every(q => currentAnswers[q.questionID]);
+    .filter((q: WorkflowQuestion) => (q.IsRequired || q.isRequired) && (q.IsEnabled !== false))
+    .every((q: WorkflowQuestion) => currentAnswers[q.QuestionID || q.questionID || 0]);
 
   const handleClose = () => {
     // Navigate back to dashboard or home
@@ -54,29 +35,11 @@ export default function AssessmentViewer({
   };
 
   const getAssessmentTitle = () => {
-    switch (assessment.assessmentType) {
-      case 'TMP':
-        return 'Team Management Profile';
-      case 'QO2':
-        return 'Opportunities-Obstacles Quotient';
-      case 'Team Signals':
-        return 'Team Signals Assessment';
-      default:
-        return `${assessment.assessmentType} Assessment`;
-    }
+    return ASSESSMENT_DISPLAY_NAMES[assessment.AssessmentType] || `${assessment.AssessmentType} Assessment`;
   };
 
   const getAssessmentDescription = () => {
-    switch (assessment.assessmentType) {
-      case 'TMP':
-        return 'Reveal work preferences and clarify how team roles impact organisational success.';
-      case 'QO2':
-        return 'Discover how you perceive opportunities and obstacles in your work environment.';
-      case 'Team Signals':
-        return 'Assess team dynamics and identify areas for improvement.';
-      default:
-        return `Complete your ${assessment.assessmentType} assessment`;
-    }
+    return ASSESSMENT_DESCRIPTIONS[assessment.AssessmentType] || `Complete your ${assessment.AssessmentType} assessment`;
   };
 
   return (
@@ -89,7 +52,7 @@ export default function AssessmentViewer({
         {/* Navigation sidebar */}
         <div className="w-[280px] flex-shrink-0">
           <NavigationMenu
-            assessmentType={assessment.assessmentType}
+            assessmentType={assessment.AssessmentType}
             currentPage={workflowState.currentPageId}
             totalPages={workflowState.navigationInfo?.totalPages || 12}
             completionPercentage={workflowState.completionPercentage}
@@ -107,15 +70,12 @@ export default function AssessmentViewer({
 
           {/* Questions */}
           <div className="flex flex-col gap-4">
-            {workflowState.questions.map((question) => (
-              <Question
-                key={question.questionID}
-                id={`q${question.questionID}`}
-                number={`Question ${question.description}`}
-                leftWord={question.statementA || ''}
-                rightWord={question.statementB || ''}
-                selectedValue={currentAnswers[question.questionID]}
-                onValueChange={(value) => onAnswerChange(question.questionID, value)}
+            {workflowState.questions.map((question: WorkflowQuestion) => (
+              <QuestionRenderer
+                key={question.QuestionID || question.questionID}
+                question={question}
+                value={currentAnswers[question.QuestionID || question.questionID]}
+                onValueChange={(value) => onAnswerChange(question.QuestionID || question.questionID, value)}
               />
             ))}
           </div>
@@ -123,10 +83,10 @@ export default function AssessmentViewer({
           {/* Submit button - matching Figma style */}
           <button
             onClick={onSubmitPage}
-            disabled={!allQuestionsAnswered}
+            disabled={!allQuestionsAnswered || isCompleting}
             className="self-start px-6 py-3 bg-zinc-900 text-white rounded-lg font-medium hover:bg-zinc-800 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
           >
-            Next
+            {isCompleting ? 'Completing...' : 'Next'}
           </button>
         </div>
       </div>

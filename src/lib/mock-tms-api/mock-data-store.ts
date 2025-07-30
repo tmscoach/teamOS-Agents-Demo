@@ -54,6 +54,7 @@ class MockDataStore {
   subscriptions: Map<string, MockSubscription> = new Map();
   tokenToUser: Map<string, string> = new Map();
   clerkIdToUser: Map<string, string> = new Map(); // Map Clerk IDs to user IDs
+  workflowStates: Map<string, any> = new Map(); // Store workflow states
 
   constructor() {
     // Don't initialize test data automatically - let seed endpoint handle it

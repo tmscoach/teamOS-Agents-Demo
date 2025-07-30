@@ -2,13 +2,20 @@
 
 import React from 'react';
 import { FileText, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { ASSESSMENT_COLORS } from '../constants';
 
 interface AssessmentSubscription {
-  subscriptionId: string;
-  workflowId: string;
-  workflowName: string;
-  assessmentType: string;
-  status: string;
+  SubscriptionID: number;
+  WorkflowID: number;
+  WorkflowType: string;
+  Status: string;
+  Progress: number;
+  AssignmentDate: string;
+  CompletionDate: string | null;
+  OrganisationID: number;
+  OrganisationName: string;
+  AssessmentType: string;
+  AssessmentStatus: string;
 }
 
 interface AssessmentSelectorProps {
@@ -19,11 +26,11 @@ interface AssessmentSelectorProps {
 export default function AssessmentSelector({ assessments, onSelect }: AssessmentSelectorProps) {
   const getStatusIcon = (status: string) => {
     switch (status) {
-      case 'completed':
+      case 'Completed':
         return <CheckCircle className="w-5 h-5 text-green-500" />;
-      case 'in_progress':
+      case 'In Progress':
         return <Clock className="w-5 h-5 text-yellow-500" />;
-      case 'not_started':
+      case 'Not Started':
         return <AlertCircle className="w-5 h-5 text-gray-400" />;
       default:
         return <FileText className="w-5 h-5 text-gray-400" />;
@@ -31,16 +38,7 @@ export default function AssessmentSelector({ assessments, onSelect }: Assessment
   };
 
   const getAssessmentColor = (type: string) => {
-    switch (type) {
-      case 'TMP':
-        return 'bg-blue-50 hover:bg-blue-100 border-blue-200';
-      case 'QO2':
-        return 'bg-green-50 hover:bg-green-100 border-green-200';
-      case 'Team Signals':
-        return 'bg-purple-50 hover:bg-purple-100 border-purple-200';
-      default:
-        return 'bg-gray-50 hover:bg-gray-100 border-gray-200';
-    }
+    return ASSESSMENT_COLORS[type] || 'bg-gray-50 hover:bg-gray-100 border-gray-200';
   };
 
   return (
@@ -57,38 +55,38 @@ export default function AssessmentSelector({ assessments, onSelect }: Assessment
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {assessments.map((assessment) => (
           <button
-            key={assessment.subscriptionId}
+            key={assessment.SubscriptionID}
             onClick={() => onSelect(assessment)}
             className={`p-6 rounded-lg border-2 transition-all ${getAssessmentColor(
-              assessment.assessmentType
+              assessment.AssessmentType
             )}`}
-            disabled={assessment.status === 'completed'}
+            disabled={assessment.Status === 'Completed'}
           >
             <div className="flex items-start justify-between mb-4">
               <FileText className="w-8 h-8 text-gray-600" />
-              {getStatusIcon(assessment.status)}
+              {getStatusIcon(assessment.Status)}
             </div>
             
             <h3 className="font-semibold text-lg text-gray-900 mb-1 text-left">
-              {assessment.assessmentType}
+              {assessment.AssessmentType}
             </h3>
             
             <p className="text-sm text-gray-600 mb-3 text-left">
-              {assessment.workflowName}
+              {assessment.WorkflowType}
             </p>
             
             <div className="flex items-center justify-between">
               <span className="text-xs text-gray-500">
-                ID: {assessment.subscriptionId}
+                ID: {assessment.SubscriptionID}
               </span>
               <span className={`text-xs font-medium px-2 py-1 rounded ${
-                assessment.status === 'completed'
+                assessment.Status === 'Completed'
                   ? 'bg-green-100 text-green-700'
-                  : assessment.status === 'in_progress'
+                  : assessment.Status === 'In Progress'
                   ? 'bg-yellow-100 text-yellow-700'
                   : 'bg-gray-100 text-gray-700'
               }`}>
-                {assessment.status.replace('_', ' ')}
+                {assessment.Status}
               </span>
             </div>
           </button>

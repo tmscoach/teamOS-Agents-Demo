@@ -5,31 +5,10 @@ import { useSearchParams } from 'next/navigation';
 import { useChat } from 'ai/react';
 import AssessmentLayout from './components/AssessmentLayout';
 import { Loader2 } from 'lucide-react';
+import { WORKFLOW_ID_MAP, TEMPLATE_ID_MAP, DEFAULT_DEBRIEF_AGENT } from './constants';
+import { AssessmentSubscription, WorkflowState, ToolInvocation } from './types';
 // Remove direct mock client import - we'll use API routes instead
 
-interface AssessmentSubscription {
-  subscriptionId: string;
-  workflowId: string;
-  workflowName: string;
-  assessmentType: string;
-  status: string;
-}
-
-interface WorkflowState {
-  subscriptionId: string;
-  workflowId: string;
-  currentPageId: number;
-  currentSectionId: number;
-  baseContentId: number;
-  questions: any[];
-  navigationInfo: any;
-  completionPercentage: number;
-  // Navigation tracking
-  nextPageId?: number | null;
-  nextSectionId?: number | null;
-  nextBaseContentId?: number | null;
-  pageDescription?: string;
-}
 
 export default function AssessmentChatClient() {
   const searchParams = useSearchParams();
@@ -45,6 +24,7 @@ export default function AssessmentChatClient() {
   const [visibleSection, setVisibleSection] = useState('assessment');
   const [conversationId, setConversationId] = useState<string | null>(null);
   const currentConversationIdRef = useRef<string | null>(null);
+  const [isCompleting, setIsCompleting] = useState(false);
 
   // Track answers for the current page
   const [currentAnswers, setCurrentAnswers] = useState<Record<number, string>>({});
@@ -79,7 +59,7 @@ export default function AssessmentChatClient() {
     onFinish(message) {
       // Process tool calls from the assistant's response
       if (message.toolInvocations) {
-        message.toolInvocations.forEach((invocation: any) => {
+        message.toolInvocations.forEach((invocation: ToolInvocation) => {
           if (invocation.state === 'result' && invocation.result?.action) {
             const action = invocation.result.action;
             
@@ -123,12 +103,21 @@ export default function AssessmentChatClient() {
             const data = await response.json();
             
             if (data.subscriptions) {
-              setAvailableAssessments(data.subscriptions);
+              console.log('Raw subscriptions from API:', data.subscriptions);
+              
+              // Filter for assessments that can be started
+              const startableAssessments = data.subscriptions.filter(
+                (sub: AssessmentSubscription) => 
+                  sub.Status === 'Not Started' || sub.Status === 'In Progress'
+              );
+              
+              console.log('Filtered startable assessments:', startableAssessments);
+              setAvailableAssessments(startableAssessments);
               
               // If assessment type specified, auto-select matching assessment
               if (assessmentType) {
-                const matching = data.subscriptions.find(
-                  (sub: AssessmentSubscription) => sub.assessmentType === assessmentType
+                const matching = startableAssessments.find(
+                  (sub: AssessmentSubscription) => sub.AssessmentType === assessmentType
                 );
                 if (matching) {
                   setSelectedAssessment(matching);
@@ -175,12 +164,14 @@ export default function AssessmentChatClient() {
 
   const startWorkflow = async (assessment: AssessmentSubscription) => {
     try {
+      // Use workflow ID map from constants
+      
       const response = await fetch('/api/mock-tms/start-workflow', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          workflowId: assessment.workflowId,
-          subscriptionId: assessment.subscriptionId
+          workflowId: WORKFLOW_ID_MAP[assessment.AssessmentType] || assessment.WorkflowType.toLowerCase().replace(' ', '-') + '-workflow',
+          subscriptionId: assessment.SubscriptionID.toString()
         })
       });
       
@@ -202,7 +193,7 @@ export default function AssessmentChatClient() {
             );
           } else {
             // Fallback: just get the initial workflow
-            await getWorkflowPage(assessment.subscriptionId);
+            await getWorkflowPage(assessment.SubscriptionID.toString());
           }
         }
       } else {
@@ -240,9 +231,17 @@ export default function AssessmentChatClient() {
       if (response.ok) {
         const data = await response.json();
         
+        console.log('Workflow API response:', data);
+        const questions = data.Questions || data.questions || [];
+        console.log('Questions received:', questions);
+        if (questions.length > 0) {
+          console.log('First question details:', questions[0]);
+          console.log('Question types:', questions.map(q => ({ id: q.questionID, type: q.type })));
+        }
+        
         setWorkflowState({
           subscriptionId,
-          workflowId: selectedAssessment?.workflowId || '',
+          workflowId: selectedAssessment?.WorkflowID?.toString() || selectedAssessment?.workflowId || '',
           currentPageId: data.PageID || data.pageId || pageId || 0,
           currentSectionId: data.CurrentSectionID || data.sectionId || sectionId || 0,
           baseContentId: data.BaseContentID || data.baseContentId || baseContentId || 0,
@@ -305,8 +304,19 @@ export default function AssessmentChatClient() {
         
         if (result.workflow_updated) {
           if (result.workflow_complete) {
-            // Assessment complete - generate report
-            await generateReport();
+            // Assessment complete - show success message before generating report
+            setIsCompleting(true);
+            
+            // Add completion message to chat
+            append({
+              role: 'assistant',
+              content: '🎉 Congratulations! You have completed the assessment. Generating your report...'
+            });
+            
+            // Give user time to see the message
+            setTimeout(async () => {
+              await generateReport();
+            }, 2000);
           } else if (result.workflow_advanced) {
             // Got next page data directly from the update response
             setWorkflowState({
@@ -348,37 +358,51 @@ export default function AssessmentChatClient() {
     if (!selectedAssessment) return;
     
     try {
-      // Map assessment type to template ID
-      const templateMap: Record<string, string> = {
-        'TMP': '6',
-        'QO2': '10',
-        'Team Signals': '2'
-      };
-      
-      const templateId = templateMap[selectedAssessment.assessmentType] || '6';
+      // Update chat with report generation status
+      append({
+        role: 'assistant',
+        content: '📊 Processing your responses and generating your personalized report...'
+      });
+      // Get template ID from constants
+      const templateId = TEMPLATE_ID_MAP[selectedAssessment.AssessmentType] || '6';
       
       const response = await fetch('/api/mock-tms/generate-report', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          subscriptionId: selectedAssessment.subscriptionId,
+          subscriptionId: selectedAssessment.SubscriptionID.toString(),
           templateId
         })
       });
       
       if (response.ok) {
         const data = await response.json();
-        // TODO: Handle report generation and transition to debrief
         console.log('Report generated:', data);
         
-        // Could redirect to debrief with the generated report
-        // window.location.href = `/chat/debrief?subscriptionId=${selectedAssessment.subscriptionId}`;
+        // Show final success message
+        append({
+          role: 'assistant',
+          content: '✅ Report generated successfully! Redirecting to your debrief session...'
+        });
+        
+        // Delay redirect to show success message
+        setTimeout(() => {
+          window.location.href = `/chat/debrief?agent=${DEFAULT_DEBRIEF_AGENT}&reportType=${selectedAssessment.AssessmentType}&subscriptionId=${selectedAssessment.SubscriptionID}&new=true`;
+        }, 1500);
       } else {
+        setIsCompleting(false);
         throw new Error('Failed to generate report');
       }
     } catch (err) {
       console.error('Error generating report:', err);
       setError(err instanceof Error ? err.message : 'Failed to generate report');
+      setIsCompleting(false);
+      
+      // Show error in chat
+      append({
+        role: 'assistant',
+        content: '❌ Sorry, there was an error generating your report. Please try again or contact support.'
+      });
     }
   };
 
@@ -422,6 +446,7 @@ export default function AssessmentChatClient() {
       onSubmitPage={submitCurrentPage}
       onSectionChange={setVisibleSection}
       visibleSection={visibleSection}
+      isCompleting={isCompleting}
     />
   );
 }
