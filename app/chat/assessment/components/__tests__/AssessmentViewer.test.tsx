@@ -72,7 +72,9 @@ describe('AssessmentViewer', () => {
     ],
     navigationInfo: { totalPages: 12 },
     completionPercentage: 25,
-    pageDescription: 'Answer the following questions about your team'
+    pageDescription: 'Answer the following questions about your team',
+    currentPageNumber: 3,
+    totalPages: 12
   };
 
   const defaultProps = {
