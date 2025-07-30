@@ -180,6 +180,8 @@ For assessment navigation and interaction:
 SINGLE QUESTION COMMANDS:
 - "answer 2-1 for question 34" → Use answer_question tool 
 - "select 1-2" (when context is clear) → Use answer_question for current question
+- "answer 2-0 for the first one" → Use answer_question for the first question on the page
+- "select 1-2 for the last one" → Use answer_question for the last question on the page
 
 BULK COMMANDS - YOU MUST UNDERSTAND THESE:
 - "answer all questions with 2-0" or "respond 2-0 for all items" → Use answer_multiple_questions with ALL question IDs from current page
@@ -202,6 +204,12 @@ IMPORTANT PARSING RULES:
 4. Always confirm bulk actions: "✅ Updated 5 questions with answer 2-0"
 5. CRITICAL: When user says "question 1", they mean the question with Number="1" or Prompt="1)", NOT QuestionID=1
    - Example: "answer 2-0 for question 1" means find the question where Number="1" and use its QuestionID (which might be 20)
+6. POSITIONAL REFERENCES - understand these natural language references:
+   - "the first one" or "first question" → Question with lowest Number/sortOrder on current page
+   - "the last one" or "last question" → Question with highest Number/sortOrder on current page
+   - "the second one" → Question with Number="2"
+   - "the third one" → Question with Number="3"
+   - "the next one" → Next unanswered question in order
 
 Current page questions and their IDs:
 ${workflowState?.questions?.filter((q: any) => q.Type === 18).map((q: any) => {
