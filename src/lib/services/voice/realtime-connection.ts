@@ -10,6 +10,7 @@ export class RealtimeConnectionManager {
   private audioQueue: Float32Array[] = [];
   private isPlaying = false;
   private nextStartTime = 0;
+  private isSpeaking = false;
   private workflowState: any = null;
   private onAnswerUpdate?: (questionId: number, value: string) => void;
   
@@ -276,7 +277,12 @@ IMPORTANT: Each question has an ID number shown in parentheses. Use this ID when
         // Convert base64 audio to playable format
         const audioData = this.base64ToAudioData(event.delta);
         this.queueAudioForPlayback(audioData);
-        this.config.onStateChange?.('speaking');
+        
+        // Only update state once when speaking starts
+        if (!this.isSpeaking) {
+          this.isSpeaking = true;
+          this.config.onStateChange?.('speaking');
+        }
       }
     });
 
@@ -284,7 +290,13 @@ IMPORTANT: Each question has an ID number shown in parentheses. Use this ID when
     this.rt.on('response.done', () => {
       // Reset audio timing for next response
       this.nextStartTime = 0;
-      this.config.onStateChange?.('ready');
+      this.isSpeaking = false;
+      // Wait a bit for audio to finish playing before changing state
+      setTimeout(() => {
+        if (!this.isSpeaking) {
+          this.config.onStateChange?.('ready');
+        }
+      }, 500);
     });
 
     // Handle errors
@@ -403,8 +415,11 @@ IMPORTANT: Each question has an ID number shown in parentheses. Use this ID when
     this.audioQueue.push(audioData);
     
     // Start playback after we have a small buffer to prevent stuttering
-    if (!this.isPlaying && this.audioQueue.length >= 2) {
-      this.playNextAudioChunk();
+    if (!this.isPlaying && this.audioQueue.length >= 3) {
+      // Small delay to ensure smooth start
+      setTimeout(() => {
+        this.playNextAudioChunk();
+      }, 50);
     }
   }
 
@@ -421,24 +436,40 @@ IMPORTANT: Each question has an ID number shown in parentheses. Use this ID when
     const audioBuffer = this.audioContext.createBuffer(1, audioData.length, 24000); // 24kHz mono
     audioBuffer.copyToChannel(audioData, 0);
     
-    // Create and connect audio source
+    // Create and connect audio source with gain for smooth transitions
+    const gainNode = this.audioContext.createGain();
     const source = this.audioContext.createBufferSource();
     source.buffer = audioBuffer;
-    source.connect(this.audioContext.destination);
+    source.connect(gainNode);
+    gainNode.connect(this.audioContext.destination);
     
     // Schedule audio playback for seamless streaming
     const currentTime = this.audioContext.currentTime;
-    const startTime = Math.max(currentTime, this.nextStartTime);
+    const startTime = Math.max(currentTime + 0.01, this.nextStartTime); // Small buffer for safety
+    
+    // Smooth fade in to prevent clicks
+    gainNode.gain.setValueAtTime(0.01, startTime);
+    gainNode.gain.exponentialRampToValueAtTime(1, startTime + 0.02);
     
     // Play the audio at the scheduled time
     source.start(startTime);
     
-    // Update next start time to create continuous playback
-    this.nextStartTime = startTime + audioBuffer.duration;
+    // Update next start time to create continuous playback with tiny overlap
+    this.nextStartTime = startTime + audioBuffer.duration - 0.005;
     
-    // Queue next chunk when this one finishes
+    // Queue next chunk before this one finishes
+    const preloadTime = Math.max(50, audioBuffer.duration * 1000 * 0.8);
+    setTimeout(() => {
+      if (this.audioQueue.length > 0) {
+        this.playNextAudioChunk();
+      }
+    }, preloadTime);
+    
+    // Handle when audio ends
     source.onended = () => {
-      this.playNextAudioChunk();
+      if (this.audioQueue.length === 0) {
+        this.isPlaying = false;
+      }
     };
   }
 
