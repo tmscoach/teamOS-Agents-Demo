@@ -31,6 +31,8 @@ export interface UseVoiceNavigationReturn {
   pauseVoice: () => Promise<void>;
   resumeVoice: () => Promise<void>;
   sendTextCommand: (text: string) => Promise<void>;
+  setWorkflowState: (state: any) => void;
+  setAnswerUpdateCallback: (callback: (questionId: number, value: string) => void) => void;
   
   // Helpers
   getContextualHelp: (questionType: string) => string[];
@@ -179,6 +181,18 @@ export function useVoiceNavigation(
     return voiceServiceRef.current.getContextualHelp(questionType);
   }, []);
 
+  const setWorkflowState = useCallback((state: any) => {
+    if (voiceServiceRef.current) {
+      voiceServiceRef.current.setWorkflowState(state);
+    }
+  }, []);
+
+  const setAnswerUpdateCallback = useCallback((callback: (questionId: number, value: string) => void) => {
+    if (voiceServiceRef.current) {
+      voiceServiceRef.current.setAnswerUpdateCallback(callback);
+    }
+  }, []);
+
   return {
     // State
     isListening: voiceState === 'listening',
@@ -194,6 +208,8 @@ export function useVoiceNavigation(
     pauseVoice,
     resumeVoice,
     sendTextCommand,
+    setWorkflowState,
+    setAnswerUpdateCallback,
     
     // Helpers
     getContextualHelp,

@@ -63,7 +63,9 @@ export default function AssessmentChatClient() {
     audioLevel,
     startVoice,
     stopVoice,
-    getContextualHelp
+    getContextualHelp,
+    setWorkflowState: setVoiceWorkflowState,
+    setAnswerUpdateCallback: setVoiceAnswerCallback
   } = useVoiceNavigation({
     onCommand: (command) => handleVoiceCommandRef.current?.(command),
     onTranscript: (text) => console.log('Voice transcript:', text),
@@ -691,9 +693,9 @@ export default function AssessmentChatClient() {
     
     try {
       // Set up the voice service with workflow state before starting
-      if (voiceServiceRef.current && workflowState) {
-        voiceServiceRef.current.setWorkflowState(workflowState);
-        voiceServiceRef.current.setAnswerUpdateCallback((questionId, value) => {
+      if (workflowState) {
+        setVoiceWorkflowState(workflowState);
+        setVoiceAnswerCallback((questionId, value) => {
           console.log(`Voice updated answer: Question ${questionId} = ${value}`);
           handleAnswerChange(questionId, value);
         });
@@ -709,7 +711,7 @@ export default function AssessmentChatClient() {
       console.error('Failed to start voice mode:', error);
       setVoiceModeEnabled(false);
     }
-  }, [startVoice, workflowState, handleAnswerChange]);
+  }, [startVoice, workflowState, handleAnswerChange, setVoiceWorkflowState, setVoiceAnswerCallback]);
   
   const handleVoicePermissionDeny = useCallback(() => {
     setShowVoicePermission(false);
