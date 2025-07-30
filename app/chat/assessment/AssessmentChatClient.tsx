@@ -68,7 +68,10 @@ export default function AssessmentChatClient() {
     setAnswerUpdateCallback: setVoiceAnswerCallback
   } = useVoiceNavigation({
     onCommand: (command) => handleVoiceCommandRef.current?.(command),
-    onTranscript: (text) => console.log('Voice transcript:', text),
+    onTranscript: (text) => {
+      console.log('Voice transcript:', text);
+      // Don't send voice transcripts to text chat - let the voice agent handle everything
+    },
     onError: (error) => {
       console.error('Voice error:', error);
       setError(error.message);
@@ -539,14 +542,10 @@ export default function AssessmentChatClient() {
   const handleVoiceCommand = useCallback((command: VoiceCommand) => {
     console.log('Voice command received:', command);
     
-    // For voice commands, we should send the raw transcript to the assessment agent
-    // The agent has its own natural language understanding and tools
-    if (command.type === 'unknown' && command.command) {
-      // Send the raw voice input as a user message to the assessment agent
-      append({
-        role: 'user',
-        content: command.command
-      });
+    // In voice mode, the OpenAI Realtime API handles all conversations
+    // We only need to handle specific UI actions, not send transcripts to text chat
+    if (command.type === 'unknown') {
+      // Let the voice agent handle unknown commands - don't send to text chat
       return;
     }
     
@@ -556,40 +555,26 @@ export default function AssessmentChatClient() {
         if (command.parameters?.target === 'next') {
           submitCurrentPage();
         } else if (command.parameters?.target === 'previous') {
-          // Send to agent to handle
-          append({
-            role: 'user',
-            content: 'Go to the previous page'
-          });
+          // Voice agent handles navigation - don't send to text chat
+          console.log('Voice navigation: previous page requested');
         } else if (command.parameters?.target === 'skip') {
-          // Send to agent to handle
-          append({
-            role: 'user',
-            content: 'Skip this question'
-          });
+          // Voice agent handles skipping - don't send to text chat
+          console.log('Voice navigation: skip requested');
         }
         break;
         
       case 'answer':
         if (command.parameters?.value && workflowState) {
-          // Instead of handling directly, send to the agent
-          // This allows the agent to use its tools properly
-          const value = command.parameters.value;
-          append({
-            role: 'user',
-            content: `Answer ${value}`
-          });
+          // Voice agent handles answers - don't send to text chat
+          console.log('Voice answer:', command.parameters.value);
         }
         break;
         
       case 'action':
         switch (command.parameters?.target) {
           case 'repeat':
-            // Send to agent
-            append({
-              role: 'user',
-              content: 'Repeat the current question'
-            });
+            // Voice agent handles repeat - don't send to text chat
+            console.log('Voice action: repeat requested');
             break;
             
           case 'help':
@@ -599,12 +584,11 @@ export default function AssessmentChatClient() {
           case 'exitVoice':
             stopVoiceRef.current?.();
             setVoiceModeEnabled(false);
-            const exitMessage = 'Voice mode disabled. You can type your responses.';
+            const exitMessage = '🔇 Voice mode disabled. You can now type your responses in the chat.';
             append({
               role: 'assistant',
               content: exitMessage
             });
-            speakTextHelper(exitMessage);
             break;
         }
         break;
@@ -664,7 +648,11 @@ export default function AssessmentChatClient() {
       setVoiceModeEnabled(true);
       
       // The Realtime API will now start the conversation automatically
-      // No need to send a message to the chat
+      // Add a system message to indicate voice mode is active
+      append({
+        role: 'assistant',
+        content: '🎤 Voice mode activated! I\'m now listening and will guide you through the assessment using voice. You can speak naturally - just tell me your answers or ask questions.'
+      });
     } catch (error) {
       console.error('Failed to start voice mode:', error);
       setVoiceModeEnabled(false);
