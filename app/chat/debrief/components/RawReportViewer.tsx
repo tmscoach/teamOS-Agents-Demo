@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useMemo, memo } from 'react';
+import DOMPurify from 'dompurify';
 
 interface RawReportViewerProps {
   html: string;
@@ -10,18 +11,15 @@ interface RawReportViewerProps {
 const RawReportViewer = memo(function RawReportViewer({ html, onSectionChange }: RawReportViewerProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Sanitize HTML to remove problematic onclick handlers
+  // Sanitize HTML using DOMPurify
   const sanitizedHtml = useMemo(() => {
-    // Remove onclick handlers that reference undefined variables
-    let cleaned = html.replace(/onclick="javascript:returnLocation\([^)]+\)"/g, '');
-    
-    // Also remove any inline scripts that might cause errors
-    cleaned = cleaned.replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '');
-    
-    // Remove any remaining onclick attributes to be safe
-    cleaned = cleaned.replace(/onclick="[^"]*"/gi, '');
-    
-    return cleaned;
+    return DOMPurify.sanitize(html, {
+      // Allow all HTML tags but remove dangerous attributes
+      FORBID_ATTR: ['onclick', 'onload', 'onerror'],
+      FORBID_TAGS: ['script', 'style'],
+      // Keep classes and IDs for styling
+      ALLOWED_ATTR: ['class', 'id', 'href', 'src', 'alt', 'title', 'data-*']
+    });
   }, [html]);
 
   useEffect(() => {

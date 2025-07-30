@@ -99,10 +99,10 @@ export async function POST() {
       workflowId: 'tmp-workflow',
       workflowName: 'Team Management Profile',
       assessmentType: 'TMP' as const,
-      status: 'completed' as const,  // Changed to completed for debrief
-      completionPercentage: 100,
+      status: 'not_started' as const,  // Changed to not_started for assessment
+      completionPercentage: 0,
       assignedDate: new Date('2024-01-15'),
-      completedDate: new Date('2024-01-16'),
+      completedDate: undefined,
       baseContentId: 3,
       currentPageId: 2
     };

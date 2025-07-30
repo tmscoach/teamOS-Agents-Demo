@@ -244,7 +244,7 @@ export async function POST(request: NextRequest) {
       if (workPrefSection?.content) {
         const matches = Array.from(workPrefSection.content.matchAll(/(\w+)(\d+)%/g));
         for (const match of matches) {
-          extractedWorkPrefs[match[1]] = match[2];
+          extractedWorkPrefs[(match as RegExpMatchArray)[1]] = (match as RegExpMatchArray)[2];
         }
       }
       

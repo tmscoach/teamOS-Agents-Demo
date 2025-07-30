@@ -1,51 +1,58 @@
 #!/usr/bin/env tsx
 /**
- * Check wheel images in the vision report
+ * Check wheel image vision data
  */
 
 import prisma from '@/lib/db';
 
 async function checkWheelVision() {
   try {
-    // Get all images from the vision report
     const images = await prisma.reportImage.findMany({
       where: {
-        reportId: 'e293b36e-f9e5-4e16-a2ef-a6454d01bf6a'
+        reportId: 'd4749667-229c-41e1-a24c-33ff2df3c80b',
+        OR: [
+          { altText: { contains: 'preference', mode: 'insensitive' } },
+          { detailedDescription: { contains: 'preference', mode: 'insensitive' } }
+        ]
       },
-      orderBy: { createdAt: 'asc' }
+      select: {
+        imageType: true,
+        altText: true,
+        detailedDescription: true,
+        extractedData: true
+      }
     });
     
-    console.log(`Total images in vision report: ${images.length}\n`);
+    console.log('Found images with "preference":', images.length);
     
-    images.forEach((img, idx) => {
-      console.log(`${idx + 1}. ${img.imageType.toUpperCase()}`);
-      console.log('   Alt text:', img.altText?.substring(0, 60) + '...');
-      console.log('   Has vision description:', !!img.detailedDescription);
-      console.log('   Has extracted data:', !!img.extractedData);
-      console.log('   Has insights:', img.insights?.length || 0);
-      
-      if (img.imageType === 'wheel' && img.detailedDescription) {
-        console.log('   Vision description preview:', img.detailedDescription.substring(0, 100) + '...');
+    for (const img of images) {
+      console.log('\n--- Image ---');
+      console.log('Type:', img.imageType);
+      console.log('Alt:', img.altText);
+      console.log('Description:', img.detailedDescription?.substring(0, 200) + '...');
+      if (img.extractedData) {
+        console.log('Data:', JSON.stringify(img.extractedData, null, 2).substring(0, 300) + '...');
       }
-      
-      if (img.imageType === 'wheel' && img.extractedData) {
-        const data = img.extractedData as any;
-        console.log('   Extracted sectors:', data.sectors?.length || 0);
+    }
+    
+    // Also check for "Work Preference Distribution" specifically
+    console.log('\n\n=== Checking for "Work Preference Distribution" ===');
+    const workPrefImages = await prisma.reportImage.findMany({
+      where: {
+        reportId: 'd4749667-229c-41e1-a24c-33ff2df3c80b',
+        OR: [
+          { altText: { contains: 'Work Preference Distribution', mode: 'insensitive' } },
+          { detailedDescription: { contains: 'Work Preference Distribution', mode: 'insensitive' } }
+        ]
+      },
+      select: {
+        imageType: true,
+        altText: true,
+        detailedDescription: true
       }
-      
-      console.log('');
     });
     
-    // Count wheels with and without vision
-    const wheelsWithVision = images.filter(img => 
-      img.imageType === 'wheel' && img.detailedDescription
-    ).length;
-    
-    const totalWheels = images.filter(img => img.imageType === 'wheel').length;
-    
-    console.log(`\nSummary:`);
-    console.log(`- Total wheels: ${totalWheels}`);
-    console.log(`- Wheels with vision analysis: ${wheelsWithVision}`);
+    console.log('Found images with "Work Preference Distribution":', workPrefImages.length);
     
   } catch (error) {
     console.error('Error:', error);

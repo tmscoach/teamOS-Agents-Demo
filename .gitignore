@@ -83,3 +83,4 @@ scratchpads/
 
 # clerk configuration (can include secrets)
 /.clerk/
+pdf-env/

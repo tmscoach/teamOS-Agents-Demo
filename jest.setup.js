@@ -27,7 +27,14 @@ jest.mock('@/lib/db/prisma', () => ({
     },
     agentConfiguration: {
       findFirst: jest.fn(),
+      findMany: jest.fn(),
+      findUnique: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      updateMany: jest.fn(),
+      groupBy: jest.fn(),
     },
+    $connect: jest.fn(),
     $disconnect: jest.fn(),
   }
 }))
@@ -58,7 +65,14 @@ jest.mock('@/lib/generated/prisma', () => ({
     },
     agentConfiguration: {
       findFirst: jest.fn(),
+      findMany: jest.fn(),
+      findUnique: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      updateMany: jest.fn(),
+      groupBy: jest.fn(),
     },
+    $connect: jest.fn(),
     $disconnect: jest.fn(),
   }))
 }))
@@ -90,7 +104,14 @@ jest.mock('@/lib/db', () => ({
     },
     agentConfiguration: {
       findFirst: jest.fn(),
+      findMany: jest.fn(),
+      findUnique: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      updateMany: jest.fn(),
+      groupBy: jest.fn(),
     },
+    $connect: jest.fn(),
     $disconnect: jest.fn(),
   }
 }))

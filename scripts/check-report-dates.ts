@@ -1,50 +1,58 @@
 #!/usr/bin/env tsx
 /**
- * Check report creation dates
+ * Check report dates and content
  */
 
 import prisma from '@/lib/db';
 
 async function checkReportDates() {
   try {
-    const reports = await prisma.userReport.findMany({
+    // Check all images for report d4749667-229c-41e1-a24c-33ff2df3c80b
+    const allImages = await prisma.reportImage.findMany({
       where: {
-        userId: 'cmcujg1nf0000smqd9rtnrfcp',
-        subscriptionId: '21989',
-        processingStatus: 'COMPLETED'
+        reportId: 'd4749667-229c-41e1-a24c-33ff2df3c80b'
       },
-      orderBy: { createdAt: 'desc' },
       select: {
-        id: true,
-        createdAt: true,
-        ReportImage: {
-          select: {
-            detailedDescription: true
-          },
-          take: 1
-        }
+        imageType: true,
+        altText: true,
+        detailedDescription: true
       },
-      take: 5
-    });
-    
-    console.log('=== COMPLETED REPORTS (newest first) ===\n');
-    
-    reports.forEach((report, idx) => {
-      const hasVision = report.ReportImage.some(img => img.detailedDescription !== null);
-      console.log(`${idx + 1}. ${report.id}`);
-      console.log(`   Created: ${report.createdAt}`);
-      console.log(`   Has vision: ${hasVision ? 'YES' : 'NO'}`);
-      if (report.id === 'e293b36e-f9e5-4e16-a2ef-a6454d01bf6a') {
-        console.log('   ⭐ THIS IS THE VISION REPORT');
+      orderBy: {
+        createdAt: 'asc'
       }
-      console.log('');
     });
     
-    // Find position of vision report
-    const visionReportPosition = reports.findIndex(r => r.id === 'e293b36e-f9e5-4e16-a2ef-a6454d01bf6a');
-    if (visionReportPosition !== -1) {
-      console.log(`The vision report is at position ${visionReportPosition + 1} (${visionReportPosition === 0 ? 'NEWEST' : 'NOT newest'})`);
-    }
+    console.log('Total images in report:', allImages.length);
+    console.log('\n--- All Images ---');
+    
+    allImages.forEach((img, idx) => {
+      console.log(`\n[${idx + 1}] ${img.imageType}`);
+      console.log('Alt:', img.altText || 'N/A');
+      const desc = img.detailedDescription || 'N/A';
+      console.log('Description preview:', desc.substring(0, 100) + (desc.length > 100 ? '...' : ''));
+    });
+    
+    // Check for "distribution" in any field
+    console.log('\n\n=== Checking for "distribution" ===');
+    const distImages = await prisma.reportImage.findMany({
+      where: {
+        reportId: 'd4749667-229c-41e1-a24c-33ff2df3c80b',
+        OR: [
+          { altText: { contains: 'distribution', mode: 'insensitive' } },
+          { detailedDescription: { contains: 'distribution', mode: 'insensitive' } }
+        ]
+      },
+      select: {
+        imageType: true,
+        altText: true,
+        detailedDescription: true
+      }
+    });
+    
+    console.log('Found images with "distribution":', distImages.length);
+    distImages.forEach(img => {
+      console.log(`\n- ${img.imageType}: ${img.altText}`);
+    });
     
   } catch (error) {
     console.error('Error:', error);

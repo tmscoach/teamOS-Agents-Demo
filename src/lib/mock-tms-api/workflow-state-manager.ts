@@ -9,6 +9,7 @@ import {
   getAssessmentByWorkflow,
   ASSESSMENT_DEFINITIONS 
 } from './assessment-definitions';
+import { mockDataStore } from './mock-data-store';
 
 export interface WorkflowState {
   subscriptionId: string;
@@ -40,7 +41,6 @@ export interface NavigationInfo {
 
 export class WorkflowStateManager {
   private static instance: WorkflowStateManager;
-  private workflowStates: Map<string, WorkflowState> = new Map();
 
   private constructor() {}
 
@@ -49,6 +49,11 @@ export class WorkflowStateManager {
       WorkflowStateManager.instance = new WorkflowStateManager();
     }
     return WorkflowStateManager.instance;
+  }
+
+  // Use mockDataStore for persistence across API calls
+  private get workflowStates(): Map<string, WorkflowState> {
+    return mockDataStore.workflowStates as Map<string, WorkflowState>;
   }
 
   /**

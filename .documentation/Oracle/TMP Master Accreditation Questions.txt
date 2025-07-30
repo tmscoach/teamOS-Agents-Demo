@@ -1,0 +1,375 @@
+How many different	profiles are  there?
+
+There are 208 possible combinations of text with 26 different profile combinations in each sector of the Wheel.
+
+There are 32 separate core profiles which define the text from the start of the section headed up 'Work Preferences' up to and including the 'Key Points of Note'.
+
+16 of these core profiles are written for the case 'when the E or I net score is greater than 8 and 16 are written for the case when the E or I net score is 8 or under.
+
+These core profiles are then appended with a number of related role files as follows.
+
+Case A)	The 16 core profiles with E or I scores greater than 8:
+
+Here there are seven different related role text files that can be appended to each of the 16 core profiles, giving 112 possible profile combinations.
+
+Consider for example an EPAS core profile.	Related roles are calculated by varying the two lowest scores, provided one of these is 8 or under. In all there are 6 different permutations of varying the four letters two at a time. The seventh variation comes for the case when all four scores are greater than 8. This is the case when related roles have little meaning and the output indicates in general terms the significance of the related roles. Related roles have most significance when the scores are under 8.
+
+Case B)	The 16 core profiles with E or I scores 8 or less:
+
+Here there are only 6 possible permutations of varying two letters at a time as the seventh variation - all scores over 8 will not occur as by definition all these core profiles have an E or I score less than 8. So for this situation there are 6 x 16 = 96 profile variations.
+
+So in all there are 112 + 96 profile combinations ie 208 in all.
+
+What does the Norm Data Indicate?
+
+The 'Norm Data' shows how the respondent's 'net scores' compare with other managers who have completed the TMP. These data are based on a sample of managers worldwide. Over 50,000 managers have now completed TMP's and data are becoming available from countries all over the world. However the distributions may well be different if we were to use data from only one country. For example we would expect there to be more extroverted	managers in the USA by comparison to South East Asia so a data base representing the USA or South East Asia only, could significantly change the figures. We have taken a policy decision to only provide global norms in the standard TMP software but local norm data (eg French norms) are available from the relevant country distributor.
+
+In the case of the E-I and P-C constructs the average score is roughly the mid-point of the the scales, ie with a net score of around zero then about 50% of the data base have a higher 'E' score and 50% have a higher'I' score. Similarly for the P-C scale.
+
+In the case of the A-B scale there is a strong tendency for respondents to indicate a preference for the 'analytical' end of the construct rather than the 'Beliefs' end. Approximately 70% of respondents are 'analytical' and 30% are beliefs-based. This reflects the bias many organisations have for 'analytical' decision­ makers.
+
+In the case of the S-F scale 60% of respondents have a preference for 'structure' and 40% show a preference for flexible organisation. Again the bias of organisations towards structured organisation is indicated.
+
+Therefore in the case of the A-Band S-F scales it is quite possible for a greater percentage of people to be more analytical than you even though you may have a net score on the analytical side. For example if you had a net score of A=7 you would find that 69.1% of the data base was more analytical than you and 30.9% was more beliefs-based. Some people find this confusing as they expect that with a score on the analytical side then there should be more than 50% who were more beliefs-oriented than them.
+This, of course, is only the case for a non-skewed distribution. The median score for the A-B dimension is A=13 and for the S-F dimension it is S=S. At these points 50% of the data base have a higher score and 50% have a lower score.
+
+The report on page 2 of the profile always selects a percentage value less than 50% and it always reports on the "more" side.
+Examples:
+
+Score of E=9	- 23.5% of managers are more extroverted than you Score of 1=3	 - 44.1 % of managers are more introverted than you Score of A=lS - 41.5% of managers are more analytical than you
+Score of A=S	- 23.1% of managers are more beliefs-oriented than you.
+
+My TMP net scores are quite low - what does this mean? 
+
+Occasionally you will find someone who has fairly even preferences on all of the work preference measures. As an example, consider a person with the following scores: 
+
+RAW SCORES: E 18, I 14 -> NetScore: E4
+RAW SCORES: P 21, C 16 -> NetScore: P5
+RAW SCORES: A 22, B 19 -> NetScore: A3
+RAW SCORES: S 20, F 18 -> NetScore: S2
+
+Thus the person has an overall score as Thruster􀀕Organiser (EPAS) but notice that the scores are relatively 'undifferentiated'. Because the raw scores are close together then it might be possible for them to change their preferences, and maybe even their behaviours, quite easily. 
+
+Although the Related Roles are EPAF (Assessor-Developer) and EPES (Concluder-Producer) it is possible for this person, with a slight switch in preference, to move into any part of the Team Management Wheel. It is unlikely though, that he or she would change all preferences simultaneously. However by changing just two preferences simultaneously it would be possible for them to move into different sectors of the Wheel. For example varying the two lowest scores simultaneously would give the EPBF (Reporter Adviser) sector as a possible related role, followed by IPAF (Controller-Inspector) - if the 'E' and 'S' are varied simultaneously. 
+
+When scores such as these arise there are a number of possible interpretations. The person may: 
+
+•	genuinely have balanced preferences and be able to change them in a mature way to suit the occasion; 
+•	be in a state where they are not sure what their preferences really are and swing according to the mood of the moment;
+•	be in a situation that is causing change and they are seeking to clarify what their preferences are.
+
+It is likely that those with undifferentiated preferences will probably have the greatest doubt about their profile and this should not be a surprise to them. They will possibly say, 
+
+Sometimes I prefer to be this way and sometimes I don't". This reflects either their mature understanding of their preferences or the fact that they have no stable preferences and fluctuate according to the moment. 
+
+Our psychometric data assures us that the probability of many undifferentiated scores is low. If it were high then our Cronbach alpha coefficients on the constructs would be low and the TMP instrument would be virtually unusable. 
+
+If you have a participant with undifferentiated scores who is unsure whether the profile is 'accurate', then explain the situation to them and ask them to assess which roles they think describe them best. After discussion ask them if they would like to complete another profile, this time reflecting carefully on the answers to each question. 
+
+Why did I get a similar profile to my colleague, even though we scored differently? 
+
+As there are only 208 different profile combinations then those people who score similarly will get similar profiles. 
+
+Consider these examples; 
+
+Person A scores E 12 P9 A 10 S 11 
+Person B scores E 20 P 21 A 28 S24 
+
+In this case identical profiles will be received by the two people as once all the scores are over 8 then the profiles do not discriminate and similar text will be output. This is because our research has shown that any score greater than 7 is considered to be 'moderately' strong . In designing the output text we concentrated on writing different profiles to cover the areas where there was greatest uncertainty ie where the scores were 8 or under. Once all scores are over 8 we consider them to be sufficiently strong to warrant the same output. In other words we do not differentiate between the scores of person A and person B but consider them both to be strong 'Thruster-Organisers'. 
+
+As another example consider the scores of: 
+
+Person A 16 P 8 A 12 F 9 
+Person B 19 P 12 A 8 F 3 
+
+Here both people are 'Controller-Inspectors' but they will receive significantly different profiles. Person A will receive a core IPAF profile with a low 'I' text and to that will be appended a related role text for low I's and low P's - the two lowest scores. 
+
+Person B will receive a core IP AF profile with a high 'I' text as the net I score is greater than 8. In addition there will be a different related role text appended as the two lowest scores here are on the A and the F. Although the scores may seem closer together than in the first example there is actually a greater difference as with low scores there is a significant probability that the person could be nearly equally strong in another sector eg Assessor­Developer in the case of Person A or Concluder-Producer, in the case of Person B. Therefore the profiles are written to describe this uncertainty. 
+
+In general if people receive an absolutely identical profile it is because they have scored the TMP fairly similarly. In the first example above it may seem that the scores are widely different but our probability data (see the TMP Research Manual) indicates that the profiles are actually quite close. For both of these people we can say they are definitely in the Thruster-Organiser sector.
+
+I have Major and Related Roles which cover three parts of the Wheel- Does that mean I am no good in the other areas?
+
+The three sectors indicate the areas of your preferences - simply what you like doing best. You can work in the other sectors effectively if you put effort into it, but you may not enjoy that work as much as your preference areas.
+
+The Team Management Index measures preferences - not skills. For example you may have a preference for the Creator­ Innovator, Explorer-Promoter and Assessor-Developer sectors. However you may have had training as an Accountant or a Computer-Programmer or some other function which is detailed­ oriented, and can therefore work very effectively in say, in the Controller-Inspector sector even though it may not be your preference. However usually we find that such 'playing out of position' is OK provided there is a limit to the amount of work involved. Controller-Inspector work for an Explorer-Promoter can be tolerated so long as it is temporary. If it becomes a major part of the job then the person concerned is doing a lot of what they 'don't like' and this may affect their commitment to the job with possible stress and dissatisfaction ocurring, leading to loss of performance.
+
+Usually we find that people perform better in those areas which match their preference. This is the Law of the three P's. We tend to Practise what we Prefer and therefore become more Proficient in the area of our preferences. Work which is outside our preferences often gets put to one side or given a lower priority so that our performance in these areas is frequently not as good as our performance in our 'preference' areas.
+Our research has shown that on average people look to a two­ thirds overlap between what they like to do (their preferences) and what they have to do (their job). If the overlap is less than this then they may need to consider how their job or perhaps their preferences could be changed.
+
+It is possible for people to 'stretch' themselves around the Wheel so that they can learn to effectively cover many areas. This is necessary in small businesses where there are usually only one or two people involved. However where possible, managers should look towards assigning work so that everyone in the team is concentrating on areas that match their preference. In this way the eight work functions which are necessary to good team performance are collectively covered by all the team members.
+
+Are multi-preference teams	ie 'balanced	teams' always successful	?
+
+The Team Management Wheel indicates the roles that have to be concentrated upon in a team if that team is to be successful. If
+the team is composed of members who between themselves cover the Wheel in terms of preferences, then it is known as a 'multi­ preference' or 'balanced' team. This means that all of the eight work functions are likely to be covered by the team members, as in general, people tend to concentrate on areas of work that match their preferences.
+However with multi-preference teams 'linking' is often extremely difficult. A Creator-Innovator, for example, often sees a problem, opportunity or project differently to a Concluder-Producer who may well have a different viewpoint to an Assesor-Developer and so on. So one of the 'hallmarks' of a balanced team is that incipient conflict is always present. Provided this potential conflict is recognised and everyone goes out of their way to be a good linker then the team can be highly successful.	However to link together such a team requires outstanding linking skills and therefore many teams that are balanced will not be as effective as they might , due to the lack of linking.
+
+In the Accreditation workshop you will have the opportunity to show participants the problems of linking a balanced team if you conduct the Task Force Composition Exercise. Here you can form balanced teams and after the exercise ask the groups to comment on the problems they faced. Often they will report problems which relate to the lack of linking in the group.
+
+My team is unbalanced and there is nothing we can do to change the members. Does that mean we are doomed to failure?
+
+If teams are unbalanced it does not mean that they are 'no good'. We have worked with many teams who have been 'unbalanced', and yet they have been outstanding. In most cases they were aware of the problems of 'imbalance' and as a team, moved to counteract any potential problems that might have occurred. To be forewarned is to be forearmed seems to work in most cases.
+
+One team we worked with was in the Production area and had all its managers in the Controller-Inspector, Concluder-Producer and Thruster-Organiser sectors. This was the major focus of their work- bringing out high-quality products on time and to budget. However they realised that they were under-represented in the Adviser-Explorer area and therefore were not likely to put much effort into this area unless they 'forced' themselves to do so. As a result of discovering their imbalance they implemented two-day 'off-site meetings twice a year, where they 'put on their green and yellow hats' and focused on all the improvements and changes that could be made to their operations. To help them do this they hired a facilitator whose preference was strongly Creator­ Innovator. So the facilitator in effect became a de facto	member of the team and therefore helped balance it up.
+
+This process of 'balancing' is widely used now in many organisations working in the Production area, particularly in the USA. They use what is called the Shamrock approach to management ie there are three important 'leaves' to their management tree. They use a core group of managers to run the factories and these are highly focussed individuals usually with strong preferences in the areas of Controller-Inspector, Concluder­ Producer and Thruster-Organiser. The second 'lear is the high use of temporary labour which 'comes' and 'goes' according to the demands of the business .	The third leaf of the shamrock is the extensive use of part-time consultants who are de facto members of the management team. Many have preferences in the Exploring part of the Team Management Wheel and are frequently given contracts, for a number of days a year days a year, to come in with new ideas and challenge the conventional thinking of the core management group.
+
+Another team - a Systems Support group- covered, in terms of preferences, all areas of the Wheel except the Explorer-Promoter area. They had arranged a Team Management workshop because they were in danger of having their budget 'cut' by 30%. When we explored the issue, the reason for the proposed' cut' seemed to be that no one in the organisation knew what it was that this team really did. The problem was that no one had put any effort into Promoting the team to other teams in the organisation. When they realised they had a 'gap', they were able to move quickly to 'plug' it. They arranged weekly 'discovery' seminars for other Departments to find out about what they could offer in the way of services and they also produced a monthly newsletter 'promoting' their efforts. In a few months they were able to solve the problem, simply by taking a higher profile. Mapping their team to discover the 'imbalance' helped them to put more effort into those areas which had been neglected simply because it was no one's preference.
+
+Other teams have balanced themselves by 'cross linking'. One team (see Team Development Manual) had all its members in the Explorer-Promoter, Assessor-Developer and Thruster-Organiser areas and was able to achieve balance by linking itselfbetter to the Central Support Unit which had a bias towards the Advising­ Controlling area of the Wheel. By re-drawing the boundaries to cover two teams and not just one they succeeded in gaining balance. Both teams had their own leader but by concentrating on 'linking' the performance of both teams improved greatly. They managed to put in place the two pre-requisite criteria for high performance - all areas of the Wheel being covered and outstanding 'linking'.
+
+Does the work that I do	affect or alter my preferences in any	way?
+
+The short answer to this question is 'yes'. We develop our preferences as we grow up and these are influenced by our families and our peers. When we start work we have a set of preferences relating to the way we like to get the work done.
+
+In the perfect world our preferences drive our intentions (what we intend to do) and our personal plans and these in turn have an influence upon our behaviour (what we actually do). Our behaviour is, of course, influenced by other things such as skills, opportunities, resources etc but in the 'ideal' world preferences will drive our behaviour.
+
+PREFERENCES
+     ↓
+INTENTIONS/ PERSONAL PLANS
+     ↓
+BEHAVIOUR
+
+However our behaviour is often influenced by the 'expectations of others'. In the work environment the 'expectations' are usually those of senior management or even the 'corporate culture' that has been developed, defining 'the way we do things around here'. Many organisations have what we would call an "AS" culture (analytical and structured) in terms of the work preference measures. The rewards eg promotion are often given to hose people who conform to the organisational expectations. As a
+result it doesn't take the young ambitious executive long to realise that behaving in an 'AS' way leads to rewards. As a result he or she starts to show modified behaviour which reflects the expectations of the organisation.
+
+PREFERENCES
+     /
+INTENTIONS/ PERSONAL PLANS
+     /
+BEHAVIOUR
+     \
+EXPECTATIONS OF OTHERS
+eg Organisational Expectations or Organisational Culture
+     \
+      MODIFIED BEHAVIOUR
+
+The more we do something and get rewarded for it, the more we like it. As a result, in time, our preferences will be affected by our modified behaviour and therefore they will often change in line with organisational expectations. However the change is slow and may take many months or even years and can be represented by a slow 'feedback loop' in the diagram below.
+
+If a person's preferences are strongly different to the organisational expectations eg BF rather than AS then the person may well be quite stressed until they learn to adapt to the new environment. Some people though, never adapt and prefer to change jobs so that their expectations are more in line with their preferences.
+
+PREFERENCES
+     /
+INTENTIONS/ PERSONAL PLANS
+     /
+BEHAVIOUR
+     \
+EXPECTATIONS OF OTHERS
+eg Organisational Expectations or Organisational Culture
+     \
+      MODIFIED BEHAVIOUR
+low Feedback Loop
+
+I scored strongly on the "Practical Side"; does this mean I am	not	creative?
+
+This question is often asked at workshops - both accreditation workshops and other Team Management events.
+
+The first thing to note is that the P-C construct relates only to the way we prefer to gather and use information - not to 'creativity' which is a different concept. Someone with a strong preference for the practical side of the construct prefers to work with information that relates to the 'here and now', rather than concentrate on the world of ideas and the future - which is what the creative end of the construct is measuring. Even though their preference is to concentrate on 'practical things' there will be times, of course, when they concentrate on thinking up ideas- we all do it. This is why we plot on page one of the profile a range of scores, and this show that most people's preferences cover the creative side of the continuum as well as the practical side. It is important to point this out to the person asking the question.
+
+The other thing to note is that the instrument is measuring 'preferences'- not skills. So it is possible that a person could be very skilled in both the practical side and the creative side of the construct but simply has a preference to focus on the practical side. However when they focus on the creative side they can come up with really good ideas.
+
+Some people confuse the 'creative' end of the construct with creativity and see a score strongly on the 'P' side as meaning they have no creativity. THIS IS NOT THE CASE. Everyone has creativity but it is often manifested in different ways, depending upon the individual's preference.
+
+In terms of the work preference measures we can define four different types of creativity related to the combination of the 'Information' and 'Organisation' constructs. These types of creativity are referrred to as CF, CS, PF and	PS creativity.
+CF Creativity
+
+This type of creativity refers to the generation of ideas in a brainstorming way, with one idea leading to another. Because of the preference for Flexible organisation these people tend to be 'divergers', with one idea sparking off another. These people often exhibit their creativity by coming up with unusal, sometimes 'wayout' ideas.
+
+CS Creativity
+
+This type of creativity is shown by people whose focus is on the future, often with a clear vision of what they want to happen.
+However, unlike the CF people who will diverge from the 'vision' to explore all possible alternatives, the CS people will move to turn their ideas into reality, often having a structured plan for implementation. Their creativity is manifested in their preference for turning the future into the present in a planned way.
+PF	Creativity
+
+This creativity is often showed by people who have a strong focus on the 'here and now' but who like to experiment with ways of refining and improving things. People who enjoy 'do-it-yourselr­ activities often show a preference outside of work for the PF combination. The home handy-person who spends weekend after weekend renovating the home often exhibits this PF creativity.
+For example they may know twenty different ways to 'dovetail a joint' and have painstakingly experimented over long hours to find the 'best' way. Artisans who make their own clothes, or patchwork quilters sometimes also show this type of creativity. It focuses on the present but involves gathering lots of information in a way that allows them to refinine and experiment with ways of improving the finished tangible product.
+PS	Creativity
+
+People with this combination prefer to focus on practical solutions and will often establish systems to make sure that 'answers' are delivered in the most effective and efficient manner. The PS combination mainly covers the Concluder-Producer sector of the Wheel, as well as the Thruster-Organiser and Controller-Inspector segments. Their creativity is often shown though the structures they set up to make sure that results are delivered as and when they should be.
+
+Why do	the work preference constructs map onto the Types of Work model in the way that they do?	For example why aren't the E and	C 'ends' at the bottom instead of the	top?
+
+The development of the Team Management Wheel was a continuous iteration between the testing of the four work preference scales for orthogonality and alpha coefficients, and the establishment of a relation between scores on the constructs and the Types of Work model.
+
+In the development of the model we asked people to fill in a questionnaire which ranked the work functions (Advising, Innovating, Promoting, Developing, Organising, Producing, Inspecting and Maintaining) in order of their preference. At the same time we asked them to complete the Team Management Index. After many trials we discovered that those people who had preference combinations of ECAF and	ECBS most often had Promoting at the top of their preference list. Likewise those people with IPAF and	IPBS combinations had Inspecting at the top of their list.
+Those people with EPAS and ICAS combinations most often nominated Organising as their main work preference and those with ICBF and	EPBF combinations preferred advising-type work.
+
+So the constructs appear on the Team Management Wheel as a result of empirical observations and analysis of the data. 'Promoters' usually had a preference for extroversion and Inspectors had a preference for introversion. 'Innovators' had a 'C' preference and 'Producers' had a 'P' preference and so on.
+
+The results of one study relating the work preference measures to the Types of Work model appear in Section 6.3.2 of the TMP Research Manual
+
+What should I say if people ask about the research background	to the TMP?
+
+The first thing to say is that you are not an expert on psychometrics and all the relevant statistics have been published in the TMP, TWI and LSI Manuals. You should refer people to these manuals and ask them to read them in detail, if they require more information.
+
+However you should be prepared to give a quick overview as many people will ask for a summary of the more important points. Below are the areas you should concentrate upon.
+
+When devising a multiple-scale instrument where the scales are defined a priori it is important to establish that the scales are independent of one another. If they are not, then in the case of the TMP, we would not have four scales but maybe only three, or two or even one. It is generally accepted these days that four or five scales are needed to give an accurate picture of people characteristics.
+In Section 3.1 of the Research Manual intercorrelations are given for each of the four scales, for a sample of 275 respondents. This analysis has been done many times on much larger samples on both English and foreign versions of the TMP, and the results are always similar.
+
+If a correlation coefficient is 1 then two variables are perfectly correlated; if the coefficient is 0 then there is no correlation. For psychometric instruments of this type correlation coefficients below about 0.4 are generally considered to describe independence of the scales, or 'orthogonality'.
+
+You will see from the table that all coefficients, in absolute terms, are less than 0.4 and so the instrument can be considered to have four independent scales.
+
+Also of interest in Table I of Section 3.1 are the means of the scales. These will vary depending upon where the sample is drawn from but we have noticed consistently a bias towards the Analytical end of the A-B constructs and towards the Structured end of the S-F construct. This tends to reflect the bias in many organisations towards a preference for 'AS' type managers.
+
+It is also worth showing Table III of Section 3 or Figure 3 if you prefer 'pictures.  This data shows the distribution of roles around the Team Management Wheel for a sample of 3737 managers. This analysis has been done many times on much larger samples and similar results have always been obtained.
+
+The data shows that 67% of managers map into the four 'AS' roles of outer Assessor-Developer, outer Thruster-Organiser, inner Thruster-Organiser and outer Concluder-Producer - again reflecting the bias in the managerial world towards 'AS' type managers. Of interest is the low number of managers in the Reporter-Adviser and Upholder-Maintainer sectors. Often these people do not seek managerial roles or when they do, they go on a career journey and their preferences are moved as a result of organisational expectations - ie they leave behind their BF preferences and move into AS territory.
+
+It is also important to explain internal reliability and you should make sure you understand what is meant by the alpha coefficient. It is explained very well in Section 5.0 of the TMP Research Manual. The alpha coefficient is usually greater than 0.75 on all versions of the TMP (including foreign language versions) and most often it is greater than 0.8 on all scales.
+
+Table VII of Section 5.2 is also worth pointing out as it explains why related roles are so significant when the scores are low.
+Taking the E-I scale as an example you can see that when the net E or I score is greater than 13 we can be 95% confident that the person is more extroverted than introverted. Likewise if the net score is greater than 13 we can be 95% sure that the person is more introverted than extroverted. So a score of 13 or above is regarded as a strong score.
+
+When the E or I score is 7 we are at the 2:1 or 66% confidence level. In general we consider a score between 8 and 12 as being moderately strong.
+
+It is in the range of E < 7 or I< 7 that we are not very confident whether a person might be extroverted or introverted. Most likely they will show both aspects at various times - sometimes they are called ambiverts. It is in this 'grey' area of less than 7 that related roles have particular meaning as the related roles can be nearly as strong as the major role.
+
+Extrovert                                                                                Introvert
+30          13              7                     0             7               13               30
+<--------------------------------------------------------------------------------------------->
+Strong Scores       Moderate Scores       Weak Scores       Moderate Scores       Strong Scores
+
+It is also important to talk about temporal stability and this is shown in Table VIII of Section 5.2. If we administered the TMP to someone today and they came out as an Explorer-Promoter and then we asked them to do it tomorrow and they came out as a Controller-Inspector and next week they were a Thruster­ Organiser we would be a bit worried as to whether the TMP was measuring anything worthwhile at all. This is why it is important to measure stability of the TMP over time.
+
+Table VII shows that 96% of a sample of 44 managers either had no change in any of the four work preference measures or at the worst a change on only one of the dimensions, when they were 'tested' six to seven months later. This study has been done several times on larger samples and similar results are always obtained. In the short term we would expect very little change but in the longer term many people could change significantly as they undergo a career journey.
+The only other section of the TMP Manual that should be included in any overview of the TMP research base is the Occupational Profile data shown from Figures 5 to 14. These compare role distributions of sub-samples with the whole sample and a chi­ square test is performed to show whether there is a significantly different distribution between the sub-sample and the total sample.
+
+For example, Figure 5 compares the role distributions of 104 Chairmen, Directors and Proprietors with the distribution across the whole 3737 managers whose results were analysed. In the whole sample there are 14.1% of managers with an ECAS profile but in the 104 Chairmen, Directors and Proprietors sub-sample there are 26% of managers in the ECAS sector. This is a significant difference and is therefore marked in black. It most likely reflects a preference in many organisations for ECAS-type leaders
+- people who will have a vision, extrovert it and then drive endlessly (AS) to make it a reality.
+
+Any area marked in black represents a significant over­ representation of that sub-sector in the sub-sample, and any area marked white indicates an under-representation. It is worthwhile picking out a few of the diagrams that interest you and showing them to the group.
+
+
+What  is  the	difference  between  the  TMP  and	the	MBTI?
+
+There is a considerable difference between the two instruments.
+
+The MBTI and the TMP have similar constructs as they are derived from the work of Carl Jung who characterised people from empirical observations of the patients with whom he worked. Jung defined the attitudes of Extroversion and Introversion and two functions of Sensing-Intuition and Thinking-Feeling. Implicit in his work also were the characteristics of Judging and Perceiving. However Jung did not specifically relate his measures to the work situation. Katharine Briggs and her daughter Isobel Briggs-Myers used the four Jungian functions to develop a questionnaire to measure a person's 'Type' according to the four Jungian Functions. These functions are often abbreviated as E-I, S-N, T-F and J-P. The commonly-used Form G of the "Myers-Briggs Type Indicator" has 126 questions measuring these four constructs. The MBTI characterises a person as a 'Type' eg INTP and asks questions which mix up the work and non-work situation. As an example question 90 of the MBTI form G is:
+
+When you are at a party, do you like to
+A) help get things going, or
+B) let the others have fun in their own way
+
+Question 87 is:
+Would you rather work under someone who is
+A) always kind, or
+B) always fair?
+
+In summary the MBTI is a generalised instrument with generalised feedback giving people an indication of an 'average' type. It was not specifically designed for use with managers and supervisors or for team management applications.
+
+The TMP is based on an adaptation of Jung's constructs specifically to the work situation. The four constructs were redefined into ones which have more meaning as far as work is concerned. The constructs are known as the work preference measures of Extroversion-Introversion, Practical-Creative, Analytical-Beliefs and Structured-Flexible. These constructs are each defined by 15 questions which make up the 60- item TMP. The scales are independent with intercorrelation coefficients below 0.35, and alpha coefficients are above 0.75.
+
+How do the instruments compare?
+
+Many people have asked whether they would score similarly if they completed both the TMP and the MBTI at the same time ie if they were INTP on the MBTI would they come out as ICAF as the major role on the TMP.
+
+In order to test this situation we have administered the MBTI and the TMP simultaneously to the same population and calculated the cross correlations between all constructs. The results for a group of 88 respondents are shown below, in the form of a multi-trait, multi-method matrix.
+
+E-I
+P-C -41
+A-B -20 -30
+S-F -18 46 27
+
+E-I 62 -05 10 04 03
+S-N -30 67 21 28 03
+T-F -11 20 56 14 08 38.
+J-P -36 42 12 27 13 51 31
+
+E-I P-C A-B S-F E-I S-N T-F J-P
+
+Looking at the matrix you will notice that the correlation between the J-P scale of the MBTI and the S-F scale of the TMP is only 0.27. In general for instruments of this type if scales are correlated below the 0.4 level they are considered to be independent or "orthogonal". Therefore we can conclude that there is no relationship between the S-F scale of the TMP and the J-P scale of the MBTI.
+
+We interviewed a large sample of the 88 respondents to ascertain why they may have responded differently to the two instruments. On the S-F/ J-P scale many of them explained the difference as work-non work behaviour. They indicated that outside work they may well be 'P' in terms of the MBTI but at work they were far more 'S' as they had learned over the years that they achieved better outcomes at work by being more structured. So 'S' had become their work preference whereas 'P' was their non-work preference. When you look at the question base to the MBTI you will notice that it is biased to the non-work situation and most people are recording their responses to such situations.
+
+The T-F and A-B scales are also very interesting. There is a 31 percent shared variance between the two scales indicating that there is some overlap, but importantly there is also a significant difference - ie 69% of the variance is not shared. Some of this can be explained by random error but importantly there is a large amount of unexplained variance. This 'unexplained' variance becomes easier to understand if we look in detail at what the T-F scale measures.
+
+Recently David Saunders (of 16PF fame) and Scott Golden (long time friend of the Myers family) have spent many hours examining the base of the MBTI by analysing responses to thousands and thousands of MBTI questions. They have produced further versions of the MBTI - the Expanded Analysis Report (EAR) and the Type Differentiation Indicator (TDI). In the EAR they have been able to break down the four Jungian functions into 25 subscales and the report is given on these sub-scales.
+
+When we examine the sub-scale for the T-F construct we see that the Feeling scale, as defined by the MBTI item pool can be broken bown into the five sub-scales of:
+
+- Accepting
+- Tender
+- Accommodating
+- Affective
+- Compassionate
+
+Now the TMP Beliefs scale will measure all of these characteristics and people who may well be 'F' on the MBTI are likely to be 'B' on the TMP. However the Beliefs scale is more than 'humanitarian' beliefs - it measures internal values and principles and these are not always necessarily 'humanitarian'. Adolf Hitler, for example, would have scored strongly on 'Beliefs' with the TMP but may well have been 'T' on the MBTI, as the sub-scales under the 'Thinking" dimension include the characteristics of being 'critical' and 'tough'. So the large unexplained variance on this construct is likely to be due to different item pools defining the A-B construct differently to the T-F construct.
+
+On the P-C and	E-1 constructs the shared variance is around 40%, again indicating some overlap between the constructs. However there is still some unexplained variance (60% including random error) and this we believe is due to the differences between the work and non-work situation.
+
+We have frequently noticed that managers are more extroverted at work and less extroverted	outside work and this is likely to explain the variance on the E-1 dimension. Managers who start off their career being more introverted in their relationships often begin a journey which moves their work preference to the extroverted side of the E-1 continuum. Management training programs, for example, encourage participants to 'manage by wandering around, to run team briefing meetings, to be 'available' etc - all of these encourage a personal development process which changes the work preference. The non-work preference, however, often remains on the introverted side as the manager seeks a balance in his/her life between the work demands and the non­ work demands.
+
+How does the Team Management Wheel compare with Belbin's	model?
+
+Meredith Belbin and his co-workers developed a model of team roles based on their observations of managers and the behaviours they exhibit in various work groups. The research was based originally upon participants at management training courses at Henley-on-Thames. Belbin has identified nine 'Team Roles':
+
+Resource Investigator Innovator
+Shaper
+Co-ordinator Monitor-Evaluator Implementer Completer-Finisher Team Worker Specialist
+
+Depending upon the team an individual may take on different roles- perhaps a shaper in one team and maybe an implementer in another. The model gives a language to explain the sociology of a team.
+
+The Team Management Wheel extends the sociological approach further by showing that the roles people play in teams actually depend upon their preferences. Whilst an individual may be able to take on many roles there are only a few that match their preferences. An understanding of these preferred roles is essential if the team is to be optimally managed.
+
+The Team Management Wheel is based on what we call a socio­ psychological approach to team management. The psychological approach to team work involves understanding individual preferences and developing ways of predicting how individual behaviour will impact on the outputs of the team. The sociological approach involves understanding the tasks and roles that are necessary in the team to ensure that the work is delivered, and then managing the team according to the assigned roles. The socio-psychological approach combines these two by assigning roles in the team according to individual preferences and then linking the roles together into a coherent whole. The different approaches can be summarised in the diagram below:
+
+PSYCHOLOGICAL APPROACH
+     |
+     Individual Differences
+     |
+     Who am I?
+     |
+     Jungian and Other Theories
+     |
+     Myers-Briggs Type Indicator
+
+SOCIO-PSYCHOLOGICAL APPROACH
+     |
+     Individual Role Preferences
+     |
+     What do I like to do?
+     |
+     Psychological and Sociological Theories
+     |
+     Margerison-McCann Team Management Wheel
+
+SOCIOLOGICAL APPROACH
+     |
+     Role Differences
+     |
+     What role should I have?
+     |
+     Belbin and other Other Theories
+     |
+     Measures of Role Structure
+
+The roles on the Belbin model do show some overlap with the Team Management Wheel although the correlation is not strong. As an example the Creator-Innovator role on the Team Management Wheel has as its nearest equivalent the Innovator role on the Belbin model. However the Innovator role was originally called the Plant and referred to a person with a high IQ who in the original research was 'planted' into a discussion group to seed in new ideas and change the direction of the thinking. The Team Management Wheel of course, only measures preferences and not ability.
+
+If you are asked a question about the Belbin model and how it maps onto the Team Management Wheel it is best to process the answer by asking 'who in the group has used Belbin'. Then ask them to suggest what the nearest equivalent roles on the Team Management Wheel are. 
+
+People enjoy this exercise as it tests their knowledge of the Wheel'. The Belbin roles don't fit exactly but if you have a knowledge of both Belbin and TMS you will be able to indicate the similarities and differences. Please contact the authors if you require any more information here.
+
+My TWI/TMP match is less than 50% - what does it mean?
+
+You are bound to get questions from people who have a TMP/TWI match which is below average. Often the concern is that it means 'I am no good at my job'. You must strongly emphasise that THIS IS NOT THE CASE.
+
+The TMP/1WI match is matching preferences to the critical job demands. The 'norm' data indicates that an average match is about two-thirds. This means that 'on average' people are managing things so that there is a two-thirds overlap between what they like to do and what they have to do.
+
+If there is a low match it simply means that people may be doing a lot of work that is not currently their preference. We had on a workshop recently one participant with a 20% overlap between his job and his preferences. His job was heavily weighted in the Organising, Producing and Inspecting sectors whereas his preferences clearly were for Advising, Innovating and Promoting. We were worried prior to the course how he would react to the data. However when he received the data he was quite pleased.
+It turned out that he had been in Human Resources for 12 years and had developed a strong preference for the Creator- Innovator/Explorer-Promoter role - like many other Human Resource professionals. However recently he had decided that in order to get higher in the organisation he would have to move 'sideways' into a line function and then he might be able to move up two or three levels beyond where he was now.
+
+The new job was 'foreign' to him and well outside his preferences. What the TMP/TWI match did was show him that the next six to twelve months for him was likely to be very stressful as he was going to be doing a lots of things he didn't like. He recognised this and with the TWI profile we could sit down and help him draw up a learning plan to develop skills in the critical areas of the job.
+Often when people become skilled in an area they enjoy it more, and over time it helps them change their preferences as they go on a career journey.
+
+In summary the TWI/TMP match is a diagnostic tool to let people see how much of the job matches their preferences. What they do next is very much a personal choice. The options are:
+
+1) Do nothing because they enjoy their job
+
+2) Re-design the job so that it accords more with their preferences
+
+3) Start a career journey	by moving their preferences to match the demands of the job
+
+4) Do a little of 2) and a little of 3)

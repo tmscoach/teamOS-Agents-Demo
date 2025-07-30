@@ -106,15 +106,15 @@ export class QuestionGenerator {
 
     // Add organization question on first page
     if (pageNumber === 1) {
-      questions.push({
+      questions.unshift({
         ID: 0,
         QuestionID: 1041,
         IsForm: false,
         Description: "Organisation",
-        Prompt: "Please enter your organisation name:",
+        Prompt: "Organisation name (optional):",
         Number: "",
         Index: 0,
-        SortOrder: 100,
+        SortOrder: -1, // Make it appear first
         IsEnabled: true,
         AllowMultipleSelections: false,
         ForceUpperCase: false,
@@ -123,7 +123,7 @@ export class QuestionGenerator {
         AnswerMultiple: [],
         AnswerString: "",
         Validation: "||||Text|False",
-        IsRequired: true,
+        IsRequired: false, // Make it optional
         AllowNegative: false,
         KeepWithNext: false,
         KeepWithNextItemised: false,
