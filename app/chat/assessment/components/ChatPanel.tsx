@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Oscar1 } from "./Oscar1";
 import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 
@@ -8,10 +8,39 @@ interface ChatPanelProps {
   className?: string;
 }
 
+interface Position {
+  x: number;
+  y: number;
+}
+
+const STORAGE_KEY = 'chat-panel-position';
+
 export function ChatPanel({ className = "" }: ChatPanelProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [messages, setMessages] = useState<Array<{ id: string; text: string; sender: "user" | "osmos" }>>([]);
   const [inputValue, setInputValue] = useState("");
+  const [position, setPosition] = useState<Position>({ x: 24, y: 24 });
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Load saved position on mount
+  useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        const savedPosition = JSON.parse(saved);
+        setPosition(savedPosition);
+      } catch (e) {
+        console.error('Failed to parse saved position:', e);
+      }
+    }
+  }, []);
+
+  // Save position to localStorage
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(position));
+  }, [position]);
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,6 +66,53 @@ export function ChatPanel({ className = "" }: ChatPanelProps) {
       setMessages(prev => [...prev, osmosMessage]);
     }, 800);
   };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    // Don't start drag if clicking the button itself
+    if ((e.target as HTMLElement).closest('button')) {
+      return;
+    }
+    
+    setIsDragging(true);
+    setDragStart({
+      x: e.clientX - position.x,
+      y: e.clientY - position.y
+    });
+    e.preventDefault();
+  };
+
+  const handleMouseMove = (e: MouseEvent) => {
+    if (!isDragging) return;
+
+    const newX = e.clientX - dragStart.x;
+    const newY = e.clientY - dragStart.y;
+
+    // Keep within viewport bounds
+    const maxX = window.innerWidth - (containerRef.current?.offsetWidth || 200);
+    const maxY = window.innerHeight - (containerRef.current?.offsetHeight || 60);
+
+    setPosition({
+      x: Math.max(0, Math.min(newX, maxX)),
+      y: Math.max(0, Math.min(newY, maxY))
+    });
+  };
+
+  const handleMouseUp = () => {
+    setIsDragging(false);
+  };
+
+  // Add global mouse event listeners
+  useEffect(() => {
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [isDragging, dragStart]);
 
   const generateResponse = (input: string): string => {
     const lower = input.toLowerCase();
@@ -76,18 +152,24 @@ export function ChatPanel({ className = "" }: ChatPanelProps) {
     // Minimized state - floating button at bottom left
     return (
       <div 
-        className={`fixed bottom-6 left-6 z-50 ${className}`}
+        ref={containerRef}
+        className={`fixed z-50 ${isDragging ? 'cursor-grabbing' : 'cursor-grab'} ${className}`}
+        style={{
+          left: `${position.x}px`,
+          bottom: `${position.y}px`,
+        }}
+        onMouseDown={handleMouseDown}
       >
         <button
           onClick={() => setIsExpanded(true)}
-          className="flex items-center gap-3 px-4 py-3 bg-white rounded-lg border border-gray-200 shadow-lg hover:shadow-xl transition-all duration-200 group backdrop-blur-sm"
+          className="flex items-center gap-3 px-4 py-3 bg-white rounded-lg border border-gray-200 shadow-lg hover:shadow-xl transition-all duration-200 group backdrop-blur-sm cursor-default"
         >
           <div className="relative">
             <Oscar1 className="!w-6 !h-6" />
             <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-pulse" />
           </div>
           <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900">
-            Ask OSmos about your questionnaire
+            Ask Oskar about your profile
           </span>
           <ChevronRightIcon className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
         </button>
