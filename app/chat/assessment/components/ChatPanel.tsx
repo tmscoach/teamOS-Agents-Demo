@@ -160,19 +160,19 @@ export function ChatPanel({ className = "" }: ChatPanelProps) {
         }}
         onMouseDown={handleMouseDown}
       >
-        <button
-          onClick={() => setIsExpanded(true)}
-          className="flex items-center gap-3 px-4 py-3 bg-white rounded-lg border border-gray-200 shadow-lg hover:shadow-xl transition-all duration-200 group backdrop-blur-sm cursor-default"
-        >
-          <div className="relative">
+        <div className="relative">
+          <input
+            type="text"
+            placeholder="Ask Oskar about your profile"
+            onClick={() => setIsExpanded(true)}
+            readOnly
+            className="w-[300px] px-4 py-3 pl-12 pr-10 bg-white rounded-lg border border-gray-300 shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer text-sm placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+          />
+          <div className="absolute left-3 top-1/2 -translate-y-1/2">
             <Oscar1 className="!w-6 !h-6" />
-            <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-pulse" />
           </div>
-          <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900">
-            Ask Oskar about your profile
-          </span>
-          <ChevronRightIcon className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
-        </button>
+          <ChevronRightIcon className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        </div>
       </div>
     );
   }

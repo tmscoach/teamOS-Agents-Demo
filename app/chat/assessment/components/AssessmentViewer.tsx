@@ -3,7 +3,7 @@
 import React from 'react';
 import { DbHeader } from './DbHeader';
 import { QuestionRenderer } from './QuestionRenderer';
-import NavigationMenu from './NavigationMenu';
+// Removed NavigationMenu import - using inline progress bar instead
 import { ASSESSMENT_DISPLAY_NAMES, ASSESSMENT_DESCRIPTIONS } from '../constants';
 import { AssessmentSubscription, WorkflowState, WorkflowQuestion } from '../types';
 
@@ -51,25 +51,36 @@ export default function AssessmentViewer({
       <DbHeader onClose={handleClose} />
 
       {/* Main content area with fixed header offset */}
-      <div className="flex items-start gap-8 px-10 pt-[140px] pb-10">
-        {/* Navigation sidebar */}
-        <div className="w-[280px] flex-shrink-0">
-          <NavigationMenu
-            assessmentType={assessment.AssessmentType}
-            currentPage={workflowState.currentPageNumber || 1}
-            totalPages={workflowState.totalPages || workflowState.navigationInfo?.totalPages || 12}
-            completionPercentage={workflowState.completionPercentage}
-          />
+      <div className="flex flex-col px-10 pt-[140px] pb-10 max-w-4xl mx-auto w-full">
+        {/* Progress bar section */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-2">
+            <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden mr-4">
+              <div
+                className="h-full bg-blue-500 transition-all duration-300"
+                style={{ width: `${(((workflowState.currentPageNumber || 1) - 1) / ((workflowState.totalPages || 12) - 1)) * 100}%` }}
+              />
+            </div>
+            <span className="text-sm text-gray-600 whitespace-nowrap">
+              Page {workflowState.currentPageNumber || 1} of {workflowState.totalPages || 12}
+            </span>
+          </div>
+          
+          {/* Instructions */}
+          <div className="mt-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Which word in each pair bests describes you?
+            </h3>
+            <ul className="text-sm text-gray-600 space-y-1">
+              <li>• If you definitely prefer the statement on the left, select 2-0</li>
+              <li>• If you definitely prefer the statement on the right, select 0-2</li>
+              <li>• If you find it difficult to decide which statement you prefer, select 2-1 or 1-2 to the left or right of the preferred statement</li>
+            </ul>
+          </div>
         </div>
 
         {/* Questions area */}
-        <div className="flex-1 flex flex-col gap-6">
-          {/* Page description if available */}
-          {workflowState.pageDescription && (
-            <p className="text-lg font-medium text-gray-800 mb-2">
-              {workflowState.pageDescription}
-            </p>
-          )}
+        <div className="flex flex-col gap-6">
 
           {/* Questions */}
           <div className="flex flex-col gap-4">
