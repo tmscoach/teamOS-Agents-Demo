@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Oscar1 } from "./Oscar1";
 import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 
@@ -8,39 +8,53 @@ interface ChatPanelProps {
   className?: string;
 }
 
-interface Position {
-  x: number;
-  y: number;
-}
-
-const STORAGE_KEY = 'chat-panel-position';
-
 export function ChatPanel({ className = "" }: ChatPanelProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [messages, setMessages] = useState<Array<{ id: string; text: string; sender: "user" | "osmos" }>>([]);
   const [inputValue, setInputValue] = useState("");
-  const [position, setPosition] = useState<Position>({ x: 24, y: 24 });
+  const [position, setPosition] = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const containerRef = useRef<HTMLDivElement>(null);
+  const dragRef = useRef<HTMLDivElement>(null);
+  const initialPos = useRef({ x: 0, y: 0 });
+  const dragStart = useRef({ x: 0, y: 0 });
 
-  // Load saved position on mount
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      try {
-        const savedPosition = JSON.parse(saved);
-        setPosition(savedPosition);
-      } catch (e) {
-        console.error('Failed to parse saved position:', e);
-      }
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDragging) return;
+      
+      const deltaX = e.clientX - dragStart.current.x;
+      const deltaY = e.clientY - dragStart.current.y;
+      
+      setPosition({
+        x: initialPos.current.x + deltaX,
+        y: initialPos.current.y + deltaY
+      });
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    if (isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'grabbing';
     }
-  }, []);
 
-  // Save position to localStorage
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(position));
-  }, [position]);
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'auto';
+    };
+  }, [isDragging]);
+
+  const handleDragStart = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+    dragStart.current = { x: e.clientX, y: e.clientY };
+    initialPos.current = { ...position };
+  };
 
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,55 +80,6 @@ export function ChatPanel({ className = "" }: ChatPanelProps) {
       setMessages(prev => [...prev, osmosMessage]);
     }, 800);
   };
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    // Don't start drag if clicking the input or button
-    if ((e.target as HTMLElement).closest('button') || 
-        (e.target as HTMLElement).closest('input') ||
-        (e.target as HTMLElement).tagName === 'INPUT') {
-      return;
-    }
-    
-    setIsDragging(true);
-    setDragStart({
-      x: e.clientX - position.x,
-      y: e.clientY - position.y
-    });
-    e.preventDefault();
-  };
-
-  const handleMouseMove = (e: MouseEvent) => {
-    if (!isDragging) return;
-
-    const newX = e.clientX - dragStart.x;
-    const newY = e.clientY - dragStart.y;
-
-    // Keep within viewport bounds
-    const maxX = window.innerWidth - (containerRef.current?.offsetWidth || 200);
-    const maxY = window.innerHeight - (containerRef.current?.offsetHeight || 60);
-
-    setPosition({
-      x: Math.max(0, Math.min(newX, maxX)),
-      y: Math.max(0, Math.min(newY, maxY))
-    });
-  };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
-
-  // Add global mouse event listeners
-  useEffect(() => {
-    if (isDragging) {
-      document.addEventListener('mousemove', handleMouseMove);
-      document.addEventListener('mouseup', handleMouseUp);
-      
-      return () => {
-        document.removeEventListener('mousemove', handleMouseMove);
-        document.removeEventListener('mouseup', handleMouseUp);
-      };
-    }
-  }, [isDragging, dragStart]);
 
   const generateResponse = (input: string): string => {
     const lower = input.toLowerCase();
@@ -151,45 +116,57 @@ export function ChatPanel({ className = "" }: ChatPanelProps) {
   };
 
   if (!isExpanded) {
-    // Minimized state - floating button at bottom left
+    // Minimized state - movable input
+    const hasBeenMoved = position.x !== 0 || position.y !== 0;
+    
     return (
       <div 
-        ref={containerRef}
-        className={`fixed z-50 ${isDragging ? 'cursor-grabbing' : 'cursor-grab'} ${className}`}
+        ref={dragRef}
+        className={`fixed z-50 ${className}`}
         style={{
-          left: `${position.x}px`,
-          bottom: `${position.y}px`,
+          bottom: hasBeenMoved ? 'auto' : '24px',
+          left: hasBeenMoved ? 'auto' : '50%',
+          transform: hasBeenMoved 
+            ? `translate(${position.x}px, ${position.y}px)` 
+            : 'translateX(-50%)',
+          top: hasBeenMoved ? '50%' : 'auto',
         }}
-        onMouseDown={handleMouseDown}
       >
         <div 
-          className="relative"
-          style={{
-            padding: '4px',
-            background: 'linear-gradient(90deg, #FFF303 0%, #FBA93D 14.29%, #ED0191 28.57%, #A763AD 42.86%, #0185C6 57.14%, #02B5E6 71.43%, #01A172 85.71%, #A2D36F 100%)',
-            borderRadius: '12px',
-          }}
+          className="p-6 rounded-[6px_6px_0px_0px] border border-gray-200 shadow-[0px_4px_6px_-4px_#0000001a,0px_10px_15px_-3px_#0000001a] backdrop-blur-[5px] backdrop-brightness-[100%] [-webkit-backdrop-filter:blur(5px)_brightness(100%)] bg-[linear-gradient(158deg,rgba(255,243,3,0.05)_0%,rgba(251,169,61,0.05)_15%,rgba(237,1,145,0.05)_30%,rgba(167,99,173,0.05)_45%,rgba(1,133,198,0.05)_60%,rgba(2,181,230,0.05)_75%,rgba(1,161,114,0.05)_90%,rgba(162,211,111,0.05)_100%)] cursor-grab select-none"
+          onMouseDown={handleDragStart}
+          style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
         >
-          <div className="relative bg-white rounded-lg">
-            <input
-              type="text"
-              placeholder="Ask Oskar about your profile"
-              onClick={() => setIsExpanded(true)}
-              readOnly
-              className="w-[313px] h-[46px] px-4 py-3 pl-12 bg-transparent rounded-lg cursor-pointer text-[14px] text-gray-700 placeholder-gray-600 focus:outline-none font-medium"
-              style={{
-                fontFamily: 'Inter, system-ui, -apple-system, sans-serif'
-              }}
-            />
-            <div className="absolute left-3 top-1/2 -translate-y-1/2">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M12 2C10.0222 2 8.08879 2.58649 6.4443 3.6853C4.79981 4.78412 3.51809 6.3459 2.76121 8.17317C2.00433 10.0004 1.8063 12.0111 2.19215 13.9509C2.578 15.8907 3.53041 17.6725 4.92894 19.0711C6.32746 20.4696 8.10929 21.422 10.0491 21.8079C11.9889 22.1937 13.9996 21.9957 15.8268 21.2388C17.6541 20.4819 19.2159 19.2002 20.3147 17.5557C21.4135 15.9112 22 13.9778 22 12C22 10.6868 21.7413 9.38642 21.2388 8.17317C20.7363 6.95991 19.9997 5.85752 19.0711 4.92893C18.1425 4.00035 17.0401 3.26375 15.8268 2.76121C14.6136 2.25866 13.3132 2 12 2Z" fill="#10B981"/>
-                <path d="M8 12C8 12 9.5 14 12 14C14.5 14 16 12 16 12" stroke="white" strokeWidth="2" strokeLinecap="round"/>
-                <circle cx="9" cy="9" r="1" fill="white"/>
-                <circle cx="15" cy="9" r="1" fill="white"/>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsExpanded(true);
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
+            className="flex w-96 items-center gap-2 bg-white rounded-md"
+          >
+            <div className="flex w-[388px] items-center gap-2 pl-3 pr-14 py-2 relative self-stretch rounded-md border-[none] before:content-[''] before:absolute before:inset-0 before:p-0.5 before:rounded-md before:[background:linear-gradient(152deg,rgba(255,243,3,1)_0%,rgba(251,169,61,1)_15%,rgba(237,1,145,1)_30%,rgba(167,99,173,1)_45%,rgba(1,133,198,1)_60%,rgba(2,181,230,1)_75%,rgba(1,161,114,1)_90%,rgba(162,211,111,1)_100%)] before:[-webkit-mask:linear-gradient(#fff_0_0)_content-box,linear-gradient(#fff_0_0)] before:[-webkit-mask-composite:xor] before:[mask-composite:exclude] before:z-[1] before:pointer-events-none">
+              <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <linearGradient id="searchGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="#FFF303" />
+                    <stop offset="14.29%" stopColor="#FBA93D" />
+                    <stop offset="28.57%" stopColor="#ED0191" />
+                    <stop offset="42.86%" stopColor="#A763AD" />
+                    <stop offset="57.14%" stopColor="#0185C6" />
+                    <stop offset="71.43%" stopColor="#02B5E6" />
+                    <stop offset="85.71%" stopColor="#01A172" />
+                    <stop offset="100%" stopColor="#A2D36F" />
+                  </linearGradient>
+                </defs>
+                <path d="M9 17C13.4183 17 17 13.4183 17 9C17 4.58172 13.4183 1 9 1C4.58172 1 1 4.58172 1 9C1 13.4183 4.58172 17 9 17Z" stroke="url(#searchGradient)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M19 19L14.65 14.65" stroke="url(#searchGradient)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
+              <p className="relative w-fit font-normal text-gray-600 text-sm tracking-[0] leading-6 whitespace-nowrap">
+                Ask Oskar about your profile
+              </p>
             </div>
-          </div>
+          </button>
         </div>
       </div>
     );

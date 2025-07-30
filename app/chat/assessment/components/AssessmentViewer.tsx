@@ -25,6 +25,15 @@ export default function AssessmentViewer({
   onSubmitPage,
   isCompleting = false
 }: AssessmentViewerProps) {
+  // Pre-populate organization field if it exists and is empty
+  React.useEffect(() => {
+    const orgQuestion = workflowState.questions.find(
+      (q: WorkflowQuestion) => (q.QuestionID || q.questionID) === 1041
+    );
+    if (orgQuestion && !currentAnswers[1041] && assessment.OrganisationName) {
+      onAnswerChange(1041, assessment.OrganisationName);
+    }
+  }, [workflowState.questions, assessment.OrganisationName]);
   const allQuestionsAnswered = workflowState.questions
     .filter((q: WorkflowQuestion) => (q.IsRequired || q.isRequired) && (q.IsEnabled !== false))
     .every((q: WorkflowQuestion) => {
@@ -84,12 +93,10 @@ export default function AssessmentViewer({
           {/* Questions */}
           <div className="flex flex-col gap-4 self-stretch w-full">
             {workflowState.questions
-              .filter((question: WorkflowQuestion) => {
-                // For TMP assessments, only show seesaw questions (Type 18)
-                if (assessment.AssessmentType === 'TMP') {
-                  return (question.Type || question.type) === 18;
-                }
-                return true;
+              .sort((a: WorkflowQuestion, b: WorkflowQuestion) => {
+                const sortA = a.SortOrder ?? a.sortOrder ?? 0;
+                const sortB = b.SortOrder ?? b.sortOrder ?? 0;
+                return sortA - sortB;
               })
               .map((question: WorkflowQuestion) => {
                 const questionId = question.QuestionID || question.questionID || 0;
