@@ -13,6 +13,7 @@ export class RealtimeConnectionManager {
   private isSpeaking = false;
   private workflowState: any = null;
   private onAnswerUpdate?: (questionId: number, value: string) => void;
+  private eventHandlersSetup = false;
   
   constructor(private config: VoiceConfig) {
     // Initialize Web Audio API for audio playback
@@ -112,6 +113,7 @@ export class RealtimeConnectionManager {
             threshold: 0.5,
             prefix_padding_ms: 300,
             silence_duration_ms: 200,
+            create_response: false,  // Disable automatic responses to prevent duplicates
           },
           instructions: `You are OSmos, the Team Assessment Assistant conducting a voice-based questionnaire.
 
@@ -211,7 +213,9 @@ IMPORTANT: Each question has an ID number shown in parentheses. Use this ID when
   }
 
   private setupEventHandlers(): void {
-    if (!this.rt) return;
+    if (!this.rt || this.eventHandlersSetup) return;
+    
+    this.eventHandlersSetup = true;
 
     // Handle transcription updates
     this.rt.on('conversation.item.input_audio_transcription.completed', (event) => {
@@ -256,6 +260,14 @@ IMPORTANT: Each question has an ID number shown in parentheses. Use this ID when
               message: `Recorded answer ${mappedValue} for question ${questionId}`,
               instruction: 'Now read the next question immediately'
             })
+          }
+        });
+        
+        // Manually trigger response since we disabled auto-response
+        this.rt.send({
+          type: 'response.create',
+          response: {
+            modalities: ['audio', 'text'],
           }
         });
       } else if (name === 'navigate_next') {
@@ -377,6 +389,11 @@ IMPORTANT: Each question has an ID number shown in parentheses. Use this ID when
       this.rt.socket.close();
       this.rt = null;
       this.isConnected = false;
+      this.eventHandlersSetup = false;
+      this.isSpeaking = false;
+      this.audioQueue = [];
+      this.isPlaying = false;
+      this.nextStartTime = 0;
     }
   }
 
