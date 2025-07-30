@@ -24,6 +24,7 @@ interface AssessmentLayoutProps {
   onSectionChange: (section: string) => void;
   visibleSection: string;
   isCompleting?: boolean;
+  updatingQuestions?: Set<number>;
 }
 
 export default function AssessmentLayout({
@@ -41,7 +42,8 @@ export default function AssessmentLayout({
   onSubmitPage,
   onSectionChange,
   visibleSection,
-  isCompleting = false
+  isCompleting = false,
+  updatingQuestions = new Set()
 }: AssessmentLayoutProps) {
   const [chatExpanded, setChatExpanded] = useState(false);
 
@@ -78,6 +80,7 @@ export default function AssessmentLayout({
             onAnswerChange={onAnswerChange}
             onSubmitPage={onSubmitPage}
             isCompleting={isCompleting}
+            updatingQuestions={updatingQuestions}
           />
         )}
       </div>

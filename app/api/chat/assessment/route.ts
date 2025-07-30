@@ -174,9 +174,32 @@ Available tools include knowledge base search - USE THEM!`;
     systemMessage += `
 
 For assessment navigation and interaction:
+
+SINGLE QUESTION COMMANDS:
 - "answer 2-1 for question 34" → Use answer_question tool 
-- "go to next page" → Use navigate_page tool
+- "select 1-2" (when context is clear) → Use answer_question for current question
+
+BULK COMMANDS - YOU MUST UNDERSTAND THESE:
+- "answer all questions with 2-0" or "respond 2-0 for all items" → Use answer_multiple_questions with ALL question IDs from current page
+- "answer 2-1 for all" or "all 2-1" → Use answer_multiple_questions with ALL question IDs
+- "answer questions 3-5 with 1-2" or "questions 3 through 5 select 0-2" → Use answer_multiple_questions with questionIds [3,4,5]
+- "complete this page with 2-0 then next" → First use answer_multiple_questions for all unanswered questions, then navigate_page
+- "answer the rest with 1-2" → Use answer_multiple_questions for only unanswered questions
+
+NAVIGATION:
+- "go to next page" or "next" → Use navigate_page tool with direction: "next"
+- "previous page" or "back" → Use navigate_page tool with direction: "previous"
+
+QUESTION HELP:
 - "explain question 35" → FIRST use knowledge base tools to search for what the question measures
+
+IMPORTANT PARSING RULES:
+1. When user says "all questions" - get ALL question IDs from workflowState
+2. When user gives a range like "3-5" or "3 to 5" - create array [3,4,5]
+3. When user says "the rest" - find questions without answers in currentAnswers
+4. Always confirm bulk actions: "✅ Updated 5 questions with answer 2-0"
+
+Current page has these questions: ${workflowState?.questions?.map((q: any) => q.questionID || q.QuestionID).join(', ') || 'none'}
 
 Remember: ANY question about TMS content requires knowledge base search FIRST.`;
 
@@ -304,6 +327,32 @@ Remember: ANY question about TMS content requires knowledge base search FIRST.`;
             questionId,
             value: mappedValue
           }
+        };
+      }
+    });
+
+    tools.answer_multiple_questions = tool({
+      description: 'Answer multiple questions at once with the same value. Use this for bulk operations like "answer all questions with 2-0" or "answer questions 3-5 with 1-2"',
+      parameters: z.object({
+        questionIds: z.array(z.number()).describe('Array of question IDs to answer'),
+        value: z.string().describe('The answer value to apply to all questions (e.g., "2-0", "1-2")')
+      }),
+      execute: async ({ questionIds, value }) => {
+        // Map natural language values to API values for seesaw questions
+        const valueMap: Record<string, string> = {
+          '2-0': '20',
+          '2-1': '21', 
+          '1-2': '12',
+          '0-2': '02'
+        };
+        
+        const mappedValue = valueMap[value] || value;
+        
+        return {
+          success: true,
+          message: `Setting ${questionIds.length} questions to ${value}`,
+          questionIds,
+          value: mappedValue
         };
       }
     });

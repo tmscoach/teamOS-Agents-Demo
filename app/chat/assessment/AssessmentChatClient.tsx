@@ -39,10 +39,14 @@ export default function AssessmentChatClient() {
     currentAnswers
   }), [conversationId, agentName, selectedAssessment, workflowState, visibleSection, currentAnswers]);
 
+  // Track which questions are being updated for visual feedback
+  const [updatingQuestions, setUpdatingQuestions] = useState<Set<number>>(new Set());
+
   // Use the useChat hook for streaming
   const { messages, input, handleInputChange, handleSubmit, isLoading, append } = useChat({
     api: '/api/chat/assessment',
     body: chatBody,
+    experimental_onToolCall: true,
     onResponse(response) {
       // Extract conversation ID from headers
       const newConversationId = response.headers.get('X-Conversation-ID');
@@ -56,33 +60,95 @@ export default function AssessmentChatClient() {
     onError(error) {
       console.error('Chat error:', error);
     },
-    onFinish(message) {
-      // Process tool calls from the assistant's response
-      if (message.toolInvocations) {
-        message.toolInvocations.forEach((invocation) => {
-          if (invocation.state === 'result' && invocation.result?.action) {
-            const action = invocation.result.action;
+    onToolCall: async ({ toolCall }) => {
+      console.log('[Assessment] Tool called:', toolCall.toolName, toolCall.args);
+      
+      try {
+        switch (toolCall.toolName) {
+          case 'answer_question': {
+            const { questionId, value } = toolCall.args as { questionId: number; value: string };
             
-            switch (action.type) {
-              case 'SET_ANSWER':
-                // Update the answer for a specific question
-                if (action.questionId !== undefined) {
-                  handleAnswerChange(action.questionId, action.value);
-                }
-                break;
-              case 'NAVIGATE':
-                // Handle navigation
-                if (action.direction === 'next') {
-                  submitCurrentPage();
-                } else if (action.pageNumber && workflowState) {
-                  // Navigate to specific page
-                  // This would require implementing page navigation logic
-                  console.log('Navigate to page:', action.pageNumber);
-                }
-                break;
-            }
+            // Add visual feedback
+            setUpdatingQuestions(prev => new Set(prev).add(questionId));
+            
+            // Small delay for visual effect
+            await new Promise(resolve => setTimeout(resolve, 100));
+            
+            // Update the answer
+            handleAnswerChange(questionId, value);
+            
+            // Remove visual feedback
+            setTimeout(() => {
+              setUpdatingQuestions(prev => {
+                const next = new Set(prev);
+                next.delete(questionId);
+                return next;
+              });
+            }, 300);
+            
+            return { success: true, message: `Set answer for question ${questionId} to ${value}` };
           }
-        });
+          
+          case 'answer_multiple_questions': {
+            const { questionIds, value } = toolCall.args as { questionIds: number[]; value: string };
+            
+            // Update all questions with visual feedback
+            for (const qId of questionIds) {
+              setUpdatingQuestions(prev => new Set(prev).add(qId));
+              
+              // Stagger updates for visual effect
+              await new Promise(resolve => setTimeout(resolve, 100));
+              
+              handleAnswerChange(qId, value);
+              
+              // Remove visual feedback after a delay
+              setTimeout(() => {
+                setUpdatingQuestions(prev => {
+                  const next = new Set(prev);
+                  next.delete(qId);
+                  return next;
+                });
+              }, 300);
+            }
+            
+            return { 
+              success: true, 
+              message: `Updated ${questionIds.length} questions with answer ${value}` 
+            };
+          }
+          
+          case 'navigate_page': {
+            const { direction, pageNumber } = toolCall.args as { direction?: string; pageNumber?: number };
+            
+            if (direction === 'next') {
+              await submitCurrentPage();
+              return { success: true, message: 'Navigating to next page' };
+            } else if (direction === 'previous' && workflowState) {
+              // TODO: Implement previous page navigation
+              return { success: false, message: 'Previous page navigation not yet implemented' };
+            } else if (pageNumber && workflowState) {
+              // TODO: Implement specific page navigation
+              return { success: false, message: `Navigation to page ${pageNumber} not yet implemented` };
+            }
+            
+            return { success: false, message: 'Invalid navigation parameters' };
+          }
+          
+          case 'explain_question': {
+            // This is handled by the agent's response, just acknowledge
+            return { success: true, message: 'Question explanation provided' };
+          }
+          
+          default:
+            console.warn('[Assessment] Unknown tool:', toolCall.toolName);
+            return { success: false, message: `Unknown tool: ${toolCall.toolName}` };
+        }
+      } catch (error) {
+        console.error('[Assessment] Error in tool execution:', error);
+        return { 
+          success: false, 
+          message: `Error: ${error instanceof Error ? error.message : 'Unknown error'}` 
+        };
       }
     }
   });
@@ -453,6 +519,7 @@ export default function AssessmentChatClient() {
       onSectionChange={setVisibleSection}
       visibleSection={visibleSection}
       isCompleting={isCompleting}
+      updatingQuestions={updatingQuestions}
     />
   );
 }

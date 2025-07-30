@@ -15,6 +15,7 @@ interface AssessmentViewerProps {
   onAnswerChange: (questionId: number, value: string) => void;
   onSubmitPage: () => void;
   isCompleting?: boolean;
+  updatingQuestions?: Set<number>;
 }
 
 export default function AssessmentViewer({
@@ -23,7 +24,8 @@ export default function AssessmentViewer({
   currentAnswers,
   onAnswerChange,
   onSubmitPage,
-  isCompleting = false
+  isCompleting = false,
+  updatingQuestions = new Set()
 }: AssessmentViewerProps) {
   // Pre-populate organization field if it exists and is empty
   React.useEffect(() => {
@@ -106,6 +108,7 @@ export default function AssessmentViewer({
                     question={question}
                     value={currentAnswers[questionId]}
                     onValueChange={(value) => onAnswerChange(questionId, value)}
+                    isUpdating={updatingQuestions.has(questionId)}
                   />
                 );
               })}
