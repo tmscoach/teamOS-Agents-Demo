@@ -63,8 +63,7 @@ export default function AssessmentChatClient() {
     audioLevel,
     startVoice,
     stopVoice,
-    getContextualHelp,
-    sendAssistantMessage
+    getContextualHelp
   } = useVoiceNavigation({
     onCommand: (command) => handleVoiceCommandRef.current?.(command),
     onTranscript: (text) => console.log('Voice transcript:', text),
@@ -77,21 +76,50 @@ export default function AssessmentChatClient() {
   // Track if we're currently speaking to avoid overlaps
   const isSpeakingRef = useRef(false);
   
-  // Helper to speak text using OpenAI Realtime API
-  const speakTextHelper = useCallback(async (text: string) => {
-    if (voiceModeEnabled && sendAssistantMessage && !isSpeakingRef.current) {
+  // Helper to speak text using Web Speech API for reliability
+  const speakTextHelper = useCallback((text: string) => {
+    if (voiceModeEnabled && 'speechSynthesis' in window && !isSpeakingRef.current) {
       try {
         isSpeakingRef.current = true;
-        await sendAssistantMessage(text);
-        // Add a small delay to prevent rapid successive calls
-        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Cancel any ongoing speech
+        window.speechSynthesis.cancel();
+        
+        // Create utterance
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.rate = 0.9;
+        utterance.pitch = 1.0;
+        utterance.volume = 1.0;
+        
+        // Set voice to match OpenAI if possible
+        const voices = window.speechSynthesis.getVoices();
+        const preferredVoice = voices.find(voice => 
+          voice.lang.startsWith('en') && (
+            voice.name.includes('Samantha') || // macOS
+            voice.name.includes('Microsoft') ||
+            voice.name.includes('Google')
+          )
+        );
+        if (preferredVoice) {
+          utterance.voice = preferredVoice;
+        }
+        
+        utterance.onend = () => {
+          isSpeakingRef.current = false;
+        };
+        
+        utterance.onerror = () => {
+          isSpeakingRef.current = false;
+        };
+        
+        // Speak the text
+        window.speechSynthesis.speak(utterance);
       } catch (error) {
-        console.error('Failed to speak text via Realtime API:', error);
-      } finally {
+        console.error('Failed to speak text:', error);
         isSpeakingRef.current = false;
       }
     }
-  }, [voiceModeEnabled, sendAssistantMessage]);
+  }, [voiceModeEnabled]);
 
   // Use the useChat hook for streaming
   const { messages, input, handleInputChange, handleSubmit, isLoading, append } = useChat({
