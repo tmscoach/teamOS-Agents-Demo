@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
 
     // Handle empty message for initial greeting
     const isInitialGreeting = !message && messages.length === 1;
-    let userMessageContent = message || '[User joined the assessment]';
+    let userMessageContent = message || 'Hello! I just joined the assessment session. Please introduce yourself and explain what assessments are available.';
 
     // Get database user
     const userEmail = user.emailAddresses?.[0]?.emailAddress;
@@ -139,6 +139,9 @@ export async function POST(request: NextRequest) {
     // @ts-ignore - accessing protected method
     let systemMessage = agent.buildSystemMessage ? agent.buildSystemMessage(context) : '';
     
+    // Important: The knowledge base instructions are already included via KnowledgeEnabledAgent.getInstructions()
+    // We only need to add assessment-specific instructions here
+    
     // Enhance system message with natural language parsing instructions
     systemMessage += `
 
@@ -151,16 +154,26 @@ IMPORTANT: When users give natural language commands for answering questions, pa
 
 Always confirm actions back to the user in a friendly way.
 
-You have access to TMS knowledge base tools. When users ask about:
+CRITICAL FOR KNOWLEDGE BASE: You have comprehensive TMS knowledge base tools available. When users ask about:
 - What a question measures or means
-- The methodology behind assessments
+- The methodology behind assessments  
 - Why certain questions are asked
 - The theory or research behind TMS
 - The difference between answer options (e.g., "persuade" vs "sell")
+- General questions about TMS framework
 
-Use the knowledge base tools to provide accurate, cited information.
-Always cite your sources (e.g., "According to the TMP Handbook...").
-If you can't find specific information, provide a helpful general response.`;
+YOU MUST use the knowledge base tools to search for accurate information. The tools available are:
+- search_tms_knowledge: For general searches about TMS concepts
+- get_assessment_methodology: For specific assessment methodology details
+- get_questionnaire_items: For retrieving specific questionnaire items
+
+Always search the knowledge base FIRST before providing any explanation. Cite your sources when using information from the knowledge base (e.g., "According to the TMP Handbook...").
+
+INITIAL GREETING: When a user first joins (no assessment selected), you should:
+1. Warmly greet them as OSmos
+2. Use the get_assessment_methodology tool to briefly explain available assessments (TMP, QO2, Team Signals)
+3. Help them understand which assessment might be right for them
+4. Use knowledge base to provide accurate information about each assessment type`;
 
     // Format messages for the AI SDK
     const formattedMessages = messages.map((msg: any) => ({
