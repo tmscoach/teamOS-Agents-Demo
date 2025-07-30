@@ -14,6 +14,7 @@ export class RealtimeConnectionManager {
   private workflowState: any = null;
   private onAnswerUpdate?: (questionId: number, value: string) => void;
   private eventHandlersSetup = false;
+  private isGeneratingResponse = false;
   
   constructor(private config: VoiceConfig) {
     // Initialize Web Audio API for audio playback
@@ -189,9 +190,13 @@ IMPORTANT: Each question has an ID number shown in parentheses. Use this ID when
       this.isConnected = true;
       this.config.onStateChange?.('ready');
       
-      // Start the conversation immediately
+      // Small delay to ensure session configuration is fully processed
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Start the conversation
       await this.startAssessmentConversation();
     } catch (error) {
+      this.isGeneratingResponse = false; // Reset on connection error
       this.config.onStateChange?.('error');
       this.config.onError?.(error as Error);
       throw error;
@@ -202,6 +207,15 @@ IMPORTANT: Each question has an ID number shown in parentheses. Use this ID when
     if (!this.rt || !this.isConnected) {
       throw new Error('Not connected to Realtime API');
     }
+
+    // Prevent duplicate responses
+    if (this.isGeneratingResponse) {
+      console.log('[Voice] Skipping initial conversation - already generating response');
+      return;
+    }
+
+    // Mark that we're generating a response
+    this.isGeneratingResponse = true;
 
     // Trigger the assistant to start the conversation
     await this.rt.send({
@@ -250,7 +264,7 @@ IMPORTANT: Each question has an ID number shown in parentheses. Use this ID when
         }
         
         // Send function call result back
-        this.rt.send({
+        await this.rt.send({
           type: 'conversation.item.create',
           item: {
             type: 'function_call_output',
@@ -263,13 +277,19 @@ IMPORTANT: Each question has an ID number shown in parentheses. Use this ID when
           }
         });
         
-        // Manually trigger response since we disabled auto-response
-        this.rt.send({
-          type: 'response.create',
-          response: {
-            modalities: ['audio', 'text'],
+        // Small delay to ensure function result is processed before triggering response
+        setTimeout(() => {
+          if (!this.isGeneratingResponse) {
+            this.isGeneratingResponse = true;
+            // Manually trigger response since we disabled auto-response
+            this.rt.send({
+              type: 'response.create',
+              response: {
+                modalities: ['audio', 'text'],
+              }
+            });
           }
-        });
+        }, 100);
       } else if (name === 'navigate_next') {
         console.log('Navigation to next page requested');
         // Handle navigation if needed
@@ -316,6 +336,7 @@ IMPORTANT: Each question has an ID number shown in parentheses. Use this ID when
       // Reset audio timing for next response
       this.nextStartTime = 0;
       this.isSpeaking = false;
+      this.isGeneratingResponse = false;
       // Wait a bit for audio to finish playing before changing state
       setTimeout(() => {
         if (!this.isSpeaking) {
@@ -327,6 +348,7 @@ IMPORTANT: Each question has an ID number shown in parentheses. Use this ID when
     // Handle errors
     this.rt.on('error', (error) => {
       console.error('Realtime API error:', error);
+      this.isGeneratingResponse = false; // Reset on error
       this.config.onError?.(new Error(error.message));
       this.config.onStateChange?.('error');
     });
@@ -380,7 +402,7 @@ IMPORTANT: Each question has an ID number shown in parentheses. Use this ID when
       },
     });
 
-    await this.rt.send({ type: 'response.create' });
+    // Don't create response here - let the conversation flow naturally
   }
 
 
@@ -391,6 +413,7 @@ IMPORTANT: Each question has an ID number shown in parentheses. Use this ID when
       this.isConnected = false;
       this.eventHandlersSetup = false;
       this.isSpeaking = false;
+      this.isGeneratingResponse = false;
       this.audioQueue = [];
       this.isPlaying = false;
       this.nextStartTime = 0;
