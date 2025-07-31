@@ -10,6 +10,7 @@ interface VoiceToggleProps {
   audioLevel?: number;
   className?: string;
   size?: 'sm' | 'md' | 'lg';
+  disabled?: boolean;
 }
 
 export function VoiceToggle({ 
@@ -17,10 +18,11 @@ export function VoiceToggle({
   onToggle, 
   audioLevel = 0,
   className = '',
-  size = 'md'
+  size = 'md',
+  disabled = false
 }: VoiceToggleProps) {
   const isActive = ['listening', 'processing', 'speaking'].includes(voiceState);
-  const isDisabled = ['connecting', 'error'].includes(voiceState);
+  const isDisabled = disabled || ['connecting', 'error'].includes(voiceState);
   
   const sizeClasses = {
     sm: 'w-8 h-8',

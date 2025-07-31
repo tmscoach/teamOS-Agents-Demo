@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
       },
       body: JSON.stringify({
         model: 'gpt-4o-realtime-preview-2024-12-17',
-        modalities: ['text', 'audio'],
+        modalities: ['audio', 'text'],  // Audio first for voice-first experience
         voice: 'alloy',
         instructions: 'You are OSmos, the Team Assessment Assistant. You will receive detailed instructions when the session starts.',
         turn_detection: {

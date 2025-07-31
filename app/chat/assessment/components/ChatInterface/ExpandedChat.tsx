@@ -183,6 +183,7 @@ export default function ExpandedChat({
                 onToggle={onVoiceToggle}
                 audioLevel={audioLevel}
                 size="sm"
+                disabled={false}
               />
             )}
             <button

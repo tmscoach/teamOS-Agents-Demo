@@ -85,6 +85,7 @@ export default function ChatInterface({
         voiceState={voiceState}
         onVoiceToggle={onVoiceToggle}
         audioLevel={audioLevel}
+        messages={messages}
       />
     );
   }

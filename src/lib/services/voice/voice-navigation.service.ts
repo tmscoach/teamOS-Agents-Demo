@@ -28,6 +28,18 @@ export class VoiceNavigationService {
   setAnswerUpdateCallback(callback: (questionId: number, value: string) => void) {
     this.realtimeConnection.setAnswerUpdateCallback(callback);
   }
+  
+  setNavigateNextCallback(callback: () => void) {
+    this.realtimeConnection.setNavigateNextCallback(callback);
+  }
+
+  getConversationContext() {
+    return this.realtimeConnection.getConversationContext();
+  }
+
+  setConversationContext(context: any) {
+    this.realtimeConnection.setConversationContext(context);
+  }
 
   async startSession(): Promise<void> {
     try {

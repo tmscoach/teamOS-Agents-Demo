@@ -13,9 +13,11 @@ export type VoiceState =
   | 'ready'
   | 'listening'
   | 'processing'
+  | 'thinking'
   | 'speaking'
   | 'error'
-  | 'disconnected';
+  | 'disconnected'
+  | 'reconnecting';
 
 export interface VoiceCommand {
   type: 'navigation' | 'answer' | 'action' | 'unknown';

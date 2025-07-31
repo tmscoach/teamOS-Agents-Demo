@@ -81,6 +81,7 @@ export default function AssessmentLayout({
         {/* Main content area */}
         {selectedAssessment && workflowState && (
           <AssessmentViewer
+            key={`page-${workflowState.currentPageId}-${Object.keys(currentAnswers).length}`}
             assessment={selectedAssessment}
             workflowState={workflowState}
             currentAnswers={currentAnswers}

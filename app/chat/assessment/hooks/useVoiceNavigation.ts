@@ -14,6 +14,7 @@ export interface UseVoiceNavigationOptions {
   onTranscript?: (transcript: string) => void;
   onError?: (error: Error) => void;
   apiKey?: string;
+  prefetchedSessionToken?: string | null;
 }
 
 export interface UseVoiceNavigationReturn {
@@ -33,6 +34,7 @@ export interface UseVoiceNavigationReturn {
   sendTextCommand: (text: string) => Promise<void>;
   setWorkflowState: (state: any) => void;
   setAnswerUpdateCallback: (callback: (questionId: number, value: string) => void) => void;
+  setNavigateNextCallback: (callback: () => void) => void;
   
   // Helpers
   getContextualHelp: (questionType: string) => string[];
@@ -188,8 +190,20 @@ export function useVoiceNavigation(
   }, []);
 
   const setAnswerUpdateCallback = useCallback((callback: (questionId: number, value: string) => void) => {
+    console.log('[useVoiceNavigation] Setting answer callback, service exists:', !!voiceServiceRef.current);
     if (voiceServiceRef.current) {
       voiceServiceRef.current.setAnswerUpdateCallback(callback);
+    } else {
+      console.warn('[useVoiceNavigation] Voice service not initialized yet');
+    }
+  }, []);
+  
+  const setNavigateNextCallback = useCallback((callback: () => void) => {
+    console.log('[useVoiceNavigation] Setting navigate next callback, service exists:', !!voiceServiceRef.current);
+    if (voiceServiceRef.current) {
+      voiceServiceRef.current.setNavigateNextCallback(callback);
+    } else {
+      console.warn('[useVoiceNavigation] Voice service not initialized yet');
     }
   }, []);
 
@@ -210,6 +224,7 @@ export function useVoiceNavigation(
     sendTextCommand,
     setWorkflowState,
     setAnswerUpdateCallback,
+    setNavigateNextCallback,
     
     // Helpers
     getContextualHelp,

@@ -55,6 +55,14 @@ export function VoiceIndicator({
           </div>
         );
       
+      case 'thinking':
+        return (
+          <div className="flex items-center gap-2 text-indigo-600">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span>OSmos is thinking...</span>
+          </div>
+        );
+      
       case 'speaking':
         return (
           <div className="flex items-center gap-2 text-blue-600">
@@ -76,6 +84,14 @@ export function VoiceIndicator({
           <div className="flex items-center gap-2 text-gray-500">
             <div className="w-2 h-2 bg-gray-500 rounded-full" />
             <span>Voice disconnected</span>
+          </div>
+        );
+      
+      case 'reconnecting':
+        return (
+          <div className="flex items-center gap-2 text-orange-600">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            <span>Reconnecting...</span>
           </div>
         );
       

@@ -353,6 +353,7 @@ export function ChatPanel({
                 onToggle={onVoiceToggle}
                 audioLevel={audioLevel}
                 size="sm"
+                disabled={false}
               />
             )}
             <button

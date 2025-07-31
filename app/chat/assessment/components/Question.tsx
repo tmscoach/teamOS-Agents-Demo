@@ -23,6 +23,9 @@ export function Question({
   className,
   isUpdating = false
 }: QuestionProps) {
+  // Debug logging
+  console.log(`[Question ${id}] Rendering with selectedValue: "${selectedValue}"`);
+  
   return (
     <div className={clsx('flex flex-col items-start gap-2.5', className)}>
       <div className="text-sm font-medium text-gray-500 leading-5">

@@ -5,6 +5,7 @@ import OscarIcon from './OscarIcon';
 import { ChevronRight } from 'lucide-react';
 import { VoiceToggle } from '../voice';
 import { VoiceState } from '@/src/lib/services/voice';
+import { Message } from 'ai';
 
 interface CollapsedChatProps {
   onToggle: () => void;
@@ -12,6 +13,7 @@ interface CollapsedChatProps {
   voiceState?: VoiceState;
   onVoiceToggle?: () => void;
   audioLevel?: number;
+  messages?: Message[];
 }
 
 interface Position {
@@ -26,7 +28,8 @@ export default function CollapsedChat({
   inputRef,
   voiceState = 'idle',
   onVoiceToggle,
-  audioLevel = 0
+  audioLevel = 0,
+  messages = []
 }: CollapsedChatProps) {
   const [position, setPosition] = useState<Position>({ x: 24, y: 24 });
   const [isDragging, setIsDragging] = useState(false);
@@ -130,6 +133,7 @@ export default function CollapsedChat({
             audioLevel={audioLevel}
             size="sm"
             className="ml-2"
+            disabled={false}
           />
         )}
         <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600" />
