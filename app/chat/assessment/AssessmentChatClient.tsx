@@ -134,6 +134,7 @@ export default function AssessmentChatClient() {
     api: '/api/chat/assessment',
     body: chatBodyRef.current, // Use the current value from ref
     initialMessages: [],
+    experimental_onToolCall: true,
     // Prevent automatic retries
     sendExtraMessageFields: true,
     // Custom fetcher to always use the latest body values

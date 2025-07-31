@@ -278,9 +278,9 @@ describe('Assessment Chat Route', () => {
 
       await POST(request);
 
-      expect(capturedConfig.system).toContain('BULK ANSWER COMMANDS');
-      expect(capturedConfig.system).toContain('"answer all 2-0"');
-      expect(capturedConfig.system).toContain('"select 1-2 for questions 3-5"');
+      expect(capturedConfig.system).toContain('BULK COMMANDS');
+      expect(capturedConfig.system).toContain('"answer all questions with 2-0"');
+      expect(capturedConfig.system).toContain('"answer questions 3-5 with 1-2"');
     });
 
     it('should include question ID mapping when workflow state is present', async () => {
@@ -307,8 +307,8 @@ describe('Assessment Chat Route', () => {
           messages: [{ role: 'user', content: 'answer 2-0 for question 1' }],
           workflowState: {
             questions: [
-              { QuestionID: 20, Number: "1", PrimaryWord: "Create", SecondaryWord: "Maintain" },
-              { QuestionID: 21, Number: "2", PrimaryWord: "Lead", SecondaryWord: "Follow" }
+              { QuestionID: 20, Number: "1", PrimaryWord: "Create", SecondaryWord: "Maintain", Type: 18 },
+              { QuestionID: 21, Number: "2", PrimaryWord: "Lead", SecondaryWord: "Follow", Type: 18 }
             ]
           }
         })
@@ -316,7 +316,7 @@ describe('Assessment Chat Route', () => {
 
       await POST(request);
 
-      expect(capturedConfig.system).toContain('Current page questions:');
+      expect(capturedConfig.system).toContain('Current page questions and their IDs:');
       expect(capturedConfig.system).toContain('Question 1 = ID 20');
       expect(capturedConfig.system).toContain('Question 2 = ID 21');
       expect(capturedConfig.system).toContain('CRITICAL: When user says "question 1", they mean the question with Number="1", NOT QuestionID=1');
@@ -350,9 +350,9 @@ describe('Assessment Chat Route', () => {
 
       await POST(request);
 
-      expect(capturedConfig.system).toContain('POSITIONAL REFERENCES:');
-      expect(capturedConfig.system).toContain('"the first one" → Question with lowest Number on current page');
-      expect(capturedConfig.system).toContain('"the last one" → Question with highest Number on current page');
+      expect(capturedConfig.system).toContain('POSITIONAL REFERENCES');
+      expect(capturedConfig.system).toContain('"the first one" or "first question" → Question with lowest Number/sortOrder on current page');
+      expect(capturedConfig.system).toContain('"the last one" or "last question" → Question with highest Number/sortOrder on current page');
     });
   });
 

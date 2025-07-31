@@ -228,7 +228,6 @@ SINGLE QUESTION COMMANDS:
 - "answer 2-0 for the first one" → Use answer_question for the first question on the page
 - "select 1-2 for the last one" → Use answer_question for the last question on the page
 
-
 BULK COMMANDS - YOU MUST UNDERSTAND THESE:
 - "answer all questions with 2-0" or "respond 2-0 for all items" → Use answer_multiple_questions with ALL question IDs from current page
 - "answer 2-1 for all" or "all 2-1" → Use answer_multiple_questions with ALL question IDs
