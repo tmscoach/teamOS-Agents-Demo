@@ -1,6 +1,6 @@
 "use client";
 
-import React from 'react';
+import React, { memo, useMemo } from 'react';
 import { DbHeader } from './DbHeader';
 import { QuestionRenderer } from './QuestionRenderer';
 // Removed NavigationMenu import - using inline progress bar instead
@@ -18,7 +18,7 @@ interface AssessmentViewerProps {
   updatingQuestions?: Set<number>;
 }
 
-export default function AssessmentViewer({
+function AssessmentViewer({
   assessment,
   workflowState,
   currentAnswers,
@@ -35,7 +35,7 @@ export default function AssessmentViewer({
     if (orgQuestion && !currentAnswers[1041] && assessment.OrganisationName) {
       onAnswerChange(1041, assessment.OrganisationName);
     }
-  }, [workflowState.questions, assessment.OrganisationName]);
+  }, [workflowState.questions, assessment.OrganisationName, currentAnswers, onAnswerChange]);
   const allQuestionsAnswered = workflowState.questions
     .filter((q: WorkflowQuestion) => (q.IsRequired || q.isRequired) && (q.IsEnabled !== false))
     .every((q: WorkflowQuestion) => {
@@ -94,24 +94,28 @@ export default function AssessmentViewer({
 
           {/* Questions */}
           <div className="flex flex-col gap-4 self-stretch w-full">
-            {workflowState.questions
-              .sort((a: WorkflowQuestion, b: WorkflowQuestion) => {
-                const sortA = a.SortOrder ?? a.sortOrder ?? 0;
-                const sortB = b.SortOrder ?? b.sortOrder ?? 0;
-                return sortA - sortB;
-              })
-              .map((question: WorkflowQuestion) => {
-                const questionId = question.QuestionID || question.questionID || 0;
-                return (
-                  <QuestionRenderer
-                    key={questionId}
-                    question={question}
-                    value={currentAnswers[questionId]}
-                    onValueChange={(value) => onAnswerChange(questionId, value)}
-                    isUpdating={updatingQuestions.has(questionId)}
-                  />
-                );
-              })}
+            {useMemo(() => 
+              workflowState.questions
+                .sort((a: WorkflowQuestion, b: WorkflowQuestion) => {
+                  const sortA = a.SortOrder ?? a.sortOrder ?? 0;
+                  const sortB = b.SortOrder ?? b.sortOrder ?? 0;
+                  return sortA - sortB;
+                })
+                .map((question: WorkflowQuestion) => {
+                  const questionId = question.QuestionID || question.questionID || 0;
+                  const currentValue = currentAnswers[questionId] || '';
+                  console.log(`[AssessmentViewer] Rendering question ${questionId} with value: "${currentValue}"`);
+                  return (
+                    <QuestionRenderer
+                      key={questionId}
+                      question={question}
+                      value={currentValue}
+                      onValueChange={(value) => onAnswerChange(questionId, value)}
+                      isUpdating={updatingQuestions.has(questionId)}
+                    />
+                  );
+                })
+            , [workflowState.questions, currentAnswers, onAnswerChange, updatingQuestions])}
           </div>
 
           {/* Submit button - matching Figma style */}
@@ -127,3 +131,5 @@ export default function AssessmentViewer({
     </div>
   );
 }
+
+export default memo(AssessmentViewer);

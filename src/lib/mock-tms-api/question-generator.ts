@@ -75,8 +75,9 @@ export class QuestionGenerator {
       const questionPairIndex = (questionNumber - 1) % TMP_QUESTION_PAIRS.length;
       const questionPair = TMP_QUESTION_PAIRS[questionPairIndex];
       
-      // Generate unique question ID based on page and question number
-      const questionId = pageId * 10 + i;
+      // Generate unique question ID based on page number and index
+      // For TMP: Start at ID 20 for consistency with existing data
+      const questionId = 20 + (pageNumber - 1) * questionsPerPage + i;
 
       questions.push({
         ID: 0,
@@ -148,7 +149,8 @@ export class QuestionGenerator {
       const questionText = QO2_QUESTIONS[questionIndex];
       
       // Generate unique question ID
-      const questionId = 300 + pageId * 10 + i;
+      // QO2 questions start at ID 300
+      const questionId = 300 + (pageNumber - 1) * questionsPerPage + i;
 
       questions.push({
         ID: 0,

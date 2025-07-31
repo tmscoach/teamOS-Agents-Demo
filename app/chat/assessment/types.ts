@@ -1,5 +1,6 @@
 // Question types
 export interface WorkflowQuestion {
+  id?: number;
   QuestionID?: number;
   questionID?: number;
   Type?: number;
@@ -30,6 +31,8 @@ export interface WorkflowQuestion {
   answerText?: string;
   UseHorizontalLayout?: boolean;
   useHorizontalLayout?: boolean;
+  SortOrder?: number;
+  sortOrder?: number;
 }
 
 // Navigation info types
@@ -39,6 +42,7 @@ export interface NavigationInfo {
   canGoBack?: boolean;
   canGoForward?: boolean;
   sections?: NavigationSection[];
+  nextPageUrl?: string;
 }
 
 export interface NavigationSection {

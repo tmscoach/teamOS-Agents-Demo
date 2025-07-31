@@ -5,6 +5,8 @@ import { Message } from 'ai';
 import { ChevronLeft, Send } from 'lucide-react';
 import OscarIcon from './OscarIcon';
 import MessageList from './MessageList';
+import { VoiceToggle } from '../voice';
+import { VoiceState } from '@/src/lib/services/voice';
 
 interface WorkflowState {
   subscriptionId: string;
@@ -23,10 +25,13 @@ interface ExpandedChatProps {
   input: string;
   handleInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
-  inputRef: RefObject<HTMLInputElement>;
+  inputRef: RefObject<HTMLInputElement | null>;
   workflowState: WorkflowState | null;
   assessmentType: string;
   onToggle: () => void;
+  voiceState?: VoiceState;
+  onVoiceToggle?: () => void;
+  audioLevel?: number;
 }
 
 export default function ExpandedChat({
@@ -38,7 +43,10 @@ export default function ExpandedChat({
   inputRef,
   workflowState,
   assessmentType,
-  onToggle
+  onToggle,
+  voiceState = 'idle',
+  onVoiceToggle,
+  audioLevel = 0
 }: ExpandedChatProps) {
   // Auto-focus input after message is sent
   React.useEffect(() => {
@@ -169,6 +177,15 @@ export default function ExpandedChat({
               className="flex-1 px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               disabled={isLoading}
             />
+            {onVoiceToggle && (
+              <VoiceToggle
+                voiceState={voiceState}
+                onToggle={onVoiceToggle}
+                audioLevel={audioLevel}
+                size="sm"
+                disabled={false}
+              />
+            )}
             <button
               type="submit"
               disabled={isLoading || !input.trim()}

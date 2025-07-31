@@ -319,7 +319,7 @@ describe('Assessment Chat Route', () => {
       expect(capturedConfig.system).toContain('Current page questions and their IDs:');
       expect(capturedConfig.system).toContain('Question 1 = ID 20');
       expect(capturedConfig.system).toContain('Question 2 = ID 21');
-      expect(capturedConfig.system).toContain('CRITICAL: When user says "question 1", they mean the question with Number="1" or Prompt="1)", NOT QuestionID=1');
+      expect(capturedConfig.system).toContain('CRITICAL: When user says "question 1", they mean the question with Number="1", NOT QuestionID=1');
     });
 
     it('should support positional references in system prompt', async () => {

@@ -21,6 +21,8 @@ async function initializeServices() {
 }
 
 export async function POST(request: NextRequest) {
+  console.log('[Assessment API] POST request received at:', new Date().toISOString());
+  
   try {
     // Initialize services
     await initializeServices();
@@ -38,7 +40,22 @@ export async function POST(request: NextRequest) {
     
     // The useChat hook sends messages in a specific format
     const messages = body.messages || [];
-    const message = messages?.[messages.length - 1]?.content || '';
+    
+    console.log('[Assessment API] Messages count:', messages.length);
+    console.log('[Assessment API] Message roles:', messages.map((m: any) => m.role));
+    console.log('[Assessment API] Body keys:', Object.keys(body));
+    
+    // Find the last user message (not assistant message)
+    let lastUserMessage = '';
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === 'user') {
+        lastUserMessage = messages[i].content || '';
+        break;
+      }
+    }
+    const message = lastUserMessage;
+    
+    console.log('[Assessment API] Last user message:', message);
     
     // Extract our custom fields from the body
     const { 
@@ -53,6 +70,9 @@ export async function POST(request: NextRequest) {
     // Handle empty message for initial greeting
     const isInitialGreeting = !message && messages.length === 1;
     let userMessageContent = message || 'Hello!';
+    
+    console.log('[Assessment API] Is initial greeting:', isInitialGreeting);
+    console.log('[Assessment API] User message content:', userMessageContent);
 
     // Get database user
     const userEmail = user.emailAddresses?.[0]?.emailAddress;
@@ -175,6 +195,31 @@ Available tools include knowledge base search - USE THEM!`;
 
 CRITICAL: Never respond to or act on messages that say "✅ Progress saved! Moving to..." - these are system confirmations, not user requests.
 
+VOICE MODE SPECIFIC BEHAVIOR:
+When user asks to "read out the current questions" or similar:
+1. List ALL seesaw questions (Type 18) on the current page FROM THE WORKFLOW STATE
+2. For each question, use the ACTUAL statementA and statementB from the question data
+3. NEVER make up or invent questions - only use what's in workflowState.questions
+
+ACTUAL QUESTIONS ON THIS PAGE:
+${workflowState?.questions?.filter((q: any) => q.Type === 18).map((q: any) => {
+  const qNum = q.Number || q.Prompt?.replace(')', '') || 'Unknown';
+  return `
+Question ${qNum}: 
+Left: ${q.StatementA || q.statementA}
+Right: ${q.StatementB || q.statementB}`;
+}).join('\n') || 'No questions available'}
+
+When reading questions, format like:
+"Here are the questions on this page:
+
+Question 1: 
+Left: [ACTUAL StatementA from workflow]
+Right: [ACTUAL StatementB from workflow]
+Please answer 2-0 for strongly left, 2-1 for slightly left, 1-2 for slightly right, or 0-2 for strongly right.
+
+[continue for all questions]"
+
 For assessment navigation and interaction:
 
 SINGLE QUESTION COMMANDS:
@@ -186,7 +231,7 @@ SINGLE QUESTION COMMANDS:
 BULK COMMANDS - YOU MUST UNDERSTAND THESE:
 - "answer all questions with 2-0" or "respond 2-0 for all items" → Use answer_multiple_questions with ALL question IDs from current page
 - "answer 2-1 for all" or "all 2-1" → Use answer_multiple_questions with ALL question IDs
-- "answer questions 3-5 with 1-2" or "questions 3 through 5 select 0-2" → Use answer_multiple_questions with questionIds [3,4,5]
+- "answer questions 3-5 with 1-2" or "questions 3 through 5 select 0-2" → First map question numbers 3,4,5 to their actual QuestionIDs using the mapping below, then use answer_multiple_questions
 - "complete this page with 2-0 then next" → First use answer_multiple_questions for all unanswered questions, then navigate_page
 - "answer the rest with 1-2" → Use answer_multiple_questions for only unanswered questions
 
@@ -202,8 +247,9 @@ IMPORTANT PARSING RULES:
 2. When user gives a range like "3-5" or "3 to 5" - map these question numbers to their actual IDs
 3. When user says "the rest" - find questions without answers in currentAnswers
 4. Always confirm bulk actions: "✅ Updated 5 questions with answer 2-0"
-5. CRITICAL: When user says "question 1", they mean the question with Number="1" or Prompt="1)", NOT QuestionID=1
-   - Example: "answer 2-0 for question 1" means find the question where Number="1" and use its QuestionID (which might be 20)
+5. CRITICAL: When user says "question 1", they mean the question with Number="1", NOT QuestionID=1
+   - Use the QUESTION NUMBER TO ID MAPPING below to find the correct QuestionID
+   - Example: If mapping shows {"1": 20}, then "answer 2-0 for question 1" → use questionId: 20
 6. POSITIONAL REFERENCES - understand these natural language references:
    - "the first one" or "first question" → Question with lowest Number/sortOrder on current page
    - "the last one" or "last question" → Question with highest Number/sortOrder on current page
@@ -239,11 +285,16 @@ Remember: ANY question about TMS content requires knowledge base search FIRST.`;
 
     // If initial greeting, add context about the assessment
     if (isInitialGreeting && selectedAssessment) {
-      userMessageContent = `I'm starting the ${selectedAssessment.assessmentType} assessment (${selectedAssessment.subscriptionId}).`;
+      const assessmentType = selectedAssessment.assessmentType || selectedAssessment.AssessmentType || 'unknown';
+      const subscriptionId = selectedAssessment.subscriptionId || selectedAssessment.SubscriptionID || 'unknown';
+      userMessageContent = `I'm starting the ${assessmentType} assessment (${subscriptionId}).`;
+      console.log('[Assessment API] Modified initial greeting to:', userMessageContent);
     }
 
-    // Add the current user message
-    if (userMessageContent) {
+    // Add the current user message only if it's different from the last message
+    if (userMessageContent && 
+        (!formattedMessages.length || 
+         formattedMessages[formattedMessages.length - 1].content !== userMessageContent)) {
       formattedMessages.push({
         role: 'user',
         content: userMessageContent
@@ -257,37 +308,49 @@ Remember: ANY question about TMS content requires knowledge base search FIRST.`;
     if (agentTools.length > 0) {
       // Helper function to convert JSON schema to Zod schema
       const createZodSchema = (jsonSchema: any): any => {
-        if (jsonSchema.type === 'object') {
-          const shape: any = {};
-          if (jsonSchema.properties) {
-            for (const [key, value] of Object.entries(jsonSchema.properties)) {
-              const prop = value as any;
-              if (prop.type === 'string') {
-                if (prop.enum) {
-                  shape[key] = z.enum(prop.enum as [string, ...string[]]);
+        try {
+          if (jsonSchema.type === 'object') {
+            const shape: any = {};
+            if (jsonSchema.properties) {
+              for (const [key, value] of Object.entries(jsonSchema.properties)) {
+                const prop = value as any;
+                if (prop.type === 'string') {
+                  if (prop.enum && Array.isArray(prop.enum) && prop.enum.length > 0) {
+                    shape[key] = z.enum(prop.enum as [string, ...string[]]);
+                  } else {
+                    shape[key] = jsonSchema.required?.includes(key) ? z.string() : z.string().optional();
+                  }
+                } else if (prop.type === 'number' || prop.type === 'integer') {
+                  shape[key] = jsonSchema.required?.includes(key) ? z.number() : z.number().optional();
+                } else if (prop.type === 'boolean') {
+                  shape[key] = jsonSchema.required?.includes(key) ? z.boolean() : z.boolean().optional();
+                } else if (prop.type === 'array') {
+                  if (prop.items?.type === 'string') {
+                    shape[key] = jsonSchema.required?.includes(key) 
+                      ? z.array(z.string()) 
+                      : z.array(z.string()).optional();
+                  } else if (prop.items?.type === 'number' || prop.items?.type === 'integer') {
+                    shape[key] = jsonSchema.required?.includes(key) 
+                      ? z.array(z.number()) 
+                      : z.array(z.number()).optional();
+                  } else {
+                    shape[key] = z.array(z.any()).optional();
+                  }
+                } else if (prop.type === 'object') {
+                  shape[key] = z.object({}).optional();
                 } else {
-                  shape[key] = jsonSchema.required?.includes(key) ? z.string() : z.string().optional();
+                  // Default to any for unknown types
+                  shape[key] = z.any().optional();
                 }
-              } else if (prop.type === 'number') {
-                shape[key] = jsonSchema.required?.includes(key) ? z.number() : z.number().optional();
-              } else if (prop.type === 'boolean') {
-                shape[key] = jsonSchema.required?.includes(key) ? z.boolean() : z.boolean().optional();
-              } else if (prop.type === 'array') {
-                if (prop.items?.type === 'string') {
-                  shape[key] = jsonSchema.required?.includes(key) 
-                    ? z.array(z.string()) 
-                    : z.array(z.string()).optional();
-                } else {
-                  shape[key] = z.array(z.any()).optional();
-                }
-              } else if (prop.type === 'object') {
-                shape[key] = z.object({}).optional();
               }
             }
+            return z.object(shape);
           }
-          return z.object(shape);
+          return z.any();
+        } catch (error) {
+          console.error('[Assessment] Error creating Zod schema:', error);
+          return z.any();
         }
-        return z.any();
       };
       
       // Convert each agent tool
@@ -333,7 +396,7 @@ Remember: ANY question about TMS content requires knowledge base search FIRST.`;
     tools.answer_question = tool({
       description: 'Answer a specific question in the assessment',
       parameters: z.object({
-        questionId: z.number().describe('The ID of the question to answer'),
+        questionId: z.number().describe('The actual QuestionID from the workflow (NOT the question number). Use the QUESTION NUMBER TO ID MAPPING to find the correct ID.'),
         value: z.string().describe('The answer value (e.g., "20" for 2-0, "12" for 1-2)')
       }),
       execute: async ({ questionId, value }) => {
@@ -362,7 +425,7 @@ Remember: ANY question about TMS content requires knowledge base search FIRST.`;
     tools.answer_multiple_questions = tool({
       description: 'Answer multiple questions at once with the same value. Use this for bulk operations like "answer all questions with 2-0" or "answer questions 3-5 with 1-2"',
       parameters: z.object({
-        questionIds: z.array(z.number()).describe('Array of question IDs to answer'),
+        questionIds: z.array(z.number()).describe('Array of actual QuestionIDs from the workflow (NOT question numbers). Use the QUESTION NUMBER TO ID MAPPING to find the correct IDs.'),
         value: z.string().describe('The answer value to apply to all questions (e.g., "2-0", "1-2")')
       }),
       execute: async ({ questionIds, value }) => {
@@ -423,7 +486,7 @@ Remember: ANY question about TMS content requires knowledge base search FIRST.`;
     }
     
     // Get model and temperature from agent config
-    // @ts-ignore - accessing protected properties
+    // @ts-expect-error - accessing protected properties
     const agentModelName = agent.model || 'gpt-4o-mini';
     // Use lower temperature to ensure instruction following for knowledge base usage
     const agentTemperature = 0.3; // Lower temperature for more consistent tool usage
@@ -434,12 +497,55 @@ Remember: ANY question about TMS content requires knowledge base search FIRST.`;
     console.log('[Assessment] System message preview:', systemMessage.substring(0, 500) + '...');
     console.log('[Assessment] Full system message length:', systemMessage.length);
 
-    // Ensure we have at least one message
-    const messagesToSend = formattedMessages.length > 0 ? formattedMessages : [{
-      role: 'user' as const,
-      content: userMessageContent || '[User joined the assessment]'
-    }];
+    // Ensure we have at least one message with content
+    // Remove any duplicate consecutive messages with same content
+    const messagesToSend = formattedMessages
+      .filter((msg: any) => msg.content && msg.content.trim() !== '')
+      .filter((msg: any, index: number, arr: any[]) => {
+        // Keep if it's the first message or different from previous
+        return index === 0 || msg.content !== arr[index - 1].content;
+      });
+    
+    console.log('[Assessment API] Messages after filtering:', messagesToSend.length);
+    
+    // If no valid messages or only assistant messages, add a user message
+    const hasUserMessage = messagesToSend.some((msg: any) => msg.role === 'user');
+    const lastMessage = messagesToSend[messagesToSend.length - 1];
+    console.log('[Assessment API] Has user message:', hasUserMessage);
+    console.log('[Assessment API] Last message role:', lastMessage?.role);
+    
+    if (messagesToSend.length === 0 || !hasUserMessage) {
+      console.log('[Assessment API] No user message found, adding one...');
+      // Add user message at the beginning if there's only assistant messages
+      const userMsg = {
+        role: 'user' as const,
+        content: userMessageContent || 'I am ready to start the assessment.'
+      };
+      
+      if (messagesToSend.length > 0 && messagesToSend[0].role === 'assistant') {
+        // Insert user message before assistant message
+        messagesToSend.unshift(userMsg);
+      } else {
+        // Add user message at the end
+        messagesToSend.push(userMsg);
+      }
+    } else if (lastMessage && lastMessage.role === 'assistant') {
+      // If last message is from assistant, add a user message to continue
+      console.log('[Assessment API] Last message is assistant, adding user continuation...');
+      messagesToSend.push({
+        role: 'user' as const,
+        content: 'Continue'
+      });
+    }
+    
+    console.log('[Assessment] Messages to send:', messagesToSend.map((m: any) => ({
+      role: m.role,
+      contentLength: m.content?.length || 0,
+      contentPreview: m.content?.substring(0, 50) || 'no content'
+    })));
 
+    console.log('[Assessment API] About to stream response...');
+    
     // Stream the response
     try {
       const streamConfig: any = {
@@ -453,9 +559,8 @@ Remember: ANY question about TMS content requires knowledge base search FIRST.`;
       // Only add tools if we have them
       if (tools && Object.keys(tools).length > 0) {
         streamConfig.tools = tools;
-        streamConfig.experimental_toolCallStreaming = true; // Enable tool streaming
-        streamConfig.maxSteps = 5; // Allow multiple steps for tool calls and responses
-        streamConfig.experimental_continueSteps = true; // Continue after tool calls
+        streamConfig.toolCallStreaming = false; // Disable tool streaming to avoid errors
+        streamConfig.maxSteps = 3; // Reduce max steps
         console.log('[Assessment] Tools added to stream config:', Object.keys(tools).length);
       }
       
@@ -509,6 +614,7 @@ Remember: ANY question about TMS content requires knowledge base search FIRST.`;
     let responseConversationId = conversationId;
     
     if (!conversationId) {
+      console.log('[Assessment API] Creating new conversation...');
       // Create new conversation using the same pattern as debrief
       responseConversationId = await conversationStore.createConversation(
         teamId,
@@ -531,21 +637,55 @@ Remember: ANY question about TMS content requires knowledge base search FIRST.`;
     const response = result.toDataStreamResponse();
     response.headers.set('X-Conversation-ID', responseConversationId);
     
+    console.log('[Assessment API] Returning stream response with conversation ID:', responseConversationId);
     return response;
     } catch (streamError) {
-      console.error('[Assessment] Error in streamText:', streamError);
-      console.error('[Assessment] Error details:', {
+      console.error('[Assessment API] Error in streamText:', streamError);
+      console.error('[Assessment API] Stream error details:', {
         message: streamError instanceof Error ? streamError.message : 'Unknown error',
-        stack: streamError instanceof Error ? streamError.stack : undefined
+        stack: streamError instanceof Error ? streamError.stack : undefined,
+        name: streamError instanceof Error ? streamError.name : 'Unknown',
+        cause: streamError instanceof Error ? (streamError as any).cause : undefined,
+        response: streamError instanceof Error ? (streamError as any).response : undefined,
+        data: streamError instanceof Error ? (streamError as any).data : undefined
       });
-      throw streamError;
+      
+      // Check if it's an OpenAI API error
+      if (streamError instanceof Error && streamError.message.includes('400')) {
+        console.error('[Assessment API] Bad request to OpenAI - likely invalid message format');
+        console.error('[Assessment API] Messages that were sent:', messagesToSend);
+      }
+      
+      // Return a proper error response instead of throwing
+      return new Response(
+        JSON.stringify({ 
+          error: streamError instanceof Error ? streamError.message : 'Stream error occurred',
+          type: 'stream_error',
+          details: streamError instanceof Error ? {
+            name: streamError.name,
+            message: streamError.message
+          } : undefined
+        }), 
+        { 
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        }
+      );
     }
   } catch (error) {
-    console.error('[Assessment] Error:', error);
+    console.error('[Assessment API] Top-level error:', error);
+    console.error('[Assessment API] Error stack:', error instanceof Error ? error.stack : 'No stack');
+    console.error('[Assessment API] Error details:', {
+      name: error instanceof Error ? error.name : 'Unknown',
+      message: error instanceof Error ? error.message : 'Unknown error',
+      cause: error instanceof Error ? (error as any).cause : undefined
+    });
+    
     return new Response(
       JSON.stringify({ 
         error: 'Internal server error', 
-        details: error instanceof Error ? error.message : 'Unknown error' 
+        details: error instanceof Error ? error.message : 'Unknown error',
+        type: error instanceof Error ? error.name : 'UnknownError'
       }), 
       { 
         status: 500,

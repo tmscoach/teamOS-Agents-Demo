@@ -21,8 +21,7 @@ export function createSearchReportChunksTool(): AgentTool {
         },
         limit: {
           type: 'number',
-          description: 'Maximum number of results to return',
-          default: 5
+          description: 'Maximum number of results to return (default: 5)'
         }
       },
       required: ['query']

@@ -5,6 +5,8 @@ import { Oscar1 } from "./Oscar1";
 import { ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 import { Message } from 'ai';
 import { Loader2 } from 'lucide-react';
+import { VoiceState } from '@/src/lib/services/voice';
+import { VoiceToggle } from './voice';
 
 interface ChatPanelProps {
   className?: string;
@@ -13,6 +15,9 @@ interface ChatPanelProps {
   handleInputChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleSubmit?: (e: React.FormEvent<HTMLFormElement>) => void;
   isLoading?: boolean;
+  voiceState?: VoiceState;
+  onVoiceToggle?: () => void;
+  audioLevel?: number;
 }
 
 export function ChatPanel({ 
@@ -21,7 +26,10 @@ export function ChatPanel({
   input: aiInput,
   handleInputChange: aiHandleInputChange,
   handleSubmit: aiHandleSubmit,
-  isLoading
+  isLoading,
+  voiceState = 'idle',
+  onVoiceToggle,
+  audioLevel = 0
 }: ChatPanelProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   // Use AI messages if provided, otherwise fall back to local state
@@ -84,7 +92,7 @@ export function ChatPanel({
     initialPos.current = { ...position };
   };
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!inputValue.trim()) return;
 
@@ -339,6 +347,15 @@ export function ChatPanel({
               className="flex-1 px-3 py-2 text-sm bg-gray-50 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               disabled={isLoading}
             />
+            {onVoiceToggle && (
+              <VoiceToggle
+                voiceState={voiceState}
+                onToggle={onVoiceToggle}
+                audioLevel={audioLevel}
+                size="sm"
+                disabled={false}
+              />
+            )}
             <button
               type="submit"
               className="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"

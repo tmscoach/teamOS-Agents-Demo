@@ -6,7 +6,7 @@ import styles from './StyledReportViewer.module.css';
 
 interface StyledReportViewerProps {
   html: string;
-  onSectionChange: (section: string) => void;
+  onSectionChange?: (section: string) => void;
 }
 
 const StyledReportViewer = memo(function StyledReportViewer({ html, onSectionChange }: StyledReportViewerProps) {

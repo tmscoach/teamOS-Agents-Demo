@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import { Message } from 'ai';
 import CollapsedChat from './CollapsedChat';
 import ExpandedChat from './ExpandedChat';
+import { VoiceState } from '@/src/lib/services/voice';
 
 interface WorkflowState {
   subscriptionId: string;
@@ -28,6 +29,9 @@ interface ChatInterfaceProps {
   handleSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
   isLoading: boolean;
   workflowState: WorkflowState | null;
+  voiceState?: VoiceState;
+  onVoiceToggle?: () => void;
+  audioLevel?: number;
 }
 
 export default function ChatInterface({ 
@@ -41,7 +45,10 @@ export default function ChatInterface({
   handleInputChange,
   handleSubmit,
   isLoading,
-  workflowState
+  workflowState,
+  voiceState,
+  onVoiceToggle,
+  audioLevel
 }: ChatInterfaceProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -75,6 +82,10 @@ export default function ChatInterface({
       <CollapsedChat
         onToggle={onToggle}
         inputRef={inputRef}
+        voiceState={voiceState}
+        onVoiceToggle={onVoiceToggle}
+        audioLevel={audioLevel}
+        messages={messages}
       />
     );
   }
@@ -90,6 +101,9 @@ export default function ChatInterface({
       workflowState={workflowState}
       assessmentType={assessmentType}
       onToggle={onToggle}
+      voiceState={voiceState}
+      onVoiceToggle={onVoiceToggle}
+      audioLevel={audioLevel}
     />
   );
 }
