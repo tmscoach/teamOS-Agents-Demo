@@ -1,12 +1,12 @@
 import { TMSEnabledAgent } from './tms-enabled-agent';
 import { AgentContext, AgentResponse, AgentTool } from '../types';
 import { formatDebriefContext } from '../hooks/use-debrief-context';
-import { SearchReportChunksSchema } from '../tools/search-report-chunks';
-import { GetReportContextSchema } from '../tools/get-report-context';
+import { createSearchReportChunksTool } from '../tools/search-report-chunks';
+import { createGetReportContextTool } from '../tools/get-report-context';
 
 export class DebriefAgent extends TMSEnabledAgent {
-  private reportSearchTool: SearchReportChunksSchema;
-  private reportContextTool: GetReportContextSchema;
+  private reportSearchTool: AgentTool;
+  private reportContextTool: AgentTool;
   
   constructor() {
     super({
@@ -68,8 +68,8 @@ Remember to:
     });
     
     // Initialize report search tools
-    this.reportSearchTool = new SearchReportChunksSchema();
-    this.reportContextTool = new GetReportContextSchema();
+    this.reportSearchTool = createSearchReportChunksTool();
+    this.reportContextTool = createGetReportContextTool();
     
     console.log(`[${this.name}] Constructor completed, tools count: ${this.tools.length}`);
   }
@@ -92,18 +92,8 @@ Remember to:
   public addReportTools(): void {
     // Add report-specific tools after configuration is loaded
     const reportTools: AgentTool[] = [
-      {
-        name: this.reportSearchTool.name,
-        description: this.reportSearchTool.description,
-        parameters: this.reportSearchTool.schema,
-        handler: async (params: any, context?: AgentContext) => this.reportSearchTool._call(params, context)
-      },
-      {
-        name: this.reportContextTool.name,
-        description: this.reportContextTool.description,
-        parameters: this.reportContextTool.schema,
-        handler: async (params: any, context?: AgentContext) => this.reportContextTool._call(params, context)
-      }
+      this.reportSearchTool,
+      this.reportContextTool
     ];
     
     // Add to tools array

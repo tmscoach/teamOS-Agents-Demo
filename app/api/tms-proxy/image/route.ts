@@ -66,8 +66,8 @@ export async function GET(request: NextRequest) {
       const mockUser = mockDataStore.getUserByClerkId(session.userId);
       if (mockUser) {
         // Generate a mock JWT token
-        const { MockTMSClient } = await import('@/src/lib/mock-tms-api/mock-api-client');
-        const mockClient = new MockTMSClient();
+        const { MockTMSAPIClient } = await import('@/src/lib/mock-tms-api/mock-api-client');
+        const mockClient = new MockTMSAPIClient();
         bearerToken = mockClient.generateJWT({
           sub: mockUser.id,
           userId: mockUser.id,

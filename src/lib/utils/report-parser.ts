@@ -34,6 +34,8 @@ export interface ParsedReport {
   subscriptionId?: string;
   rawHtml?: string;
   sections?: ReportSection[];
+  reportId?: string;
+  isFromCache?: boolean;
 }
 
 export interface ReportParseError {

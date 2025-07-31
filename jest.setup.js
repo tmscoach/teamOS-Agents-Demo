@@ -1,6 +1,9 @@
 // Learn more: https://github.com/testing-library/jest-dom
 import '@testing-library/jest-dom'
 
+// Set test environment variables
+process.env.TMS_API_KEY = 'mock-api-key-12345'
+
 // Mock Prisma Client
 jest.mock('@/lib/db/prisma', () => ({
   prisma: {

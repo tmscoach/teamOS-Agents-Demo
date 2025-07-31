@@ -22,8 +22,7 @@ export function createSearchReportImagesTool(): AgentTool {
         },
         includeData: {
           type: 'boolean',
-          description: 'Include extracted data points from the images',
-          default: true
+          description: 'Include extracted data points from the images (default: true)'
         }
       },
       required: ['query']
@@ -100,7 +99,7 @@ export function createSearchReportImagesTool(): AgentTool {
             // If query has multiple words, search for each word independently
             if (queryWords.length > 1) {
               // Create OR conditions for each word
-              const wordConditions = queryWords.map(word => ({
+              const wordConditions = queryWords.map((word: string) => ({
                 OR: [
                   { detailedDescription: { contains: word, mode: 'insensitive' } },
                   { altText: { contains: word, mode: 'insensitive' } }

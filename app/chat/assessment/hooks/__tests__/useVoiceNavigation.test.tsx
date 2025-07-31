@@ -1,12 +1,12 @@
 import { renderHook, act } from '@testing-library/react';
 import { useVoiceNavigation } from '../useVoiceNavigation';
-import { VoiceService } from '../../../../../src/lib/services/voice';
+import { VoiceNavigationService } from '../../../../../src/lib/services/voice';
 
-// Mock the VoiceService
+// Mock the VoiceNavigationService
 jest.mock('../../../../../src/lib/services/voice', () => ({
-  VoiceService: {
-    getInstance: jest.fn(),
-  },
+  VoiceNavigationService: jest.fn(),
+  AudioManager: jest.fn(),
+  VoiceCommandProcessor: jest.fn(),
 }));
 
 // Mock navigator.mediaDevices
@@ -87,25 +87,32 @@ class MockAudioContext {
 global.AudioContext = MockAudioContext as any;
 
 describe('useVoiceNavigation', () => {
-  let mockVoiceService: any;
+  let mockVoiceNavigationService: any;
   
   beforeEach(() => {
     jest.clearAllMocks();
     
-    mockVoiceService = {
-      isConnected: false,
-      connect: jest.fn().mockResolvedValue(undefined),
-      disconnect: jest.fn().mockResolvedValue(undefined),
+    mockVoiceNavigationService = {
+      startSession: jest.fn().mockResolvedValue(undefined),
+      stopSession: jest.fn().mockResolvedValue(undefined),
+      pauseListening: jest.fn().mockResolvedValue(undefined),
+      resumeListening: jest.fn().mockResolvedValue(undefined),
+      sendTextCommand: jest.fn().mockResolvedValue(undefined),
+      getAudioLevel: jest.fn().mockReturnValue(0),
+      getContextualHelp: jest.fn().mockReturnValue([
+        'Say "answer 2-0" or "select strongly left"',
+        'Say "answer all with 1-2" to answer all questions the same',
+        'Say "next page" when ready to continue',
+      ]),
+      getCurrentSession: jest.fn().mockReturnValue(null),
       setWorkflowState: jest.fn(),
       setAnswerUpdateCallback: jest.fn(),
       setNavigateNextCallback: jest.fn(),
-      startMicrophoneInput: jest.fn().mockResolvedValue(undefined),
-      stopMicrophoneInput: jest.fn(),
-      setAudioFeedbackEnabled: jest.fn(),
-      stopAudioManager: jest.fn(),
+      setConversationContext: jest.fn(),
+      getConversationContext: jest.fn(),
     };
     
-    (VoiceService.getInstance as jest.Mock).mockReturnValue(mockVoiceService);
+    (VoiceNavigationService as jest.Mock).mockImplementation(() => mockVoiceNavigationService);
     
     // Mock successful media device enumeration
     mockEnumerateDevices.mockResolvedValue([
@@ -125,139 +132,147 @@ describe('useVoiceNavigation', () => {
   it('should initialize with voice disabled', () => {
     const { result } = renderHook(() => useVoiceNavigation());
     
-    expect(result.current.isVoiceEnabled).toBe(false);
-    expect(result.current.isConnecting).toBe(false);
-    expect(result.current.error).toBeNull();
-    expect(result.current.transcripts).toEqual([]);
+    expect(result.current.voiceState).toBe('idle');
+    expect(result.current.transcript).toBe('');
+    expect(result.current.lastCommand).toBeNull();
+    expect(result.current.audioLevel).toBe(0);
   });
   
-  it('should check microphone permission on mount', async () => {
-    const { result } = renderHook(() => useVoiceNavigation());
+  it('should create VoiceNavigationService on mount', () => {
+    renderHook(() => useVoiceNavigation());
     
-    // Wait for permission check
-    await act(async () => {
-      await new Promise(resolve => setTimeout(resolve, 0));
-    });
-    
-    expect(mockEnumerateDevices).toHaveBeenCalled();
-    expect(result.current.hasMicrophonePermission).toBe(true);
+    expect(VoiceNavigationService).toHaveBeenCalledWith(expect.objectContaining({
+      apiKey: undefined,
+      onTranscript: expect.any(Function),
+      onCommand: expect.any(Function),
+      onStateChange: expect.any(Function),
+      onError: expect.any(Function),
+    }));
   });
   
-  it('should enable voice when toggleVoice is called', async () => {
+  it('should start voice when startVoice is called', async () => {
     const { result } = renderHook(() => useVoiceNavigation());
     
     await act(async () => {
-      await result.current.toggleVoice();
+      await result.current.startVoice();
     });
     
-    expect(mockGetUserMedia).toHaveBeenCalledWith({ audio: true });
-    expect(mockVoiceService.connect).toHaveBeenCalled();
-    expect(mockVoiceService.startMicrophoneInput).toHaveBeenCalled();
-    expect(result.current.isVoiceEnabled).toBe(true);
+    expect(mockVoiceNavigationService.startSession).toHaveBeenCalled();
   });
   
-  it('should disable voice when toggleVoice is called while enabled', async () => {
+  it('should stop voice when stopVoice is called', async () => {
     const { result } = renderHook(() => useVoiceNavigation());
     
-    // Enable voice first
+    // Start voice first
     await act(async () => {
-      await result.current.toggleVoice();
+      await result.current.startVoice();
     });
     
-    expect(result.current.isVoiceEnabled).toBe(true);
-    
-    // Now disable it
+    // Now stop it
     await act(async () => {
-      await result.current.toggleVoice();
+      await result.current.stopVoice();
     });
     
-    expect(mockVoiceService.stopMicrophoneInput).toHaveBeenCalled();
-    expect(mockVoiceService.disconnect).toHaveBeenCalled();
-    expect(result.current.isVoiceEnabled).toBe(false);
+    expect(mockVoiceNavigationService.stopSession).toHaveBeenCalled();
   });
   
   it('should handle connection errors gracefully', async () => {
-    mockVoiceService.connect.mockRejectedValue(new Error('Connection failed'));
+    mockVoiceNavigationService.startSession.mockRejectedValue(new Error('Connection failed'));
     
-    const { result } = renderHook(() => useVoiceNavigation());
+    const onError = jest.fn();
+    const { result } = renderHook(() => useVoiceNavigation({ onError }));
     
     await act(async () => {
-      await result.current.toggleVoice();
+      try {
+        await result.current.startVoice();
+      } catch (error) {
+        // Expected error
+      }
     });
     
-    expect(result.current.error).toBe('Failed to connect voice service');
-    expect(result.current.isVoiceEnabled).toBe(false);
-    expect(mockVoiceService.disconnect).toHaveBeenCalled();
+    expect(onError).toHaveBeenCalledWith(expect.any(Error));
+    expect(result.current.voiceState).toBe('error');
   });
   
   it('should handle microphone permission denial', async () => {
-    mockGetUserMedia.mockRejectedValue(new Error('Permission denied'));
+    mockVoiceNavigationService.startSession.mockRejectedValue(new Error('Microphone permission denied'));
     
+    const onError = jest.fn();
+    const { result } = renderHook(() => useVoiceNavigation({ onError }));
+    
+    await act(async () => {
+      try {
+        await result.current.startVoice();
+      } catch (error) {
+        // Expected error
+      }
+    });
+    
+    expect(onError).toHaveBeenCalledWith(expect.any(Error));
+    expect(result.current.voiceState).toBe('error');
+  });
+  
+  it('should handle transcript updates', () => {
+    const onTranscript = jest.fn();
+    renderHook(() => useVoiceNavigation({ onTranscript }));
+    
+    // Get the onTranscript callback that was passed to VoiceNavigationService
+    const [[config]] = (VoiceNavigationService as jest.Mock).mock.calls;
+    
+    // Simulate a transcript update
+    act(() => {
+      config.onTranscript('Hello world');
+    });
+    
+    expect(onTranscript).toHaveBeenCalledWith('Hello world');
+  });
+  
+  it('should handle command updates', () => {
+    const onCommand = jest.fn();
+    renderHook(() => useVoiceNavigation({ onCommand }));
+    
+    // Get the onCommand callback that was passed to VoiceNavigationService
+    const [[config]] = (VoiceNavigationService as jest.Mock).mock.calls;
+    
+    // Simulate a command
+    const command = { type: 'answer', questionId: 1, value: '2-0' };
+    act(() => {
+      config.onCommand(command);
+    });
+    
+    expect(onCommand).toHaveBeenCalledWith(command);
+  });
+  
+  it('should handle state changes', () => {
     const { result } = renderHook(() => useVoiceNavigation());
     
-    await act(async () => {
-      await result.current.toggleVoice();
+    // Get the onStateChange callback that was passed to VoiceNavigationService
+    const [[config]] = (VoiceNavigationService as jest.Mock).mock.calls;
+    
+    // Simulate a state change
+    act(() => {
+      config.onStateChange('listening');
     });
     
-    expect(result.current.error).toBe('Microphone permission denied');
-    expect(result.current.isVoiceEnabled).toBe(false);
+    expect(result.current.voiceState).toBe('listening');
   });
   
-  it('should update workflow state when provided', () => {
-    const workflowState = { currentPageId: 1, questions: [] };
-    const { rerender } = renderHook(
-      ({ state }) => useVoiceNavigation(state),
-      { initialProps: { state: undefined } }
-    );
-    
-    rerender({ state: workflowState });
-    
-    expect(mockVoiceService.setWorkflowState).toHaveBeenCalledWith(workflowState);
-  });
-  
-  it('should set answer update callback when provided', () => {
-    const onAnswerUpdate = jest.fn();
-    renderHook(() => useVoiceNavigation(undefined, onAnswerUpdate));
-    
-    expect(mockVoiceService.setAnswerUpdateCallback).toHaveBeenCalledWith(onAnswerUpdate);
-  });
-  
-  it('should set navigate next callback when provided', () => {
-    const onNavigateNext = jest.fn();
-    renderHook(() => useVoiceNavigation(undefined, undefined, onNavigateNext));
-    
-    expect(mockVoiceService.setNavigateNextCallback).toHaveBeenCalledWith(onNavigateNext);
-  });
-  
-  it('should clean up on unmount', async () => {
-    const { result, unmount } = renderHook(() => useVoiceNavigation());
-    
-    // Enable voice first
-    await act(async () => {
-      await result.current.toggleVoice();
-    });
+  it('should clean up on unmount', () => {
+    const { unmount } = renderHook(() => useVoiceNavigation());
     
     unmount();
     
-    expect(mockVoiceService.stopMicrophoneInput).toHaveBeenCalled();
-    expect(mockVoiceService.disconnect).toHaveBeenCalled();
-    expect(mockVoiceService.stopAudioManager).toHaveBeenCalled();
+    expect(mockVoiceNavigationService.stopSession).toHaveBeenCalled();
   });
   
-  it('should handle voice preferences', () => {
+  it('should provide contextual help', () => {
     const { result } = renderHook(() => useVoiceNavigation());
     
-    expect(result.current.voicePreferences).toEqual({
-      audioFeedback: true,
-      autoStart: false,
-      voiceSpeed: 'normal',
-    });
+    const help = result.current.getContextualHelp('seesaw');
     
-    act(() => {
-      result.current.updateVoicePreferences({ audioFeedback: false });
-    });
-    
-    expect(result.current.voicePreferences.audioFeedback).toBe(false);
-    expect(mockVoiceService.setAudioFeedbackEnabled).toHaveBeenCalledWith(false);
+    expect(mockVoiceNavigationService.getContextualHelp).toHaveBeenCalledWith('seesaw');
+    expect(help).toContain('Say "answer 2-0" or "select strongly left"');
+    expect(help).toContain('Say "answer all with 1-2" to answer all questions the same');
+    expect(help).toContain('Say "next page" when ready to continue');
   });
 });

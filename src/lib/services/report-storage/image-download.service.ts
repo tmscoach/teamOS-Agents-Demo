@@ -180,7 +180,7 @@ export class ImageDownloadService {
         detailedDescription: visionAnalysis?.detailedDescription,
         extractedData: visionAnalysis?.extractedData,
         insights: visionAnalysis?.insights,
-        embedding,
+        embedding: embedding ?? undefined,
         metadata
       };
     } catch (error) {

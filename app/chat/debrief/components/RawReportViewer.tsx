@@ -5,7 +5,7 @@ import DOMPurify from 'dompurify';
 
 interface RawReportViewerProps {
   html: string;
-  onSectionChange: (section: string) => void;
+  onSectionChange?: (section: string) => void;
 }
 
 const RawReportViewer = memo(function RawReportViewer({ html, onSectionChange }: RawReportViewerProps) {
@@ -34,7 +34,7 @@ const RawReportViewer = memo(function RawReportViewer({ html, onSectionChange }:
             const h2 = entry.target.querySelector('h2');
             if (h2) {
               const sectionText = h2.textContent || 'unknown';
-              onSectionChange(sectionText.toLowerCase().replace(/\s+/g, '-'));
+              onSectionChange?.(sectionText.toLowerCase().replace(/\s+/g, '-'));
             }
           }
         });

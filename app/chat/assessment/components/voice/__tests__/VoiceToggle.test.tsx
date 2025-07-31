@@ -5,8 +5,7 @@ import '@testing-library/jest-dom';
 
 describe('VoiceToggle', () => {
   const defaultProps = {
-    isEnabled: false,
-    isConnecting: false,
+    voiceState: 'idle' as const,
     onToggle: jest.fn(),
     disabled: false,
   };
@@ -15,7 +14,7 @@ describe('VoiceToggle', () => {
     jest.clearAllMocks();
   });
 
-  it('should render microphone icon when not enabled', () => {
+  it('should render microphone icon when idle', () => {
     render(<VoiceToggle {...defaultProps} />);
     
     const button = screen.getByRole('button', { name: /start voice input/i });
@@ -23,18 +22,18 @@ describe('VoiceToggle', () => {
     expect(button).toHaveClass('bg-gray-200');
   });
 
-  it('should render with active state when enabled', () => {
-    render(<VoiceToggle {...defaultProps} isEnabled={true} />);
+  it('should render with active state when listening', () => {
+    render(<VoiceToggle {...defaultProps} voiceState="listening" />);
     
     const button = screen.getByRole('button', { name: /stop voice input/i });
     expect(button).toHaveClass('bg-red-500');
   });
 
-  it('should show loading state when connecting', () => {
-    render(<VoiceToggle {...defaultProps} isConnecting={true} />);
+  it('should be disabled when connecting', () => {
+    render(<VoiceToggle {...defaultProps} voiceState="connecting" />);
     
     const button = screen.getByRole('button', { name: /start voice input/i });
-    expect(button).toHaveClass('cursor-wait');
+    expect(button).toHaveClass('cursor-not-allowed');
     expect(button).toHaveAttribute('disabled');
   });
 
@@ -68,7 +67,7 @@ describe('VoiceToggle', () => {
 
   it('should not call onToggle when connecting', () => {
     const onToggle = jest.fn();
-    render(<VoiceToggle {...defaultProps} onToggle={onToggle} isConnecting={true} />);
+    render(<VoiceToggle {...defaultProps} onToggle={onToggle} voiceState="connecting" />);
     
     const button = screen.getByRole('button', { name: /start voice input/i });
     fireEvent.click(button);
@@ -83,8 +82,8 @@ describe('VoiceToggle', () => {
     expect(button).toHaveAttribute('aria-label', 'Start voice input');
   });
 
-  it('should update aria-label when enabled', () => {
-    render(<VoiceToggle {...defaultProps} isEnabled={true} />);
+  it('should update aria-label when active', () => {
+    render(<VoiceToggle {...defaultProps} voiceState="listening" />);
     
     const button = screen.getByRole('button', { name: /stop voice input/i });
     expect(button).toHaveAttribute('aria-label', 'Stop voice input');

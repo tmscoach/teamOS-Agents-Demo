@@ -4,7 +4,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
+import { auth, currentUser } from '@clerk/nextjs/server';
 import { ReportStorageService } from '@/src/lib/services/report-storage/report-storage.service';
 import { PrismaClient } from '@/lib/generated/prisma';
 
@@ -16,6 +16,8 @@ export async function POST(request: Request) {
     if (!session?.userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+    
+    const clerkUser = await currentUser();
 
     // Look up the database user by Clerk ID
     const user = await prisma.user.findUnique({
@@ -32,8 +34,8 @@ export async function POST(request: Request) {
         data: {
           id: session.userId, // Use Clerk ID as the database ID for now
           clerkId: session.userId,
-          email: session.user?.emailAddresses?.[0]?.emailAddress || `${session.userId}@temp.com`,
-          name: session.user?.firstName ? `${session.user.firstName} ${session.user.lastName || ''}`.trim() : 'Unknown User',
+          email: clerkUser?.emailAddresses?.[0]?.emailAddress || `${session.userId}@temp.com`,
+          name: clerkUser?.firstName ? `${clerkUser.firstName} ${clerkUser.lastName || ''}`.trim() : 'Unknown User',
           role: 'TEAM_MEMBER',
           updatedAt: new Date()
         }

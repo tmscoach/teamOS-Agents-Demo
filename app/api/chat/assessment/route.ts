@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
     const messages = body.messages || [];
     
     console.log('[Assessment API] Messages count:', messages.length);
-    console.log('[Assessment API] Message roles:', messages.map(m => m.role));
+    console.log('[Assessment API] Message roles:', messages.map((m: any) => m.role));
     console.log('[Assessment API] Body keys:', Object.keys(body));
     
     // Find the last user message (not assistant message)
@@ -486,7 +486,7 @@ Remember: ANY question about TMS content requires knowledge base search FIRST.`;
     }
     
     // Get model and temperature from agent config
-    // @ts-ignore - accessing protected properties
+    // @ts-expect-error - accessing protected properties
     const agentModelName = agent.model || 'gpt-4o-mini';
     // Use lower temperature to ensure instruction following for knowledge base usage
     const agentTemperature = 0.3; // Lower temperature for more consistent tool usage
@@ -500,8 +500,8 @@ Remember: ANY question about TMS content requires knowledge base search FIRST.`;
     // Ensure we have at least one message with content
     // Remove any duplicate consecutive messages with same content
     const messagesToSend = formattedMessages
-      .filter(msg => msg.content && msg.content.trim() !== '')
-      .filter((msg, index, arr) => {
+      .filter((msg: any) => msg.content && msg.content.trim() !== '')
+      .filter((msg: any, index: number, arr: any[]) => {
         // Keep if it's the first message or different from previous
         return index === 0 || msg.content !== arr[index - 1].content;
       });
@@ -509,7 +509,7 @@ Remember: ANY question about TMS content requires knowledge base search FIRST.`;
     console.log('[Assessment API] Messages after filtering:', messagesToSend.length);
     
     // If no valid messages or only assistant messages, add a user message
-    const hasUserMessage = messagesToSend.some(msg => msg.role === 'user');
+    const hasUserMessage = messagesToSend.some((msg: any) => msg.role === 'user');
     const lastMessage = messagesToSend[messagesToSend.length - 1];
     console.log('[Assessment API] Has user message:', hasUserMessage);
     console.log('[Assessment API] Last message role:', lastMessage?.role);
@@ -538,7 +538,7 @@ Remember: ANY question about TMS content requires knowledge base search FIRST.`;
       });
     }
     
-    console.log('[Assessment] Messages to send:', messagesToSend.map(m => ({
+    console.log('[Assessment] Messages to send:', messagesToSend.map((m: any) => ({
       role: m.role,
       contentLength: m.content?.length || 0,
       contentPreview: m.content?.substring(0, 50) || 'no content'

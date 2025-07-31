@@ -211,13 +211,13 @@ export class RealtimeConnectionManager {
             resolve();
           }, { once: true });
           
-          this.rt.socket.addEventListener('error', (error) => {
+          this.rt.socket.addEventListener('error', (error: any) => {
             console.error('[Voice] WebSocket error:', error);
             clearTimeout(timeout);
             reject(new Error('WebSocket connection error'));
           }, { once: true });
           
-          this.rt.socket.addEventListener('close', (event) => {
+          this.rt.socket.addEventListener('close', (event: any) => {
             console.error('[Voice] WebSocket closed unexpectedly:', event.code, event.reason);
             clearTimeout(timeout);
             reject(new Error(`WebSocket closed: ${event.code} ${event.reason}`));
@@ -494,7 +494,7 @@ IMPORTANT:
     }
 
     // Handle speech detection events
-    this.rt.on('input_audio_buffer.speech_started', (event) => {
+    this.rt.on('input_audio_buffer.speech_started', (event: any) => {
       console.log('[Voice] Speech started - interrupting any playing audio');
       
       // Stop any currently playing audio to allow interruption
@@ -503,7 +503,7 @@ IMPORTANT:
       this.config.onStateChange?.('listening');
     });
 
-    this.rt.on('input_audio_buffer.speech_stopped', (event) => {
+    this.rt.on('input_audio_buffer.speech_stopped', (event: any) => {
       console.log('[Voice] Speech stopped');
       // Server will automatically create response with create_response: true
       // Mark that we're expecting a response to prevent duplicate response creation
@@ -515,7 +515,7 @@ IMPORTANT:
     });
 
     // Handle transcription updates
-    this.rt.on('conversation.item.input_audio_transcription.completed', (event) => {
+    this.rt.on('conversation.item.input_audio_transcription.completed', (event: any) => {
       const transcript = event.transcript;
       if (transcript) {
         console.log('[Voice] User said:', transcript);
@@ -530,7 +530,7 @@ IMPORTANT:
     });
 
     // Handle function calls from the assistant
-    this.rt.on('response.function_call_arguments.done', async (event) => {
+    this.rt.on('response.function_call_arguments.done', async (event: any) => {
       console.log('Function call received:', event);
       const name = (event as any).name;
       const args = (event as any).arguments;
@@ -708,25 +708,25 @@ IMPORTANT:
     });
 
     // Track when response generation starts
-    this.rt.on('response.created', (event) => {
+    this.rt.on('response.created', (event: any) => {
       console.log('[Voice] Response created');
       this.isGeneratingResponse = true;
     });
     
     // Handle responses
-    this.rt.on('response.text.delta', (event) => {
+    this.rt.on('response.text.delta', (event: any) => {
       // Handle text responses if needed
       console.log('Assistant text:', event.delta);
     });
 
     // Handle audio responses
-    this.rt.on('response.audio_transcript.delta', (event) => {
+    this.rt.on('response.audio_transcript.delta', (event: any) => {
       // Handle audio transcript if needed
       console.log('Assistant audio transcript:', event.delta);
     });
     
     // Track complete assistant responses
-    this.rt.on('response.audio_transcript.done', (event) => {
+    this.rt.on('response.audio_transcript.done', (event: any) => {
       if (event.transcript) {
         // Add to conversation history
         this.conversationContext.conversationHistory.push({
@@ -739,7 +739,7 @@ IMPORTANT:
 
     // Handle audio playback
     let audioChunkIndex = 0;
-    this.rt.on('response.audio.delta', (event) => {
+    this.rt.on('response.audio.delta', (event: any) => {
       if (event.delta && this.audioContext) {
         const chunkId = audioChunkIndex++;
         
@@ -793,7 +793,7 @@ IMPORTANT:
     });
 
     // Handle errors
-    this.rt.on('error', (error) => {
+    this.rt.on('error', (error: any) => {
       console.error('Realtime API error:', error);
       this.isGeneratingResponse = false; // Reset on error
       this.config.onError?.(new Error(error.message));
@@ -801,7 +801,7 @@ IMPORTANT:
     });
 
     // Handle socket events directly
-    this.rt.socket.addEventListener('close', (event) => {
+    this.rt.socket.addEventListener('close', (event: any) => {
       this.isConnected = false;
       console.log('[Voice] WebSocket closed:', event.code, event.reason);
       

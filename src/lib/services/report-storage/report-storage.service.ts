@@ -43,7 +43,7 @@ export class ReportStorageService {
           subscriptionId: options.subscriptionId,
           templateId: options.templateId,
           rawHtml: options.rawHtml,
-          metadata: metadata as Prisma.JsonObject,
+          metadata: metadata as unknown as Prisma.JsonObject,
           processingStatus: 'PENDING'
         }
       });
@@ -102,7 +102,7 @@ export class ReportStorageService {
           imageType: img.imageType as 'wheel' | 'graph' | 'asset',
           altText: img.altText || undefined
         })),
-        metadata: report.metadata as ReportMetadata
+        metadata: report.metadata as unknown as ReportMetadata
       };
     } catch (error) {
       console.error('Failed to get report:', error);

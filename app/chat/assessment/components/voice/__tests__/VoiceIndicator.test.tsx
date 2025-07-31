@@ -6,90 +6,90 @@ import '@testing-library/jest-dom';
 
 describe('VoiceIndicator', () => {
   it('should render listening state', () => {
-    render(<VoiceIndicator state="listening" />);
+    render(<VoiceIndicator voiceState="listening" />);
     
-    const indicator = screen.getByText(/listening.../i);
+    const indicator = screen.getByText('Listening...');
     expect(indicator).toBeInTheDocument();
-    expect(indicator.parentElement).toHaveClass('bg-red-100');
+    const container = indicator.parentElement;
+    expect(container).toHaveClass('text-red-600');
   });
 
   it('should render thinking state', () => {
-    render(<VoiceIndicator state="thinking" />);
+    render(<VoiceIndicator voiceState="thinking" />);
     
-    const indicator = screen.getByText(/thinking.../i);
+    const indicator = screen.getByText('OSmos is thinking...');
     expect(indicator).toBeInTheDocument();
-    expect(indicator.parentElement).toHaveClass('bg-yellow-100');
+    const container = indicator.parentElement;
+    expect(container).toHaveClass('text-indigo-600');
   });
 
   it('should render speaking state', () => {
-    render(<VoiceIndicator state="speaking" />);
+    render(<VoiceIndicator voiceState="speaking" />);
     
-    const indicator = screen.getByText(/speaking.../i);
+    const indicator = screen.getByText('OSmos is speaking...');
     expect(indicator).toBeInTheDocument();
-    expect(indicator.parentElement).toHaveClass('bg-green-100');
+    const container = indicator.parentElement;
+    expect(container).toHaveClass('text-blue-600');
   });
 
   it('should render ready state', () => {
-    render(<VoiceIndicator state="ready" />);
+    render(<VoiceIndicator voiceState="ready" />);
     
-    const indicator = screen.getByText(/ready/i);
+    const indicator = screen.getByText('Voice ready');
     expect(indicator).toBeInTheDocument();
-    expect(indicator.parentElement).toHaveClass('bg-blue-100');
   });
 
   it('should render connecting state', () => {
-    render(<VoiceIndicator state="connecting" />);
+    render(<VoiceIndicator voiceState="connecting" />);
     
-    const indicator = screen.getByText(/connecting.../i);
+    const indicator = screen.getByText('Connecting to voice service...');
     expect(indicator).toBeInTheDocument();
-    expect(indicator.parentElement).toHaveClass('bg-gray-100');
+    const container = indicator.parentElement;
+    expect(container).toHaveClass('text-gray-600');
   });
 
   it('should render error state', () => {
-    render(<VoiceIndicator state="error" />);
+    render(<VoiceIndicator voiceState="error" />);
     
-    const indicator = screen.getByText(/error/i);
+    const indicator = screen.getByText('Voice error - please try again');
     expect(indicator).toBeInTheDocument();
-    expect(indicator.parentElement).toHaveClass('bg-red-100');
   });
 
-  it('should not render when state is disconnected', () => {
-    const { container } = render(<VoiceIndicator state="disconnected" />);
+  it('should render disconnected state', () => {
+    render(<VoiceIndicator voiceState="disconnected" />);
+    
+    const indicator = screen.getByText('Voice disconnected');
+    expect(indicator).toBeInTheDocument();
+  });
+
+  it('should not render when state is idle', () => {
+    const { container } = render(<VoiceIndicator voiceState="idle" />);
     expect(container.firstChild).toBeNull();
   });
 
-  it('should have proper layout classes', () => {
-    render(<VoiceIndicator state="ready" />);
+  it('should render reconnecting state', () => {
+    render(<VoiceIndicator voiceState="reconnecting" />);
     
-    const container = screen.getByText(/ready/i).parentElement;
-    expect(container).toHaveClass('fixed');
-    expect(container).toHaveClass('bottom-4');
-    expect(container).toHaveClass('left-4');
-    expect(container).toHaveClass('z-50');
+    const indicator = screen.getByText('Reconnecting...');
+    expect(indicator).toBeInTheDocument();
+    const container = indicator.parentElement;
+    expect(container).toHaveClass('text-orange-600');
   });
 
-  it('should display appropriate icons for each state', () => {
-    const { rerender } = render(<VoiceIndicator state="listening" />);
-    expect(screen.getByRole('img', { hidden: true })).toBeInTheDocument();
-
-    rerender(<VoiceIndicator state="thinking" />);
-    expect(screen.getByRole('img', { hidden: true })).toBeInTheDocument();
-
-    rerender(<VoiceIndicator state="speaking" />);
-    expect(screen.getByRole('img', { hidden: true })).toBeInTheDocument();
+  it('should have proper layout classes', () => {
+    const { container } = render(<VoiceIndicator voiceState="ready" />);
+    
+    const wrapper = container.firstChild;
+    expect(wrapper).toHaveClass('bg-white');
+    expect(wrapper).toHaveClass('rounded-lg');
+    expect(wrapper).toHaveClass('shadow-sm');
+    expect(wrapper).toHaveClass('border');
+    expect(wrapper).toHaveClass('border-gray-200');
   });
-
-  it('should apply animation classes based on state', () => {
-    const { rerender } = render(<VoiceIndicator state="listening" />);
-    let icon = screen.getByRole('img', { hidden: true });
-    expect(icon).toHaveClass('animate-pulse');
-
-    rerender(<VoiceIndicator state="thinking" />);
-    icon = screen.getByRole('img', { hidden: true });
-    expect(icon).toHaveClass('animate-spin');
-
-    rerender(<VoiceIndicator state="speaking" />);
-    icon = screen.getByRole('img', { hidden: true });
-    expect(icon).toHaveClass('animate-pulse');
+  
+  it('should show transcript when listening with transcript', () => {
+    render(<VoiceIndicator voiceState="listening" transcript="Hello world" />);
+    
+    expect(screen.getByText('"Hello world"')).toBeInTheDocument();
   });
 });

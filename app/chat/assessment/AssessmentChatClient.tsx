@@ -134,12 +134,12 @@ export default function AssessmentChatClient() {
     api: '/api/chat/assessment',
     body: chatBodyRef.current, // Use the current value from ref
     initialMessages: [],
-    experimental_onToolCall: true,
     // Prevent automatic retries
     sendExtraMessageFields: true,
     // Custom fetcher to always use the latest body values
     fetch: async (input, init) => {
-      const body = JSON.parse(init?.body || '{}');
+      const bodyString = typeof init?.body === 'string' ? init.body : '{}';
+      const body = JSON.parse(bodyString);
       return fetch(input, {
         ...init,
         body: JSON.stringify({
@@ -881,7 +881,7 @@ export default function AssessmentChatClient() {
   }, [messages]);
   
   // Update voice workflow state when page changes (not on every render)
-  const previousPageId = useRef<number | undefined>();
+  const previousPageId = useRef<number | undefined>(undefined);
   useEffect(() => {
     if (workflowState && workflowState.currentPageId !== previousPageId.current) {
       previousPageId.current = workflowState.currentPageId;
