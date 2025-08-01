@@ -38,14 +38,10 @@ export function DashboardClient({
     // Close modal
     setIsModalOpen(false)
     
-    // Open Ask Oskar with AssessmentAgent
+    // Navigate directly to assessment page
+    // This is the "express lane" - no chat needed when using the modal
     setTimeout(() => {
-      openAskOskar()
-      // The AssessmentAgent will be triggered via the orchestrator
-      // with the selected assessment in context
-      window.dispatchEvent(new CustomEvent('assessment-selected', { 
-        detail: { assessment } 
-      }))
+      window.location.href = `/chat/assessment?agent=AssessmentAgent&assessmentType=${assessment.toLowerCase()}&new=true`
     }, 300)
   }
   

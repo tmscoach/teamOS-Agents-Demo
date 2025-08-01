@@ -287,7 +287,7 @@ Which assessment would you like to take? Just tell me the name or number.`,
     
     const workflowId = workflowMap[selection.type];
     
-    // Response indicating we'll create the subscription
+    // Response indicating we'll create the subscription and redirect
     return {
       content: `Great choice! I'll set up your ${selection.type} assessment now.
 
@@ -297,12 +297,16 @@ The ${selection.type} assessment will help you understand ${
     : 'what\'s working well in your team and where to focus improvement efforts'
 }.
 
-Let me create your assessment subscription...
+Let me create your assessment subscription and then take you to the assessment interface...
 
-[Use the tms_assign_subscription tool with userId: ${context.metadata.tmsUserId}, workflowId: ${workflowId}, and organizationId from context]`,
+[Creating subscription for ${workflowId}...]`,
       metadata: {
         selectedAssessment: selection,
-        nextAction: 'create_subscription'
+        nextAction: 'create_subscription_and_redirect',
+        workflowId: workflowId,
+        // Signal that we need to redirect after subscription creation
+        requiresRedirect: true,
+        redirectUrl: `/chat/assessment?agent=AssessmentAgent&assessmentType=${selection.type.toLowerCase()}`
       }
     };
   }

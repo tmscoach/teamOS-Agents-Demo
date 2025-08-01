@@ -214,6 +214,15 @@ export class OrchestratorAgent extends TMSEnabledAgent {
       if (proactiveGuidance) {
         response.content += `\n\n${proactiveGuidance}`;
       }
+      
+      // Check if response suggests showing assessment modal
+      if (response.content.toLowerCase().includes('assessment') && 
+          response.content.toLowerCase().includes('would you like')) {
+        response.metadata = {
+          ...response.metadata,
+          suggestAssessmentModal: true
+        };
+      }
     }
     
     return response;
