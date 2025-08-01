@@ -57,7 +57,9 @@ class MockDataStore {
   workflowStates: Map<string, any> = new Map(); // Store workflow states
 
   constructor() {
-    // Don't initialize test data automatically - let seed endpoint handle it
+    // Initialize test subscriptions for TMS Global
+    this.initializeTestSubscriptions();
+    console.log('[MockDataStore] Initialized with subscriptions:', this.subscriptions.size);
   }
   
   static getInstance(): MockDataStore {
@@ -68,6 +70,8 @@ class MockDataStore {
   }
 
   private initializeTestSubscriptions() {
+    console.log('[MockDataStore] Initializing test subscriptions...');
+    
     // Check if test user already exists
     let testUser = this.getUserByEmail('facilitator@example.com');
     let testOrg;
@@ -141,6 +145,12 @@ class MockDataStore {
       currentPageId: 97
     };
     this.subscriptions.set('21988', teamSignalsSub);
+    
+    console.log('[MockDataStore] Test subscriptions initialized:', {
+      totalSubscriptions: this.subscriptions.size,
+      subscriptionIds: Array.from(this.subscriptions.keys()),
+      testUserId: testUser.id
+    });
   }
 
   // User Management
@@ -166,7 +176,66 @@ class MockDataStore {
       this.clerkIdToUser.set(user.clerkUserId, id);
     }
     
+    // If this is a Facilitator, TMS Global automatically assigns standard subscriptions
+    if (user.userType === 'Facilitator' && user.email !== 'facilitator@example.com') {
+      this.assignStandardSubscriptionsToUser(newUser);
+    }
+    
     return newUser;
+  }
+
+  private assignStandardSubscriptionsToUser(user: MockUser) {
+    console.log('[MockDataStore] Assigning standard TMS subscriptions to new facilitator:', user.email);
+    
+    // In TMS Global, these subscription IDs are shared across users
+    // Each user has their own relationship to these subscriptions
+    // For now, we'll create user-specific subscription IDs but maintain the standard workflow IDs
+    const standardSubscriptions = [
+      {
+        subscriptionId: `${user.id}-21989`,
+        workflowId: 'tmp-workflow',
+        workflowName: 'Team Management Profile',
+        assessmentType: 'TMP',
+        baseContentId: 3,
+        currentPageId: 2,
+        tmsSubscriptionId: '21989' // The actual TMS Global subscription ID
+      },
+      {
+        subscriptionId: `${user.id}-21983`,
+        workflowId: 'qo2-workflow',
+        workflowName: 'Opportunities-Obstacles Quotient',
+        assessmentType: 'QO2',
+        baseContentId: 5,
+        currentPageId: 408,
+        tmsSubscriptionId: '21983'
+      },
+      {
+        subscriptionId: `${user.id}-21988`,
+        workflowId: 'team-signals-workflow',
+        workflowName: 'Team Signals 360',
+        assessmentType: 'TeamSignals',
+        baseContentId: 12,
+        currentPageId: 97,
+        tmsSubscriptionId: '21988'
+      }
+    ];
+    
+    standardSubscriptions.forEach(sub => {
+      const subscription: MockSubscription = {
+        subscriptionId: sub.subscriptionId,
+        userId: user.id,
+        organizationId: user.organizationId,
+        workflowId: sub.workflowId,
+        workflowName: sub.workflowName,
+        assessmentType: sub.assessmentType,
+        status: 'not_started',
+        completionPercentage: 0,
+        assignedDate: new Date(),
+        baseContentId: sub.baseContentId,
+        currentPageId: sub.currentPageId
+      };
+      this.subscriptions.set(subscription.subscriptionId, subscription);
+    });
   }
 
   getUserByEmail(email: string): MockUser | undefined {
@@ -238,11 +307,14 @@ class MockDataStore {
   }
 
   // Subscription Management
+  private nextSubscriptionId = 22000; // Start after the hardcoded test IDs
+  
   createSubscription(userId: string, workflowId: string, organizationId: string): MockSubscription {
     const assessment = getAssessmentByWorkflow(workflowId);
     if (!assessment) throw new Error('Workflow not found');
 
-    const subscriptionId = `sub-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    // Generate a TMS-style numeric subscription ID
+    const subscriptionId = String(this.nextSubscriptionId++);
     const firstPage = assessment.sections?.[0]?.pages[0] || 1;
     
     const subscription: MockSubscription = {
@@ -271,6 +343,7 @@ class MockDataStore {
   }
 
   getSubscription(subscriptionId: string): MockSubscription | undefined {
+    // Simple direct lookup - all IDs are now numeric strings
     return this.subscriptions.get(subscriptionId);
   }
 

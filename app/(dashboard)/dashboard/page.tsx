@@ -4,15 +4,27 @@ import { getCurrentUserWithJourney } from '@/lib/auth/roles'
 import { prisma } from '@/lib/db/prisma'
 import { Bell, Users, Pencil, Book, Settings, Focus, Plus, Coins, CheckCircle, User } from 'lucide-react'
 import { Oscar1 } from '@/app/chat/components/icons/Oscar1'
-import Link from 'next/link'
 import { UserDropdown } from '@/components/ui/user-dropdown'
 import { AskOskarInput } from '@/components/dashboard/AskOskarInput'
-import { AskOskarWidget } from '@/components/dashboard/AskOskarWidget'
 import { DashboardWrapper } from '@/components/dashboard/DashboardWrapper'
+import { DashboardClient } from './DashboardClient'
+import { CompleteProfileButton } from '@/components/dashboard/CompleteProfileButton'
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
+}) {
+  // Await searchParams in Next.js 15
+  const params = await searchParams;
+  
+  // Get URL parameters for test mode
+  const testAgent = params.testAgent as string | undefined;
+  const expandOskar = params.expandOskar === 'true';
+  
   const clerkUser = await currentUser()
   console.log('[Dashboard] Current user:', clerkUser ? { id: clerkUser.id, email: clerkUser.emailAddresses?.[0]?.emailAddress } : null)
+  console.log('[Dashboard] URL params:', { testAgent, expandOskar })
   
   if (!clerkUser) {
     console.log('[Dashboard] No user found, redirecting to sign-in')
@@ -76,32 +88,11 @@ export default async function DashboardPage() {
   }
   
   // Check if user needs onboarding (use journeyPhase if available, fallback to journeyStatus)
-  // Note: The NEXT_REDIRECT error in dev console is expected behavior - it's how Next.js handles redirects
+  // Note: We no longer redirect ONBOARDING users - the orchestrator will handle them on the dashboard
   const isInOnboarding = user?.journeyPhase === 'ONBOARDING' || 
     (!user?.journeyPhase && user?.journeyStatus === 'ONBOARDING')
   
   console.log('[Dashboard] Is in onboarding:', isInOnboarding, 'Journey phase:', user?.journeyPhase, 'Journey status:', user?.journeyStatus)
-  
-  if (user && isInOnboarding && user.role === 'MANAGER') {
-    // Check if user has any existing conversations
-    const existingConversation = await prisma.conversation.findFirst({
-      where: {
-        managerId: user.id,
-        currentAgent: 'OnboardingAgent'
-      },
-      orderBy: { updatedAt: 'desc' },
-      select: { id: true }
-    }).catch(() => null)
-
-    // Only add new=true if this is truly their first conversation
-    if (existingConversation) {
-      console.log('[Dashboard] Redirecting to existing onboarding conversation')
-      redirect('/chat?agent=OnboardingAgent')
-    } else {
-      console.log('[Dashboard] Redirecting to new onboarding conversation')
-      redirect('/chat?agent=OnboardingAgent&new=true')
-    }
-  }
 
   // Get user's name from onboarding data if available
   const onboardingData = user?.onboardingData as Record<string, any> || {}
@@ -179,8 +170,8 @@ export default async function DashboardPage() {
             <div className="flex flex-col items-start relative flex-1 self-stretch grow">
               {/* Header */}
               <div className="flex h-[60px] items-center justify-between px-6 relative self-stretch w-full border-b border-solid border-gray-200 backdrop-blur-[15px] backdrop-brightness-[100%] [-webkit-backdrop-filter:blur(15px)_brightness(100%)] bg-[linear-gradient(156deg,rgba(255,243,3,0.05)_0%,rgba(251,169,61,0.05)_15%,rgba(237,1,145,0.05)_30%,rgba(167,99,173,0.05)_45%,rgba(1,133,198,0.05)_60%,rgba(2,181,230,0.05)_75%,rgba(1,161,114,0.05)_90%,rgba(162,211,111,0.05)_100%)]">
-                {/* Ask Oskar Input */}
-                <AskOskarInput />
+                {/* Spacer for Ask Oskar Input */}
+                <div className="w-96" />
 
                 {/* Right side - Credits and Avatar */}
                 <div className="inline-flex items-center justify-end gap-5">
@@ -267,14 +258,7 @@ export default async function DashboardPage() {
                         )}
                       </div>
                       {isInAssessment && (
-                        <Link 
-                          href="/chat?agent=AssessmentAgent&assessment=tmp"
-                          className="inline-flex items-center gap-2.5 py-2 px-4 bg-blue-600 rounded-md hover:bg-blue-700 transition-colors"
-                        >
-                          <span className="font-medium text-white text-sm">
-                            Complete Your First Profile
-                          </span>
-                        </Link>
+                        <CompleteProfileButton showButton={true} />
                       )}
                     </div>
                   </div>
@@ -356,8 +340,19 @@ export default async function DashboardPage() {
         </div>
       </div>
       
-      {/* Ask Oskar Chat Widget */}
-      <AskOskarWidget />
+      
+      {/* Dashboard Client Components */}
+      <DashboardClient 
+        userPhase={user?.journeyPhase as any || 'ONBOARDING'}
+        completedAssessments={Object.keys(user?.completedAssessments || {})}
+        showAssessmentModal={params.showAssessmentModal === 'true'}
+      />
+      
+      {/* Ask Oskar Panel */}
+      <AskOskarInput 
+        defaultAgent={testAgent}
+        testMode={testAgent ? true : false}
+      />
     </div>
     </DashboardWrapper>
   )

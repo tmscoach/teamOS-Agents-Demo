@@ -63,7 +63,6 @@ interface AgentSummary {
 
 const AGENT_NAMES = [
   "OrchestratorAgent",
-  "DiscoveryAgent", 
   "OnboardingAgent",
   "AssessmentAgent",
   "DebriefAgent",

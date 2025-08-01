@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { updateWorkflow, getWorkflowProcess } from '@/src/lib/mock-tms-api/endpoints/workflows';
 import { mockTMSClient } from '@/src/lib/mock-tms-api/mock-api-client';
 import { mockDataStore } from '@/src/lib/mock-tms-api/mock-data-store';
+import { auth, currentUser } from '@clerk/nextjs/server';
+import { cookies } from 'next/headers';
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,10 +18,67 @@ export async function POST(request: NextRequest) {
       questionsCount: body.questions?.length || 0
     });
     
-    // Get the current user from mock data store
-    const currentUser = mockDataStore.getUserByEmail('facilitator@example.com');
+    // Get the current user from Clerk
+    const session = await auth();
+    const user = await currentUser();
     
-    if (!currentUser) {
+    // In dev mode, check for dev auth cookie if no Clerk session
+    let userId = session?.userId;
+    let userEmail: string | undefined = user?.emailAddresses?.[0]?.emailAddress;
+    
+    if (!userId && process.env.NODE_ENV === 'development') {
+      const cookieStore = await cookies();
+      const devAuthCookie = cookieStore.get('dev-auth');
+      if (devAuthCookie) {
+        try {
+          const devAuth = JSON.parse(devAuthCookie.value);
+          userId = devAuth.userId;
+          userEmail = devAuth.email;
+          console.log('[workflow-update] Using dev auth:', { userId, userEmail });
+        } catch (e) {
+          console.error('Failed to parse dev auth cookie:', e);
+        }
+      }
+    }
+    
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    
+    // Find the mock user by Clerk ID or email (for dev mode)
+    let mockUser = mockDataStore.getUserByClerkId(userId);
+    
+    // In dev mode, also try to find by email if we have it
+    if (!mockUser && userEmail && process.env.NODE_ENV === 'development') {
+      console.log('[workflow-update] Trying to find user by email:', userEmail);
+      mockUser = mockDataStore.getUserByEmail(userEmail);
+    }
+    
+    if (!mockUser) {
+      console.log('[workflow-update] No mock user found for:', { userId, userEmail });
+      
+      // In development, auto-create a mock user for real Clerk users
+      if (process.env.NODE_ENV === 'development' && userId && userEmail) {
+        console.log('[workflow-update] Creating mock user for real Clerk user');
+        
+        // Extract organization ID from subscription if available
+        const subscriptionId = body.subscriptionID || body.subscriptionId;
+        const subscription = mockDataStore.subscriptions.get(subscriptionId);
+        const orgId = subscription?.organizationId || 'default-org';
+        
+        mockUser = mockDataStore.createUser({
+          email: userEmail,
+          clerkUserId: userId,
+          firstName: userEmail.split('@')[0],
+          lastName: 'User',
+          userType: 'Facilitator',
+          organizationId: orgId
+        });
+        console.log('[workflow-update] Created mock user:', mockUser.id);
+      }
+    }
+    
+    if (!mockUser) {
       return NextResponse.json(
         { error: 'User not found. Please ensure data is seeded.' },
         { status: 401 }
@@ -28,11 +87,11 @@ export async function POST(request: NextRequest) {
     
     // Generate mock JWT with actual user data
     const jwt = mockTMSClient.generateJWT({
-      sub: currentUser.id,
-      userId: currentUser.id,
-      email: currentUser.email,
-      UserType: currentUser.userType,
-      organisationId: currentUser.organizationId
+      sub: mockUser.id,
+      userId: mockUser.id,
+      email: mockUser.email,
+      UserType: mockUser.userType,
+      organisationId: mockUser.organizationId
     });
     
     // Call the update endpoint

@@ -8,17 +8,30 @@ import { cn } from '@/lib/utils'
 
 const WIDGET_CONVERSATION_KEY = 'teamOS-widget-conversation'
 
-export function EmbeddedChat() {
+export interface EmbeddedChatProps {
+  agentName?: string;
+  testMode?: boolean;
+  initiallyExpanded?: boolean;
+  onHandoff?: (toAgent: string) => void;
+}
+
+export function EmbeddedChat({ 
+  agentName = 'OrchestratorAgent',
+  testMode = false,
+  initiallyExpanded = false,
+  onHandoff
+}: EmbeddedChatProps) {
   const [conversationId, setConversationId] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const [currentAgent, setCurrentAgent] = useState('OrchestratorAgent')
+  const [currentAgent, setCurrentAgent] = useState(agentName)
   
   // Use the useChat hook for streaming
   const { messages, input, handleInputChange, handleSubmit, isLoading, append, setMessages } = useChat({
     api: '/api/agents/chat-streaming',
     body: {
       conversationId,
-      agentName: 'OrchestratorAgent' // Always start with orchestrator
+      agentName: currentAgent,
+      testMode
     },
     id: conversationId || undefined,
     initialMessages: [],
@@ -36,8 +49,17 @@ export function EmbeddedChat() {
         const agentMatch = message.content.match(/\[Handover to (\w+) Agent\.\.\.\]|connected to the (\w+) Agent/)
         if (agentMatch) {
           const newAgent = agentMatch[1] || agentMatch[2]
-          setCurrentAgent(`${newAgent}Agent`)
+          const fullAgentName = `${newAgent}Agent`
+          setCurrentAgent(fullAgentName)
+          if (onHandoff) {
+            onHandoff(fullAgentName)
+          }
         }
+      }
+      
+      // Check if orchestrator wants to show assessment modal
+      if (message.metadata?.suggestAssessmentModal) {
+        window.dispatchEvent(new CustomEvent('show-assessment-modal'))
       }
     }
   })
@@ -54,10 +76,32 @@ export function EmbeddedChat() {
       setConversationId(storedConversationId)
       // Could load existing messages here if needed
     } else {
-      // Send initial greeting
-      append({ role: 'user', content: '' })
+      // Send initial greeting with first message flag
+      append({ 
+        role: 'user', 
+        content: '',
+        metadata: { isFirstMessage: true }
+      })
     }
   }, [])
+  
+  // Listen for assessment selection events
+  useEffect(() => {
+    const handleAssessmentSelected = (event: CustomEvent) => {
+      const { assessment } = event.detail
+      // Send message to orchestrator about assessment selection
+      append({
+        role: 'user',
+        content: `I want to start the ${assessment} assessment`,
+        metadata: { selectedAssessment: assessment }
+      })
+    }
+    
+    window.addEventListener('assessment-selected', handleAssessmentSelected as EventListener)
+    return () => {
+      window.removeEventListener('assessment-selected', handleAssessmentSelected as EventListener)
+    }
+  }, [append])
   
   const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -73,7 +117,6 @@ export function EmbeddedChat() {
       ProgressMonitor: 'text-orange-600',
       LearningAgent: 'text-pink-600',
       AlignmentAgent: 'text-indigo-600',
-      DiscoveryAgent: 'text-teal-600',
       NudgeAgent: 'text-yellow-600',
       RecognitionAgent: 'text-red-600'
     }
@@ -87,12 +130,13 @@ export function EmbeddedChat() {
   return (
     <div className="flex flex-col h-full">
       {/* Current agent indicator */}
-      {currentAgent !== 'OrchestratorAgent' && (
+      {(currentAgent !== 'OrchestratorAgent' || testMode) && (
         <div className="px-4 py-2 bg-gray-50 border-b border-gray-100">
           <p className="text-xs text-gray-600">
             Connected to <span className={cn('font-medium', getAgentColor(currentAgent))}>
               {getAgentName(currentAgent)}
             </span>
+            {testMode && <span className="ml-2 text-orange-600">(Test Mode)</span>}
           </p>
         </div>
       )}

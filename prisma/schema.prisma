@@ -283,7 +283,7 @@ model VariableExtraction {
 }
 
 model UserReport {
-  id               String          @id @default(dbgenerated("(gen_random_uuid())::text"))
+  id               String            @id @default(dbgenerated("(gen_random_uuid())::text"))
   userId           String
   teamId           String?
   organizationId   String
@@ -293,15 +293,15 @@ model UserReport {
   rawHtml          String
   processedHtml    String?
   metadata         Json?
-  processingStatus ProcessingStatus @default(PENDING)
+  processingStatus ProcessingStatus  @default(PENDING)
   processedAt      DateTime?
-  createdAt        DateTime        @default(now())
-  updatedAt        DateTime        @updatedAt
-  ReportImage      ReportImage[]
-  ReportChunk      ReportChunk[]
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
   ReportAccessLog  ReportAccessLog[]
-  User             User            @relation(fields: [userId], references: [id])
-  
+  ReportChunk      ReportChunk[]
+  ReportImage      ReportImage[]
+  User             User              @relation(fields: [userId], references: [id])
+
   @@index([userId])
   @@index([teamId])
   @@index([organizationId])
@@ -311,21 +311,21 @@ model UserReport {
 }
 
 model ReportImage {
-  id                  String                @id @default(dbgenerated("(gen_random_uuid())::text"))
+  id                  String                 @id @default(dbgenerated("(gen_random_uuid())::text"))
   reportId            String
   originalUrl         String
   storagePath         String
   imageType           String
   altText             String?
-  description         String?               @db.Text
-  detailedDescription String?               @db.Text
-  extractedData       Json?
-  insights            String[]
+  description         String?
   metadata            Json?
-  embedding           Unsupported("vector(1536)")?
-  createdAt           DateTime              @default(now())
-  UserReport          UserReport            @relation(fields: [reportId], references: [id], onDelete: Cascade)
-  
+  createdAt           DateTime               @default(now())
+  detailedDescription String?
+  extractedData       Json?
+  insights            String[]               @default([])
+  embedding           Unsupported("vector")?
+  UserReport          UserReport             @relation(fields: [reportId], references: [id], onDelete: Cascade)
+
   @@index([reportId])
   @@index([embedding], map: "report_image_embedding_idx")
 }
@@ -342,20 +342,20 @@ model ReportChunk {
   metadata     Json?
   createdAt    DateTime               @default(now())
   UserReport   UserReport             @relation(fields: [reportId], references: [id], onDelete: Cascade)
-  
+
   @@index([reportId])
   @@index([sectionId])
   @@index([embedding], map: "report_chunk_embedding_idx")
 }
 
 model ReportAccessLog {
-  id         String      @id @default(dbgenerated("(gen_random_uuid())::text"))
+  id         String     @id @default(dbgenerated("(gen_random_uuid())::text"))
   reportId   String
   accessedBy String
   accessType AccessType
-  createdAt  DateTime    @default(now())
-  UserReport UserReport  @relation(fields: [reportId], references: [id])
-  
+  createdAt  DateTime   @default(now())
+  UserReport UserReport @relation(fields: [reportId], references: [id])
+
   @@index([reportId])
   @@index([accessedBy])
   @@index([accessType])

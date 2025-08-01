@@ -37,59 +37,105 @@ export async function getDashboardSubscriptions(options: {
 
   console.log('Dashboard subscriptions - JWT claims:', claims);
   console.log('Dashboard - mockDataStore instance:', mockDataStore);
-  console.log('All subscriptions in store:', Array.from(mockDataStore.subscriptions.values()));
+  console.log('All subscriptions in store:', Array.from(mockDataStore.subscriptions.values()).map(s => ({
+    id: s.subscriptionId,
+    userId: s.userId,
+    type: s.assessmentType
+  })));
   console.log('Store subscriptions size:', mockDataStore.subscriptions.size);
 
-  // Get subscriptions based on user type
-  let userSubscriptions;
+  // Get subscriptions for the current user
+  // In TMS Global, this checks which assessments the logged-in user has access to
+  let userId: string;
   
-  if (claims.UserType === 'Facilitator') {
-    // Facilitators can see all subscriptions in their organization
-    const allSubscriptions = Array.from(mockDataStore.subscriptions.values());
-    userSubscriptions = allSubscriptions.filter(sub => 
-      sub.organizationId === claims.organisationId
-    );
-    console.log('Filtering for org:', claims.organisationId);
-    console.log('Found subscriptions:', userSubscriptions);
+  // Check if the sub claim is a Clerk user ID and map it to mock user ID
+  let mockUser = mockDataStore.getUserByClerkId(claims.sub);
+  
+  // If not found by Clerk ID, try to find by regular user ID
+  if (!mockUser) {
+    mockUser = mockDataStore.getUser(claims.sub);
+  }
+  
+  // If still not found, check if there's a user with matching email
+  if (!mockUser && claims.nameid) {
+    mockUser = mockDataStore.getUserByEmail(claims.nameid);
+  }
+  
+  if (mockUser) {
+    userId = mockUser.id;
+    console.log('[getDashboardSubscriptions] Found mock user:', mockUser.email, 'ID:', userId);
   } else {
-    // Respondents only see their own subscriptions
-    // Check if the sub claim is a Clerk user ID and map it to mock user ID
-    let mockUser = mockDataStore.getUserByClerkId(claims.sub);
+    // If no mock user exists, we need to ensure they have access to assessments
+    // In a real TMS Global integration, the user would have been created during onboarding
+    console.log('[getDashboardSubscriptions] No mock user found for claims:', claims);
     
-    // If not found by Clerk ID, try to find by regular user ID
-    if (!mockUser) {
-      mockUser = mockDataStore.getUser(claims.sub);
+    // For development, use the test user's subscriptions
+    // This simulates how TMS Global would have standard subscriptions available
+    if (process.env.NODE_ENV === 'development') {
+      // Always use test user subscriptions in development
+      const testUser = mockDataStore.getUserByEmail('facilitator@example.com');
+      if (testUser) {
+        userId = testUser.id;
+        console.log('[getDashboardSubscriptions] Using test user subscriptions for development');
+      } else {
+        console.log('[getDashboardSubscriptions] No test user found');
+        return [];
+      }
+    } else {
+      return [];
     }
+  }
+  
+  console.log('[getDashboardSubscriptions] Getting subscriptions for user:', userId);
+  let userSubscriptions = mockDataStore.getUserSubscriptions(userId);
+  
+  // In development, if the user has no subscriptions, return the standard TMS subscriptions
+  if (userSubscriptions.length === 0 && claims.UserType === 'Facilitator') {
+    console.log('[getDashboardSubscriptions] No subscriptions found for facilitator, using standard TMS subscriptions');
     
-    // If still not found, check if there's a user with matching email
-    if (!mockUser && claims.nameid) {
-      mockUser = mockDataStore.getUserByEmail(claims.nameid);
+    // Get the test user's subscriptions as they have the standard TMS subscriptions
+    const testUser = mockDataStore.getUserByEmail('facilitator@example.com');
+    if (testUser) {
+      userSubscriptions = mockDataStore.getUserSubscriptions(testUser.id);
+      console.log('[getDashboardSubscriptions] Found test user subscriptions:', userSubscriptions.length);
+    } else {
+      console.log('[getDashboardSubscriptions] No test user found, returning empty array');
     }
-    
-    const userId = mockUser ? mockUser.id : claims.sub;
-    console.log('Respondent - Looking up user:', { 
-      claimSub: claims.sub, 
-      claimEmail: claims.nameid,
-      mockUserId: userId, 
-      found: !!mockUser 
-    });
-    userSubscriptions = mockDataStore.getUserSubscriptions(userId);
   }
 
   // Transform to dashboard format matching the recorded API
-  const subscriptions: TMSDashboardSubscription[] = userSubscriptions.map(sub => ({
-    SubscriptionID: parseInt(sub.subscriptionId) || 0,
-    WorkflowID: parseInt(sub.workflowId.replace(/\D/g, '')) || 0,
-    WorkflowType: sub.assessmentType,
-    Status: sub.status === 'completed' ? 'Completed' : sub.status === 'in_progress' ? 'In Progress' : 'Not Started',
-    Progress: sub.completionPercentage,
-    AssignmentDate: sub.assignedDate.toISOString().split('T')[0],
-    CompletionDate: sub.completedDate ? sub.completedDate.toISOString().split('T')[0] : null,
-    OrganisationID: 0,
-    OrganisationName: "Test Organization",
-    AssessmentType: sub.assessmentType,
-    AssessmentStatus: sub.status === 'completed' ? 'Completed' : sub.status === 'in_progress' ? 'In Progress' : 'Not Started'
-  }));
+  const subscriptions: TMSDashboardSubscription[] = userSubscriptions.map((sub, index) => {
+    // Extract the numeric subscription ID
+    // For test data like "21989", use as-is
+    // For user-specific like "user-xxx-21989", extract the TMS ID
+    let numericId: number;
+    if (/^\d+$/.test(sub.subscriptionId)) {
+      numericId = parseInt(sub.subscriptionId);
+    } else if (sub.subscriptionId.includes('-')) {
+      // Extract the last numeric part (e.g., "user-xxx-21989" -> 21989)
+      const parts = sub.subscriptionId.split('-');
+      const lastPart = parts[parts.length - 1];
+      numericId = parseInt(lastPart) || (index + 1);
+    } else {
+      numericId = index + 1;
+    }
+    
+    return {
+      SubscriptionID: numericId,
+      WorkflowID: parseInt(sub.workflowId.replace(/\D/g, '')) || 0,
+      WorkflowType: sub.assessmentType,
+      Status: sub.status === 'completed' ? 'Completed' : sub.status === 'in_progress' ? 'In Progress' : 'Not Started',
+      Progress: sub.completionPercentage,
+      AssignmentDate: sub.assignedDate.toISOString().split('T')[0],
+      CompletionDate: sub.completedDate ? sub.completedDate.toISOString().split('T')[0] : null,
+      OrganisationID: 0,
+      OrganisationName: "Test Organization",
+      AssessmentType: sub.assessmentType,
+      AssessmentStatus: sub.status === 'completed' ? 'Completed' : sub.status === 'in_progress' ? 'In Progress' : 'Not Started',
+      // Store the original subscription ID for internal lookups
+      _subscriptionId: sub.subscriptionId
+    };
+  });
 
   return subscriptions;
 }

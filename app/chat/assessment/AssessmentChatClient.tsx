@@ -288,9 +288,39 @@ export default function AssessmentChatClient() {
         setLoading(true);
         
         if (directSubscriptionId) {
-          // If direct subscription ID provided, skip dashboard and start workflow
-          // This would be implemented with actual API calls
-          setError('Direct subscription start not yet implemented');
+          // If direct subscription ID provided, create a minimal assessment object
+          // and start the workflow directly
+          console.log('[AssessmentChat] Using direct subscription ID:', directSubscriptionId);
+          
+          // Map subscription IDs to assessment types (from TMS Global)
+          const subscriptionTypeMap: Record<string, string> = {
+            '21989': 'TMP',
+            '21983': 'QO2',
+            '21988': 'TeamSignals'
+          };
+          
+          const assessmentType = subscriptionTypeMap[directSubscriptionId] || 'TMP';
+          
+          // Create a minimal assessment object to start the workflow
+          const directAssessment: AssessmentSubscription = {
+            SubscriptionID: parseInt(directSubscriptionId),
+            WorkflowID: 0, // Will be determined by assessment type
+            WorkflowType: assessmentType,
+            Status: 'Not Started',
+            Progress: 0,
+            AssignmentDate: new Date().toISOString().split('T')[0],
+            CompletionDate: null,
+            OrganisationID: 0,
+            OrganisationName: 'Your Organization',
+            AssessmentType: assessmentType,
+            AssessmentStatus: 'Not Started',
+            _subscriptionId: directSubscriptionId
+          };
+          
+          setAvailableAssessments([directAssessment]);
+          setSelectedAssessment(directAssessment);
+          setLoading(false);
+          return;
         } else {
           // Get available assessments from dashboard via API
           const response = await fetch('/api/mock-tms/dashboard-subscriptions');
@@ -355,37 +385,38 @@ export default function AssessmentChatClient() {
   // Track if we've sent the initial greeting
   const hasInitializedRef = useRef(false);
   
-  // Disabled initial greeting - let user initiate conversation
-  // This was causing duplicate API calls and voice activation issues
-  /*
+  // Auto-start assessment if there's only one available
   useEffect(() => {
-    console.log('[AssessmentChat] Initial greeting check:', {
+    console.log('[AssessmentChat] Auto-start check:', {
       loading,
-      messagesLength: messages.length,
-      isLoading,
-      hasInitialized: hasInitializedRef.current,
+      availableAssessmentsLength: availableAssessments.length,
       hasSelectedAssessment: !!selectedAssessment,
-      hasWorkflowState: !!workflowState,
-      selectedAssessmentId: selectedAssessment?.SubscriptionID
+      hasInitialized: hasInitializedRef.current
     });
     
-    if (!loading && messages.length === 0 && !isLoading && !hasInitializedRef.current && selectedAssessment && workflowState) {
-      console.log('[AssessmentChat] Sending initial greeting...');
+    // If there's only one assessment and nothing selected yet, auto-select it
+    if (!loading && availableAssessments.length === 1 && !selectedAssessment && !hasInitializedRef.current) {
+      console.log('[AssessmentChat] Auto-selecting single assessment:', availableAssessments[0]);
       hasInitializedRef.current = true;
-      // Add small delay to ensure everything is ready
+      
+      // Auto-select the assessment after a small delay
       setTimeout(() => {
-        console.log('[AssessmentChat] Appending initial greeting message');
-        append({
-          role: 'user',
-          content: ''
-        });
-      }, 100);
+        setSelectedAssessment(availableAssessments[0]);
+        startWorkflow(availableAssessments[0]);
+      }, 500);
     }
-  }, [loading, messages.length, isLoading, selectedAssessment, workflowState]); // Keep original deps
-  */
+  }, [loading, availableAssessments, selectedAssessment]);
 
   const startWorkflow = async (assessment: AssessmentSubscription) => {
     console.log('[AssessmentChat] startWorkflow called for:', assessment);
+    const subscriptionIdToUse = (assessment as any)._subscriptionId || assessment.SubscriptionID.toString();
+    console.log('[AssessmentChat] Using subscription ID:', {
+      original: assessment.SubscriptionID,
+      _subscriptionId: (assessment as any)._subscriptionId,
+      using: subscriptionIdToUse,
+      type: typeof subscriptionIdToUse
+    });
+    
     try {
       // Use workflow ID map from constants
       
@@ -394,7 +425,7 @@ export default function AssessmentChatClient() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           workflowId: WORKFLOW_ID_MAP[assessment.AssessmentType] || assessment.WorkflowType.toLowerCase().replace(' ', '-') + '-workflow',
-          subscriptionId: assessment.SubscriptionID.toString()
+          subscriptionId: subscriptionIdToUse
         })
       });
       
@@ -403,10 +434,18 @@ export default function AssessmentChatClient() {
         
         if (data.success && data.firstPageUrl) {
           // Parse the first page URL: /Workflow/Process/{subscriptionId}/{baseContentId}/{sectionId}/{pageId}
-          const urlMatch = data.firstPageUrl.match(/\/Workflow\/Process\/(\d+)(?:\/(\d+))?(?:\/(\d+))?(?:\/(\d+))?/);
+          // Updated regex to handle both numeric and string subscription IDs
+          const urlMatch = data.firstPageUrl.match(/\/Workflow\/Process\/([^\/]+)(?:\/(\d+))?(?:\/(\d+))?(?:\/(\d+))?/);
           
           if (urlMatch) {
             const [, subId, baseId, secId, pgId] = urlMatch;
+            console.log('[Assessment] Parsed URL match:', {
+              fullMatch: urlMatch[0],
+              subId,
+              baseId,
+              secId,
+              pgId
+            });
             
             await getWorkflowPage(
               subId,
@@ -415,8 +454,10 @@ export default function AssessmentChatClient() {
               pgId ? parseInt(pgId) : undefined
             );
           } else {
-            // Fallback: just get the initial workflow
-            await getWorkflowPage(assessment.SubscriptionID.toString());
+            // Fallback: use the subscription ID from the assessment
+            const subId = (assessment as any)._subscriptionId || assessment.SubscriptionID.toString();
+            console.log('[Assessment] Using fallback subscription ID:', subId);
+            await getWorkflowPage(subId);
           }
         }
       } else {
@@ -555,7 +596,7 @@ export default function AssessmentChatClient() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          subscriptionID: parseInt(workflowState.subscriptionId),
+          subscriptionID: workflowState.subscriptionId,
           pageID: workflowState.currentPageId,
           currentPageID: workflowState.currentPageId,
           currentSectionID: workflowState.currentSectionId,
@@ -673,7 +714,7 @@ export default function AssessmentChatClient() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          subscriptionId: selectedAssessment.SubscriptionID.toString(),
+          subscriptionId: (selectedAssessment as any)._subscriptionId || selectedAssessment.SubscriptionID.toString(),
           templateId
         })
       });
@@ -692,7 +733,7 @@ export default function AssessmentChatClient() {
         
         // Delay redirect to show success message
         setTimeout(() => {
-          window.location.href = `/chat/debrief?agent=${DEFAULT_DEBRIEF_AGENT}&reportType=${selectedAssessment.AssessmentType}&subscriptionId=${selectedAssessment.SubscriptionID}&new=true`;
+          window.location.href = `/chat/debrief?agent=${DEFAULT_DEBRIEF_AGENT}&reportType=${selectedAssessment.AssessmentType}&subscriptionId=${(selectedAssessment as any)._subscriptionId || selectedAssessment.SubscriptionID}&new=true`;
         }, 1500);
       } else {
         setIsCompleting(false);

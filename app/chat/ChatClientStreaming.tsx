@@ -163,6 +163,7 @@ export default function ChatClientStreaming() {
     }
   }, [isLoaded, user, isNewConversation, agentName, devAuthChecked]);
 
+
   const sendMessageStreaming = useCallback(async (messageContent: string) => {
     console.log('[sendMessageStreaming] Called with:', messageContent, 'loading:', loading);
     if (!messageContent.trim() || loading) return;
@@ -291,6 +292,14 @@ export default function ChatClientStreaming() {
                   if (parsed.metadata?.suggestedValues) {
                     setSuggestedValues(parsed.metadata.suggestedValues);
                   }
+                  
+                  // Handle redirect from AssessmentAgent
+                  if (parsed.metadata?.requiresRedirect && parsed.metadata?.redirectUrl) {
+                    console.log('[ChatClient Streaming] Redirecting to:', parsed.metadata.redirectUrl);
+                    setTimeout(() => {
+                      window.location.href = parsed.metadata.redirectUrl;
+                    }, 1500); // Give user time to read the message
+                  }
                   break;
                   
                 case 'error':
@@ -381,6 +390,14 @@ export default function ChatClientStreaming() {
         setSuggestedValues(data.metadata.suggestedValues);
       } else {
         setSuggestedValues(null);
+      }
+      
+      // Handle redirect from AssessmentAgent
+      if (data.metadata?.requiresRedirect && data.metadata?.redirectUrl) {
+        console.log('[ChatClient] Redirecting to:', data.metadata.redirectUrl);
+        setTimeout(() => {
+          window.location.href = data.metadata.redirectUrl;
+        }, 1500); // Give user time to read the message
       }
     } catch (error) {
       console.error("Failed to send message:", error);

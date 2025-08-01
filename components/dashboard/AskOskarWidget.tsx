@@ -4,9 +4,27 @@ import { MessageCircle, X } from 'lucide-react'
 import { Oscar1 } from '@/app/chat/components/icons/Oscar1'
 import { ChatOverlay } from './ChatOverlay'
 import { useAskOskar } from '@/contexts/AskOskarContext'
+import { useEffect } from 'react'
 
-export function AskOskarWidget() {
-  const { isOpen, toggleWidget } = useAskOskar()
+export interface AskOskarWidgetProps {
+  defaultAgent?: string;
+  initiallyExpanded?: boolean;
+  testMode?: boolean;
+}
+
+export function AskOskarWidget({ 
+  defaultAgent = 'OrchestratorAgent',
+  initiallyExpanded = false,
+  testMode = false 
+}: AskOskarWidgetProps) {
+  const { isOpen, toggleWidget, setIsOpen } = useAskOskar()
+  
+  // Handle initial expansion from URL params
+  useEffect(() => {
+    if (initiallyExpanded && !isOpen) {
+      setIsOpen(true)
+    }
+  }, [initiallyExpanded])
   
   return (
     <>
@@ -37,7 +55,12 @@ export function AskOskarWidget() {
       )}
       
       {/* Chat overlay */}
-      <ChatOverlay isOpen={isOpen} onClose={toggleWidget} />
+      <ChatOverlay 
+        isOpen={isOpen} 
+        onClose={toggleWidget} 
+        defaultAgent={defaultAgent}
+        testMode={testMode}
+      />
     </>
   )
 }
