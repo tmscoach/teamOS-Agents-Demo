@@ -70,14 +70,14 @@ export async function POST(request: Request) {
     });
     
     // Create subscription using mock TMS API
-    const result = await assignSubscription(
-      {
+    const result = await assignSubscription({
+      data: {
         userId: mockUser.id,
         workflowId: workflowId,
         organizationId: mockUser.organizationId
       },
-      jwt
-    );
+      jwt: jwt
+    });
     
     if (!result.subscriptionId) {
       return NextResponse.json({ error: 'Failed to create subscription' }, { status: 500 });
