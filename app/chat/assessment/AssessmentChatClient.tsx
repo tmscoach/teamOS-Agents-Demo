@@ -355,34 +355,32 @@ export default function AssessmentChatClient() {
   // Track if we've sent the initial greeting
   const hasInitializedRef = useRef(false);
   
-  // Disabled initial greeting - let user initiate conversation
-  // This was causing duplicate API calls and voice activation issues
-  /*
+  // Send initial message when new=true and no assessments
   useEffect(() => {
-    console.log('[AssessmentChat] Initial greeting check:', {
+    const isNew = searchParams.get('new') === 'true';
+    console.log('[AssessmentChat] Initial conversation check:', {
       loading,
       messagesLength: messages.length,
       isLoading,
       hasInitialized: hasInitializedRef.current,
       hasSelectedAssessment: !!selectedAssessment,
-      hasWorkflowState: !!workflowState,
-      selectedAssessmentId: selectedAssessment?.SubscriptionID
+      availableAssessmentsLength: availableAssessments.length,
+      isNew
     });
     
-    if (!loading && messages.length === 0 && !isLoading && !hasInitializedRef.current && selectedAssessment && workflowState) {
-      console.log('[AssessmentChat] Sending initial greeting...');
+    if (!loading && messages.length === 0 && !isLoading && !hasInitializedRef.current && isNew && availableAssessments.length === 0) {
+      console.log('[AssessmentChat] Starting conversation with AssessmentAgent...');
       hasInitializedRef.current = true;
       // Add small delay to ensure everything is ready
       setTimeout(() => {
-        console.log('[AssessmentChat] Appending initial greeting message');
+        console.log('[AssessmentChat] Sending initial message to AssessmentAgent');
         append({
           role: 'user',
-          content: ''
+          content: 'I want to start an assessment'
         });
       }, 100);
     }
-  }, [loading, messages.length, isLoading, selectedAssessment, workflowState]); // Keep original deps
-  */
+  }, [loading, messages.length, isLoading, availableAssessments.length, searchParams, append]);
 
   const startWorkflow = async (assessment: AssessmentSubscription) => {
     console.log('[AssessmentChat] startWorkflow called for:', assessment);
