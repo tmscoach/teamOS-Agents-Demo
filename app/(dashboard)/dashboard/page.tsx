@@ -9,10 +9,20 @@ import { UserDropdown } from '@/components/ui/user-dropdown'
 import { AskOskarInput } from '@/components/dashboard/AskOskarInput'
 import { AskOskarWidget } from '@/components/dashboard/AskOskarWidget'
 import { DashboardWrapper } from '@/components/dashboard/DashboardWrapper'
+import { DashboardClient } from './DashboardClient'
 
-export default async function DashboardPage() {
+export default async function DashboardPage({
+  searchParams
+}: {
+  searchParams: { [key: string]: string | string[] | undefined }
+}) {
+  // Get URL parameters for test mode
+  const testAgent = searchParams.testAgent as string | undefined;
+  const expandOskar = searchParams.expandOskar === 'true';
+  
   const clerkUser = await currentUser()
   console.log('[Dashboard] Current user:', clerkUser ? { id: clerkUser.id, email: clerkUser.emailAddresses?.[0]?.emailAddress } : null)
+  console.log('[Dashboard] URL params:', { testAgent, expandOskar })
   
   if (!clerkUser) {
     console.log('[Dashboard] No user found, redirecting to sign-in')
@@ -336,7 +346,18 @@ export default async function DashboardPage() {
       </div>
       
       {/* Ask Oskar Chat Widget */}
-      <AskOskarWidget />
+      <AskOskarWidget 
+        defaultAgent={testAgent}
+        initiallyExpanded={expandOskar}
+        testMode={testAgent ? true : false}
+      />
+      
+      {/* Dashboard Client Components */}
+      <DashboardClient 
+        userPhase={user?.journeyPhase as any || 'ONBOARDING'}
+        completedAssessments={Object.keys(user?.completedAssessments || {})}
+        showAssessmentModal={searchParams.showAssessmentModal === 'true'}
+      />
     </div>
     </DashboardWrapper>
   )

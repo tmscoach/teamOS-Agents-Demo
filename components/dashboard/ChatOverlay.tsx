@@ -9,9 +9,11 @@ import Link from 'next/link'
 interface ChatOverlayProps {
   isOpen: boolean
   onClose: () => void
+  defaultAgent?: string
+  testMode?: boolean
 }
 
-export function ChatOverlay({ isOpen, onClose }: ChatOverlayProps) {
+export function ChatOverlay({ isOpen, onClose, defaultAgent, testMode }: ChatOverlayProps) {
   return (
     <AnimatePresence>
       {isOpen && (
@@ -42,7 +44,7 @@ export function ChatOverlay({ isOpen, onClose }: ChatOverlayProps) {
               
               <div className="flex items-center gap-2">
                 <Link
-                  href="/chat?agent=OrchestratorAgent"
+                  href={`/chat?agent=${defaultAgent || 'OrchestratorAgent'}${testMode ? '&testMode=true' : ''}`}
                   target="_blank"
                   className="p-1.5 hover:bg-white/80 rounded-md transition-colors"
                   title="Open in full chat"
@@ -61,7 +63,10 @@ export function ChatOverlay({ isOpen, onClose }: ChatOverlayProps) {
             
             {/* Chat content */}
             <div className="flex-1 overflow-hidden">
-              <EmbeddedChat />
+              <EmbeddedChat 
+                agentName={defaultAgent}
+                testMode={testMode}
+              />
             </div>
           </motion.div>
         </>

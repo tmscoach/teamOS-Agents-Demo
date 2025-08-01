@@ -2,128 +2,32 @@ import { TMSEnabledAgent } from './tms-enabled-agent';
 import { AgentContext, AgentResponse } from '../types';
 import { PrismaClient } from '@/lib/generated/prisma';
 import { dataQueryTools } from '../tools/data-query-tools';
-
-export enum OrchestratorState {
-  INITIALIZATION = "initialization",
-  ASSESSMENT_COORDINATION = "assessment_coordination",
-  TRANSFORMATION_PLANNING = "transformation_planning",
-  EXECUTION_MONITORING = "execution_monitoring",
-  PROGRESS_REVIEW = "progress_review",
-  COMPLETION = "completion"
-}
-
-export interface OrchestratorMetadata {
-  state: OrchestratorState;
-  transformationId: string;
-  teamId: string;
-  currentPhase: string;
-  activeAgents: string[];
-  completedTasks: string[];
-  pendingTasks: string[];
-}
+import { openai } from '@/lib/services/openai';
+import { RoutingService } from '../routing/RoutingService';
+import { JourneyPhase } from '@/lib/orchestrator/journey-phases';
+import { continuityService } from '@/lib/services/continuity/continuity.service';
 
 export class OrchestratorAgent extends TMSEnabledAgent {
   private prisma: PrismaClient;
+  private routingService: RoutingService;
   
-  // State instructions can be used as fallback or reference, but the loaded config takes precedence
-  private static readonly STATE_INSTRUCTIONS: Record<OrchestratorState, string> = {
-    [OrchestratorState.INITIALIZATION]: `
-      Initialize the transformation process:
-      - Verify team onboarding is complete
-      - Review team context and goals
-      - Set up transformation timeline
-      - Prepare initial agent assignments
-    `,
-    [OrchestratorState.ASSESSMENT_COORDINATION]: `
-      Coordinate assessment activities:
-      - Activate Assessment agents
-      - Monitor assessment progress
-      - Ensure comprehensive team analysis
-      - Track assessment milestones
-    `,
-    [OrchestratorState.TRANSFORMATION_PLANNING]: `
-      Plan the transformation approach:
-      - Review assessment results
-      - Design transformation roadmap
-      - Assign agent responsibilities
-      - Set measurable objectives
-    `,
-    [OrchestratorState.EXECUTION_MONITORING]: `
-      Monitor transformation execution:
-      - Track progress across all agents
-      - Identify bottlenecks or issues
-      - Coordinate agent handoffs
-      - Adjust plans as needed
-    `,
-    [OrchestratorState.PROGRESS_REVIEW]: `
-      Review transformation progress:
-      - Analyze metrics and outcomes
-      - Gather feedback from all agents
-      - Prepare progress reports
-      - Plan next phase activities
-    `,
-    [OrchestratorState.COMPLETION]: `
-      Complete transformation cycle:
-      - Summarize achievements
-      - Document lessons learned
-      - Plan for sustainability
-      - Prepare for next cycle
-    `
-  };
-
   constructor() {
     super({
       name: 'OrchestratorAgent',
-      description: 'Manages overall transformation workflow and coordinates other agents',
-      handoffDescription: 'Let me orchestrate your team transformation journey',
+      description: 'Guides team managers through their transformation journey and routes to specialized agents',
+      handoffDescription: 'Let me help guide your team transformation journey',
       instructions: (context: AgentContext) => {
         // This is now used as a fallback - the loaded configuration's systemPrompt takes precedence
-        const metadata = context.metadata as OrchestratorMetadata;
-        const state = metadata?.state || OrchestratorState.INITIALIZATION;
-        const baseInstructions = OrchestratorAgent.STATE_INSTRUCTIONS[state];
-        
-        return `You are the TMS Orchestrator Agent. Your role is to manage the entire transformation workflow and coordinate all other agents.
-
-Current state: ${state}
-
-${baseInstructions}
-
-Remember to:
-- Maintain a holistic view of the transformation
-- Coordinate agent activities efficiently
-- Monitor progress and adjust plans
-- Ensure smooth handoffs between agents
-- Keep stakeholders informed of progress`;
+        return `You are the TMS Orchestrator Agent. Your role is to guide team managers through their transformation journey and route them to the right specialized agents based on their needs and current phase.`;
       },
       tools: dataQueryTools,
       knowledgeEnabled: true,
       tmsToolsEnabled: false, // OrchestratorAgent doesn't use TMS tools directly
       loadFromConfig: true,
-      handoffs: [
-        {
-          targetAgent: 'AssessmentAgent',
-          condition: (context: AgentContext) => {
-            const metadata = context.metadata as OrchestratorMetadata;
-            return metadata?.state === OrchestratorState.ASSESSMENT_COORDINATION;
-          }
-        },
-        {
-          targetAgent: 'AlignmentAgent',
-          condition: (context: AgentContext) => {
-            const metadata = context.metadata as OrchestratorMetadata;
-            return metadata?.state === OrchestratorState.TRANSFORMATION_PLANNING;
-          }
-        },
-        {
-          targetAgent: 'ProgressMonitor',
-          condition: (context: AgentContext) => {
-            const metadata = context.metadata as OrchestratorMetadata;
-            return metadata?.state === OrchestratorState.PROGRESS_REVIEW;
-          }
-        }
-      ]
+      handoffs: [] // Dynamic handoffs based on intent
     });
     this.prisma = new PrismaClient();
+    this.routingService = new RoutingService();
   }
 
   /**
@@ -178,19 +82,25 @@ Remember to:
     }
 
     // Add journey phase specific guidance
-    if (context.metadata?.journeyPhase === 'ASSESSMENT') {
+    if (context.metadata?.journeyPhase === JourneyPhase.ASSESSMENT) {
       prompt += '\n\nCurrent Focus: Assessment Phase\n';
       prompt += '- The user has completed onboarding and is now in the assessment phase\n';
       prompt += '- Guide them through available assessments (Team Signals, TMP, QO2, WoWV, LLP)\n';
       prompt += '- Help them understand which assessments are most relevant for their needs\n';
-    } else if (context.metadata?.journeyPhase === 'DEBRIEF') {
+      prompt += '- Proactively suggest starting with TMP if they haven\'t completed any assessments\n';
+    } else if (context.metadata?.journeyPhase === JourneyPhase.DEBRIEF) {
       prompt += '\n\nCurrent Focus: Debrief Phase\n';
       prompt += '- The user has completed assessments and needs to review results\n';
       prompt += '- Help them understand their assessment outcomes and next steps\n';
-    } else if (context.metadata?.journeyPhase === 'CONTINUOUS_ENGAGEMENT') {
+    } else if (context.metadata?.journeyPhase === JourneyPhase.CONTINUOUS_ENGAGEMENT) {
       prompt += '\n\nCurrent Focus: Continuous Engagement\n';
       prompt += '- The user is in the ongoing transformation phase\n';
       prompt += '- Provide ongoing support, monitor progress, and suggest improvements\n';
+    } else if (context.metadata?.journeyPhase === JourneyPhase.ONBOARDING) {
+      prompt += '\n\nCurrent Focus: Onboarding Phase\n';
+      prompt += '- The user is new and needs to complete onboarding\n';
+      prompt += '- Be welcoming and guide them through the initial setup\n';
+      prompt += '- After greeting, hand off to OnboardingAgent\n';
     }
 
     return prompt;
@@ -198,18 +108,34 @@ Remember to:
 
   async processMessage(message: string, context: AgentContext): Promise<AgentResponse> {
     console.log('[OrchestratorAgent] Processing message with managerId:', context.managerId);
-    console.log('[OrchestratorAgent] Organization context:', {
-      organizationId: context.organizationId,
-      organizationRole: context.organizationRole,
-      userRole: context.userRole
-    });
-    console.log('[OrchestratorAgent] Available tools:', this.tools.map(t => t.name));
+    console.log('[OrchestratorAgent] User journey phase:', context.metadata?.journeyPhase);
     
-    // Initialize metadata if not present
-    if (!context.metadata.orchestrator) {
-      context.metadata.orchestrator = this.initializeMetadata();
+    // Update user activity for continuity tracking
+    if (context.managerId) {
+      await continuityService.updateActivity(context.managerId, 'OrchestratorAgent');
     }
-
+    
+    // Check for continuity on first message
+    if (context.metadata?.isFirstMessage && context.managerId) {
+      const continuityState = await continuityService.checkContinuity(context.managerId);
+      if (continuityState) {
+        const continuityMessage = continuityService.generateContinuityMessage(continuityState);
+        // Store continuity info in metadata for context
+        context.metadata.continuityState = continuityState;
+        
+        // If there's a pending action, prepare appropriate response
+        if (continuityState.pendingAction?.type === 'assessment_selection') {
+          return {
+            content: continuityMessage,
+            metadata: {
+              continuityDetected: true,
+              suggestAssessmentModal: true
+            }
+          };
+        }
+      }
+    }
+    
     // Try to load additional user context if we have a managerId
     if (context.managerId && !context.metadata?.userDataLoaded) {
       console.log('[OrchestratorAgent] Loading user data...');
@@ -230,7 +156,6 @@ Remember to:
 
         if (user) {
           console.log('[OrchestratorAgent] User found:', user.email);
-          console.log('[OrchestratorAgent] User onboarding data:', user.onboardingData);
           
           // Merge user data into context metadata
           context.metadata = {
@@ -239,7 +164,7 @@ Remember to:
             userEmail: user.email,
             journeyPhase: user.journeyPhase,
             journeyStatus: user.journeyStatus,
-            onboardingCompleted: user.journeyPhase !== 'ONBOARDING',
+            onboardingCompleted: user.journeyPhase !== JourneyPhase.ONBOARDING,
             completedAssessments: user.completedAssessments || {},
             viewedDebriefs: user.viewedDebriefs || {},
             teamSignalsEligible: user.teamSignalsEligible,
@@ -253,7 +178,6 @@ Remember to:
               context.metadata.onboarding = {
                 extractedFields: onboardingData.extractedFields
               };
-              console.log('[OrchestratorAgent] Extracted onboarding fields:', onboardingData.extractedFields);
             }
           }
         }
@@ -262,26 +186,148 @@ Remember to:
       }
     }
 
-    // Debug logging before calling parent
-    console.log('[OrchestratorAgent] About to call super.processMessage');
-    console.log('[OrchestratorAgent] Tool count:', this.tools.length);
-    console.log('[OrchestratorAgent] Tool names:', this.tools.map(t => t.name));
+    // Check if we need to route based on intent
+    const needsRouting = await this.shouldRouteToSpecialist(message, context);
     
-    // Process message using parent class
+    if (needsRouting) {
+      const targetAgent = await this.determineTargetAgent(message, context);
+      if (targetAgent && targetAgent !== 'OrchestratorAgent') {
+        console.log('[OrchestratorAgent] Routing to specialist agent:', targetAgent);
+        return {
+          content: `I'll connect you with our ${targetAgent.replace('Agent', ' specialist')} who can best help with your request.`,
+          requiresHandoff: true,
+          handoffTo: targetAgent,
+          metadata: {
+            routingReason: 'intent_based',
+            originalQuery: message
+          }
+        };
+      }
+    }
+
+    // Process message using parent class for general queries
     const response = await super.processMessage(message, context);
+    
+    // Check if we should proactively suggest next steps based on journey phase
+    if (response && !response.requiresHandoff) {
+      const proactiveGuidance = this.getProactiveGuidance(context);
+      if (proactiveGuidance) {
+        response.content += `\n\n${proactiveGuidance}`;
+      }
+    }
+    
     return response;
   }
 
-  private initializeMetadata(): OrchestratorMetadata {
-    return {
-      state: OrchestratorState.INITIALIZATION,
-      transformationId: `transform-${Date.now()}`,
-      teamId: '',
-      currentPhase: 'initialization',
-      activeAgents: [],
-      completedTasks: [],
-      pendingTasks: []
+  /**
+   * Determine if the message should be routed to a specialist agent
+   */
+  private async shouldRouteToSpecialist(message: string, context: AgentContext): Promise<boolean> {
+    // Simple keyword-based checks for now
+    const routingKeywords = {
+      assessment: ['assessment', 'tmp', 'team signals', 'questionnaire', 'evaluate', 'test'],
+      progress: ['progress', 'metrics', 'report', 'status', 'tracking', 'monitor'],
+      learning: ['learn', 'training', 'course', 'education', 'development'],
+      alignment: ['align', 'goals', 'objectives', 'stakeholder'],
+      recognition: ['recognize', 'celebrate', 'achievement', 'reward'],
+      nudge: ['nudge', 'remind', 'prompt', 'encourage'],
+      debrief: ['debrief', 'results', 'feedback', 'assessment results']
     };
+
+    const lowerMessage = message.toLowerCase();
+    
+    for (const [category, keywords] of Object.entries(routingKeywords)) {
+      if (keywords.some(keyword => lowerMessage.includes(keyword))) {
+        return true;
+      }
+    }
+    
+    return false;
+  }
+
+  /**
+   * Determine which agent to route to based on intent
+   */
+  private async determineTargetAgent(message: string, context: AgentContext): Promise<string | null> {
+    try {
+      // Use OpenAI to analyze intent
+      const completion = await openai.chat.completions.create({
+        model: 'gpt-3.5-turbo',
+        messages: [
+          {
+            role: 'system',
+            content: `Analyze the user's message and determine which specialist agent should handle it.
+            
+Available agents:
+- AssessmentAgent: Handles all assessment-related queries (TMP, Team Signals, etc.)
+- ProgressMonitor: Tracks and reports on transformation progress
+- LearningAgent: Manages learning paths and training resources
+- AlignmentAgent: Facilitates goal alignment and stakeholder management
+- RecognitionAgent: Handles team recognition and celebrations
+- NudgeAgent: Sends behavioral nudges and reminders
+- DebriefAgent: Provides assessment debriefs and results
+- ReportingAgent: Generates organization-wide reports
+- OrchestratorAgent: General queries and journey guidance
+
+Current user journey phase: ${context.metadata?.journeyPhase || 'Unknown'}
+
+Return ONLY the agent name, nothing else.`
+          },
+          {
+            role: 'user',
+            content: message
+          }
+        ],
+        temperature: 0.3,
+        max_tokens: 50
+      });
+
+      const targetAgent = completion.choices[0]?.message?.content?.trim();
+      console.log('[OrchestratorAgent] Intent analysis suggests:', targetAgent);
+      
+      // Validate the agent name
+      const validAgents = [
+        'AssessmentAgent', 'ProgressMonitor', 'LearningAgent', 
+        'AlignmentAgent', 'RecognitionAgent', 'NudgeAgent',
+        'DebriefAgent', 'ReportingAgent', 'OrchestratorAgent'
+      ];
+      
+      if (targetAgent && validAgents.includes(targetAgent)) {
+        return targetAgent;
+      }
+      
+      return null;
+    } catch (error) {
+      console.error('[OrchestratorAgent] Error determining target agent:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Get proactive guidance based on journey phase
+   */
+  private getProactiveGuidance(context: AgentContext): string | null {
+    const phase = context.metadata?.journeyPhase;
+    const completedAssessments = context.metadata?.completedAssessments || {};
+    
+    switch (phase) {
+      case JourneyPhase.ONBOARDING:
+        return "I see you're new here! Would you like me to help you get started with the onboarding process?";
+        
+      case JourneyPhase.ASSESSMENT:
+        if (Object.keys(completedAssessments).length === 0) {
+          return "💡 Ready to start your first assessment? I recommend beginning with the Team Management Profile (TMP) - it provides valuable insights into your work preferences and team dynamics. Would you like to start now?";
+        }
+        break;
+        
+      case JourneyPhase.DEBRIEF:
+        return "📊 You have assessment results ready to review. Would you like to see your debrief report?";
+        
+      case JourneyPhase.CONTINUOUS_ENGAGEMENT:
+        return "🚀 You're in the continuous improvement phase. Would you like to check your team's progress or explore learning resources?";
+    }
+    
+    return null;
   }
 }
 
