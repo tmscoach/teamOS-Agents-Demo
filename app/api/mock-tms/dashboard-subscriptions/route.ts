@@ -56,13 +56,13 @@ export async function GET() {
           organization = mockDataStore.createOrganization(`Dev Org - ${emailDomain}`, userId);
         }
         
-        // Create the user
+        // Create the user as Facilitator to get automatic subscriptions
         mockUser = mockDataStore.createUser({
           email: userEmail,
           password: 'dev-mode-user', // Not used in dev mode
           firstName: 'Dev',
           lastName: 'User',
-          userType: 'Respondent',
+          userType: 'Facilitator', // Changed from 'Respondent' to ensure subscriptions are assigned
           organizationId: organization.id,
           clerkUserId: userId
         });
