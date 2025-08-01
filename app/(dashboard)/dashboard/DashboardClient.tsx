@@ -41,7 +41,7 @@ export function DashboardClient({
     // Navigate directly to assessment page
     // This is the "express lane" - no chat needed when using the modal
     setTimeout(() => {
-      window.location.href = `/chat/assessment?agent=AssessmentAgent&assessmentType=${assessment.toLowerCase()}&new=true`
+      window.location.href = `/chat/assessment?agent=AssessmentAgent&new=true`
     }, 300)
   }
   
