@@ -2,7 +2,7 @@ import { TMSEnabledAgent } from './tms-enabled-agent';
 import { AgentContext, AgentResponse } from '../types';
 import { PrismaClient } from '@/lib/generated/prisma';
 import { dataQueryTools } from '../tools/data-query-tools';
-import { openai } from '@/lib/services/openai';
+import { openai } from '@/src/lib/services/openai';
 import { RoutingService } from '../routing/RoutingService';
 import { JourneyPhase } from '@/lib/orchestrator/journey-phases';
 import { continuityService } from '@/lib/services/continuity/continuity.service';
