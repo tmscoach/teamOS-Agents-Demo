@@ -266,14 +266,41 @@ Which assessment would you like to take? Just tell me the name or number.`,
     
     // Check if we have TMS user ID
     if (!context.metadata?.tmsUserId) {
-      return {
-        content: "I need to set up your TMS account first. Let me connect you with the right team member to help with that.",
-        requiresHandoff: true,
-        handoffTo: 'OnboardingAgent',
-        metadata: {
-          reason: 'missing_tms_account'
+      // For real users without TMS ID, we need to check existing subscriptions first
+      try {
+        console.log('[AssessmentAgent] Checking for existing subscriptions...');
+        
+        // First, check if user has any existing subscriptions
+        const subscriptionsResult = await this.callTool('tms_get_dashboard_subscriptions', {});
+        console.log('[AssessmentAgent] Subscriptions result:', subscriptionsResult);
+        
+        if (subscriptionsResult?.subscriptions?.length > 0) {
+          // User has subscriptions, check if the selected assessment exists
+          const existingSubscription = subscriptionsResult.subscriptions.find(
+            (sub: any) => sub.AssessmentType === selection.type
+          );
+          
+          if (existingSubscription) {
+            // Subscription already exists, update selection with subscription ID
+            selection.subscriptionId = existingSubscription.SubscriptionID;
+            selection.status = existingSubscription.Status === 'Completed' ? 'completed' : 'in_progress';
+            context.metadata.selectedAssessment = selection;
+            
+            return {
+              content: `I found your existing ${selection.type} assessment! Let me take you to continue where you left off.`,
+              metadata: {
+                selectedAssessment: selection,
+                existingSubscription: true,
+                requiresRedirect: true,
+                redirectUrl: `/chat/assessment?agent=AssessmentAgent&assessmentType=${selection.type.toLowerCase()}`
+              }
+            };
+          }
         }
-      };
+      } catch (error) {
+        console.error('[AssessmentAgent] Error checking subscriptions:', error);
+        // Continue to try creating a new subscription
+      }
     }
     
     // Map assessment type to workflow ID
@@ -287,9 +314,24 @@ Which assessment would you like to take? Just tell me the name or number.`,
     
     const workflowId = workflowMap[selection.type];
     
-    // Response indicating we'll create the subscription and redirect
-    return {
-      content: `Great choice! I'll set up your ${selection.type} assessment now.
+    try {
+      // Create new subscription using TMS API
+      console.log('[AssessmentAgent] Creating new subscription for:', workflowId);
+      
+      const assignResult = await this.callTool('tms_assign_subscription', {
+        workflowId: workflowId,
+        userId: context.metadata?.tmsUserId || context.managerId
+      });
+      
+      console.log('[AssessmentAgent] Assignment result:', assignResult);
+      
+      if (assignResult?.subscriptionId) {
+        selection.subscriptionId = assignResult.subscriptionId;
+        selection.status = 'in_progress';
+        context.metadata.selectedAssessment = selection;
+        
+        return {
+          content: `Great choice! I've successfully set up your ${selection.type} assessment.
 
 The ${selection.type} assessment will help you understand ${
   selection.type === 'TMP' 
@@ -297,18 +339,32 @@ The ${selection.type} assessment will help you understand ${
     : 'what\'s working well in your team and where to focus improvement efforts'
 }.
 
-Let me create your assessment subscription and then take you to the assessment interface...
-
-[Creating subscription for ${workflowId}...]`,
-      metadata: {
-        selectedAssessment: selection,
-        nextAction: 'create_subscription_and_redirect',
-        workflowId: workflowId,
-        // Signal that we need to redirect after subscription creation
-        requiresRedirect: true,
-        redirectUrl: `/chat/assessment?agent=AssessmentAgent&assessmentType=${selection.type.toLowerCase()}`
+Let me take you to the assessment interface now...`,
+          metadata: {
+            selectedAssessment: selection,
+            subscriptionCreated: true,
+            subscriptionId: assignResult.subscriptionId,
+            requiresRedirect: true,
+            redirectUrl: `/chat/assessment?agent=AssessmentAgent&assessmentType=${selection.type.toLowerCase()}`
+          }
+        };
+      } else {
+        throw new Error('Failed to create subscription - no subscription ID returned');
       }
-    };
+    } catch (error) {
+      console.error('[AssessmentAgent] Error creating subscription:', error);
+      
+      // Fallback - still redirect to assessment page which will handle the error
+      return {
+        content: `I'll set up your ${selection.type} assessment now. Let me take you to the assessment interface...`,
+        metadata: {
+          selectedAssessment: selection,
+          requiresRedirect: true,
+          redirectUrl: `/chat/assessment?agent=AssessmentAgent&assessmentType=${selection.type.toLowerCase()}`,
+          error: error instanceof Error ? error.message : 'Failed to create subscription'
+        }
+      };
+    }
   }
 
   private getProactiveGuidance(context: AgentContext): string | null {
