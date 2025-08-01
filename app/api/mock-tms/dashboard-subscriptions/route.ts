@@ -40,6 +40,34 @@ export async function GET() {
     if (!mockUser && userEmail && process.env.NODE_ENV === 'development') {
       console.log('[dashboard-subscriptions] Trying to find user by email:', userEmail);
       mockUser = mockDataStore.getUserByEmail(userEmail);
+      
+      // If still no user found in dev mode, create one automatically
+      if (!mockUser) {
+        console.log('[dashboard-subscriptions] Creating dev mode user:', userEmail);
+        
+        // First check if an organization exists for this email domain
+        const emailDomain = userEmail.split('@')[1];
+        let organization = Array.from(mockDataStore.organizations.values())
+          .find(org => org.name.toLowerCase().includes(emailDomain.split('.')[0]));
+        
+        // If no org exists, create one
+        if (!organization) {
+          organization = mockDataStore.createOrganization(`Dev Org - ${emailDomain}`, userId);
+        }
+        
+        // Create the user
+        mockUser = mockDataStore.createUser({
+          email: userEmail,
+          password: 'dev-mode-user', // Not used in dev mode
+          firstName: 'Dev',
+          lastName: 'User',
+          userType: 'Respondent',
+          organizationId: organization.id,
+          clerkUserId: userId
+        });
+        
+        console.log('[dashboard-subscriptions] Created dev mode user:', mockUser.id);
+      }
     }
     
     if (!mockUser) {
