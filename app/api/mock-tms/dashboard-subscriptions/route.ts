@@ -12,6 +12,8 @@ export async function GET() {
     
     // In dev mode, check for dev auth cookie if no Clerk session
     let userId = session?.userId;
+    let userEmail: string | undefined;
+    
     if (!userId && process.env.NODE_ENV === 'development') {
       const cookieStore = await cookies();
       const devAuthCookie = cookieStore.get('dev-auth');
@@ -19,6 +21,8 @@ export async function GET() {
         try {
           const devAuth = JSON.parse(devAuthCookie.value);
           userId = devAuth.userId;
+          userEmail = devAuth.email;
+          console.log('[dashboard-subscriptions] Using dev auth:', { userId, userEmail });
         } catch (e) {
           console.error('Failed to parse dev auth cookie:', e);
         }
@@ -29,10 +33,17 @@ export async function GET() {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     
-    // Find the mock user by Clerk ID
-    const mockUser = mockDataStore.getUserByClerkId(userId);
+    // Find the mock user by Clerk ID or email (for dev mode)
+    let mockUser = mockDataStore.getUserByClerkId(userId);
+    
+    // In dev mode, also try to find by email if we have it
+    if (!mockUser && userEmail && process.env.NODE_ENV === 'development') {
+      console.log('[dashboard-subscriptions] Trying to find user by email:', userEmail);
+      mockUser = mockDataStore.getUserByEmail(userEmail);
+    }
+    
     if (!mockUser) {
-      console.error('No mock user found for Clerk ID:', userId);
+      console.error('No mock user found for:', { userId, userEmail });
       return NextResponse.json({ subscriptions: [] });
     }
     
