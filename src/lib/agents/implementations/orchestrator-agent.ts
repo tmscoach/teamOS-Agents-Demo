@@ -36,8 +36,8 @@ export class OrchestratorAgent extends TMSEnabledAgent {
     `,
     [OrchestratorState.ASSESSMENT_COORDINATION]: `
       Coordinate assessment activities:
-      - Activate Discovery and Assessment agents
-      - Monitor data collection progress
+      - Activate Assessment agents
+      - Monitor assessment progress
       - Ensure comprehensive team analysis
       - Track assessment milestones
     `,
@@ -101,18 +101,10 @@ Remember to:
       loadFromConfig: true,
       handoffs: [
         {
-          targetAgent: 'DiscoveryAgent',
-          condition: (context: AgentContext) => {
-            const metadata = context.metadata as OrchestratorMetadata;
-            return metadata?.state === OrchestratorState.ASSESSMENT_COORDINATION;
-          }
-        },
-        {
           targetAgent: 'AssessmentAgent',
           condition: (context: AgentContext) => {
             const metadata = context.metadata as OrchestratorMetadata;
-            return metadata?.state === OrchestratorState.ASSESSMENT_COORDINATION &&
-                   metadata?.activeAgents?.includes('DiscoveryAgent');
+            return metadata?.state === OrchestratorState.ASSESSMENT_COORDINATION;
           }
         },
         {

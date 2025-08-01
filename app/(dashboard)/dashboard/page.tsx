@@ -76,32 +76,11 @@ export default async function DashboardPage() {
   }
   
   // Check if user needs onboarding (use journeyPhase if available, fallback to journeyStatus)
-  // Note: The NEXT_REDIRECT error in dev console is expected behavior - it's how Next.js handles redirects
+  // Note: We no longer redirect ONBOARDING users - the orchestrator will handle them on the dashboard
   const isInOnboarding = user?.journeyPhase === 'ONBOARDING' || 
     (!user?.journeyPhase && user?.journeyStatus === 'ONBOARDING')
   
   console.log('[Dashboard] Is in onboarding:', isInOnboarding, 'Journey phase:', user?.journeyPhase, 'Journey status:', user?.journeyStatus)
-  
-  if (user && isInOnboarding && user.role === 'MANAGER') {
-    // Check if user has any existing conversations
-    const existingConversation = await prisma.conversation.findFirst({
-      where: {
-        managerId: user.id,
-        currentAgent: 'OnboardingAgent'
-      },
-      orderBy: { updatedAt: 'desc' },
-      select: { id: true }
-    }).catch(() => null)
-
-    // Only add new=true if this is truly their first conversation
-    if (existingConversation) {
-      console.log('[Dashboard] Redirecting to existing onboarding conversation')
-      redirect('/chat?agent=OnboardingAgent')
-    } else {
-      console.log('[Dashboard] Redirecting to new onboarding conversation')
-      redirect('/chat?agent=OnboardingAgent&new=true')
-    }
-  }
 
   // Get user's name from onboarding data if available
   const onboardingData = user?.onboardingData as Record<string, any> || {}

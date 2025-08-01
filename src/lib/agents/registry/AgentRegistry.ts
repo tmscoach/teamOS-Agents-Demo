@@ -191,19 +191,6 @@ export class AgentRegistry {
       keywords: ['assessment', 'evaluate', 'analyze', 'test', 'questionnaire', 'tmp', 'team signals']
     });
     
-    defaults.set('DiscoveryAgent', {
-      name: 'DiscoveryAgent',
-      description: 'Conducts team assessment and gathers comprehensive data',
-      examples: [
-        "Gather team information",
-        "Discover team dynamics",
-        "Collect team data"
-      ],
-      prerequisites: ['onboarding_complete'],
-      relevantPhases: [JourneyPhase.ASSESSMENT],
-      keywords: ['discover', 'gather', 'collect', 'explore', 'understand']
-    });
-    
     defaults.set('AlignmentAgent', {
       name: 'AlignmentAgent',
       description: 'Facilitates goal alignment and stakeholder buy-in processes',

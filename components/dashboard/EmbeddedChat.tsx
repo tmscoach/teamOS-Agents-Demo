@@ -73,7 +73,6 @@ export function EmbeddedChat() {
       ProgressMonitor: 'text-orange-600',
       LearningAgent: 'text-pink-600',
       AlignmentAgent: 'text-indigo-600',
-      DiscoveryAgent: 'text-teal-600',
       NudgeAgent: 'text-yellow-600',
       RecognitionAgent: 'text-red-600'
     }
