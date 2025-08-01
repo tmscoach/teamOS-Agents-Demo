@@ -2,17 +2,18 @@ import { NextResponse } from 'next/server';
 import { getDashboardSubscriptions } from '@/src/lib/mock-tms-api/endpoints/subscriptions';
 import { mockTMSClient } from '@/src/lib/mock-tms-api/mock-api-client';
 import { mockDataStore } from '@/src/lib/mock-tms-api/mock-data-store';
-import { auth } from '@clerk/nextjs/server';
+import { auth, currentUser } from '@clerk/nextjs/server';
 import { cookies } from 'next/headers';
 
 export async function GET() {
   try {
     // Get the current user from Clerk
     const session = await auth();
+    const user = await currentUser();
     
     // In dev mode, check for dev auth cookie if no Clerk session
     let userId = session?.userId;
-    let userEmail: string | undefined;
+    let userEmail: string | undefined = user?.emailAddresses?.[0]?.emailAddress;
     
     if (!userId && process.env.NODE_ENV === 'development') {
       const cookieStore = await cookies();
@@ -71,8 +72,40 @@ export async function GET() {
     }
     
     if (!mockUser) {
-      console.error('No mock user found for:', { userId, userEmail });
-      return NextResponse.json({ subscriptions: [] });
+      console.log('No mock user found for:', { userId, userEmail });
+      
+      // In development, auto-create a mock user for real Clerk users
+      if (process.env.NODE_ENV === 'development' && userId && userEmail) {
+        console.log('[dashboard-subscriptions] Auto-creating mock user for real Clerk user');
+        
+        // First, ensure we have an organization
+        const existingOrgs = Array.from(mockDataStore.organizations.values());
+        let orgId: string;
+        
+        if (existingOrgs.length > 0) {
+          // Use the first organization
+          orgId = existingOrgs[0].id;
+        } else {
+          // Create a default organization
+          const newOrg = mockDataStore.createOrganization('Default Organization', 'system');
+          orgId = newOrg.id;
+        }
+        
+        // Create the mock user linked to the Clerk user
+        mockUser = mockDataStore.createUser({
+          email: userEmail,
+          clerkUserId: userId,
+          firstName: userEmail.split('@')[0],
+          lastName: 'User',
+          userType: 'Facilitator',
+          organizationId: orgId
+        });
+        
+        console.log('[dashboard-subscriptions] Created mock user:', mockUser);
+      } else {
+        console.error('Cannot create mock user - missing required data');
+        return NextResponse.json({ subscriptions: [] });
+      }
     }
     
     // Generate a JWT for the current user
