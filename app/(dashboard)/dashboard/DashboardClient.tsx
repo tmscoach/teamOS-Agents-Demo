@@ -38,10 +38,10 @@ export function DashboardClient({
     // Close modal
     setIsModalOpen(false)
     
-    // Navigate to the main chat page with AssessmentAgent
-    // The agent will help create the subscription and then redirect to assessment page
+    // Navigate directly to assessment page
+    // The assessment page will handle subscription creation if needed
     setTimeout(() => {
-      window.location.href = `/chat?agent=AssessmentAgent&new=true&assessment=${assessment.toLowerCase()}`
+      window.location.href = `/chat/assessment?agent=AssessmentAgent&new=true&assessment=${assessment.toLowerCase()}`
     }, 300)
   }
   

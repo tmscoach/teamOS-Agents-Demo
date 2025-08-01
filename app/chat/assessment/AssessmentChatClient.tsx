@@ -166,6 +166,19 @@ export default function AssessmentChatClient() {
         setConversationId(newConversationId);
       }
     },
+    onFinish(message) {
+      console.log('[AssessmentChat] Message finished:', message);
+      
+      // Check if the message indicates a subscription was created
+      if (message.content?.includes('successfully set up your') && 
+          message.content?.includes('assessment')) {
+        console.log('[AssessmentChat] Subscription created, reloading assessments...');
+        // Reload the page to show the new assessment
+        setTimeout(() => {
+          window.location.reload();
+        }, 2000);
+      }
+    },
     onError(error) {
       console.error('[AssessmentChat] Chat error details:', {
         error,
@@ -358,6 +371,7 @@ export default function AssessmentChatClient() {
   // Send initial message when new=true and no assessments
   useEffect(() => {
     const isNew = searchParams.get('new') === 'true';
+    const assessmentType = searchParams.get('assessment'); // tmp or teamsignals
     console.log('[AssessmentChat] Initial conversation check:', {
       loading,
       messagesLength: messages.length,
@@ -365,18 +379,28 @@ export default function AssessmentChatClient() {
       hasInitialized: hasInitializedRef.current,
       hasSelectedAssessment: !!selectedAssessment,
       availableAssessmentsLength: availableAssessments.length,
-      isNew
+      isNew,
+      assessmentType
     });
     
     if (!loading && messages.length === 0 && !isLoading && !hasInitializedRef.current && isNew && availableAssessments.length === 0) {
       console.log('[AssessmentChat] Starting conversation with AssessmentAgent...');
       hasInitializedRef.current = true;
+      
+      // Determine the message based on assessment type
+      const assessmentName = assessmentType === 'tmp' ? 'TMP' : 
+                           assessmentType === 'teamsignals' ? 'Team Signals' : 
+                           'an assessment';
+      const initialMessage = assessmentType 
+        ? `I want to start the ${assessmentName} assessment`
+        : 'I want to start an assessment';
+      
       // Add small delay to ensure everything is ready
       setTimeout(() => {
-        console.log('[AssessmentChat] Sending initial message to AssessmentAgent');
+        console.log('[AssessmentChat] Sending initial message to AssessmentAgent:', initialMessage);
         append({
           role: 'user',
-          content: 'I want to start an assessment'
+          content: initialMessage
         });
       }, 100);
     }
