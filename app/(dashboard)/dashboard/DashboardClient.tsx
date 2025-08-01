@@ -17,7 +17,7 @@ export function DashboardClient({
   showAssessmentModal = false
 }: DashboardClientProps) {
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const { setIsOpen: setAskOskarOpen } = useAskOskar()
+  const { openWidget: openAskOskar } = useAskOskar()
   
   // Check if user should see assessment modal on first visit
   useEffect(() => {
@@ -40,7 +40,7 @@ export function DashboardClient({
     
     // Open Ask Oskar with AssessmentAgent
     setTimeout(() => {
-      setAskOskarOpen(true)
+      openAskOskar()
       // The AssessmentAgent will be triggered via the orchestrator
       // with the selected assessment in context
       window.dispatchEvent(new CustomEvent('assessment-selected', { 
