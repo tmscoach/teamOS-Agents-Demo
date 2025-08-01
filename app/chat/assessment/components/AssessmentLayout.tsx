@@ -54,7 +54,7 @@ export default function AssessmentLayout({
 }: AssessmentLayoutProps) {
   const [chatExpanded, setChatExpanded] = useState(false);
 
-  // If no assessment selected, show selector only if assessments are available
+  // If no assessment selected, show selector
   if (!selectedAssessment && availableAssessments.length > 0) {
     return (
       <div className="bg-gray-50 min-h-screen w-full flex justify-center relative">
@@ -70,30 +70,6 @@ export default function AssessmentLayout({
           handleInputChange={handleInputChange}
           handleSubmit={handleSubmit}
           isLoading={isLoading}
-        />
-      </div>
-    );
-  }
-  
-  // If no assessments available, show chat interface for agent interaction
-  if (!selectedAssessment && availableAssessments.length === 0) {
-    return (
-      <div className="bg-gray-50 min-h-screen w-full flex justify-center relative">
-        <div className="w-[1280px] min-h-screen bg-white shadow-xl flex items-center justify-center">
-          <div className="text-center p-8">
-            <h2 className="text-2xl font-semibold mb-4">Let's Start Your Assessment</h2>
-            <p className="text-gray-600 mb-6">I'll help you begin your team transformation journey. Use the chat to get started.</p>
-          </div>
-        </div>
-        <ChatPanelWrapper
-          messages={messages}
-          input={input}
-          handleInputChange={handleInputChange}
-          handleSubmit={handleSubmit}
-          isLoading={isLoading}
-          voiceState={voiceState}
-          onVoiceToggle={onVoiceToggle}
-          audioLevel={audioLevel}
         />
       </div>
     );

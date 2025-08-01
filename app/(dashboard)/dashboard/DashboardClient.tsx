@@ -32,17 +32,43 @@ export function DashboardClient({
     }
   }, [userPhase, completedAssessments, showAssessmentModal])
   
-  const handleAssessmentSelect = (assessment: 'TMP' | 'TeamSignals') => {
+  const handleAssessmentSelect = async (assessment: 'TMP' | 'TeamSignals') => {
     console.log('[DashboardClient] Assessment selected:', assessment)
     
     // Close modal
     setIsModalOpen(false)
     
-    // Navigate directly to assessment page
-    // The assessment page will handle subscription creation if needed
-    setTimeout(() => {
-      window.location.href = `/chat/assessment?agent=AssessmentAgent&new=true&assessment=${assessment.toLowerCase()}`
-    }, 300)
+    try {
+      // Create the assessment subscription first
+      const response = await fetch('/api/assessment/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          assessmentType: assessment.toLowerCase()
+        })
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to create assessment');
+      }
+      
+      const data = await response.json();
+      console.log('[DashboardClient] Assessment created:', data);
+      
+      // Navigate to assessment page with the subscription
+      setTimeout(() => {
+        window.location.href = data.redirectUrl;
+      }, 300);
+      
+    } catch (error) {
+      console.error('[DashboardClient] Error creating assessment:', error);
+      // Fallback to the original navigation
+      setTimeout(() => {
+        window.location.href = `/chat/assessment?agent=AssessmentAgent&new=true&assessment=${assessment.toLowerCase()}`
+      }, 300);
+    }
   }
   
   const handleModalClose = () => {

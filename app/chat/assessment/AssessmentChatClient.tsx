@@ -166,19 +166,6 @@ export default function AssessmentChatClient() {
         setConversationId(newConversationId);
       }
     },
-    onFinish(message) {
-      console.log('[AssessmentChat] Message finished:', message);
-      
-      // Check if the message indicates a subscription was created
-      if (message.content?.includes('successfully set up your') && 
-          message.content?.includes('assessment')) {
-        console.log('[AssessmentChat] Subscription created, reloading assessments...');
-        // Reload the page to show the new assessment
-        setTimeout(() => {
-          window.location.reload();
-        }, 2000);
-      }
-    },
     onError(error) {
       console.error('[AssessmentChat] Chat error details:', {
         error,
@@ -368,43 +355,27 @@ export default function AssessmentChatClient() {
   // Track if we've sent the initial greeting
   const hasInitializedRef = useRef(false);
   
-  // Send initial message when new=true and no assessments
+  // Auto-start assessment if there's only one available
   useEffect(() => {
-    const isNew = searchParams.get('new') === 'true';
-    const assessmentType = searchParams.get('assessment'); // tmp or teamsignals
-    console.log('[AssessmentChat] Initial conversation check:', {
+    console.log('[AssessmentChat] Auto-start check:', {
       loading,
-      messagesLength: messages.length,
-      isLoading,
-      hasInitialized: hasInitializedRef.current,
-      hasSelectedAssessment: !!selectedAssessment,
       availableAssessmentsLength: availableAssessments.length,
-      isNew,
-      assessmentType
+      hasSelectedAssessment: !!selectedAssessment,
+      hasInitialized: hasInitializedRef.current
     });
     
-    if (!loading && messages.length === 0 && !isLoading && !hasInitializedRef.current && isNew && availableAssessments.length === 0) {
-      console.log('[AssessmentChat] Starting conversation with AssessmentAgent...');
+    // If there's only one assessment and nothing selected yet, auto-select it
+    if (!loading && availableAssessments.length === 1 && !selectedAssessment && !hasInitializedRef.current) {
+      console.log('[AssessmentChat] Auto-selecting single assessment:', availableAssessments[0]);
       hasInitializedRef.current = true;
       
-      // Determine the message based on assessment type
-      const assessmentName = assessmentType === 'tmp' ? 'TMP' : 
-                           assessmentType === 'teamsignals' ? 'Team Signals' : 
-                           'an assessment';
-      const initialMessage = assessmentType 
-        ? `I want to start the ${assessmentName} assessment`
-        : 'I want to start an assessment';
-      
-      // Add small delay to ensure everything is ready
+      // Auto-select the assessment after a small delay
       setTimeout(() => {
-        console.log('[AssessmentChat] Sending initial message to AssessmentAgent:', initialMessage);
-        append({
-          role: 'user',
-          content: initialMessage
-        });
-      }, 100);
+        setSelectedAssessment(availableAssessments[0]);
+        startWorkflow(availableAssessments[0]);
+      }, 500);
     }
-  }, [loading, messages.length, isLoading, availableAssessments.length, searchParams, append]);
+  }, [loading, availableAssessments, selectedAssessment]);
 
   const startWorkflow = async (assessment: AssessmentSubscription) => {
     console.log('[AssessmentChat] startWorkflow called for:', assessment);
