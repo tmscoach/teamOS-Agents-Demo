@@ -264,19 +264,38 @@ Which assessment would you like to take? Just tell me the name or number.`,
       };
     }
     
+    console.log('[AssessmentAgent] Creating subscription with context:', {
+      managerId: context.managerId,
+      tmsUserId: context.metadata?.tmsUserId,
+      userEmail: context.metadata?.userEmail,
+      selectedAssessment: selection
+    });
+    
     // Check if we have TMS user ID
     if (!context.metadata?.tmsUserId) {
       // For real users without TMS ID, we need to check existing subscriptions first
       try {
-        console.log('[AssessmentAgent] Checking for existing subscriptions...');
+        console.log('[AssessmentAgent] No TMS user ID found, checking for existing subscriptions...');
         
         // First, check if user has any existing subscriptions
-        const subscriptionsResult = await this.callTool('tms_get_dashboard_subscriptions', {});
+        console.log('[AssessmentAgent] About to call tms_get_dashboard_subscriptions tool...');
+        const { callEvent, outputEvent } = await this.callTool('tms_get_dashboard_subscriptions', {});
+        console.log('[AssessmentAgent] Tool call event:', callEvent);
+        console.log('[AssessmentAgent] Tool output event:', outputEvent);
+        
+        const subscriptionsResult = outputEvent.result;
         console.log('[AssessmentAgent] Subscriptions result:', subscriptionsResult);
         
-        if (subscriptionsResult?.subscriptions?.length > 0) {
+        // Check if we got a successful result with subscriptions
+        const subscriptions = subscriptionsResult?.success && subscriptionsResult?.output?.raw 
+          ? subscriptionsResult.output.raw 
+          : subscriptionsResult?.output;
+          
+        console.log('[AssessmentAgent] Extracted subscriptions:', subscriptions);
+        
+        if (Array.isArray(subscriptions) && subscriptions.length > 0) {
           // User has subscriptions, check if the selected assessment exists
-          const existingSubscription = subscriptionsResult.subscriptions.find(
+          const existingSubscription = subscriptions.find(
             (sub: any) => sub.AssessmentType === selection.type
           );
           
@@ -317,16 +336,28 @@ Which assessment would you like to take? Just tell me the name or number.`,
     try {
       // Create new subscription using TMS API
       console.log('[AssessmentAgent] Creating new subscription for:', workflowId);
+      console.log('[AssessmentAgent] Using userId:', context.metadata?.tmsUserId || context.managerId);
       
-      const assignResult = await this.callTool('tms_assign_subscription', {
+      const { callEvent, outputEvent } = await this.callTool('tms_assign_subscription', {
         workflowId: workflowId,
-        userId: context.metadata?.tmsUserId || context.managerId
+        userId: context.metadata?.tmsUserId || context.managerId,
+        organizationId: context.organizationId || 'default-org'
       });
       
-      console.log('[AssessmentAgent] Assignment result:', assignResult);
+      console.log('[AssessmentAgent] Assign tool call event:', callEvent);
+      console.log('[AssessmentAgent] Assign tool output event:', outputEvent);
       
-      if (assignResult?.subscriptionId) {
-        selection.subscriptionId = assignResult.subscriptionId;
+      const assignResult = outputEvent.result;
+      
+      // Extract subscription ID from the result
+      const subscriptionId = assignResult?.success && assignResult?.output?.raw?.subscriptionId 
+        ? assignResult.output.raw.subscriptionId
+        : assignResult?.output?.subscriptionId || assignResult?.subscriptionId;
+        
+      console.log('[AssessmentAgent] Extracted subscription ID:', subscriptionId);
+      
+      if (subscriptionId) {
+        selection.subscriptionId = subscriptionId;
         selection.status = 'in_progress';
         context.metadata.selectedAssessment = selection;
         
@@ -343,7 +374,7 @@ Let me take you to the assessment interface now...`,
           metadata: {
             selectedAssessment: selection,
             subscriptionCreated: true,
-            subscriptionId: assignResult.subscriptionId,
+            subscriptionId: subscriptionId,
             requiresRedirect: true,
             redirectUrl: `/chat/assessment?agent=AssessmentAgent&assessmentType=${selection.type.toLowerCase()}`
           }
