@@ -98,4 +98,5 @@ export interface AssessmentSubscription {
   OrganisationName: string;
   AssessmentType: string;
   AssessmentStatus: string;
+  _subscriptionId?: string; // Original subscription ID for internal use
 }

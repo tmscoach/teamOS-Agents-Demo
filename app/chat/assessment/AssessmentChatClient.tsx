@@ -387,7 +387,7 @@ export default function AssessmentChatClient() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           workflowId: WORKFLOW_ID_MAP[assessment.AssessmentType] || assessment.WorkflowType.toLowerCase().replace(' ', '-') + '-workflow',
-          subscriptionId: assessment.SubscriptionID.toString()
+          subscriptionId: (assessment as any)._subscriptionId || assessment.SubscriptionID.toString()
         })
       });
       

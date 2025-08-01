@@ -77,8 +77,8 @@ export async function getDashboardSubscriptions(options: {
   }
 
   // Transform to dashboard format matching the recorded API
-  const subscriptions: TMSDashboardSubscription[] = userSubscriptions.map(sub => ({
-    SubscriptionID: parseInt(sub.subscriptionId) || 0,
+  const subscriptions: TMSDashboardSubscription[] = userSubscriptions.map((sub, index) => ({
+    SubscriptionID: parseInt(sub.subscriptionId.replace(/\D/g, '')) || (index + 1),
     WorkflowID: parseInt(sub.workflowId.replace(/\D/g, '')) || 0,
     WorkflowType: sub.assessmentType,
     Status: sub.status === 'completed' ? 'Completed' : sub.status === 'in_progress' ? 'In Progress' : 'Not Started',
@@ -88,7 +88,9 @@ export async function getDashboardSubscriptions(options: {
     OrganisationID: 0,
     OrganisationName: "Test Organization",
     AssessmentType: sub.assessmentType,
-    AssessmentStatus: sub.status === 'completed' ? 'Completed' : sub.status === 'in_progress' ? 'In Progress' : 'Not Started'
+    AssessmentStatus: sub.status === 'completed' ? 'Completed' : sub.status === 'in_progress' ? 'In Progress' : 'Not Started',
+    // Add the original subscription ID for internal use
+    _subscriptionId: sub.subscriptionId
   }));
 
   return subscriptions;
