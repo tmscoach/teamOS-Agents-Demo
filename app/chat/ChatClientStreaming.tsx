@@ -54,6 +54,7 @@ export default function ChatClientStreaming() {
   // Get agent from URL params
   const agentName = searchParams.get('agent') || 'OrchestratorAgent';
   const isNewConversation = searchParams.get('new') === 'true';
+  const assessmentType = searchParams.get('assessment'); // tmp or teamsignals
 
   // Enable streaming via environment variable
   const ENABLE_STREAMING = process.env.NEXT_PUBLIC_ENABLE_STREAMING === 'true';
@@ -162,6 +163,27 @@ export default function ChatClientStreaming() {
       setLoadingConversation(false);
     }
   }, [isLoaded, user, isNewConversation, agentName, devAuthChecked]);
+
+  // Auto-start conversation for assessment creation
+  useEffect(() => {
+    if (!loadingConversation && isNewConversation && agentName === 'AssessmentAgent' && assessmentType && !autoStarted && messages.length === 0) {
+      console.log('[ChatClient] Auto-starting assessment creation for:', assessmentType);
+      setAutoStarted(true);
+      
+      // Send initial message based on assessment type
+      const assessmentName = assessmentType === 'tmp' ? 'TMP' : 'Team Signals';
+      const initialMessage = `I want to start the ${assessmentName} assessment`;
+      
+      // Small delay to ensure everything is ready
+      setTimeout(() => {
+        if (ENABLE_STREAMING) {
+          sendMessageStreaming(initialMessage);
+        } else {
+          sendMessage(initialMessage);
+        }
+      }, 500);
+    }
+  }, [loadingConversation, isNewConversation, agentName, assessmentType, autoStarted, messages.length, ENABLE_STREAMING, sendMessageStreaming, sendMessage]);
 
   const sendMessageStreaming = useCallback(async (messageContent: string) => {
     console.log('[sendMessageStreaming] Called with:', messageContent, 'loading:', loading);
@@ -291,6 +313,14 @@ export default function ChatClientStreaming() {
                   if (parsed.metadata?.suggestedValues) {
                     setSuggestedValues(parsed.metadata.suggestedValues);
                   }
+                  
+                  // Handle redirect from AssessmentAgent
+                  if (parsed.metadata?.requiresRedirect && parsed.metadata?.redirectUrl) {
+                    console.log('[ChatClient Streaming] Redirecting to:', parsed.metadata.redirectUrl);
+                    setTimeout(() => {
+                      window.location.href = parsed.metadata.redirectUrl;
+                    }, 1500); // Give user time to read the message
+                  }
                   break;
                   
                 case 'error':
@@ -382,6 +412,14 @@ export default function ChatClientStreaming() {
       } else {
         setSuggestedValues(null);
       }
+      
+      // Handle redirect from AssessmentAgent
+      if (data.metadata?.requiresRedirect && data.metadata?.redirectUrl) {
+        console.log('[ChatClient] Redirecting to:', data.metadata.redirectUrl);
+        setTimeout(() => {
+          window.location.href = data.metadata.redirectUrl;
+        }, 1500); // Give user time to read the message
+      }
     } catch (error) {
       console.error("Failed to send message:", error);
       const errorMessage: Message = {
@@ -399,7 +437,7 @@ export default function ChatClientStreaming() {
   // Use streaming or non-streaming based on feature flag
   const sendMessage = ENABLE_STREAMING ? sendMessageStreaming : sendMessageNonStreaming;
 
-  // Auto-start conversation ONLY for explicitly new chats
+  // Auto-start conversation ONLY for explicitly new chats (but not assessment creation)
   useEffect(() => {
     const hasAuth = user || (devAuthChecked && (process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_ENV === 'development'));
     console.log('[Auto-start] Checking conditions:', {
@@ -409,8 +447,15 @@ export default function ChatClientStreaming() {
       autoStarted,
       messagesLength: messages.length,
       loading,
-      loadingConversation
+      loadingConversation,
+      agentName,
+      assessmentType
     });
+    
+    // Skip auto-start if we're handling assessment creation (that has its own auto-start)
+    if (agentName === 'AssessmentAgent' && assessmentType) {
+      return;
+    }
     
     if (isLoaded && hasAuth && isNewConversation && !autoStarted && messages.length === 0 && !loading && !loadingConversation) {
       console.log('[Auto-start] Starting new conversation...');
@@ -419,7 +464,7 @@ export default function ChatClientStreaming() {
       // Send an initial empty message to trigger the agent's greeting
       sendMessage(" "); // Single space to pass validation
     }
-  }, [isLoaded, user, isNewConversation, autoStarted, messages.length, loading, loadingConversation, devAuthChecked, sendMessage]);
+  }, [isLoaded, user, isNewConversation, autoStarted, messages.length, loading, loadingConversation, devAuthChecked, sendMessage, agentName, assessmentType]);
 
   // Cleanup on unmount
   useEffect(() => {

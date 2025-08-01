@@ -38,10 +38,10 @@ export function DashboardClient({
     // Close modal
     setIsModalOpen(false)
     
-    // Navigate directly to assessment page
-    // This is the "express lane" - no chat needed when using the modal
+    // Navigate to the main chat page with AssessmentAgent
+    // The agent will help create the subscription and then redirect to assessment page
     setTimeout(() => {
-      window.location.href = `/chat/assessment?agent=AssessmentAgent&new=true`
+      window.location.href = `/chat?agent=AssessmentAgent&new=true&assessment=${assessment.toLowerCase()}`
     }, 300)
   }
   
