@@ -14,11 +14,14 @@ import { DashboardClient } from './DashboardClient'
 export default async function DashboardPage({
   searchParams
 }: {
-  searchParams: { [key: string]: string | string[] | undefined }
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }) {
+  // Await searchParams in Next.js 15
+  const params = await searchParams;
+  
   // Get URL parameters for test mode
-  const testAgent = searchParams.testAgent as string | undefined;
-  const expandOskar = searchParams.expandOskar === 'true';
+  const testAgent = params.testAgent as string | undefined;
+  const expandOskar = params.expandOskar === 'true';
   
   const clerkUser = await currentUser()
   console.log('[Dashboard] Current user:', clerkUser ? { id: clerkUser.id, email: clerkUser.emailAddresses?.[0]?.emailAddress } : null)
@@ -356,7 +359,7 @@ export default async function DashboardPage({
       <DashboardClient 
         userPhase={user?.journeyPhase as any || 'ONBOARDING'}
         completedAssessments={Object.keys(user?.completedAssessments || {})}
-        showAssessmentModal={searchParams.showAssessmentModal === 'true'}
+        showAssessmentModal={params.showAssessmentModal === 'true'}
       />
     </div>
     </DashboardWrapper>
