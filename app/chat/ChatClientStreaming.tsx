@@ -54,7 +54,6 @@ export default function ChatClientStreaming() {
   // Get agent from URL params
   const agentName = searchParams.get('agent') || 'OrchestratorAgent';
   const isNewConversation = searchParams.get('new') === 'true';
-  const assessmentType = searchParams.get('assessment'); // tmp or teamsignals
 
   // Enable streaming via environment variable
   const ENABLE_STREAMING = process.env.NEXT_PUBLIC_ENABLE_STREAMING === 'true';
@@ -164,26 +163,6 @@ export default function ChatClientStreaming() {
     }
   }, [isLoaded, user, isNewConversation, agentName, devAuthChecked]);
 
-  // Auto-start conversation for assessment creation
-  useEffect(() => {
-    if (!loadingConversation && isNewConversation && agentName === 'AssessmentAgent' && assessmentType && !autoStarted && messages.length === 0) {
-      console.log('[ChatClient] Auto-starting assessment creation for:', assessmentType);
-      setAutoStarted(true);
-      
-      // Send initial message based on assessment type
-      const assessmentName = assessmentType === 'tmp' ? 'TMP' : 'Team Signals';
-      const initialMessage = `I want to start the ${assessmentName} assessment`;
-      
-      // Small delay to ensure everything is ready
-      setTimeout(() => {
-        if (ENABLE_STREAMING) {
-          sendMessageStreaming(initialMessage);
-        } else {
-          sendMessage(initialMessage);
-        }
-      }, 500);
-    }
-  }, [loadingConversation, isNewConversation, agentName, assessmentType, autoStarted, messages.length, ENABLE_STREAMING, sendMessageStreaming, sendMessage]);
 
   const sendMessageStreaming = useCallback(async (messageContent: string) => {
     console.log('[sendMessageStreaming] Called with:', messageContent, 'loading:', loading);
@@ -437,7 +416,7 @@ export default function ChatClientStreaming() {
   // Use streaming or non-streaming based on feature flag
   const sendMessage = ENABLE_STREAMING ? sendMessageStreaming : sendMessageNonStreaming;
 
-  // Auto-start conversation ONLY for explicitly new chats (but not assessment creation)
+  // Auto-start conversation ONLY for explicitly new chats
   useEffect(() => {
     const hasAuth = user || (devAuthChecked && (process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_ENV === 'development'));
     console.log('[Auto-start] Checking conditions:', {
@@ -447,15 +426,8 @@ export default function ChatClientStreaming() {
       autoStarted,
       messagesLength: messages.length,
       loading,
-      loadingConversation,
-      agentName,
-      assessmentType
+      loadingConversation
     });
-    
-    // Skip auto-start if we're handling assessment creation (that has its own auto-start)
-    if (agentName === 'AssessmentAgent' && assessmentType) {
-      return;
-    }
     
     if (isLoaded && hasAuth && isNewConversation && !autoStarted && messages.length === 0 && !loading && !loadingConversation) {
       console.log('[Auto-start] Starting new conversation...');
@@ -464,7 +436,7 @@ export default function ChatClientStreaming() {
       // Send an initial empty message to trigger the agent's greeting
       sendMessage(" "); // Single space to pass validation
     }
-  }, [isLoaded, user, isNewConversation, autoStarted, messages.length, loading, loadingConversation, devAuthChecked, sendMessage, agentName, assessmentType]);
+  }, [isLoaded, user, isNewConversation, autoStarted, messages.length, loading, loadingConversation, devAuthChecked, sendMessage]);
 
   // Cleanup on unmount
   useEffect(() => {
