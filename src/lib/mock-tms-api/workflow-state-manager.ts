@@ -57,6 +57,13 @@ export class WorkflowStateManager {
   }
 
   /**
+   * Resolve subscription ID - simple lookup now that all IDs are numeric strings
+   */
+  private resolveSubscriptionId(subscriptionId: string): string | undefined {
+    return this.workflowStates.has(subscriptionId) ? subscriptionId : undefined;
+  }
+
+  /**
    * Initialize or get workflow state for a subscription
    */
   getOrCreateWorkflowState(
@@ -64,6 +71,7 @@ export class WorkflowStateManager {
     workflowId: string,
     baseContentId?: number
   ): WorkflowState {
+    // Simple direct lookup now that all IDs are numeric strings
     const existingState = this.workflowStates.get(subscriptionId);
     if (existingState) {
       return existingState;
@@ -104,7 +112,8 @@ export class WorkflowStateManager {
     pageId: number,
     answers: Array<{ questionID: number; value: string }>
   ): WorkflowState {
-    const state = this.workflowStates.get(subscriptionId);
+    const resolvedId = this.resolveSubscriptionId(subscriptionId) || subscriptionId;
+    const state = this.workflowStates.get(resolvedId);
     if (!state) {
       throw new Error(`No workflow state found for subscription: ${subscriptionId}`);
     }
@@ -138,7 +147,8 @@ export class WorkflowStateManager {
    * Get navigation info for current state
    */
   getNavigationInfo(subscriptionId: string): NavigationInfo {
-    const state = this.workflowStates.get(subscriptionId);
+    const resolvedId = this.resolveSubscriptionId(subscriptionId) || subscriptionId;
+    const state = this.workflowStates.get(resolvedId);
     if (!state) {
       throw new Error(`No workflow state found for subscription: ${subscriptionId}`);
     }
@@ -207,7 +217,8 @@ export class WorkflowStateManager {
     sectionId?: number,
     baseContentId?: number
   ): WorkflowState {
-    const state = this.workflowStates.get(subscriptionId);
+    const resolvedId = this.resolveSubscriptionId(subscriptionId) || subscriptionId;
+    const state = this.workflowStates.get(resolvedId);
     if (!state) {
       throw new Error(`No workflow state found for subscription: ${subscriptionId}`);
     }
@@ -256,7 +267,8 @@ export class WorkflowStateManager {
    * Clear workflow state (for testing)
    */
   clearState(subscriptionId: string): void {
-    this.workflowStates.delete(subscriptionId);
+    const resolvedId = this.resolveSubscriptionId(subscriptionId) || subscriptionId;
+    this.workflowStates.delete(resolvedId);
   }
 
   /**

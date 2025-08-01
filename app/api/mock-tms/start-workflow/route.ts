@@ -8,9 +8,13 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { workflowId, subscriptionId } = body;
     
-    // Find the subscription
-    const subscription = mockDataStore.subscriptions.get(subscriptionId);
+    // Find the subscription using the getSubscription method which handles ID resolution
+    const subscription = mockDataStore.getSubscription(subscriptionId);
     if (!subscription) {
+      console.error(`Subscription not found:`, { 
+        subscriptionId, 
+        allSubscriptions: Array.from(mockDataStore.subscriptions.keys()) 
+      });
       throw new Error(`Subscription ${subscriptionId} not found`);
     }
     

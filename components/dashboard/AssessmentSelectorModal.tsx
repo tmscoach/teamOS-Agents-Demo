@@ -8,12 +8,24 @@ import { Coins, Rocket, Zap } from 'lucide-react';
 import { Oscar1 } from '@/app/chat/components/icons/Oscar1';
 import { JourneyPhase } from '@/lib/orchestrator/journey-phases';
 
+interface TMSSubscription {
+  SubscriptionID: number;
+  WorkflowID: number;
+  WorkflowType: string;
+  Status: string;
+  Progress: number;
+  AssessmentType: string;
+  AssessmentStatus: string;
+}
+
 export interface AssessmentSelectorModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelect: (assessment: 'TMP' | 'TeamSignals') => void;
+  onSelect: (assessmentType: string, subscriptionId: number) => void;
   userPhase: JourneyPhase;
   completedAssessments: string[];
+  availableAssessments: TMSSubscription[];
+  loading?: boolean;
 }
 
 export function AssessmentSelectorModal({
@@ -21,38 +33,39 @@ export function AssessmentSelectorModal({
   onClose,
   onSelect,
   userPhase,
-  completedAssessments = []
+  completedAssessments = [],
+  availableAssessments = [],
+  loading = false
 }: AssessmentSelectorModalProps) {
   const [hoveredCard, setHoveredCard] = useState<string | null>(null);
-  const [selectedAssessment, setSelectedAssessment] = useState<'TMP' | 'TeamSignals' | null>(null);
+  const [selectedAssessment, setSelectedAssessment] = useState<TMSSubscription | null>(null);
 
-  const hasTMP = completedAssessments.includes('TMP') || completedAssessments.includes('tmp');
-  const hasTeamSignals = completedAssessments.includes('TeamSignals') || completedAssessments.includes('team_signals');
+  // Find TMP and TeamSignals assessments from available assessments
+  const tmpAssessment = availableAssessments.find(a => a.AssessmentType === 'TMP');
+  const teamSignalsAssessment = availableAssessments.find(a => a.AssessmentType === 'TeamSignals');
 
-  // Determine which assessment is recommended
-  const recommendedAssessment = !hasTMP ? 'TMP' : !hasTeamSignals ? 'TeamSignals' : null;
+  // Determine which assessment is recommended based on what's available
+  const recommendedAssessment = tmpAssessment ? 'TMP' : teamSignalsAssessment ? 'TeamSignals' : null;
 
   const handleSelect = () => {
     if (selectedAssessment) {
-      onSelect(selectedAssessment);
+      onSelect(selectedAssessment.AssessmentType, selectedAssessment.SubscriptionID);
       onClose();
     }
   };
 
-  const handleCardClick = (assessment: 'TMP' | 'TeamSignals') => {
-    if (assessment === 'TMP' && hasTMP) return; // Already completed
-    if (assessment === 'TeamSignals' && hasTeamSignals) return; // Already completed
+  const handleCardClick = (assessment: TMSSubscription) => {
     setSelectedAssessment(assessment);
   };
 
   return (
-    <Headless.Dialog open={isOpen} onClose={onClose}>
+    <Headless.Dialog open={isOpen} onClose={onClose} className="relative z-[110]">
       <Headless.DialogBackdrop
         transition
-        className="fixed inset-0 flex w-screen justify-center overflow-y-auto bg-zinc-950/25 px-2 py-2 transition duration-100 focus:outline-0 data-closed:opacity-0 data-enter:ease-out data-leave:ease-in sm:px-6 sm:py-8 lg:px-8 lg:py-16 dark:bg-zinc-950/50"
+        className="fixed inset-0 flex w-screen justify-center overflow-y-auto bg-zinc-950/25 px-2 py-2 transition duration-100 focus:outline-0 data-closed:opacity-0 data-enter:ease-out data-leave:ease-in sm:px-6 sm:py-8 lg:px-8 lg:py-16 dark:bg-zinc-950/50 z-[110]"
       />
 
-      <div className="fixed inset-0 w-screen overflow-y-auto pt-6 sm:pt-0">
+      <div className="fixed inset-0 w-screen overflow-y-auto pt-6 sm:pt-0 z-[120]">
         <div className="grid min-h-full grid-rows-[1fr_auto] justify-items-center sm:grid-rows-[1fr_auto_3fr] sm:p-4">
           <Headless.DialogPanel
             transition
@@ -79,8 +92,8 @@ export function AssessmentSelectorModal({
 
               {/* Content */}
               <div className="flex flex-col items-start gap-4 pt-0 pb-6 px-6 relative self-stretch w-full">
-                {/* Credits Badge */}
-                {userPhase === JourneyPhase.ASSESSMENT && !hasTMP && (
+                {/* Credits Badge - Show if TMP is available */}
+                {userPhase === JourneyPhase.ASSESSMENT && tmpAssessment && (
                   <div className="inline-flex items-center gap-2.5 px-3 py-1.5 bg-gray-50 rounded-md border border-solid border-gray-200 shadow-sm">
                     <Coins className="w-4 h-4 text-gray-500" />
                     <span className="font-medium text-gray-500 text-sm">
@@ -91,18 +104,34 @@ export function AssessmentSelectorModal({
 
                 <Separator className="!self-stretch !relative !w-full" />
                 
-                <div className="flex flex-col items-start gap-4 relative self-stretch w-full">
-                  {/* Team Management Profile Card */}
-                  <div 
-                    className={clsx(
-                      'flex min-h-[114px] items-center gap-3 p-3 relative self-stretch w-full rounded-md cursor-pointer transition-colors',
-                      hasTMP ? 'opacity-50 cursor-not-allowed' : '',
-                      selectedAssessment === 'TMP' ? 'bg-blue-50 border-2 border-blue-500' : '',
-                      hoveredCard === 'TMP' && !hasTMP ? 'bg-gray-50' : ''
-                    )}
-                    onMouseEnter={() => !hasTMP && setHoveredCard('TMP')}
-                    onMouseLeave={() => setHoveredCard(null)}
-                    onClick={() => handleCardClick('TMP')}
+                {/* Show loading state */}
+                {loading && (
+                  <div className="text-center py-8 w-full">
+                    <p className="text-gray-500">Loading available assessments...</p>
+                  </div>
+                )}
+                
+                {/* Show message if no assessments available */}
+                {!loading && availableAssessments.length === 0 && (
+                  <div className="text-center py-8 w-full">
+                    <p className="text-gray-500">No assessments available at this time.</p>
+                  </div>
+                )}
+                
+                {/* Show available assessments */}
+                {!loading && availableAssessments.length > 0 && (
+                  <div className="flex flex-col items-start gap-4 relative self-stretch w-full">
+                    {/* Team Management Profile Card - Only show if available */}
+                    {tmpAssessment && (
+                      <div 
+                        className={clsx(
+                          'flex min-h-[114px] items-center gap-3 p-3 relative self-stretch w-full rounded-md cursor-pointer transition-colors',
+                          selectedAssessment?.AssessmentType === 'TMP' ? 'bg-blue-50 border-2 border-blue-500' : '',
+                          hoveredCard === 'TMP' ? 'bg-gray-50' : ''
+                        )}
+                        onMouseEnter={() => setHoveredCard('TMP')}
+                        onMouseLeave={() => setHoveredCard(null)}
+                        onClick={() => handleCardClick(tmpAssessment)}
                   >
                     <Rocket className="w-6 h-6 text-blue-600" />
                     <div className="flex flex-col flex-1 items-start gap-1">
@@ -118,14 +147,6 @@ export function AssessmentSelectorModal({
                             </span>
                           </div>
                         )}
-
-                        {hasTMP && (
-                          <div className="inline-flex items-center gap-2.5 px-3 py-1.5 bg-green-100 rounded-md border border-solid border-green-200">
-                            <span className="font-medium text-green-700 text-xs">
-                              Completed
-                            </span>
-                          </div>
-                        )}
                       </div>
 
                       <p className="text-gray-500 text-sm">
@@ -135,20 +156,24 @@ export function AssessmentSelectorModal({
                       </p>
                     </div>
                   </div>
+                )}
 
+                {/* Separator between assessments */}
+                {tmpAssessment && teamSignalsAssessment && (
                   <Separator className="!self-stretch !relative !w-full" />
-                  
-                  {/* Team Signals Card */}
+                )}
+                
+                {/* Team Signals Card - Only show if available */}
+                {teamSignalsAssessment && (
                   <div 
                     className={clsx(
                       'flex min-h-[114px] items-center gap-3 p-3 relative self-stretch w-full rounded-md cursor-pointer transition-colors',
-                      hasTeamSignals ? 'opacity-50 cursor-not-allowed' : '',
-                      selectedAssessment === 'TeamSignals' ? 'bg-purple-50 border-2 border-purple-500' : '',
-                      hoveredCard === 'TeamSignals' && !hasTeamSignals ? 'bg-gray-50' : ''
+                      selectedAssessment?.AssessmentType === 'TeamSignals' ? 'bg-purple-50 border-2 border-purple-500' : '',
+                      hoveredCard === 'TeamSignals' ? 'bg-gray-50' : ''
                     )}
-                    onMouseEnter={() => !hasTeamSignals && setHoveredCard('TeamSignals')}
+                    onMouseEnter={() => setHoveredCard('TeamSignals')}
                     onMouseLeave={() => setHoveredCard(null)}
-                    onClick={() => handleCardClick('TeamSignals')}
+                    onClick={() => handleCardClick(teamSignalsAssessment)}
                   >
                     <Zap className="w-6 h-6 text-purple-600" />
                     <div className="flex flex-col flex-1 items-start gap-1">
@@ -164,14 +189,6 @@ export function AssessmentSelectorModal({
                             </span>
                           </div>
                         )}
-
-                        {hasTeamSignals && (
-                          <div className="inline-flex items-center gap-2.5 px-3 py-1.5 bg-green-100 rounded-md border border-solid border-green-200">
-                            <span className="font-medium text-green-700 text-xs">
-                              Completed
-                            </span>
-                          </div>
-                        )}
                       </div>
 
                       <p className="text-gray-500 text-sm">
@@ -181,28 +198,32 @@ export function AssessmentSelectorModal({
                       </p>
                     </div>
                   </div>
-                </div>
+                )}
               </div>
+            )}
+          </div>
 
-              {/* Footer */}
-              <div className="flex w-full items-center pt-0 pb-6 px-6 relative">
-                <button
-                  onClick={handleSelect}
-                  disabled={!selectedAssessment}
-                  className={clsx(
-                    'inline-flex items-center gap-2.5 rounded-md justify-center relative h-10 flex-1 px-4 py-2 transition-colors',
-                    selectedAssessment 
-                      ? 'bg-blue-600 text-white hover:bg-blue-700' 
-                      : 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                  )}
-                  onMouseEnter={() => selectedAssessment && setHoveredCard('button')}
-                  onMouseLeave={() => setHoveredCard(null)}
-                >
-                  <span className="font-medium text-sm whitespace-nowrap">
-                    Let's Go
-                  </span>
-                </button>
-              </div>
+              {/* Footer - Only show if assessments are available */}
+              {!loading && availableAssessments.length > 0 && (
+                <div className="flex w-full items-center pt-0 pb-6 px-6 relative">
+                  <button
+                    onClick={handleSelect}
+                    disabled={!selectedAssessment}
+                    className={clsx(
+                      'inline-flex items-center gap-2.5 rounded-md justify-center relative h-10 flex-1 px-4 py-2 transition-colors',
+                      selectedAssessment 
+                        ? 'bg-blue-600 text-white hover:bg-blue-700' 
+                        : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    )}
+                    onMouseEnter={() => selectedAssessment && setHoveredCard('button')}
+                    onMouseLeave={() => setHoveredCard(null)}
+                  >
+                    <span className="font-medium text-sm whitespace-nowrap">
+                      Let's Go
+                    </span>
+                  </button>
+                </div>
+              )}
             </div>
           </Headless.DialogPanel>
         </div>

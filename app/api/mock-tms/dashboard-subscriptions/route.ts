@@ -109,16 +109,30 @@ export async function GET() {
     }
     
     // Generate a JWT for the current user
-    const jwt = mockTMSClient.generateJWT({
+    const jwtPayload = {
       sub: mockUser.id,
       nameid: mockUser.email,
       UserType: mockUser.userType || 'Respondent',
       organisationId: mockUser.organizationId
-    });
+    };
+    console.log('[dashboard-subscriptions] Generating JWT with payload:', jwtPayload);
     
-    const subscriptions = await getDashboardSubscriptions({ jwt });
+    const jwt = mockTMSClient.generateJWT(jwtPayload);
     
-    return NextResponse.json({ subscriptions });
+    try {
+      const subscriptions = await getDashboardSubscriptions({ jwt });
+      
+      console.log('[dashboard-subscriptions] Returning subscriptions:', subscriptions?.length || 0);
+      if (subscriptions && subscriptions.length > 0) {
+        console.log('[dashboard-subscriptions] First subscription:', subscriptions[0]);
+      }
+      
+      return NextResponse.json({ subscriptions: subscriptions || [] });
+    } catch (subscriptionError) {
+      console.error('[dashboard-subscriptions] Error from getDashboardSubscriptions:', subscriptionError);
+      // Return empty array instead of error to allow modal to show
+      return NextResponse.json({ subscriptions: [] });
+    }
   } catch (error) {
     console.error('Error getting dashboard subscriptions:', error);
     return NextResponse.json(
