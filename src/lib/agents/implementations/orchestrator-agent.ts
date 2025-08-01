@@ -5,7 +5,7 @@ import { dataQueryTools } from '../tools/data-query-tools';
 import { openai } from '@/src/lib/services/openai';
 import { RoutingService } from '../routing/RoutingService';
 import { JourneyPhase } from '@/lib/orchestrator/journey-phases';
-import { continuityService } from '@/lib/services/continuity/continuity.service';
+import { continuityService } from '@/src/lib/services/continuity/continuity.service';
 
 export class OrchestratorAgent extends TMSEnabledAgent {
   private prisma: PrismaClient;
