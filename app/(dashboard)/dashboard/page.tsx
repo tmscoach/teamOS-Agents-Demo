@@ -6,6 +6,7 @@ import { Bell, Users, Pencil, Book, Settings, Focus, Plus, Coins, CheckCircle, U
 import { Oscar1 } from '@/app/chat/components/icons/Oscar1'
 import { UserDropdown } from '@/components/ui/user-dropdown'
 import { AskOskarInput } from '@/components/dashboard/AskOskarInput'
+import { UnifiedAskOskarWidget } from '@/components/dashboard/UnifiedAskOskarWidget'
 import { DashboardWrapper } from '@/components/dashboard/DashboardWrapper'
 import { DashboardClient } from './DashboardClient'
 import { CompleteProfileButton } from '@/components/dashboard/CompleteProfileButton'
@@ -352,6 +353,18 @@ export default async function DashboardPage({
       <AskOskarInput 
         defaultAgent={testAgent}
         testMode={testAgent ? true : false}
+      />
+      
+      {/* Unified Ask Oskar Widget */}
+      <UnifiedAskOskarWidget
+        userId={user.id}
+        userName={userName}
+        hasCompletedTMP={!!user.completedSteps?.includes('TMP')}
+        credits={5000} // TODO: Get actual credits from user data
+        journeyPhase={user.journeyPhase as any || 'ASSESSMENT'}
+        completedSteps={user.completedSteps || []}
+        defaultAgent={testAgent || 'OrchestratorAgent'}
+        initiallyExpanded={expandOskar}
       />
     </div>
     </DashboardWrapper>
