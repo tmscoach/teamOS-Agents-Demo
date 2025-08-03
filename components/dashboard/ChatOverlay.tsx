@@ -39,7 +39,7 @@ export function ChatOverlay({ isOpen, onClose, defaultAgent, testMode }: ChatOve
             <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-purple-50">
               <div className="flex items-center gap-2">
                 <Oscar1 className="w-6 h-6 text-blue-600" />
-                <h3 className="font-semibold text-gray-900">Ask Oskar</h3>
+                <h3 className="font-semibold text-gray-900">Ask Osmo</h3>
               </div>
               
               <div className="flex items-center gap-2">

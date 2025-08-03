@@ -35,6 +35,7 @@ export default function AssessmentChatClient() {
   const [showVoicePermission, setShowVoicePermission] = useState(false);
   const [showVoiceHelp, setShowVoiceHelp] = useState(false);
   const [hasShownVoiceEntry, setHasShownVoiceEntry] = useState(false);
+  const [isTogglingVoice, setIsTogglingVoice] = useState(false);
 
   // Track answers for the current page
   const [currentAnswers, setCurrentAnswers] = useState<Record<number, string>>({});
@@ -288,37 +289,33 @@ export default function AssessmentChatClient() {
         setLoading(true);
         
         if (directSubscriptionId) {
-          // If direct subscription ID provided, create a minimal assessment object
-          // and start the workflow directly
+          // If direct subscription ID provided, fetch all subscriptions and find the matching one
           console.log('[AssessmentChat] Using direct subscription ID:', directSubscriptionId);
           
-          // Map subscription IDs to assessment types (from TMS Global)
-          const subscriptionTypeMap: Record<string, string> = {
-            '21989': 'TMP',
-            '21983': 'QO2',
-            '21988': 'TeamSignals'
-          };
+          // Get available assessments from dashboard via API
+          const response = await fetch('/api/mock-tms/dashboard-subscriptions');
           
-          const assessmentType = subscriptionTypeMap[directSubscriptionId] || 'TMP';
+          if (!response.ok) {
+            throw new Error('Failed to fetch assessments');
+          }
           
-          // Create a minimal assessment object to start the workflow
-          const directAssessment: AssessmentSubscription = {
-            SubscriptionID: parseInt(directSubscriptionId),
-            WorkflowID: 0, // Will be determined by assessment type
-            WorkflowType: assessmentType,
-            Status: 'Not Started',
-            Progress: 0,
-            AssignmentDate: new Date().toISOString().split('T')[0],
-            CompletionDate: null,
-            OrganisationID: 0,
-            OrganisationName: 'Your Organization',
-            AssessmentType: assessmentType,
-            AssessmentStatus: 'Not Started',
-            _subscriptionId: directSubscriptionId
-          };
+          const data = await response.json();
+          console.log('[AssessmentChat] Fetched subscriptions:', data.subscriptions);
           
-          setAvailableAssessments([directAssessment]);
-          setSelectedAssessment(directAssessment);
+          // Find the specific subscription
+          const targetSubscription = data.subscriptions?.find(
+            (sub: AssessmentSubscription) => sub.SubscriptionID.toString() === directSubscriptionId
+          );
+          
+          if (targetSubscription) {
+            console.log('[AssessmentChat] Found target subscription:', targetSubscription);
+            setAvailableAssessments([targetSubscription]);
+            setSelectedAssessment(targetSubscription);
+          } else {
+            console.error('[AssessmentChat] Subscription not found:', directSubscriptionId);
+            setError(`Assessment subscription ${directSubscriptionId} not found`);
+          }
+          
           setLoading(false);
           return;
         } else {
@@ -842,29 +839,51 @@ export default function AssessmentChatClient() {
 
   // Handle voice mode toggling
   const handleVoiceToggle = useCallback(async () => {
-    if (voiceState === 'idle' && !voiceModeEnabled) {
-      // Show permission dialog first time
-      if (!hasShownVoiceEntry) {
-        setShowVoicePermission(true);
+    // Prevent multiple toggles
+    if (isTogglingVoice) {
+      console.log('[VoiceToggle] Already toggling, ignoring...');
+      return;
+    }
+    
+    setIsTogglingVoice(true);
+    console.log('[VoiceToggle] Current state:', { voiceModeEnabled, voiceState });
+    
+    try {
+      // If voice is enabled in any state, turn it off
+      if (voiceModeEnabled || voiceState !== 'idle') {
+        console.log('[VoiceToggle] Stopping voice...');
+        setVoiceModeEnabled(false);  // Set this first to prevent re-enabling
+        await stopVoice();
+        console.log('[VoiceToggle] Voice stopped');
       } else {
-        try {
-          // Ensure callbacks are set before starting
-          if (workflowState) {
-            setVoiceWorkflowState(workflowState);
-            setVoiceAnswerCallback(voiceAnswerCallback);
-            setVoiceNavigateNextCallback(voiceNavigateNextCallback);
+        // Start voice mode
+        // Show permission dialog first time
+        if (!hasShownVoiceEntry) {
+          setShowVoicePermission(true);
+        } else {
+          try {
+            console.log('[VoiceToggle] Starting voice...');
+            // Ensure callbacks are set before starting
+            if (workflowState) {
+              setVoiceWorkflowState(workflowState);
+              setVoiceAnswerCallback(voiceAnswerCallback);
+              setVoiceNavigateNextCallback(voiceNavigateNextCallback);
+            }
+            await startVoice();
+            setVoiceModeEnabled(true);
+            console.log('[VoiceToggle] Voice started');
+          } catch (error) {
+            console.error('Failed to start voice:', error);
           }
-          await startVoice();
-          setVoiceModeEnabled(true);
-        } catch (error) {
-          console.error('Failed to start voice:', error);
         }
       }
-    } else if (voiceModeEnabled) {
-      await stopVoice();
-      setVoiceModeEnabled(false);
+    } finally {
+      // Allow toggling again after a short delay
+      setTimeout(() => {
+        setIsTogglingVoice(false);
+      }, 500);
     }
-  }, [voiceState, voiceModeEnabled, hasShownVoiceEntry, startVoice, stopVoice, workflowState, voiceAnswerCallback, voiceNavigateNextCallback, setVoiceWorkflowState, setVoiceAnswerCallback, setVoiceNavigateNextCallback]);
+  }, [voiceState, voiceModeEnabled, hasShownVoiceEntry, isTogglingVoice, startVoice, stopVoice, workflowState, voiceAnswerCallback, voiceNavigateNextCallback, setVoiceWorkflowState, setVoiceAnswerCallback, setVoiceNavigateNextCallback]);
   
   // Handle voice permission response
   const handleVoicePermissionAllow = useCallback(async () => {
@@ -976,8 +995,8 @@ export default function AssessmentChatClient() {
 
   return (
     <>
-      {/* Voice mode entry banner */}
-      {selectedAssessment && !hasShownVoiceEntry && (
+      {/* Voice mode entry banner - Disabled for now to prevent automatic prompts */}
+      {/* {selectedAssessment && !hasShownVoiceEntry && (
         <VoiceModeEntry
           onStartVoice={() => {
             setHasShownVoiceEntry(true);
@@ -985,7 +1004,7 @@ export default function AssessmentChatClient() {
           }}
           onDismiss={handleVoiceEntryDismiss}
         />
-      )}
+      )} */}
       
       {/* Voice indicator */}
       {voiceModeEnabled && (

@@ -65,6 +65,7 @@ export function useVoiceNavigation(
   }, []);
 
   const handleTranscript = useCallback((newTranscript: string) => {
+    console.log('[useVoiceNavigation] Transcript received:', newTranscript);
     setTranscript(newTranscript);
     options.onTranscript?.(newTranscript);
   }, [options]);

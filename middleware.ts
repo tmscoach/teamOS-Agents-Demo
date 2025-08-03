@@ -29,6 +29,7 @@ const isPublicRoute = createRouteMatcher([
   '/sso-callback(.*)',
   '/api/webhooks(.*)',
   '/api/test-db',  // Temporary test endpoint
+  '/api/test-assessment',  // Test endpoint for assessment tools
   '/test-tailwind',  // Test page
 ])
 

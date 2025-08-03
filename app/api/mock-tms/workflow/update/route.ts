@@ -3,7 +3,6 @@ import { updateWorkflow, getWorkflowProcess } from '@/src/lib/mock-tms-api/endpo
 import { mockTMSClient } from '@/src/lib/mock-tms-api/mock-api-client';
 import { mockDataStore } from '@/src/lib/mock-tms-api/mock-data-store';
 import { auth, currentUser } from '@clerk/nextjs/server';
-import { cookies } from 'next/headers';
 
 export async function POST(request: NextRequest) {
   try {
@@ -26,18 +25,17 @@ export async function POST(request: NextRequest) {
     let userId = session?.userId;
     let userEmail: string | undefined = user?.emailAddresses?.[0]?.emailAddress;
     
-    if (!userId && process.env.NODE_ENV === 'development') {
-      const cookieStore = await cookies();
-      const devAuthCookie = cookieStore.get('dev-auth');
-      if (devAuthCookie) {
-        try {
-          const devAuth = JSON.parse(devAuthCookie.value);
-          userId = devAuth.userId;
-          userEmail = devAuth.email;
-          console.log('[workflow-update] Using dev auth:', { userId, userEmail });
-        } catch (e) {
-          console.error('Failed to parse dev auth cookie:', e);
-        }
+    if (!userId && (process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_ENV === 'development')) {
+      // Use the getDevAuth function to properly handle dev auth
+      const { getDevAuth } = await import('@/src/lib/auth/dev-auth');
+      const devAuth = await getDevAuth();
+      
+      if (devAuth) {
+        userId = devAuth.userId;
+        userEmail = devAuth.email;
+        console.log('[workflow-update] Using dev auth:', { userId, userEmail });
+      } else {
+        console.log('[workflow-update] No dev auth found');
       }
     }
     
@@ -49,7 +47,7 @@ export async function POST(request: NextRequest) {
     let mockUser = mockDataStore.getUserByClerkId(userId);
     
     // In dev mode, also try to find by email if we have it
-    if (!mockUser && userEmail && process.env.NODE_ENV === 'development') {
+    if (!mockUser && userEmail && (process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_ENV === 'development')) {
       console.log('[workflow-update] Trying to find user by email:', userEmail);
       mockUser = mockDataStore.getUserByEmail(userEmail);
     }
@@ -58,7 +56,7 @@ export async function POST(request: NextRequest) {
       console.log('[workflow-update] No mock user found for:', { userId, userEmail });
       
       // In development, auto-create a mock user for real Clerk users
-      if (process.env.NODE_ENV === 'development' && userId && userEmail) {
+      if ((process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_ENV === 'development') && userId && userEmail) {
         console.log('[workflow-update] Creating mock user for real Clerk user');
         
         // Extract organization ID from subscription if available

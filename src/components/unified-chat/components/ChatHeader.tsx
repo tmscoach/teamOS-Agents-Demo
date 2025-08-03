@@ -18,7 +18,7 @@ export function ChatHeader({ isExpanded, showExpandButton = true }: ChatHeaderPr
   const getAgentDisplayName = () => {
     switch (context.agent) {
       case 'OrchestratorAgent':
-        return 'Oskar';
+        return 'Osmo';
       case 'AssessmentAgent':
         return 'Assessment Guide';
       case 'DebriefAgent':
@@ -31,21 +31,19 @@ export function ChatHeader({ isExpanded, showExpandButton = true }: ChatHeaderPr
   };
 
   return (
-    <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-purple-50">
-      <div className="flex items-center gap-2">
-        <Oscar1 className="w-6 h-6 text-blue-600" />
-        {isExpanded && (
-          <div>
-            <h3 className="font-semibold text-gray-900">{getAgentDisplayName()}</h3>
-            {context.journey && (
-              <p className="text-xs text-gray-600">{context.journey.phase}</p>
-            )}
-          </div>
-        )}
+    <div className="relative">
+      {/* Logo */}
+      <div className="absolute top-[23px] left-[19px]">
+        <img
+          className="w-[90px] h-[39px]"
+          alt="teamOS"
+          src="/img/teamos-logo.png"
+        />
       </div>
       
+      {/* Header actions */}
       {isExpanded && (
-        <div className="flex items-center gap-2">
+        <div className="absolute top-[23px] right-[19px] flex items-center gap-2">
           {/* Plugin header extensions */}
           <PluginRenderer type="header" />
           
@@ -71,6 +69,9 @@ export function ChatHeader({ isExpanded, showExpandButton = true }: ChatHeaderPr
           </button>
         </div>
       )}
+      
+      {/* Spacing to push content below logo */}
+      <div className="h-[100px]" />
     </div>
   );
 }

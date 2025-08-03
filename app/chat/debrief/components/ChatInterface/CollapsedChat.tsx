@@ -71,7 +71,7 @@ export default function CollapsedChat({ onToggle, onSendMessage, inputRef }: Col
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Ask Oskar about your profile"
+            placeholder="Ask Osmo about your profile"
             className="relative w-fit font-['Inter',Helvetica] font-normal text-[#6b7280] text-sm tracking-[0] leading-6 whitespace-nowrap bg-transparent focus:outline-none flex-1"
           />
         </div>

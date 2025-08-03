@@ -4,7 +4,6 @@ import { AgentRouter, ContextManager, ConversationStore, AgentContext, Transform
 import { 
   createOnboardingAgent,
   createOrchestratorAgent,
-  createDiscoveryAgent,
   createAssessmentAgent,
   createAlignmentAgent,
   createLearningAgent,
@@ -44,7 +43,6 @@ async function initializeServices() {
     const agents = [
       { name: 'OrchestratorAgent', create: createOrchestratorAgent },
       { name: 'OnboardingAgent', create: createOnboardingAgent },
-      { name: 'DiscoveryAgent', create: createDiscoveryAgent },
       { name: 'AssessmentAgent', create: createAssessmentAgent },
       { name: 'AlignmentAgent', create: createAlignmentAgent },
       { name: 'LearningAgent', create: createLearningAgent },
@@ -82,7 +80,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { messages, conversationId, agentName } = body;
+    const { messages, conversationId, agentName, selectedAssessment, metadata: bodyMetadata } = body;
     
     // Get the latest message
     const message = messages?.[messages.length - 1]?.content || '';
@@ -190,6 +188,10 @@ export async function POST(req: NextRequest) {
             // Add organization context for data access
             organizationId: dbUser.organizationId,
             organizationRole: dbUser.organizationRole,
+            // Add selectedAssessment if provided
+            selectedAssessment: selectedAssessment || undefined,
+            // Merge any additional metadata from body
+            ...bodyMetadata,
           },
         }
       );
@@ -243,6 +245,14 @@ export async function POST(req: NextRequest) {
     await contextManager.addMessage(context.conversationId, userMessage);
     await conversationStore.addMessage(context.conversationId, userMessage);
 
+    // Log the incoming message
+    console.log(`[Streaming] Incoming message from user:`, {
+      message,
+      agent: context.currentAgent,
+      hasWorkflowState: !!context.metadata?.workflowState,
+      hasSelectedAssessment: !!context.metadata?.selectedAssessment
+    });
+    
     // Extract information in parallel while streaming response
     const extractionPromise = extractInformation(message, context, dbUser.id);
 
@@ -273,6 +283,14 @@ export async function POST(req: NextRequest) {
 
     // Clear cache to ensure we get the latest configuration
     AgentConfigLoader.clearCache(context.currentAgent);
+
+    // Initialize the agent to load TMS tools
+    // @ts-ignore - accessing protected method for streaming
+    if (agent.initialize && typeof agent.initialize === 'function') {
+      console.log(`[${context.currentAgent}] Initializing agent...`);
+      // @ts-ignore - accessing protected method for streaming
+      await agent.initialize();
+    }
 
     // Force reload configuration
     // @ts-ignore - accessing protected method for streaming
@@ -344,7 +362,7 @@ export async function POST(req: NextRequest) {
 
     // Build system prompt using the agent's method which includes loaded configuration
     // @ts-ignore - accessing protected method for streaming
-    const systemPrompt = agent.buildSystemMessage ? 
+    let baseSystemPrompt = agent.buildSystemMessage ? 
       // @ts-ignore - accessing protected method for streaming
       agent.buildSystemMessage(context) : 
       // @ts-ignore - accessing protected property for streaming
@@ -353,6 +371,35 @@ export async function POST(req: NextRequest) {
         ? agent.instructions(context) 
         // @ts-ignore - accessing protected property for streaming
         : agent.instructions);
+
+    // For AssessmentAgent, prepend critical tool instructions to ensure they're followed
+    let systemPrompt = baseSystemPrompt;
+    if (context.currentAgent === 'AssessmentAgent') {
+      const criticalInstructions = `# MANDATORY TOOL USAGE RULES - MUST FOLLOW
+
+When the user gives a command, use ONLY the tool that matches their specific request. DO NOT use multiple tools unless explicitly asked.
+
+COMMAND PATTERNS - USE ONLY THE MATCHING TOOL:
+- "set answer X for question Y" → USE ONLY answer_question tool
+- "enter X-Y for question Z" → USE ONLY answer_question tool  
+- "question N is X-Y" → USE ONLY answer_question tool
+- Commands about specific questions → USE ONLY answer_question or answer_multiple_questions
+
+NAVIGATION COMMANDS (USE ONLY WHEN EXPLICITLY REQUESTED):
+- "next page" or "continue" or "next" → USE navigate_page tool
+- DO NOT automatically navigate after answering questions
+
+IMPORTANT RULES:
+1. Use ONE tool per user command
+2. DO NOT chain multiple tools together
+3. After using a tool, simply confirm what was done
+4. Let the user decide when to navigate to the next page
+
+---
+
+${baseSystemPrompt}`;
+      systemPrompt = criticalInstructions;
+    }
 
     console.log(`[${context.currentAgent}] System prompt preview:`, systemPrompt.substring(0, 200) + '...');
 
@@ -367,6 +414,59 @@ export async function POST(req: NextRequest) {
 
     // Handle empty message (initial greeting)
     let userMessageContent = message || '[User joined the conversation]';
+    
+    // Special handling for AssessmentAgent - ONLY show welcome on very first interaction
+    if (context.currentAgent === 'AssessmentAgent') {
+      // Check if welcome has already been shown for this assessment session
+      const welcomeKey = `assessment_welcome_${context.metadata?.selectedAssessment?.subscriptionId}`;
+      const hasShownWelcome = context.metadata?.[welcomeKey];
+      
+      // Only show welcome if:
+      // 1. We haven't shown it for this subscription yet
+      // 2. This is the first message in conversation
+      // 3. User just joined (not a regular command)
+      const isFirstInteraction = !hasShownWelcome && 
+                                 conversationMessages.length === 0 && 
+                                 (userMessageContent === '[User joined the conversation]' || 
+                                  userMessageContent.includes('set question'));
+      
+      if (isFirstInteraction) {
+        console.log(`[${context.currentAgent}] First interaction detected - showing welcome ONCE`);
+        
+        // Mark that welcome has been shown for this subscription
+        context.metadata = { 
+          ...context.metadata, 
+          [welcomeKey]: true 
+        };
+        await conversationStore.updateContext(context.conversationId, {
+          metadata: context.metadata
+        });
+        
+        // Load agent configuration to get welcome message
+        const config = await AgentConfigLoader.loadConfiguration('AssessmentAgent');
+        const welcomeMessage = config?.prompts?.welcomeMessage;
+        
+        if (welcomeMessage && context.metadata?.selectedAssessment) {
+          const assessmentType = context.metadata.selectedAssessment.type || 'assessment';
+          const userName = context.metadata?.userName || dbUser?.name || 'there';
+          
+          // Replace placeholders in welcome message
+          const personalizedWelcome = welcomeMessage
+            .replace(/{assessmentType}/g, assessmentType)
+            .replace(/{userName}/g, userName);
+          
+          // Only inject welcome if user hasn't given a command
+          if (userMessageContent === '[User joined the conversation]') {
+            userMessageContent = `The user has just arrived at the ${assessmentType} assessment page. 
+Please greet them with this welcome message: "${personalizedWelcome}"
+Then be ready to help them with the assessment.`;
+          } else {
+            // User gave a command - skip the welcome and just process the command
+            console.log(`[${context.currentAgent}] User gave command on first interaction - skipping welcome`);
+          }
+        }
+      }
+    }
     
     // Special handling for DebriefAgent
     if (context.currentAgent === 'DebriefAgent') {
@@ -539,6 +639,7 @@ User message: ${message}`;
     if (agent && 'tools' in agent && Array.isArray(agent.tools)) {
       // Convert agent tools to AI SDK format
       tools = {};
+      
       for (const agentTool of agent.tools) {
         // Convert JSON schema to Zod schema (simplified conversion)
         const createZodSchema = (jsonSchema: any): any => {
@@ -553,6 +654,15 @@ User message: ${message}`;
                   shape[key] = prop.required ? z.number() : z.number().optional();
                 } else if (prop.type === 'boolean') {
                   shape[key] = prop.required ? z.boolean() : z.boolean().optional();
+                } else if (prop.type === 'array') {
+                  // Handle array types
+                  if (prop.items?.type === 'number') {
+                    shape[key] = prop.required ? z.array(z.number()) : z.array(z.number()).optional();
+                  } else if (prop.items?.type === 'string') {
+                    shape[key] = prop.required ? z.array(z.string()) : z.array(z.string()).optional();
+                  } else {
+                    shape[key] = prop.required ? z.array(z.any()) : z.array(z.any()).optional();
+                  }
                 } else if (prop.type === 'object') {
                   shape[key] = z.object({});
                 }
@@ -567,13 +677,31 @@ User message: ${message}`;
           description: agentTool.description,
           parameters: createZodSchema(agentTool.parameters),
           execute: async (params: any) => {
-            console.log(`[${context.currentAgent}] Executing tool: ${agentTool.name}`, params);
+            console.log(`[${context.currentAgent}] ==== EXECUTING TOOL: ${agentTool.name} ====`);
+            console.log(`[${context.currentAgent}] Tool parameters:`, JSON.stringify(params, null, 2));
+            console.log(`[${context.currentAgent}] Context state:`, {
+              hasWorkflowState: !!context.metadata?.workflowState,
+              currentPageId: context.metadata?.workflowState?.currentPageId,
+              questionCount: context.metadata?.workflowState?.questions?.length
+            });
+            
             try {
               const result = await agentTool.execute(params, context);
-              console.log(`[${context.currentAgent}] Tool result:`, JSON.stringify(result, null, 2));
+              console.log(`[${context.currentAgent}] Tool execution result:`, JSON.stringify(result, null, 2));
               
               // Extract the appropriate string response from the tool result
               if (result.success && result.output) {
+                // For assessment action tools, return the output directly
+                if (agentTool.name === 'answer_question' || 
+                    agentTool.name === 'answer_multiple_questions' || 
+                    agentTool.name === 'navigate_page') {
+                  // These tools return the action tag + message directly
+                  const output = typeof result.output === 'string' ? result.output : JSON.stringify(result.output);
+                  console.log(`[${context.currentAgent}] Assessment tool output:`, output);
+                  console.log(`[${context.currentAgent}] Contains ASSESSMENT_ACTION tag:`, output.includes('[ASSESSMENT_ACTION:'));
+                  return output;
+                }
+                
                 // For search_tms_knowledge, format the results properly
                 if (agentTool.name === 'search_tms_knowledge' && result.output.results) {
                   const searchResults = result.output.results;
@@ -623,12 +751,75 @@ User message: ${message}`;
         });
       }
       console.log(`[${context.currentAgent}] Available tools:`, Object.keys(tools));
+      
+      // Log assessment-specific tools if present
+      if (context.currentAgent === 'AssessmentAgent') {
+        const assessmentTools = Object.keys(tools).filter(name => 
+          ['answer_question', 'answer_multiple_questions', 'navigate_page', 'explain_question'].includes(name)
+        );
+        console.log(`[${context.currentAgent}] Assessment-specific tools available:`, assessmentTools);
+      }
     }
     
     // Add explicit instruction for tool usage
-    const toolInstructions = tools && Object.keys(tools).length > 0 
-      ? '\n\nCRITICAL INSTRUCTION: You MUST ALWAYS provide a complete natural language response to the user. If you use tools, explain what you found in a conversational way. Never end your response after just calling a tool. After using any tool, you must interpret and present the results to the user in a helpful manner.'
-      : '';
+    let toolInstructions = '';
+    if (tools && Object.keys(tools).length > 0) {
+      toolInstructions = '\n\nCRITICAL INSTRUCTION: You MUST ALWAYS provide a complete natural language response to the user. If you use tools, explain what you found in a conversational way. Never end your response after just calling a tool. After using any tool, you must interpret and present the results to the user in a helpful manner.';
+      
+      // Special instruction for AssessmentAgent
+      if (context.currentAgent === 'AssessmentAgent') {
+        // Check if the user message contains assessment commands
+        const lowerMessage = message.toLowerCase();
+        const hasAnswerCommand = lowerMessage.includes('set answer') || 
+                                 lowerMessage.includes('enter ') || 
+                                 lowerMessage.includes('answer') ||
+                                 lowerMessage.includes('question') ||
+                                 lowerMessage.includes('all questions') ||
+                                 lowerMessage.includes('agree') ||
+                                 lowerMessage.includes('disagree') ||
+                                 lowerMessage.includes('neutral') ||
+                                 lowerMessage.includes('strongly') ||
+                                 lowerMessage.includes('somewhat') ||
+                                 lowerMessage.includes('left') ||
+                                 lowerMessage.includes('right') ||
+                                 /question\s+\d+\s+is/.test(lowerMessage) ||
+                                 /\d+-\d+/.test(message); // Matches patterns like 2-0, 1-1, etc.
+        
+        const hasNavigationCommand = lowerMessage.includes('next') || 
+                                     lowerMessage.includes('continue') ||
+                                     lowerMessage.includes('previous');
+        
+        if (hasAnswerCommand || hasNavigationCommand) {
+          toolInstructions = '\n\n⚠️ CRITICAL: TOOL USE REQUIRED ⚠️\n\n' +
+            'The user has given you a direct command. You MUST:\n' +
+            '1. Use the appropriate tool to execute the command\n' +
+            '2. NEVER generate [ASSESSMENT_ACTION:...] tags yourself\n' +
+            '3. After using the tool, include the tool output in your response\n\n';
+          
+          if (hasAnswerCommand) {
+            toolInstructions += 'Use answer_question or answer_multiple_questions tool.\n';
+          }
+          
+          if (hasNavigationCommand) {
+            toolInstructions += 'Use navigate_page tool.\n';
+          }
+          
+          toolInstructions += '\n\nCRITICAL RESPONSE FORMAT:\n' +
+            'After using a tool, you MUST respond with ONLY the tool output, nothing else.\n' +
+            'The tool output contains [ASSESSMENT_ACTION:...] tags that the UI needs.\n' +
+            'Example: If tool returns "[ASSESSMENT_ACTION:answer_question:1:2-0]\\nSetting question 1 to 2-0."\n' +
+            'You respond with EXACTLY: "[ASSESSMENT_ACTION:answer_question:1:2-0]\\nSetting question 1 to 2-0."\n' +
+            'DO NOT add any other text, greetings, or explanations.';
+        } else {
+          toolInstructions = '\n\n⚠️ ASSESSMENT TOOLS AVAILABLE ⚠️\n\n' +
+            'You have tools available for:\n' +
+            '• Setting answers: Use answer_question or answer_multiple_questions\n' +
+            '• Navigation: Use navigate_page\n' +
+            '• Explanations: Use explain_question\n\n' +
+            'If the user gives a command matching these patterns, use the appropriate tool.';
+        }
+      }
+    }
     
     const enhancedPrompt = `${systemPrompt}${toolInstructions}\n\n${extractionContext}`;
 
@@ -660,19 +851,65 @@ User message: ${message}`;
       // Only add tools if we have them
       if (tools && Object.keys(tools).length > 0) {
         streamConfig.tools = tools;
-        // Don't force tool choice - let the model decide naturally
-        // streamConfig.toolChoice = 'auto';
+        
+        // For AssessmentAgent, check if we should adjust tool usage strategy
+        if (context.currentAgent === 'AssessmentAgent') {
+          const lowerMessage = message.toLowerCase();
+          const hasAnswerCommand = lowerMessage.includes('set answer') || 
+                                   lowerMessage.includes('enter ') || 
+                                   lowerMessage.includes('answer') ||
+                                   lowerMessage.includes('question') ||
+                                   lowerMessage.includes('all questions') ||
+                                   lowerMessage.includes('agree') ||
+                                   lowerMessage.includes('disagree') ||
+                                   lowerMessage.includes('neutral') ||
+                                   lowerMessage.includes('strongly') ||
+                                   lowerMessage.includes('somewhat') ||
+                                   lowerMessage.includes('left') ||
+                                   lowerMessage.includes('right') ||
+                                   /question\s+\d+\s+is/.test(lowerMessage) ||
+                                   /\d+-\d+/.test(message);
+          
+          const hasNavigationCommand = lowerMessage.includes('next') || 
+                                       lowerMessage.includes('continue') ||
+                                       lowerMessage.includes('previous');
+                                       
+          if (hasAnswerCommand || hasNavigationCommand) {
+            // Use 'auto' to let model decide but encourage tool usage
+            streamConfig.toolChoice = 'auto';
+            console.log('[Streaming] Assessment command detected, toolChoice set to auto');
+          }
+        }
+        
         console.log('[Streaming] Tools added to stream config');
         console.log('[Streaming] Tool count:', Object.keys(tools).length);
       }
       
+      console.log(`[Streaming] Starting AI stream with:`, {
+        model: modelName,
+        hasTools: !!tools && Object.keys(tools).length > 0,
+        toolCount: tools ? Object.keys(tools).length : 0,
+        systemPromptLength: enhancedPrompt.length,
+        userMessage: userMessageContent.substring(0, 100) + '...'
+      });
+      
       const result = await streamText({
         ...streamConfig,
         experimental_toolCallStreaming: true, // Enable tool streaming
-        maxSteps: 3, // Allow multiple steps for tool calls and responses
+        maxSteps: 5, // Allow multiple steps for tool calls and responses  
         experimental_continueSteps: true, // Continue after tool calls
-        onToolCall: ({ toolCall }: any) => {
-          console.log('[Streaming] Tool call initiated:', toolCall.toolName, toolCall.args);
+        onToolCall: async ({ toolCall }: any) => {
+          console.log('[Streaming] ==== TOOL CALL INITIATED ====');
+          console.log('[Streaming] Tool:', toolCall.toolName);
+          console.log('[Streaming] Arguments:', JSON.stringify(toolCall.args, null, 2));
+          
+          // For assessment tools, append data to the stream
+          if (context.currentAgent === 'AssessmentAgent' && 
+              (toolCall.toolName === 'answer_question' || 
+               toolCall.toolName === 'answer_multiple_questions' ||
+               toolCall.toolName === 'navigate_page')) {
+            console.log('[Streaming] Assessment tool detected, will append action to stream');
+          }
         },
         onStepFinish: ({ stepType, toolCalls, toolResults, finishReason, usage }: any) => {
           console.log('[Streaming] Step finished:', { 
@@ -723,11 +960,45 @@ User message: ${message}`;
           }
         }
         
+        // For assessment agent, ALWAYS include tool results with ASSESSMENT_ACTION tags
+        let messageContent = finalContent || '';
+        
+        if (context.currentAgent === 'AssessmentAgent' && toolResults && toolResults.length > 0) {
+          console.log('[Streaming] AssessmentAgent tool results:', JSON.stringify(toolResults, null, 2));
+          
+          // Check if any tool result contains ASSESSMENT_ACTION
+          const assessmentActions = toolResults
+            .filter((tr: any) => tr.result && typeof tr.result === 'string' && tr.result.includes('[ASSESSMENT_ACTION:'))
+            .map((tr: any) => tr.result);
+          
+          console.log('[Streaming] Found assessment actions:', assessmentActions);
+          
+          if (assessmentActions.length > 0) {
+            // ALWAYS include the assessment actions, even if model generated text
+            // Use only the first action result to avoid duplicates
+            const actionResult = assessmentActions[0];
+            
+            // If the text already includes the action tag, don't duplicate it
+            if (finalContent && finalContent.includes('[ASSESSMENT_ACTION:')) {
+              messageContent = finalContent;
+            } else {
+              // Prepend the action tag to whatever text we have
+              messageContent = actionResult;
+            }
+            console.log('[Streaming] Final message with assessment action:', messageContent);
+          }
+        }
+        
+        // Fallback if still no content
+        if (!messageContent) {
+          messageContent = 'I encountered an issue generating a response.';
+        }
+        
         // Save the complete message after streaming is done
         const assistantMessage = {
           id: `msg-${Date.now()}`,
           role: 'assistant' as const,
-          content: finalContent || 'I encountered an issue generating a response.',
+          content: messageContent,
           agent: context.currentAgent,
           timestamp: new Date()
         };

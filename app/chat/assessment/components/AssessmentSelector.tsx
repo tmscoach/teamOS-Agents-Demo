@@ -5,17 +5,12 @@ import { FileText, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import { ASSESSMENT_COLORS } from '../constants';
 
 interface AssessmentSubscription {
-  SubscriptionID: number;
-  WorkflowID: number;
-  WorkflowType: string;
-  Status: string;
-  Progress: number;
-  AssignmentDate: string;
-  CompletionDate: string | null;
-  OrganisationID: number;
-  OrganisationName: string;
-  AssessmentType: string;
-  AssessmentStatus: string;
+  id: string | number;
+  type: string;
+  name: string;
+  status: string;
+  progress: number;
+  workflowId?: string;
 }
 
 interface AssessmentSelectorProps {
@@ -55,38 +50,38 @@ export default function AssessmentSelector({ assessments, onSelect }: Assessment
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {assessments.map((assessment) => (
           <button
-            key={assessment.SubscriptionID}
+            key={assessment.id}
             onClick={() => onSelect(assessment)}
             className={`p-6 rounded-lg border-2 transition-all ${getAssessmentColor(
-              assessment.AssessmentType
+              assessment.type
             )}`}
-            disabled={assessment.Status === 'Completed'}
+            disabled={assessment.status === 'Completed'}
           >
             <div className="flex items-start justify-between mb-4">
               <FileText className="w-8 h-8 text-gray-600" />
-              {getStatusIcon(assessment.Status)}
+              {getStatusIcon(assessment.status)}
             </div>
             
             <h3 className="font-semibold text-lg text-gray-900 mb-1 text-left">
-              {assessment.AssessmentType}
+              {assessment.type}
             </h3>
             
             <p className="text-sm text-gray-600 mb-3 text-left">
-              {assessment.WorkflowType}
+              {assessment.name}
             </p>
             
             <div className="flex items-center justify-between">
               <span className="text-xs text-gray-500">
-                ID: {assessment.SubscriptionID}
+                ID: {assessment.id}
               </span>
               <span className={`text-xs font-medium px-2 py-1 rounded ${
-                assessment.Status === 'Completed'
+                assessment.status === 'Completed'
                   ? 'bg-green-100 text-green-700'
-                  : assessment.Status === 'In Progress'
+                  : assessment.status === 'In Progress'
                   ? 'bg-yellow-100 text-yellow-700'
                   : 'bg-gray-100 text-gray-700'
               }`}>
-                {assessment.Status}
+                {assessment.status}
               </span>
             </div>
           </button>

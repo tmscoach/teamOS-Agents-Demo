@@ -1,11 +1,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useAskOskar } from '@/contexts/AskOskarContext'
+import { useAskOsmo } from '@/contexts/AskOsmoContext'
 import { UnifiedChat } from '@/src/components/unified-chat/UnifiedChat'
 import { JourneyPhase } from '@/src/components/unified-chat/types'
 
-export interface UnifiedAskOskarWidgetProps {
+export interface UnifiedAskOsmoWidgetProps {
   userId: string;
   userName: string;
   hasCompletedTMP: boolean;
@@ -16,7 +16,7 @@ export interface UnifiedAskOskarWidgetProps {
   initiallyExpanded?: boolean;
 }
 
-export function UnifiedAskOskarWidget({ 
+export function UnifiedAskOsmoWidget({ 
   userId,
   userName,
   hasCompletedTMP,
@@ -25,8 +25,8 @@ export function UnifiedAskOskarWidget({
   completedSteps,
   defaultAgent = 'OrchestratorAgent',
   initiallyExpanded = false
-}: UnifiedAskOskarWidgetProps) {
-  const { isOpen, openWidget, closeWidget } = useAskOskar()
+}: UnifiedAskOsmoWidgetProps) {
+  const { isOpen, openWidget, closeWidget } = useAskOsmo()
   const [shouldShowProactive, setShouldShowProactive] = useState(false)
   
   // Handle initial expansion and proactive message

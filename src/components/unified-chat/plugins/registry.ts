@@ -3,6 +3,7 @@ import { AssessmentPlugin } from './assessment-plugin';
 import { VoicePlugin } from './voice-plugin';
 import { DebriefPlugin } from './debrief-plugin';
 import { ActionPlugin } from './action-plugin';
+import { assessmentActionsPlugin } from './assessment-actions';
 
 // Plugin registry - all available plugins
 export const CHAT_PLUGINS: Record<string, ChatPlugin> = {
@@ -10,11 +11,12 @@ export const CHAT_PLUGINS: Record<string, ChatPlugin> = {
   voice: VoicePlugin,
   debrief: DebriefPlugin,
   action: ActionPlugin,
+  assessmentActions: assessmentActionsPlugin,
 };
 
 // Agent to plugin mapping
 export const AGENT_PLUGIN_MAP: Record<string, string[]> = {
-  AssessmentAgent: ['assessment', 'voice', 'action'],
+  AssessmentAgent: ['assessment', 'voice', 'action', 'assessmentActions'],
   DebriefAgent: ['debrief', 'action'],
   OrchestratorAgent: ['action'],
   OnboardingAgent: ['action'],

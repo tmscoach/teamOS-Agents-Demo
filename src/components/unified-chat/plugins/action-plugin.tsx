@@ -17,12 +17,39 @@ const ACTION_PATTERNS = [
         };
       }
       
+      try {
+        // Fetch the user's TMP subscription ID
+        const response = await fetch('/api/mock-tms/dashboard-subscriptions', {
+          credentials: 'include'
+        });
+        if (response.ok) {
+          const data = await response.json();
+          const tmpSubscription = data.subscriptions?.find(
+            (sub: any) => sub.AssessmentType === 'TMP' && 
+            (sub.Status === 'Not Started' || sub.Status === 'In Progress')
+          );
+          
+          if (tmpSubscription) {
+            return {
+              success: true,
+              type: 'redirect',
+              data: {
+                url: `/chat/assessment?agent=AssessmentAgent&subscriptionId=${tmpSubscription.SubscriptionID}`,
+                message: "Great! I'll take you to complete your Team Management Profile now. You'll earn 5000 credits!"
+              }
+            };
+          }
+        }
+      } catch (error) {
+        console.error('[ActionPlugin] Error fetching subscriptions:', error);
+      }
+      
+      // Fallback if we can't get the subscription ID
       return {
         success: true,
-        type: 'redirect',
+        type: 'message',
         data: {
-          url: '/chat/assessment?agent=AssessmentAgent&type=TMP&autoStart=true',
-          message: "I'll take you to complete your Team Management Profile. You'll earn 5000 credits!"
+          content: "I'm having trouble starting your TMP assessment. Please try clicking the 'Complete your first profile' button above."
         }
       };
     }
@@ -92,6 +119,55 @@ const ACTION_PATTERNS = [
         data: {
           url: '/dashboard',
           message: "I'll take you to your team dashboard to view progress."
+        }
+      };
+    }
+  },
+  // Assessment answer patterns
+  {
+    pattern: /(?:answer|set|enter)?\s*([0-2]-[0-2])\s*(?:for|to)?\s*(?:question|q)?\s*(\d+)/i,
+    action: 'set_assessment_answer',
+    handler: async (match: RegExpMatchArray, context: ChatContext): Promise<ActionResult> => {
+      if (context.agent !== 'AssessmentAgent') {
+        return {
+          success: false,
+          type: 'message',
+          data: {
+            content: "I can only help with assessment answers when you're on the assessment page."
+          }
+        };
+      }
+      
+      const [_, value, questionId] = match;
+      return {
+        success: true,
+        type: 'message',
+        data: {
+          content: `I understand you want to set answer ${value} for question ${questionId}. \n\nTo record this answer:\n1. Look for Question ${questionId} on the page\n2. Click on the sliding scale below the question\n3. Select the ${value} position\n\nThe scale shows:\n• 2-0 = Strongly prefer left statement\n• 1-1 = Balanced between both\n• 0-2 = Strongly prefer right statement\n\nYour progress is saved automatically as you make selections.`
+        }
+      };
+    }
+  },
+  // Navigate assessment pages
+  {
+    pattern: /^(next\s*page|continue|proceed|move\s*on|skip)/i,
+    action: 'navigate_assessment',
+    handler: async (match: RegExpMatchArray, context: ChatContext): Promise<ActionResult> => {
+      if (context.agent !== 'AssessmentAgent') {
+        return {
+          success: false,
+          type: 'message',
+          data: {
+            content: "Navigation commands are only available during assessments."
+          }
+        };
+      }
+      
+      return {
+        success: true,
+        type: 'message',
+        data: {
+          content: `To move to the next page:\n\n1. Make sure you've answered all questions on this page\n2. Click the "Next" button at the bottom of the questionnaire\n\nIf the button is disabled, check if you've missed any questions. Each question needs an answer before you can proceed.`
         }
       };
     }

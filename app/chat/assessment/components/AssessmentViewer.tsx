@@ -27,16 +27,20 @@ function AssessmentViewer({
   isCompleting = false,
   updatingQuestions = new Set()
 }: AssessmentViewerProps) {
+  // Get questions array (handle both uppercase and lowercase)
+  const questions = workflowState.Questions || workflowState.questions || [];
+  
   // Pre-populate organization field if it exists and is empty
   React.useEffect(() => {
-    const orgQuestion = workflowState.questions.find(
+    const orgQuestion = questions.find(
       (q: WorkflowQuestion) => (q.QuestionID || q.questionID) === 1041
     );
     if (orgQuestion && !currentAnswers[1041] && assessment.OrganisationName) {
       onAnswerChange(1041, assessment.OrganisationName);
     }
-  }, [workflowState.questions, assessment.OrganisationName, currentAnswers, onAnswerChange]);
-  const allQuestionsAnswered = workflowState.questions
+  }, [questions, assessment.OrganisationName, currentAnswers, onAnswerChange]);
+  
+  const allQuestionsAnswered = questions
     .filter((q: WorkflowQuestion) => (q.IsRequired || q.isRequired) && (q.IsEnabled !== false))
     .every((q: WorkflowQuestion) => {
       const questionId = q.QuestionID || q.questionID || 0;
@@ -95,7 +99,7 @@ function AssessmentViewer({
           {/* Questions */}
           <div className="flex flex-col gap-4 self-stretch w-full">
             {useMemo(() => 
-              workflowState.questions
+              questions
                 .sort((a: WorkflowQuestion, b: WorkflowQuestion) => {
                   const sortA = a.SortOrder ?? a.sortOrder ?? 0;
                   const sortB = b.SortOrder ?? b.sortOrder ?? 0;
@@ -115,7 +119,7 @@ function AssessmentViewer({
                     />
                   );
                 })
-            , [workflowState.questions, currentAnswers, onAnswerChange, updatingQuestions])}
+            , [questions, currentAnswers, onAnswerChange, updatingQuestions])}
           </div>
 
           {/* Submit button - matching Figma style */}

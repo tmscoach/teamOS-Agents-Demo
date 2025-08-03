@@ -1,4 +1,31 @@
+import React, { useState, useEffect } from 'react';
 import { ChatPlugin } from '../types';
+import { VoiceModeEntry } from '@/app/chat/assessment/components/voice/VoiceModeEntry';
+import { useChatContext } from '../components/ChatProvider';
+
+// Voice invitation component
+const VoiceInvitation = () => {
+  const { chat } = useChatContext();
+  const [hasShownVoiceEntry, setHasShownVoiceEntry] = useState(false);
+  
+  // Show after first message
+  const shouldShow = chat.messages.length > 0 && !hasShownVoiceEntry;
+  
+  if (!shouldShow) return null;
+  
+  return (
+    <div className="px-4 pt-4">
+      <VoiceModeEntry
+        onStartVoice={() => {
+          // TODO: Start voice mode
+          setHasShownVoiceEntry(true);
+        }}
+        onDismiss={() => setHasShownVoiceEntry(true)}
+        hasShownBefore={hasShownVoiceEntry}
+      />
+    </div>
+  );
+};
 
 // Assessment Plugin - handles assessment workflows, questions, and voice navigation
 export const AssessmentPlugin: ChatPlugin = {
@@ -11,6 +38,8 @@ export const AssessmentPlugin: ChatPlugin = {
   },
   
   components: {
+    // Voice invitation appears at the top of messages
+    messageHeader: VoiceInvitation,
     // Will be implemented when migrating AssessmentChatClient
     // messageRenderer: AssessmentQuestionRenderer,
     // sidePanel: AssessmentProgressPanel,

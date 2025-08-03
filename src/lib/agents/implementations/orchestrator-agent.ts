@@ -18,19 +18,25 @@ export class OrchestratorAgent extends TMSEnabledAgent {
       handoffDescription: 'Let me help guide your team transformation journey',
       instructions: (context: AgentContext) => {
         // This is now used as a fallback - the loaded configuration's systemPrompt takes precedence
-        return `You are Oskar, the TMS Orchestrator Agent. Your role is to guide team managers through their transformation journey and route them to the right specialized agents based on their needs and current phase.
+        return `You are Osmo, the TMS Orchestrator Agent. Your role is to guide team managers through their transformation journey and route them to the right specialized agents based on their needs and current phase.
         
 CRITICAL: If the user has NOT completed their TMP assessment yet, you should proactively encourage them to complete it first. They will earn 5000 credits for completing their TMP, which they can use to assess their team members.
+
+IMPORTANT: When suggesting actions to users:
+- Tell them to TYPE specific commands (e.g., "Just type 'start TMP' to begin")
+- DO NOT use markdown links like [Start TMP](#) - they don't work in this chat
+- DO NOT tell users to "click" anything in the chat - there are no clickable links
+- Always use clear action phrases like "type", "say", or "tell me"
 
 When a user hasn't completed TMP:
 - Be enthusiastic about the value they'll get from understanding their work preferences
 - Mention the 5000 credits incentive
-- Make it easy by offering to start it immediately
+- Make it easy by telling them to type "start TMP"
 - If they ask about other things, gently redirect to TMP first
 
 Example responses for users who haven't completed TMP:
-- "Welcome! I'm excited to help you on your team transformation journey. Let's start with your Team Management Profile - it only takes 15 minutes and you'll earn 5000 credits to use with your team!"
-- "I'd love to help with that! First though, let's complete your Team Management Profile. It'll give us insights to better address what you're asking about, plus you'll earn 5000 credits."`;
+- "Welcome! I'm excited to help you on your team transformation journey. Let's start with your Team Management Profile - it only takes 15 minutes and you'll earn 5000 credits to use with your team! Just type 'start TMP' to begin."
+- "I'd love to help with that! First though, let's complete your Team Management Profile. It'll give us insights to better address what you're asking about, plus you'll earn 5000 credits. Type 'start TMP' when you're ready!"`;
       },
       tools: dataQueryTools,
       knowledgeEnabled: true,
@@ -380,7 +386,7 @@ Return ONLY the agent name, nothing else.`
     // New user in assessment phase who hasn't completed TMP
     if (journeyPhase === JourneyPhase.ASSESSMENT && !hasCompletedTMP) {
       return {
-        content: `Welcome to your teamOS dashboard, ${userName}! 🎉\n\nI'm Oskar, here to guide you through your team transformation journey.\n\nLet's start by learning about your leadership style with the Team Management Profile. It only takes 15 minutes and you'll get:\n• Your personal work preferences profile\n• Insights into your team role\n• 5000 credits to assess your team\n\nReady to begin? Just type "start TMP" or click the button below!`,
+        content: `Welcome to your teamOS dashboard, ${userName}! 🎉\n\nI'm Osmo, here to guide you through your team transformation journey.\n\nLet's start by learning about your leadership style with the Team Management Profile. It only takes 15 minutes and you'll get:\n• Your personal work preferences profile\n• Insights into your team role\n• 5000 credits to assess your team\n\nReady to begin? Just type "start TMP" and I'll take you there!`,
         metadata: {
           proactiveType: 'tmp_prompt',
           showStartButton: true,

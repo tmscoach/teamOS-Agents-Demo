@@ -102,6 +102,7 @@ export default function AgentConfigPage() {
   const [selectedAgent, setSelectedAgent] = useState("");
   const [currentConfig, setCurrentConfig] = useState<AgentConfig | null>(null);
   const [editedConfig, setEditedConfig] = useState<Partial<AgentConfig> | null>(null);
+  const [welcomeMessage, setWelcomeMessage] = useState<string>('');
   const [configHistory, setConfigHistory] = useState<AgentConfig[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -164,6 +165,13 @@ export default function AgentConfigPage() {
         const configData = await configRes.json();
         setCurrentConfig(configData);
         setEditedConfig(configData);
+        
+        // Extract welcome message from prompts if it exists
+        if (configData.prompts && typeof configData.prompts === 'object') {
+          setWelcomeMessage(configData.prompts.welcomeMessage || '');
+        } else {
+          setWelcomeMessage('');
+        }
       }
 
       if (historyRes.ok) {
@@ -187,6 +195,10 @@ export default function AgentConfigPage() {
         body: JSON.stringify({
           agentName: selectedAgent,
           systemPrompt: editedConfig.systemPrompt,
+          prompts: {
+            system: editedConfig.systemPrompt,
+            welcomeMessage: welcomeMessage
+          },
           flowConfig: editedConfig.flowConfig,
           extractionRules: editedConfig.extractionRules,
           guardrailConfig: editedConfig.guardrailConfig,
@@ -817,6 +829,68 @@ You are a friendly Team Development Assistant conducting a quick 5-minute intake
 ...`}
                 />
               </div>
+              
+              {/* Welcome Message for Assessments */}
+              {selectedAgent === 'AssessmentAgent' && (
+                <div style={{ marginTop: '24px' }}>
+                  <div style={{
+                    marginBottom: '16px'
+                  }}>
+                    <h3 style={{
+                      fontSize: '16px',
+                      fontWeight: '600',
+                      color: '#111827',
+                      marginBottom: '4px'
+                    }}>
+                      Welcome Message (Assessment-Specific)
+                    </h3>
+                    <p style={{
+                      fontSize: '14px',
+                      color: '#6b7280'
+                    }}>
+                      Optional welcome message shown when users first arrive at an assessment. 
+                      Use {'{assessmentType}'} and {'{userName}'} as placeholders.
+                    </p>
+                  </div>
+                  
+                  <div style={{
+                    backgroundColor: '#f9fafb',
+                    padding: '20px',
+                    borderRadius: '8px',
+                    border: '1px solid #e5e7eb'
+                  }}>
+                    <textarea
+                      value={welcomeMessage}
+                      onChange={(e) => setWelcomeMessage(e.target.value)}
+                      rows={6}
+                      style={{
+                        width: '100%',
+                        padding: '16px',
+                        borderRadius: '6px',
+                        border: '1px solid #e5e7eb',
+                        backgroundColor: 'white',
+                        color: '#111827',
+                        fontSize: '14px',
+                        fontFamily: 'SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace',
+                        lineHeight: '1.6',
+                        resize: 'vertical',
+                        outline: 'none'
+                      }}
+                      onFocus={(e) => e.currentTarget.style.borderColor = '#111827'}
+                      onBlur={(e) => e.currentTarget.style.borderColor = '#e5e7eb'}
+                      placeholder={`Example:
+
+Welcome to your {assessmentType} assessment, {userName}! 🎯
+
+I'm Osmo, and I'll be guiding you through this journey to discover your unique work preferences and team role.
+
+This assessment takes about 15 minutes, and I'll be here to help if you have any questions along the way.
+
+Ready to begin?`}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

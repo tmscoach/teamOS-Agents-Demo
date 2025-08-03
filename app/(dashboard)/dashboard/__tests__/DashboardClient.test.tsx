@@ -16,9 +16,9 @@ jest.mock('@/components/dashboard/AssessmentSelectorModal', () => ({
   ),
 }));
 
-// Mock the AskOskar context
-jest.mock('@/contexts/AskOskarContext', () => ({
-  useAskOskar: () => ({
+// Mock the AskOsmo context
+jest.mock('@/contexts/AskOsmoContext', () => ({
+  useAskOsmo: () => ({
     openWidget: jest.fn(),
   }),
 }));

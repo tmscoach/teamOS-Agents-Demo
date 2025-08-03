@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { AssessmentSelectorModal } from '@/components/dashboard/AssessmentSelectorModal'
 import { JourneyPhase } from '@/lib/orchestrator/journey-phases'
-import { useAskOskar } from '@/contexts/AskOskarContext'
+import { useAskOsmo } from '@/contexts/AskOsmoContext'
 
 interface DashboardClientProps {
   userPhase: JourneyPhase
@@ -29,7 +29,7 @@ export function DashboardClient({
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [availableAssessments, setAvailableAssessments] = useState<TMSSubscription[]>([])
   const [loading, setLoading] = useState(false)
-  const { openWidget: openAskOskar } = useAskOskar()
+  const { openWidget: openAskOsmo } = useAskOsmo()
   
   // Fetch available assessments from TMS when component mounts
   useEffect(() => {
@@ -37,7 +37,9 @@ export function DashboardClient({
       setLoading(true)
       try {
         // Call tms_get_dashboard_subscriptions to get available assessments
-        const response = await fetch('/api/mock-tms/dashboard-subscriptions')
+        const response = await fetch('/api/mock-tms/dashboard-subscriptions', {
+          credentials: 'include'
+        })
         console.log('[DashboardClient] Response status:', response.status)
         
         if (response.ok) {
@@ -123,17 +125,6 @@ export function DashboardClient({
         availableAssessments={availableAssessments}
         loading={loading}
       />
-      
-      
-      {/* Button to manually trigger assessment modal (for testing) */}
-      {process.env.NODE_ENV === 'development' && (
-        <button
-          onClick={() => setIsModalOpen(true)}
-          className="fixed bottom-24 right-6 z-40 px-4 py-2 bg-purple-600 text-white rounded-lg shadow-lg hover:bg-purple-700 transition-colors text-sm"
-        >
-          Show Assessment Modal
-        </button>
-      )}
     </>
   )
 }

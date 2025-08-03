@@ -1,12 +1,12 @@
 'use client'
 
-import { AskOskarProvider } from '@/contexts/AskOskarContext'
+import { AskOsmoProvider } from '@/contexts/AskOsmoContext'
 import { ReactNode } from 'react'
 
 export function DashboardWrapper({ children }: { children: ReactNode }) {
   return (
-    <AskOskarProvider>
+    <AskOsmoProvider>
       {children}
-    </AskOskarProvider>
+    </AskOsmoProvider>
   )
 }

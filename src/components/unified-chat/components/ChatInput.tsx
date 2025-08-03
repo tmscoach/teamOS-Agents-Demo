@@ -6,32 +6,47 @@ import { useChatContext } from './ChatProvider';
 import { PluginRenderer } from './PluginRenderer';
 
 export function ChatInput() {
-  const { chat, context, plugins } = useChatContext();
+  const { chat, context, plugins, state } = useChatContext();
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Focus input on mount
+  // Focus input on mount and when chat opens
   useEffect(() => {
-    inputRef.current?.focus();
-  }, []);
+    if (state.isOpen) {
+      inputRef.current?.focus();
+    }
+  }, [state.isOpen]);
+
+  // Focus input after receiving a message
+  useEffect(() => {
+    if (chat.messages.length > 0 && !chat.isLoading) {
+      // Small delay to ensure the DOM has updated
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
+    }
+  }, [chat.messages.length, chat.isLoading]);
 
   // Handle submit
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     
-    const input = inputRef.current?.value.trim();
+    const input = chat.input.trim();
     if (!input) return;
 
     // Check if any plugin wants to handle this message first
+    console.log('[ChatInput] Checking plugins:', plugins.length, 'for input:', input);
     for (const plugin of plugins) {
       if (plugin.handlers?.onMessage) {
+        console.log('[ChatInput] Testing plugin:', plugin.name);
         const result = await plugin.handlers.onMessage(
           { id: '', role: 'user', content: input },
           context
         );
         
+        console.log('[ChatInput] Plugin result:', plugin.name, result);
         if (result.handled) {
           // Plugin handled it, clear input and process side effects
-          if (inputRef.current) inputRef.current.value = '';
+          chat.setInput('');
           
           if (result.response) {
             chat.append(result.response);
@@ -56,20 +71,21 @@ export function ChatInput() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="p-4">
-      <div className="flex gap-2">
-        <div className="flex-1 relative">
-          <textarea
-            ref={inputRef}
+    <form onSubmit={handleSubmit} className="w-full">
+      <div className="flex h-9 items-center gap-2 w-full">
+        <div className="flex items-center gap-2 flex-1 bg-white rounded-[var(--shadcn-ui-radius-md)] border border-solid border-[color:var(--shadcn-ui-input)] shadow-[var(--shadow-md)] pl-3 pr-2 py-2">
+          <input
+            ref={inputRef as any}
+            type="text"
             value={chat.input}
-            onChange={chat.handleInputChange}
+            onChange={(e) => chat.setInput(e.target.value)}
             placeholder={
               context.agent === 'OrchestratorAgent' && !context.user.hasCompletedTMP
                 ? "Type 'start TMP' to begin your journey..."
-                : "Type a message..."
+                : "Type your message..."
             }
-            className="w-full px-4 py-2 pr-12 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-            rows={1}
+            className="flex-1 bg-transparent outline-none [font-family:'Inter',Helvetica] font-normal text-[color:var(--shadcn-ui-foreground)] text-sm tracking-[0] leading-5 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={chat.isLoading}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
@@ -79,18 +95,19 @@ export function ChatInput() {
           />
           
           {/* Plugin input extensions */}
-          <div className="absolute right-2 top-1/2 -translate-y-1/2">
+          <div className="flex items-center gap-2">
+            {console.log('[ChatInput] Rendering input extensions')}
             <PluginRenderer type="inputExtensions" />
+            <button
+              type="submit"
+              disabled={!chat.input.trim() || chat.isLoading}
+              className="hover:opacity-80 transition-opacity cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+              aria-label="Submit"
+            >
+              <Send className="w-4 h-4" />
+            </button>
           </div>
         </div>
-
-        <button
-          type="submit"
-          disabled={!chat.input.trim() || chat.isLoading}
-          className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
-          <Send className="w-5 h-5" />
-        </button>
       </div>
     </form>
   );

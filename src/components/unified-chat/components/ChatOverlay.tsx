@@ -34,7 +34,7 @@ export function ChatOverlay() {
         <div className="fixed bottom-6 right-24 z-40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
           <div className="bg-gray-900 text-white text-sm px-3 py-2 rounded-lg whitespace-nowrap flex items-center gap-2">
             <Oscar1 className="w-4 h-4" />
-            Ask Oskar anything
+            Ask Osmo anything
           </div>
         </div>
       )}

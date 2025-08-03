@@ -26,6 +26,7 @@ export interface ChatPlugin {
     messageRenderer?: React.ComponentType<PluginComponentProps>;
     inputExtensions?: React.ComponentType<PluginComponentProps>;
     sidePanel?: React.ComponentType<PluginComponentProps>;
+    messageHeader?: React.ComponentType<PluginComponentProps>;
   };
   
   // Event handlers
