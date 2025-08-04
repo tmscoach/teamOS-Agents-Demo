@@ -59,7 +59,7 @@ function calculateTMPResults(answers: Record<number, string>) {
       majorRoleCode: 'uph_mai',
       relatedRole1: 'Controller Inspector',
       relatedRole1Code: 'con_ins',
-      relatedRole2: 'Thruster Organizer',
+      relatedRole2: 'Thruster Organiser',  // Fixed spelling to match TMS
       relatedRole2Code: 'thr_org',
       majorRoleScore: 8,
       relatedRole1Score: 7,
@@ -148,6 +148,66 @@ export async function generateHTMLSummary(subscription: MockSubscription, templa
 }
 
 /**
+ * Calculate RIDO net scores from assessment answers
+ */
+function calculateRIDONetScores(answers: Record<string, any>): { I?: number, E?: number, C?: number, P?: number, B?: number, A?: number, S?: number, F?: number } {
+  // Initialize RIDO scores
+  const scores = {
+    E: 0, I: 0,  // Extrovert vs Introvert
+    P: 0, C: 0,  // Practical vs Creative
+    A: 0, B: 0,  // Analytical vs Beliefs
+    S: 0, F: 0   // Structured vs Flexible
+  };
+  
+  // Process answers to calculate RIDO scores
+  // This is simplified - real TMP has specific question mappings
+  Object.entries(answers).forEach(([qId, value]) => {
+    const questionNum = parseInt(qId);
+    const answer = typeof value === 'string' ? parseInt(value) || 0 : value;
+    
+    // Map questions to RIDO dimensions (simplified mapping)
+    if (questionNum >= 20 && questionNum <= 30) {
+      // Relationship questions
+      if (answer <= 2) scores.E += (3 - answer);
+      else scores.I += (answer - 2);
+    } else if (questionNum >= 31 && questionNum <= 40) {
+      // Information questions  
+      if (answer <= 2) scores.P += (3 - answer);
+      else scores.C += (answer - 2);
+    } else if (questionNum >= 41 && questionNum <= 50) {
+      // Decision questions
+      if (answer <= 2) scores.A += (3 - answer);
+      else scores.B += (answer - 2);
+    } else if (questionNum >= 51 && questionNum <= 60) {
+      // Organization questions
+      if (answer <= 2) scores.S += (3 - answer);
+      else scores.F += (answer - 2);
+    }
+  });
+  
+  // Return only dominant scores with net difference
+  const netScores: any = {};
+  if (scores.I > scores.E) netScores.I = scores.I - scores.E;
+  else if (scores.E > scores.I) netScores.E = scores.E - scores.I;
+  
+  if (scores.C > scores.P) netScores.C = scores.C - scores.P;
+  else if (scores.P > scores.C) netScores.P = scores.P - scores.C;
+  
+  if (scores.B > scores.A) netScores.B = scores.B - scores.A;
+  else if (scores.A > scores.B) netScores.A = scores.A - scores.B;
+  
+  if (scores.S > scores.F) netScores.S = scores.S - scores.F;
+  else if (scores.F > scores.S) netScores.F = scores.F - scores.S;
+  
+  // Default scores if no answers
+  if (Object.keys(netScores).length === 0) {
+    return { I: 7, C: 3, B: 5, S: 9 };
+  }
+  
+  return netScores;
+}
+
+/**
  * Generate TMP (Team Management Profile) HTML summary
  */
 function generateTMPSummary(subscription: MockSubscription, state: any, templateId: string): string {
@@ -158,29 +218,31 @@ function generateTMPSummary(subscription: MockSubscription, state: any, template
   // Calculate TMP results
   const tmpResults = calculateTMPResults(state.answers);
   
-  // Calculate net scores for the profile
-  // Show only the dominant trait from each pair with net difference
-  // E/I pair: Introvert wins (22-15=7)
-  // P/C pair: Creative wins (22-19=3)  
-  // A/B pair: Beliefs wins (22-17=5)
-  // S/F pair: Structured wins (23-14=9)
-  const netScores = {
-    I: 7,  // Introvert net score
-    C: 3,  // Creative net score
-    B: 5,  // Beliefs net score
-    S: 9   // Structured net score
-  };
+  // Calculate RIDO net scores from assessment answers
+  const ridoScores = calculateRIDONetScores(state.answers);
+  
+  // Format net scores string (only show the dominant traits)
+  const netScoresArray = [];
+  if (ridoScores.E) netScoresArray.push(`E:${ridoScores.E}`);
+  if (ridoScores.I) netScoresArray.push(`I:${ridoScores.I}`);
+  if (ridoScores.P) netScoresArray.push(`P:${ridoScores.P}`);
+  if (ridoScores.C) netScoresArray.push(`C:${ridoScores.C}`);
+  if (ridoScores.A) netScoresArray.push(`A:${ridoScores.A}`);
+  if (ridoScores.B) netScoresArray.push(`B:${ridoScores.B}`);
+  if (ridoScores.S) netScoresArray.push(`S:${ridoScores.S}`);
+  if (ridoScores.F) netScoresArray.push(`F:${ridoScores.F}`);
+  
+  const netScores = netScoresArray.join(' ');
   
   // Use the fragment template that matches TMS API exactly
   const replacements = {
-    BASE_URL: 'https://api-test.tms.global',
     MAJOR_ROLE: tmpResults.majorRole,
     RELATED_ROLE_1: tmpResults.relatedRole1,
     RELATED_ROLE_2: tmpResults.relatedRole2,
     MAJOR_ROLE_SCORE: tmpResults.majorRoleScore.toString(),
     RELATED_ROLE_1_SCORE: tmpResults.relatedRole1Score.toString(),
     RELATED_ROLE_2_SCORE: tmpResults.relatedRole2Score.toString(),
-    NET_SCORES: `I:${netScores.I} C:${netScores.C} B:${netScores.B} S:${netScores.S}`
+    NET_SCORES: netScores
   };
   
   // Return just the HTML fragment like the TMS API does

@@ -137,7 +137,11 @@ export async function POST(request: Request) {
         let htmlToStore = response;
         if (tool === 'tms_generate_html_summary' && typeof response === 'string' && !response.includes('<!DOCTYPE')) {
           // It's a fragment, wrap it in HTML with TMS styling to match full reports
-          // URLs are already absolute in the fragment, no need to replace them
+          // Convert relative GetGraph URLs to absolute URLs for processing
+          const baseUrl = 'https://api-test.tms.global';
+          const processedResponse = response
+            .replace(/src="\/GetGraph/g, `src="${baseUrl}/GetGraph`)
+            .replace(/&amp;/g, '&'); // Convert HTML entities back for URL processing
           htmlToStore = `<!DOCTYPE html>
 <html>
 <head>
@@ -211,7 +215,7 @@ export async function POST(request: Request) {
   </style>
 </head>
 <body>
-  ${response}
+  ${processedResponse}
 </body>
 </html>`;
         }
