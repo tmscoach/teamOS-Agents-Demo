@@ -93,23 +93,23 @@ const VoiceInputToggle = () => {
     
     // For assessment agent, dispatch assessment actions
     if (context.agent === 'AssessmentAgent') {
-      if (command.type === 'answer_question' && command.questionId && command.value) {
+      if ((command.type as any) === 'answer_question' && (command as any).questionId && (command as any).value) {
         const event = new CustomEvent('assessment-action-detected', {
           detail: { 
             action: 'answer_question', 
-            params: `${command.questionId}:${command.value}` 
+            params: `${(command as any).questionId}:${(command as any).value}` 
           }
         });
         window.dispatchEvent(event);
-      } else if (command.type === 'answer_multiple' && command.questionIds && command.value) {
+      } else if ((command.type as any) === 'answer_multiple' && (command as any).questionIds && (command as any).value) {
         const event = new CustomEvent('assessment-action-detected', {
           detail: { 
             action: 'answer_multiple_questions', 
-            params: `${command.questionIds.join(',')}:${command.value}` 
+            params: `${(command as any).questionIds.join(',')}:${(command as any).value}` 
           }
         });
         window.dispatchEvent(event);
-      } else if (command.type === 'navigate' && command.direction === 'next') {
+      } else if (command.type === 'navigation' && (command as any).direction === 'next') {
         const event = new CustomEvent('assessment-action-detected', {
           detail: { 
             action: 'navigate_page', 
@@ -263,7 +263,6 @@ const VoiceInputToggle = () => {
   return (
     <>
       <div className="voice-toggle-wrapper">
-        {console.log('[VoiceInputToggle] Rendering VoiceToggle component')}
         <VoiceToggle
           voiceState={voiceState}
           onToggle={handleVoiceToggle}
@@ -303,7 +302,8 @@ const VoiceInputToggle = () => {
         <div className="fixed bottom-4 left-4 z-40">
           <VoiceCommandHelp
             questionType={context.metadata?.assessmentType || 'TMP'}
-            currentPage={context.metadata?.workflowState?.currentPageId || 1}
+            isOpen={true}
+            onClose={() => {}}
           />
         </div>
       )}

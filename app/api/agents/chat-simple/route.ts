@@ -9,7 +9,6 @@ import { AgentRouter, ContextManager, ConversationStore, AgentContext, Message, 
 import { 
   createOnboardingAgent,
   createOrchestratorAgent,
-  createDiscoveryAgent,
   createAssessmentAgent,
   createDebriefAgent,
   createAlignmentAgent,
@@ -114,7 +113,6 @@ async function initializeServices() {
     const agents = [
       { name: 'OrchestratorAgent', create: createOrchestratorAgent },
       { name: 'OnboardingAgent', create: createOnboardingAgent },
-      { name: 'DiscoveryAgent', create: createDiscoveryAgent },
       { name: 'AssessmentAgent', create: createAssessmentAgent },
       { name: 'DebriefAgent', create: createDebriefAgent },
       { name: 'AlignmentAgent', create: createAlignmentAgent },

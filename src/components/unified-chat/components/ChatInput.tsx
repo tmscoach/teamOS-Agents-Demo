@@ -96,7 +96,6 @@ export function ChatInput() {
           
           {/* Plugin input extensions */}
           <div className="flex items-center gap-2">
-            {console.log('[ChatInput] Rendering input extensions')}
             <PluginRenderer type="inputExtensions" />
             <button
               type="submit"

@@ -3,16 +3,7 @@
 import React from 'react';
 import AssessmentViewer from './AssessmentViewer';
 import AssessmentSelector from './AssessmentSelector';
-import { WorkflowState } from '../types';
-
-interface AssessmentSubscription {
-  id: string | number;
-  type: string;
-  name: string;
-  status: string;
-  progress: number;
-  workflowId?: string;
-}
+import { WorkflowState, AssessmentSubscription } from '../types';
 
 interface AssessmentLayoutProps {
   availableAssessments: AssessmentSubscription[];

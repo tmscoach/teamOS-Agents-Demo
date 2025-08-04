@@ -28,7 +28,7 @@ function AssessmentViewer({
   updatingQuestions = new Set()
 }: AssessmentViewerProps) {
   // Get questions array (handle both uppercase and lowercase)
-  const questions = workflowState.Questions || workflowState.questions || [];
+  const questions = (workflowState as any).Questions || workflowState.questions || [];
   
   // Pre-populate organization field if it exists and is empty
   React.useEffect(() => {

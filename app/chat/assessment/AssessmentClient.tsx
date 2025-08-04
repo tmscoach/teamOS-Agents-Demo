@@ -3,19 +3,10 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import AssessmentLayout from './components/AssessmentLayout';
-import { WorkflowState } from './types';
+import { WorkflowState, AssessmentSubscription } from './types';
 import { AssessmentChatWrapper } from './components/AssessmentChatWrapper';
 import { JourneyPhase } from '@/src/components/unified-chat/types';
 import { VoiceModeEntry } from './components/voice/VoiceModeEntry';
-
-interface AssessmentSubscription {
-  id: string | number;
-  type: string;
-  name: string;
-  status: string;
-  progress: number;
-  workflowId?: string;
-}
 
 export default function AssessmentClient() {
   const searchParams = useSearchParams();
@@ -62,8 +53,8 @@ export default function AssessmentClient() {
         detail: {
           type: 'assessment',
           metadata: {
-            subscriptionId: selectedAssessment.id,
-            assessmentType: selectedAssessment.type
+            subscriptionId: selectedAssessment._subscriptionId || selectedAssessment.SubscriptionID,
+            assessmentType: selectedAssessment.AssessmentType
           }
         }
       });
@@ -90,14 +81,7 @@ export default function AssessmentClient() {
           const data = await response.json();
           console.log('[AssessmentClient] Fetched subscriptions:', data);
           
-          const assessments: AssessmentSubscription[] = data.subscriptions?.map((sub: any) => ({
-            id: sub._subscriptionId || sub.SubscriptionID,
-            type: sub.AssessmentType,
-            name: sub.WorkflowType,
-            status: sub.Status,
-            progress: sub.Progress,
-            workflowId: sub.WorkflowID || sub.workflowId || sub.AssessmentType?.toLowerCase() + '-workflow'
-          })) || [];
+          const assessments: AssessmentSubscription[] = data.subscriptions || [];
           
           setAvailableAssessments(assessments);
           
@@ -105,11 +89,11 @@ export default function AssessmentClient() {
           if (directSubscriptionId) {
             const assessment = assessments.find(a => {
               // The subscription ID might have a user prefix
-              const idStr = a.id?.toString() || '';
+              const idStr = (a._subscriptionId || a.SubscriptionID)?.toString() || '';
               const idMatch = idStr === directSubscriptionId || 
                              idStr.endsWith(`-${directSubscriptionId}`) ||
                              idStr.includes(directSubscriptionId);
-              console.log('[AssessmentClient] Checking assessment:', a.id, 'against:', directSubscriptionId, 'match:', idMatch);
+              console.log('[AssessmentClient] Checking assessment:', idStr, 'against:', directSubscriptionId, 'match:', idMatch);
               return idMatch;
             });
             if (assessment) {
@@ -136,7 +120,8 @@ export default function AssessmentClient() {
     // Start workflow by fetching the workflow state first
     try {
       // First, fetch the workflow state to get the actual workflowId
-      const workflowResponse = await fetch(`/api/mock-tms/workflow/process/${assessment.id}/3/2/2`);
+      const subscriptionId = assessment._subscriptionId || assessment.SubscriptionID;
+      const workflowResponse = await fetch(`/api/mock-tms/workflow/process/${subscriptionId}/3/2/2`);
       
       if (workflowResponse.ok) {
         const workflowData = await workflowResponse.json();
@@ -145,14 +130,14 @@ export default function AssessmentClient() {
         console.log('[AssessmentClient] Loaded workflow state:', workflowData);
       } else {
         // Fallback to starting workflow
-        const workflowId = assessment.workflowId || assessment.type?.toLowerCase() + '-workflow';
+        const workflowId = assessment.WorkflowID || assessment.AssessmentType?.toLowerCase() + '-workflow';
         console.log('[AssessmentClient] Starting workflow:', workflowId, 'for assessment:', assessment);
         
         const response = await fetch('/api/mock-tms/start-workflow', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
-            subscriptionId: assessment.id,
+            subscriptionId: assessment._subscriptionId || assessment.SubscriptionID,
             workflowId: workflowId
           })
         });
@@ -160,7 +145,7 @@ export default function AssessmentClient() {
         if (response.ok) {
           const data = await response.json();
           // Now fetch the actual workflow state
-          const stateResponse = await fetch(`/api/mock-tms/workflow/process/${assessment.id}/3/2/2`);
+          const stateResponse = await fetch(`/api/mock-tms/workflow/process/${assessment._subscriptionId || assessment.SubscriptionID}/3/2/2`);
           if (stateResponse.ok) {
             const stateData = await stateResponse.json();
             setWorkflowState(stateData);
@@ -191,8 +176,8 @@ export default function AssessmentClient() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          subscriptionID: selectedAssessment.id, // Note: capital ID
-          pageID: workflowState.PageID || workflowState.CurrentPageID,
+          subscriptionID: selectedAssessment._subscriptionId || selectedAssessment.SubscriptionID, // Note: capital ID
+          pageID: (workflowState as any).PageID || (workflowState as any).CurrentPageID,
           questions: questions
         })
       });
@@ -200,7 +185,7 @@ export default function AssessmentClient() {
       if (response.ok) {
         const data = await response.json();
         // Fetch the updated workflow state
-        const workflowResponse = await fetch(`/api/mock-tms/workflow/process/${selectedAssessment.id}/${workflowState.BaseContentID}/${workflowState.CurrentSectionID}/${workflowState.NextPageID || workflowState.CurrentPageID}`);
+        const workflowResponse = await fetch(`/api/mock-tms/workflow/process/${selectedAssessment._subscriptionId || selectedAssessment.SubscriptionID}/${(workflowState as any).BaseContentID}/${(workflowState as any).CurrentSectionID}/${(workflowState as any).NextPageID || (workflowState as any).CurrentPageID}`);
         if (workflowResponse.ok) {
           const workflowData = await workflowResponse.json();
           setWorkflowState(workflowData);

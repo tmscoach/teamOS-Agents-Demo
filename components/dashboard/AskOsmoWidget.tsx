@@ -17,12 +17,12 @@ export function AskOsmoWidget({
   initiallyExpanded = false,
   testMode = false 
 }: AskOsmoWidgetProps) {
-  const { isOpen, toggleWidget, setIsOpen } = useAskOsmo()
+  const { isOpen, toggleWidget, openWidget } = useAskOsmo()
   
   // Handle initial expansion from URL params
   useEffect(() => {
     if (initiallyExpanded && !isOpen) {
-      setIsOpen(true)
+      openWidget()
     }
   }, [initiallyExpanded])
   

@@ -234,7 +234,7 @@ export const ActionPlugin: ChatPlugin = {
         // This tool allows agents to programmatically execute actions
         const pattern = ACTION_PATTERNS.find(p => p.action === params.action);
         if (pattern && pattern.handler) {
-          return pattern.handler([], context);
+          return pattern.handler(['', params.action] as RegExpMatchArray, context);
         }
         return { success: false, error: 'Unknown action' };
       }

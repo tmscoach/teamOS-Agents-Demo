@@ -36,7 +36,7 @@ export function PluginRenderer({ type, message, fallback }: PluginRendererProps)
         const Component = plugin.components![type];
         if (Component) {
           console.log(`[PluginRenderer] Trying plugin ${plugin.name} for message rendering`);
-          const rendered = Component({ message, context });
+          const rendered = <Component message={message} context={context} />;
           if (rendered !== null) {
             return <>{rendered}</>;
           }

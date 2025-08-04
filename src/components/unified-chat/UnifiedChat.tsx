@@ -59,8 +59,8 @@ export function UnifiedChat({
     },
     metadata: {
       ...initialContext?.metadata,
-      subscriptionId: initialContext?.subscriptionId,
-      assessmentType: initialContext?.assessmentType,
+      subscriptionId: (initialContext as any)?.subscriptionId,
+      assessmentType: (initialContext as any)?.assessmentType,
     },
   }), [mode, position, agent, initialContext]);
 

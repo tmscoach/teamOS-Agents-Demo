@@ -124,7 +124,7 @@ export function AssessmentChatWrapper({
         case 'answer_multiple_questions': {
           const parts = params.split(':');
           const value = parts.pop()!;
-          const questionNumbers = parts.join(':').split(',').map(id => parseInt(id));
+          const questionNumbers = parts.join(':').split(',').map((id: string) => parseInt(id));
           const questionIds = questionNumbers.map(mapQuestionNumberToId);
               
           console.log('[AssessmentChatWrapper] Executing answer_multiple_questions:', {
@@ -134,7 +134,7 @@ export function AssessmentChatWrapper({
           });
           
           // Update all questions with visual feedback
-          questionIds.forEach(qId => {
+          questionIds.forEach((qId: number) => {
             setUpdatingQuestions(prev => new Set(prev).add(qId));
             onAnswerChange(qId, value);
             
@@ -173,20 +173,20 @@ export function AssessmentChatWrapper({
     <AskOsmoInput 
         defaultAgent="AssessmentAgent"
         testMode={false}
-        userId={`assessment-${selectedAssessment?.id || 'default'}`}
+        userId={`assessment-${selectedAssessment?._subscriptionId || selectedAssessment?.SubscriptionID || 'default'}`}
         userName="Assessment User"
         hasCompletedTMP={false}
         credits={5000}
         journeyPhase={JourneyPhase.ASSESSMENT}
         completedSteps={[]}
         metadata={{
-          subscriptionId: selectedAssessment?.id,
-          assessmentType: selectedAssessment?.type,
-          workflowId: selectedAssessment?.workflowId,
+          subscriptionId: selectedAssessment?._subscriptionId || selectedAssessment?.SubscriptionID,
+          assessmentType: selectedAssessment?.AssessmentType,
+          workflowId: selectedAssessment?.WorkflowID,
           workflowState: normalizedWorkflowState,
           selectedAssessment: selectedAssessment ? {
-            type: selectedAssessment.type,
-            subscriptionId: selectedAssessment.id
+            type: selectedAssessment.AssessmentType,
+            subscriptionId: selectedAssessment._subscriptionId || selectedAssessment.SubscriptionID
           } : undefined
         }}
     />

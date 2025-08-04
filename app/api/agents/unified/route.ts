@@ -91,16 +91,17 @@ export async function POST(request: NextRequest) {
 
     // Build agent context
     const agentContext: AgentContext = {
-      userId: dbUser.id,
-      userName: dbUser.name,
-      conversationId,
       teamId: dbUser.Team_Team_managerIdToUser[0]?.id || dbUser.teamId || '',
+      managerId: dbUser.id,
+      transformationPhase: 'assessment' as any,
+      conversationId,
       currentAgent: agentName,
       messageHistory: parsedMessages,
-      phase: 'assessment' as any,
       organizationId: dbUser.organizationId,
+      userRole: 'MANAGER',
       metadata: {
         mode,
+        userId: dbUser.id,
         ...clientContext?.metadata,
         userName: clientContext?.user?.name || dbUser.name,
         journeyPhase: clientContext?.journey?.phase,
@@ -163,8 +164,17 @@ export async function POST(request: NextRequest) {
       await prisma.conversation.create({
         data: {
           id: conversationId,
-          userId: dbUser.id,
-          messages: parsedMessages as any,
+          teamId: dbUser.Team_Team_managerIdToUser[0]?.id || dbUser.teamId || '',
+          managerId: dbUser.id,
+          currentAgent: targetAgent,
+          phase: 'assessment',
+          contextData: {
+            messages: parsedMessages,
+            lastAgent: agentName,
+            handoffTo: targetAgent,
+            originalRequest: lastUserMessage,
+          } as any,
+          updatedAt: new Date(),
           metadata: {
             lastAgent: agentName,
             handoffTo: targetAgent,
@@ -200,22 +210,23 @@ export async function POST(request: NextRequest) {
           const schemaShape: any = {};
           for (const [key, value] of Object.entries(params)) {
             // Simple type mapping
-            if (value.type === 'string') {
+            const paramValue = value as any;
+            if (paramValue.type === 'string') {
               schemaShape[key] = z.string();
-            } else if (value.type === 'number') {
+            } else if (paramValue.type === 'number') {
               schemaShape[key] = z.number();
-            } else if (value.type === 'boolean') {
+            } else if (paramValue.type === 'boolean') {
               schemaShape[key] = z.boolean();
-            } else if (value.type === 'object') {
+            } else if (paramValue.type === 'object') {
               schemaShape[key] = z.object({});
-            } else if (value.type === 'array') {
+            } else if (paramValue.type === 'array') {
               schemaShape[key] = z.array(z.any());
             } else {
               schemaShape[key] = z.any();
             }
             
             // Make optional if not required
-            if (!value.required) {
+            if (!paramValue.required) {
               schemaShape[key] = schemaShape[key].optional();
             }
           }
@@ -241,7 +252,7 @@ export async function POST(request: NextRequest) {
 
     // Get system prompt
     let systemPrompt = '';
-    if ('buildSystemMessage' in agent && typeof agent.buildSystemMessage === 'function') {
+    if ('buildSystemMessage' in agent && typeof (agent as any).buildSystemMessage === 'function') {
       systemPrompt = (agent as any).buildSystemMessage(agentContext);
     } else if ('instructions' in agent) {
       systemPrompt = typeof (agent as any).instructions === 'function'
@@ -275,11 +286,17 @@ export async function POST(request: NextRequest) {
             where: { id: conversationId },
             create: {
               id: conversationId,
-              userId: dbUser.id,
-              messages: [
-                ...parsedMessages,
-                { role: 'assistant', content: text },
-              ] as any,
+              teamId: dbUser.Team_Team_managerIdToUser[0]?.id || dbUser.teamId || '',
+              managerId: dbUser.id,
+              currentAgent: agentName,
+              phase: 'assessment',
+              contextData: {
+                messages: [
+                  ...parsedMessages,
+                  { role: 'assistant', content: text },
+                ]
+              } as any,
+              updatedAt: new Date(),
               metadata: {
                 agent: agentName,
                 mode,
@@ -287,10 +304,13 @@ export async function POST(request: NextRequest) {
               } as any,
             },
             update: {
-              messages: [
-                ...parsedMessages,
-                { role: 'assistant', content: text },
-              ] as any,
+              contextData: {
+                messages: [
+                  ...parsedMessages,
+                  { role: 'assistant', content: text },
+                ]
+              } as any,
+              updatedAt: new Date(),
               metadata: {
                 agent: agentName,
                 mode,

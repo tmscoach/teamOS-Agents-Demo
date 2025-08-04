@@ -343,7 +343,7 @@ export default async function DashboardPage({
       {/* Dashboard Client Components */}
       <DashboardClient 
         userPhase={user?.journeyPhase as any || 'ONBOARDING'}
-        completedAssessments={Object.keys(user?.completedAssessments || {})}
+        completedAssessments={user?.completedSteps || []}
         showAssessmentModal={params.showAssessmentModal === 'true'}
       />
       

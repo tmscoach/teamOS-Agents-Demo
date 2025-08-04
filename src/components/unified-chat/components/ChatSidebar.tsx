@@ -14,7 +14,7 @@ export function ChatSidebar() {
   const [isExpanded, setIsExpanded] = useState(true);
   
   const isLeft = context.position === 'left-sidebar';
-  const isFullPage = context.mode === 'full-page';
+  const isFullPage = (context.mode as any) === 'full-page';
 
   return (
     <>
