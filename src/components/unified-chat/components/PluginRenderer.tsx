@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode } from 'react';
+import { ReactNode, useState, useEffect, useRef } from 'react';
 import { useChatContext } from './ChatProvider';
 import type { PluginComponentProps } from '../types';
 
@@ -8,6 +8,21 @@ interface PluginRendererProps {
   type: 'header' | 'messageRenderer' | 'inputExtensions' | 'sidePanel' | 'messageHeader';
   message?: any;
   fallback?: ReactNode;
+}
+
+// Wrapper component that tracks if its children render null
+function PluginOrFallback({ 
+  children, 
+  fallback 
+}: { 
+  children: ReactNode; 
+  fallback?: ReactNode 
+}) {
+  // If children is explicitly null, use fallback
+  if (children === null || children === undefined) {
+    return fallback ? <>{fallback}</> : null;
+  }
+  return <>{children}</>;
 }
 
 export function PluginRenderer({ type, message, fallback }: PluginRendererProps) {
@@ -25,28 +40,28 @@ export function PluginRenderer({ type, message, fallback }: PluginRendererProps)
     return fallback ? <>{fallback}</> : null;
   }
 
-  // For message renderers, try plugins first, then fallback
+  // For message renderers, render plugin or fallback
   if (type === 'messageRenderer' && message) {
     console.log(`[PluginRenderer] Found ${relevantPlugins.length} plugins for message rendering`);
     
-    // Try each plugin by rendering them
-    // Plugins should return null if they don't handle the message
-    for (const plugin of relevantPlugins) {
+    // For now, we'll render the first plugin if available, otherwise fallback
+    // In the future, plugins could have a canHandle method to check
+    if (relevantPlugins.length > 0) {
+      const plugin = relevantPlugins[0];
       const Component = plugin.components![type];
       if (Component) {
-        console.log(`[PluginRenderer] Trying plugin ${plugin.name} for message rendering`);
-        // Render the component directly - if it returns null, try next plugin
-        const result = Component({ message, context } as PluginComponentProps);
-        if (result !== null) {
-          console.log(`[PluginRenderer] Plugin ${plugin.name} handled the message`);
-          return <>{result}</>;
-        }
-        console.log(`[PluginRenderer] Plugin ${plugin.name} returned null, trying next`);
+        console.log(`[PluginRenderer] Using plugin ${plugin.name} for message rendering`);
+        
+        // Render the plugin component, it will return null if it doesn't handle the message
+        const pluginContent = <Component message={message} context={context} />;
+        
+        // Use the wrapper to handle null returns with fallback
+        return <PluginOrFallback fallback={fallback}>{pluginContent}</PluginOrFallback>;
       }
     }
     
-    // If no plugin handled it, use fallback
-    console.log('[PluginRenderer] No plugin handled message, using fallback');
+    // No plugins available, use fallback
+    console.log('[PluginRenderer] No plugins available, using fallback');
     return fallback ? <>{fallback}</> : null;
   }
 
