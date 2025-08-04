@@ -153,16 +153,17 @@ export async function POST() {
     const { workflowStateManager } = await import("@/src/lib/mock-tms-api/workflow-state-manager");
     
     // Initialize and add some answers to TMP workflow
+    // These answers should result in Upholder Maintainer as major role
     workflowStateManager.getOrCreateWorkflowState('21989', 'tmp-workflow');
     workflowStateManager.updateWorkflowState(
       '21989',
       2,
       [
-        { questionID: 20, value: "30" },
-        { questionID: 21, value: "12" },
-        { questionID: 22, value: "21" },
-        { questionID: 23, value: "03" },
-        { questionID: 24, value: "20" }
+        { questionID: 20, value: "00" },  // Maintainer focus
+        { questionID: 21, value: "00" },  // Inspector secondary
+        { questionID: 22, value: "10" },  // Organizer third
+        { questionID: 23, value: "20" },
+        { questionID: 24, value: "31" }
       ]
     );
 
