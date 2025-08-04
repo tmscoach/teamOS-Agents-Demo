@@ -144,6 +144,84 @@ export async function getProductUsage(options: {
 }
 
 /**
+ * GET /Report/GetSummary/{subscriptionId}
+ * Get HTML summary for a specific assessment
+ */
+export async function getHTMLSummary(options: {
+  endpoint: string;
+  jwt?: string;
+}): Promise<string> {
+  // Extract path parameters
+  const pathMatch = options.endpoint.match(/\/Report\/GetSummary\/(\d+)/);
+  if (!pathMatch) {
+    throw {
+      error: 'INVALID_REQUEST',
+      message: 'Invalid endpoint format'
+    } as TMSErrorResponse;
+  }
+
+  const subscriptionId = pathMatch[1];
+
+  // Validate JWT
+  if (!options.jwt) {
+    throw {
+      error: 'UNAUTHORIZED',
+      message: 'Authentication required'
+    } as TMSErrorResponse;
+  }
+
+  const claims = mockTMSClient.decodeJWT(options.jwt);
+  if (!claims) {
+    throw {
+      error: 'INVALID_TOKEN',
+      message: 'Invalid authentication token'
+    } as TMSErrorResponse;
+  }
+
+  // Get subscription
+  const subscription = mockDataStore.getSubscription(subscriptionId);
+  if (!subscription) {
+    throw {
+      error: 'SUBSCRIPTION_NOT_FOUND',
+      message: 'Subscription not found'
+    } as TMSErrorResponse;
+  }
+
+  // Check access - either the user owns the subscription or is a facilitator in the same org
+  const user = mockDataStore.getUserByToken(options.jwt);
+  if (!user) {
+    throw {
+      error: 'USER_NOT_FOUND',
+      message: 'User not found'
+    } as TMSErrorResponse;
+  }
+
+  const hasAccess = subscription.userId === user.id || 
+    (user.userType === 'Facilitator' && user.organizationId === subscription.organizationId);
+
+  if (!hasAccess) {
+    throw {
+      error: 'ACCESS_DENIED',
+      message: 'You do not have access to this subscription'
+    } as TMSErrorResponse;
+  }
+
+  // Check if subscription is completed
+  if (subscription.status !== 'completed') {
+    throw {
+      error: 'ASSESSMENT_NOT_COMPLETE',
+      message: 'Assessment must be completed to generate summary'
+    } as TMSErrorResponse;
+  }
+
+  // Generate HTML summary based on assessment type
+  const { generateHTMLSummary } = await import('../summary-generators');
+  const htmlSummary = await generateHTMLSummary(subscription, '6'); // Default template ID
+  
+  return htmlSummary;
+}
+
+/**
  * GET /Subscription/GetHTMLView/{templateId}/{subscriptionId}
  * Get HTML report for a specific assessment
  */

@@ -412,6 +412,29 @@ export const TMS_TOOL_REGISTRY: Record<string, TMSToolDefinition> = {
     }
   },
 
+  tms_generate_html_summary: {
+    name: 'tms_generate_html_summary',
+    description: 'Generate a condensed HTML summary for a completed assessment',
+    category: 'debrief',
+    endpoint: '/Report/GetSummary/{subscriptionId}',
+    method: 'GET',
+    requiresAuth: true,
+    parameters: {
+      type: 'object',
+      properties: {
+        subscriptionId: {
+          type: 'string',
+          description: 'The subscription ID for the completed assessment'
+        },
+        templateId: {
+          type: 'string',
+          description: 'Template version (default: 6)'
+        }
+      },
+      required: ['subscriptionId']
+    }
+  },
+
   tms_generate_graph: {
     name: 'tms_generate_graph',
     description: 'Generate PNG graph/chart for reports',

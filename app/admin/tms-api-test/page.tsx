@@ -101,6 +101,21 @@ export default function TMSApiTestPage() {
       params: { subscriptionId: "21988", templateId: "360" }
     },
     {
+      name: "TMP Summary",
+      tool: "tms_generate_html_summary",
+      params: { subscriptionId: "21989" }
+    },
+    {
+      name: "QO2 Summary",
+      tool: "tms_generate_html_summary",
+      params: { subscriptionId: "21983" }
+    },
+    {
+      name: "Team Signals Summary",
+      tool: "tms_generate_html_summary",
+      params: { subscriptionId: "21988" }
+    },
+    {
       name: "TMP Wheel Graph",
       tool: "tms_generate_graph",
       params: { 
@@ -255,6 +270,9 @@ export default function TMSApiTestPage() {
                     workflowId === "qo2-workflow" ? "10" : 
                     workflowId === "team-signals-workflow" ? "2" :
                     "360" // Team Signals 360
+      },
+      tms_generate_html_summary: {
+        subscriptionId: subscriptionId
       },
       tms_generate_graph: {
         chartType: "CreateTMPQWheel",
@@ -799,7 +817,7 @@ export default function TMSApiTestPage() {
               </div>
 
               {/* Workflow and Report Scenarios */}
-              {selectedTool && (selectedTool.includes('workflow') || selectedTool.includes('tms_get_workflow') || selectedTool === 'tms_get_dashboard_subscriptions' || selectedTool.includes('report') || selectedTool === 'tms_generate_html_report' || selectedTool === 'tms_generate_graph' || selectedTool === 'tms_debrief_report') && (
+              {selectedTool && (selectedTool.includes('workflow') || selectedTool.includes('tms_get_workflow') || selectedTool === 'tms_get_dashboard_subscriptions' || selectedTool.includes('report') || selectedTool === 'tms_generate_html_report' || selectedTool === 'tms_generate_html_summary' || selectedTool === 'tms_generate_graph' || selectedTool === 'tms_debrief_report') && (
                 <div style={{ marginBottom: '24px' }}>
                   <h4 style={{
                     fontSize: '16px',
