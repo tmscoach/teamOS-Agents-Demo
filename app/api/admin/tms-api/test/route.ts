@@ -10,7 +10,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { tool, parameters, jwtToken, headers = {} } = await request.json();
+    const { tool, parameters, jwtToken, headers = {}, enableVisionProcessing = false } = await request.json();
 
     // Validate tool exists
     const toolDef = TMS_TOOL_REGISTRY[tool];
@@ -145,7 +145,7 @@ export async function POST(request: Request) {
             rawHtml: response,
             organizationId: 'default',
             teamId: null,
-            processImmediately: true,
+            processImmediately: enableVisionProcessing,
             jwt: jwtToken
           })
         });
