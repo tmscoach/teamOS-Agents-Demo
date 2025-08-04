@@ -35,14 +35,12 @@ export function ChatMessages() {
       
       <div className="flex flex-col gap-[23px]">
         {/* Welcome message if no messages */}
-        {chat.messages.length === 0 && (
+        {chat.messages.length === 0 && context.agent !== 'AssessmentAgent' && (
           <>
             <Oscar1 className="!w-[41px] !h-[41px]" />
             <p className="[font-family:'Inter',Helvetica] font-normal text-[color:var(--shadcn-ui-foreground)] text-lg tracking-[0] leading-7">
               {context.agent === 'OrchestratorAgent' && !context.user.hasCompletedTMP
                 ? "Welcome! Let's start with your Team Management Profile to unlock your journey."
-                : context.agent === 'AssessmentAgent'
-                ? "" // Don't show any text for AssessmentAgent - let the proactive message handle it
                 : "How can I help you today?"}
             </p>
           </>
