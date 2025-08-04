@@ -48,13 +48,17 @@ export class ReportStorageService {
         }
       });
 
-      // Process immediately if requested
+      // Always process the report to download images and create embeddings
+      // But only do vision analysis if processImmediately is true
       if (options.processImmediately) {
-        // Process synchronously for immediate results with vision analysis
-        await this.processReportAsync(report.id, options.jwt);
+        // Process synchronously with vision analysis
+        await this.processReportAsync(report.id, options.jwt, true);
+      } else {
+        // Process asynchronously without vision analysis
+        this.processReportAsync(report.id, options.jwt, false).catch(error => {
+          console.error(`Failed to process report ${report.id}:`, error);
+        });
       }
-      // If processImmediately is false, skip image processing entirely
-      // The report is stored but images are not analyzed with GPT Vision
 
       return report.id;
     } catch (error) {
@@ -161,7 +165,7 @@ export class ReportStorageService {
   /**
    * Process report asynchronously
    */
-  private async processReportAsync(reportId: string, jwt?: string): Promise<void> {
+  private async processReportAsync(reportId: string, jwt?: string, enableVisionAnalysis: boolean = true): Promise<void> {
     try {
       // Update status to processing
       await this.prisma.userReport.update({
@@ -177,11 +181,11 @@ export class ReportStorageService {
         throw new Error('Report not found');
       }
 
-      // 1. Download and store images
+      // 1. Download and store images (with or without vision analysis)
       const imageMap = await this.imageService.downloadReportImages(
         report.rawHtml,
         reportId,
-        { userId: report.userId, jwt }
+        { userId: report.userId, jwt, enableVisionAnalysis }
       );
 
       // 2. Store image records with vision analysis
