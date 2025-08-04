@@ -17,7 +17,7 @@ export const CHAT_PLUGINS: Record<string, ChatPlugin> = {
 // Agent to plugin mapping
 export const AGENT_PLUGIN_MAP: Record<string, string[]> = {
   AssessmentAgent: ['assessment', 'voice', 'action', 'assessmentActions'],
-  DebriefAgent: ['debrief', 'action'],
+  DebriefAgent: ['debrief', 'action', 'voice'], // Added voice for debrief
   OrchestratorAgent: ['action'],
   OnboardingAgent: ['action'],
   TeamManagementAgent: ['action'],
