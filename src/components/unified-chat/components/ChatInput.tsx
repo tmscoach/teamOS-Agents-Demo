@@ -67,7 +67,10 @@ export function ChatInput() {
     }
 
     // No plugin handled it, send to chat
+    console.log('[ChatInput] Sending message to chat:', input);
+    console.log('[ChatInput] Messages before submit:', chat.messages.length);
     chat.handleSubmit(e);
+    console.log('[ChatInput] Messages after submit:', chat.messages.length);
   };
 
   return (

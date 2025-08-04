@@ -86,17 +86,24 @@ export function UnifiedChat({
       console.log('[UnifiedChat] ==== RESPONSE RECEIVED ====');
       console.log('[UnifiedChat] Response status:', response.status);
       console.log('[UnifiedChat] Response headers:', response.headers);
-      console.log('[UnifiedChat] Current messages count:', chat.messages.length);
+      console.log('[UnifiedChat] Response body reader:', response.body);
+      console.log('[UnifiedChat] Current messages count before stream:', chat.messages.length);
       console.log('[UnifiedChat] ==== END RESPONSE ====');
     },
     onFinish: (message, { finishReason }) => {
       console.log('[UnifiedChat] ==== MESSAGE FINISHED ====');
+      console.log('[UnifiedChat] Message ID:', message.id);
+      console.log('[UnifiedChat] Message role:', message.role);
       console.log('[UnifiedChat] Full content:', message.content);
       console.log('[UnifiedChat] Content length:', message.content.length);
       console.log('[UnifiedChat] Finish reason:', finishReason);
       console.log('[UnifiedChat] Has ASSESSMENT_ACTION:', message.content.includes('[ASSESSMENT_ACTION:'));
       console.log('[UnifiedChat] Total messages after finish:', chat.messages.length);
-      console.log('[UnifiedChat] All messages:', chat.messages.map(m => ({ role: m.role, content: m.content.substring(0, 50) })));
+      console.log('[UnifiedChat] All messages:', chat.messages.map(m => ({ 
+        id: m.id,
+        role: m.role, 
+        content: m.content.substring(0, 50) 
+      })));
       
       if (message.content.includes('[ASSESSMENT_ACTION:')) {
         const matches = message.content.match(/\[ASSESSMENT_ACTION:([^\]]+)\]/g);
@@ -153,6 +160,19 @@ Take your time - there are no wrong answers! I'm here if you need help.`;
       }
     }
   }, [proactiveMessage, state.isOpen, chat.messages.length, agent]);
+
+  // Debug chat messages changes
+  useEffect(() => {
+    console.log('[UnifiedChat] chat.messages changed:', {
+      count: chat.messages.length,
+      messages: chat.messages.map(m => ({
+        id: m.id,
+        role: m.role,
+        contentLength: m.content?.length || 0,
+        contentPreview: m.content?.substring(0, 30) || ''
+      }))
+    });
+  }, [chat.messages]);
 
   // Handle plugin lifecycle
   useEffect(() => {
