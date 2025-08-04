@@ -124,8 +124,8 @@ export async function POST(request: Request) {
       });
     }
 
-    // For HTML reports, trigger storage with immediate processing
-    if (tool === 'tms_generate_html_report' && response) {
+    // For HTML reports and summaries, trigger storage with immediate processing
+    if ((tool === 'tms_generate_html_report' || tool === 'tms_generate_html_summary') && response) {
       try {
         const reportType = parameters.subscriptionId.startsWith('219') ? 'TMP' : 
                           parameters.subscriptionId.startsWith('218') ? 'QO2' : 'TEAM_SIGNALS';
