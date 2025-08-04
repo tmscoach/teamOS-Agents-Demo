@@ -10,6 +10,7 @@ import { JourneyPhase } from '@/lib/orchestrator/journey-phases';
 import { createSearchReportChunksTool } from '../tools/search-report-chunks';
 import { createGetReportContextTool } from '../tools/get-report-context';
 import { createSearchReportImagesTool } from '../tools/search-report-images';
+import { getDebriefReportTools } from '../tools/debrief-report-tools';
 
 /**
  * OpenAI-powered Debrief Agent with TMS tools and knowledge base
@@ -37,9 +38,57 @@ export class OpenAIDebriefAgent extends OpenAIAgent {
       description: 'Provides assessment debriefs and generates reports for completed assessments',
       handoffDescription: 'Let me provide insights from your completed assessment',
       inputGuardrails: guardrails,
-      instructions: () => {
-        // Minimal fallback instructions - the real prompt comes from config
-        return `You are the TMS Debrief Agent.`;
+      instructions: (context?: AgentContext) => {
+        // Get report context from metadata
+        const reportType = context?.metadata?.assessmentType || 'assessment';
+        const subscriptionId = context?.metadata?.subscriptionId || '';
+        
+        return `You are the TMS Debrief Agent, specializing in helping managers understand their ${reportType} assessment results.
+
+Your personality:
+- Knowledgeable and insightful about TMS assessments
+- Encouraging and constructive in feedback
+- Clear in explaining complex concepts
+- Focused on actionable insights
+- Professional yet approachable
+
+Your responsibilities:
+1. Explain what the assessment results mean in practical terms
+2. Clarify scores, colors, and percentages in the report
+3. Provide context about roles, preferences, and team dynamics
+4. Answer questions about specific sections or scores
+5. Suggest concrete next steps based on the results
+6. Connect results to real-world team scenarios
+7. Help managers understand how to apply insights to improve team performance
+
+Report-Specific Guidance:
+- TMP Reports: Focus on major/related roles, work preferences (ICBS scores), and how these impact team dynamics
+- Team Signals: Explain the 8 sectors of High Energy Teams, color meanings (red=needs attention, amber=developing, green=strong)
+- QO2: Clarify organizational effectiveness quadrants and improvement opportunities
+
+Visual Elements in Reports:
+- The wheel/graph shows your assessment profile visually
+- Colors indicate areas of strength and areas needing development
+- Percentages show relative scores compared to maximum possible
+- Sections are interactive - you can ask about any specific area
+
+IMPORTANT: 
+- Base all answers on the actual report content - use the search tools to find specific information
+- Be specific and reference actual scores/data from the user's report
+- Avoid generic advice - tailor responses to their specific results
+- When user asks about a section, use search_report_chunks to find the relevant content
+- If discussing visual elements, use search_report_images to understand what they show
+
+Context Information:
+- Subscription ID: ${subscriptionId}
+- Report Type: ${reportType}
+- You have access to the full report content through search tools
+
+Voice Interaction Guidelines:
+- For voice queries, keep responses concise and conversational
+- Offer to elaborate if the user wants more detail
+- Use natural pauses between key points
+- Summarize complex information into digestible chunks`;
       },
       tools: [],
       handoffs: [{
@@ -88,12 +137,13 @@ export class OpenAIDebriefAgent extends OpenAIAgent {
     const reportTools: AgentTool[] = [
       this.reportSearchTool,
       this.reportContextTool,
-      this.reportImagesTool
+      this.reportImagesTool,
+      ...getDebriefReportTools() // Add debrief-specific tools
     ];
     
     // Add to tools array
     this.tools.push(...reportTools);
-    console.log(`[${this.name}] Added ${reportTools.length} report search tools to total of ${this.tools.length} tools`);
+    console.log(`[${this.name}] Added ${reportTools.length} report tools to total of ${this.tools.length} tools`);
   }
 
   /**

@@ -216,6 +216,16 @@ const VoiceInputToggle = () => {
           await new Promise(resolve => setTimeout(resolve, 100));
         }
         
+        // Handle debrief mode voice setup
+        if (context.agent === 'DebriefAgent' && context.metadata) {
+          console.log('[VoiceToggle] Setting up voice for debrief mode:', {
+            reportId: context.metadata.reportId,
+            assessmentType: context.metadata.assessmentType,
+            subscriptionId: context.metadata.subscriptionId
+          });
+          // Voice navigation will handle debrief-specific commands
+        }
+        
         // Start voice mode
         await startVoice();
         setVoiceModeEnabled(true);

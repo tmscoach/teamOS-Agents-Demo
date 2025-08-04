@@ -1,8 +1,9 @@
 import { currentUser } from '@/src/lib/auth/clerk-dev-wrapper'
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { getCurrentUserWithJourney } from '@/lib/auth/roles'
 import { prisma } from '@/lib/db/prisma'
-import { Bell, Users, Pencil, Book, Settings, Focus, Plus, Coins, CheckCircle, User } from 'lucide-react'
+import { Bell, Users, Pencil, Book, Settings, Focus, Plus, Coins, CheckCircle, User, FileText } from 'lucide-react'
 import { Oscar1 } from '@/app/chat/components/icons/Oscar1'
 import { UserDropdown } from '@/components/ui/user-dropdown'
 import { AskOsmoInput } from '@/components/dashboard/AskOsmoInput'
@@ -74,6 +75,18 @@ export default async function DashboardPage({
   
   console.log('[Dashboard] Database user:', user ? { id: user.id, email: user.email, journeyPhase: user.journeyPhase, journeyStatus: user.journeyStatus } : null)
   
+  // Fetch completed reports count for the user
+  let completedReportsCount = 0;
+  if (user) {
+    completedReportsCount = await prisma.userReport.count({
+      where: {
+        userId: user.id,
+        processingStatus: 'COMPLETED'
+      }
+    });
+    console.log('[Dashboard] Completed reports count:', completedReportsCount);
+  }
+  
   // Redirect admin users to admin dashboard
   if (user && user.role === 'ADMIN') {
     console.log('[Dashboard] Admin user, redirecting to /admin')
@@ -135,6 +148,19 @@ export default async function DashboardPage({
                       Team Dashboard
                     </span>
                   </button>
+
+                  {/* Reports */}
+                  <Link href="/reports" className="flex items-center gap-3 py-2 px-3 relative self-stretch w-full rounded-lg hover:bg-gray-100 transition-colors">
+                    <FileText className="w-4 h-4" color="#64748B" />
+                    <span className="font-medium text-gray-500 text-sm leading-normal">
+                      Reports
+                    </span>
+                    {completedReportsCount > 0 && (
+                      <span className="ml-auto bg-blue-100 text-blue-600 text-xs font-medium px-2 py-0.5 rounded-full">
+                        {completedReportsCount}
+                      </span>
+                    )}
+                  </Link>
 
                   {/* Craft Messages */}
                   <button className="flex items-center gap-3 py-2 px-3 relative self-stretch w-full rounded-lg hover:bg-gray-100 transition-colors">
