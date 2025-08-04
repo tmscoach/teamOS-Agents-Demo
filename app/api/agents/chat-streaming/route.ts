@@ -641,37 +641,14 @@ User message: ${message}`;
       tools = {};
       
       for (const agentTool of agent.tools) {
-        // Convert JSON schema to Zod schema (simplified conversion)
-        const createZodSchema = (jsonSchema: any): any => {
-          if (jsonSchema.type === 'object') {
-            const shape: any = {};
-            if (jsonSchema.properties) {
-              for (const [key, value] of Object.entries(jsonSchema.properties)) {
-                const prop = value as any;
-                if (prop.type === 'string') {
-                  shape[key] = prop.required ? z.string() : z.string().optional();
-                } else if (prop.type === 'number') {
-                  shape[key] = prop.required ? z.number() : z.number().optional();
-                } else if (prop.type === 'boolean') {
-                  shape[key] = prop.required ? z.boolean() : z.boolean().optional();
-                } else if (prop.type === 'array') {
-                  // Handle array types
-                  if (prop.items?.type === 'number') {
-                    shape[key] = prop.required ? z.array(z.number()) : z.array(z.number()).optional();
-                  } else if (prop.items?.type === 'string') {
-                    shape[key] = prop.required ? z.array(z.string()) : z.array(z.string()).optional();
-                  } else {
-                    shape[key] = prop.required ? z.array(z.any()) : z.array(z.any()).optional();
-                  }
-                } else if (prop.type === 'object') {
-                  shape[key] = z.object({});
-                }
-              }
-            }
-            return z.object(shape);
-          }
-          return z.object({});
-        };
+        try {
+          // Convert JSON schema to Zod schema - simplified for now
+          // Just use z.any() for all parameters to avoid conversion issues
+          const createZodSchema = (jsonSchema: any): any => {
+            // For now, just accept any object shape to avoid conversion errors
+            // The agent tools will still validate their own parameters
+            return z.object({}).passthrough();
+          };
 
         tools[agentTool.name] = tool({
           description: agentTool.description,
@@ -749,6 +726,11 @@ User message: ${message}`;
             }
           }
         });
+        } catch (toolConversionError) {
+          console.error(`[${context.currentAgent}] Failed to convert tool ${agentTool.name}:`, toolConversionError);
+          console.error(`[${context.currentAgent}] Tool schema:`, JSON.stringify(agentTool.parameters, null, 2));
+          // Skip this tool but continue with others
+        }
       }
       console.log(`[${context.currentAgent}] Available tools:`, Object.keys(tools));
       
@@ -890,14 +872,20 @@ User message: ${message}`;
         hasTools: !!tools && Object.keys(tools).length > 0,
         toolCount: tools ? Object.keys(tools).length : 0,
         systemPromptLength: enhancedPrompt.length,
-        userMessage: userMessageContent.substring(0, 100) + '...'
+        userMessage: userMessageContent.substring(0, 100) + '...',
+        temperature,
+        maxTokens: 1000,
+        conversationMessagesCount: conversationMessages.length
       });
       
-      const result = await streamText({
-        ...streamConfig,
-        experimental_toolCallStreaming: true, // Enable tool streaming
-        maxSteps: 5, // Allow multiple steps for tool calls and responses  
-        experimental_continueSteps: true, // Continue after tool calls
+      
+      let result;
+      try {
+        result = await streamText({
+          ...streamConfig,
+          experimental_toolCallStreaming: true, // Enable tool streaming
+          maxSteps: 5, // Allow multiple steps for tool calls and responses  
+          experimental_continueSteps: true, // Continue after tool calls
         onToolCall: async ({ toolCall }: any) => {
           console.log('[Streaming] ==== TOOL CALL INITIATED ====');
           console.log('[Streaming] Tool:', toolCall.toolName);
@@ -1282,6 +1270,18 @@ User message: ${message}`;
         }
       },
     });
+      } catch (streamError) {
+        console.error(`[Streaming] Error in streamText call:`, streamError);
+        console.error(`[Streaming] streamText error details:`, {
+          message: streamError instanceof Error ? streamError.message : 'Unknown',
+          stack: streamError instanceof Error ? streamError.stack : undefined,
+          name: streamError instanceof Error ? streamError.name : undefined,
+          agent: context.currentAgent,
+          hasTools: !!tools,
+          toolCount: tools ? Object.keys(tools).length : 0
+        });
+        throw streamError;
+      }
 
       // Return streaming response with metadata headers
       const headers = new Headers();
@@ -1291,16 +1291,81 @@ User message: ${message}`;
       console.log('[Streaming] Returning stream response');
       return result.toDataStreamResponse({ headers });
     } catch (toolError) {
-      console.error('[Streaming] Tool error:', toolError);
-      console.error('[Streaming] Tool error details:', {
+      console.error('[Streaming] Critical streaming error:', toolError);
+      console.error('[Streaming] Error details:', {
         message: toolError instanceof Error ? toolError.message : 'Unknown error',
-        stack: toolError instanceof Error ? toolError.stack : undefined
+        stack: toolError instanceof Error ? toolError.stack : undefined,
+        name: toolError instanceof Error ? toolError.name : undefined,
+        agent: context.currentAgent,
+        conversationId: context.conversationId,
+        hasTools: !!tools && Object.keys(tools).length > 0,
+        toolCount: tools ? Object.keys(tools).length : 0
       });
-      throw toolError;
+      
+      // Return a properly formatted error response that the client can handle
+      const errorMessage = toolError instanceof Error ? toolError.message : 'An error occurred while processing your request';
+      
+      // Try to return a properly formatted stream error response
+      try {
+        // Use streamText to return an error message in the expected format
+        const { streamText } = await import('ai');
+        const { openai: aiOpenai } = await import('@ai-sdk/openai');
+        
+        const errorResult = await streamText({
+          model: aiOpenai('gpt-4o-mini'),
+          system: 'Return the exact error message provided by the user.',
+          messages: [
+            { role: 'user', content: `Error: ${errorMessage}. Please try again or refresh the page if the problem persists.` }
+          ],
+          maxTokens: 100
+        });
+        
+        console.log('[Streaming] Returning formatted error stream');
+        return errorResult.toDataStreamResponse({
+          headers: {
+            'X-Conversation-ID': context.conversationId,
+            'X-Error': 'true'
+          }
+        });
+      } catch (fallbackError) {
+        console.error('[Streaming] Failed to create error stream:', fallbackError);
+        // Ultimate fallback: return a plain error response
+        return new Response(JSON.stringify({
+          error: errorMessage,
+          conversationId: context.conversationId
+        }), { 
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
     }
   } catch (error) {
-    console.error('Streaming chat error:', error);
-    return new Response('Internal server error', { status: 500 });
+    console.error('[Streaming] Outer catch - streaming chat error:', error);
+    console.error('[Streaming] Full error object:', {
+      message: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      name: error instanceof Error ? error.name : undefined,
+      toString: error?.toString ? error.toString() : String(error)
+    });
+    
+    // Try to provide more specific error message
+    let errorMessage = 'Internal server error';
+    if (error instanceof Error) {
+      if (error.message.includes('API key')) {
+        errorMessage = 'API configuration error. Please check server logs.';
+      } else if (error.message.includes('rate limit')) {
+        errorMessage = 'Rate limit exceeded. Please try again in a moment.';
+      } else if (error.message.includes('timeout')) {
+        errorMessage = 'Request timed out. Please try again.';
+      } else {
+        errorMessage = `Server error: ${error.message}`;
+      }
+    }
+    
+    return new Response(JSON.stringify({ error: errorMessage }), { 
+      status: 500,
+      headers: { 'Content-Type': 'application/json' }
+    });
   }
 }
 

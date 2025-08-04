@@ -79,7 +79,28 @@ export default function ChatClientOptimized() {
       }
     },
     onError(error) {
-      console.error('Chat error:', error);
+      console.error('[ChatClient] Streaming error occurred:', error);
+      console.error('[ChatClient] Error details:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name,
+        cause: error.cause,
+        toString: error.toString(),
+        conversationId,
+        agentName,
+        // Check if there are any additional properties
+        fullError: JSON.stringify(error, null, 2)
+      });
+      
+      // Check response headers for additional error info
+      if (error.response) {
+        console.error('[ChatClient] Error response:', {
+          status: error.response.status,
+          statusText: error.response.statusText,
+          headers: error.response.headers,
+          url: error.response.url
+        });
+      }
     }
   });
 
