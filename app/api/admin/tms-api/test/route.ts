@@ -136,19 +136,78 @@ export async function POST(request: Request) {
         // For summaries, we need to wrap the fragment in a basic HTML document for proper rendering
         let htmlToStore = response;
         if (tool === 'tms_generate_html_summary' && typeof response === 'string' && !response.includes('<!DOCTYPE')) {
-          // It's a fragment, wrap it in basic HTML
+          // It's a fragment, wrap it in HTML with TMS styling to match full reports
           // URLs are already absolute in the fragment, no need to replace them
           htmlToStore = `<!DOCTYPE html>
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Assessment Summary</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Assessment Summary - TMS Global</title>
+  <link href="https://fonts.googleapis.com/css?family=Roboto" rel="stylesheet">
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    .table { width: 100%; border-collapse: collapse; }
-    .table td { padding: 10px; }
-    .backgroundWhite { background: white; }
-    h3 { color: #333; margin: 20px 0 10px 0; }
+    body { 
+      font-family: 'Roboto', sans-serif;
+      font-size: 18px;
+      background-color: white;
+      padding: 16px;
+      text-align: center;
+      max-width: 1200px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    
+    .table { 
+      width: 100%; 
+      border-collapse: collapse;
+      margin: 20px auto;
+      background-color: white;
+    }
+    
+    .table td { 
+      padding: 12px;
+      border: 1px solid #e0e0e0;
+      text-align: left;
+    }
+    
+    .table td:first-child {
+      font-weight: bold;
+      background-color: #f5f5f5;
+      width: 40%;
+    }
+    
+    .backgroundWhite { 
+      background: white; 
+    }
+    
+    h3 { 
+      color: #4472C4;
+      font-size: 24px;
+      margin: 30px 0 20px 0;
+      text-align: center;
+      font-weight: 500;
+    }
+    
+    img {
+      max-width: 100%;
+      height: auto;
+    }
+    
+    @media only screen and (max-width: 1024px) {
+      body {
+        padding: 8px;
+        max-width: 100%;
+      }
+      
+      h3 {
+        font-size: 20px;
+      }
+      
+      .table td {
+        padding: 8px;
+        font-size: 16px;
+      }
+    }
   </style>
 </head>
 <body>
