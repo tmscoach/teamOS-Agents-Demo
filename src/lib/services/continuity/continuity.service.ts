@@ -34,21 +34,7 @@ export class ContinuityService {
           journeyPhase: true,
           currentAgent: true,
           onboardingData: true,
-          completedAssessments: true,
-          conversations: {
-            where: {
-              status: 'ACTIVE'
-            },
-            orderBy: {
-              updatedAt: 'desc'
-            },
-            take: 1,
-            select: {
-              id: true,
-              metadata: true,
-              context: true
-            }
-          }
+          completedAssessments: true
         }
       })
       
@@ -62,13 +48,26 @@ export class ContinuityService {
         return null
       }
       
+      // Get the latest conversation separately
+      const latestConversation = await this.prisma.conversation.findFirst({
+        where: {
+          managerId: userId
+        },
+        orderBy: {
+          updatedAt: 'desc'
+        },
+        select: {
+          id: true
+        }
+      })
+      
       // Build continuity state
       const state: ContinuityState = {
         userId,
         lastActivity: user.lastActivity,
         lastPhase: user.journeyPhase as JourneyPhase,
         lastAgent: user.currentAgent || undefined,
-        lastConversationId: user.conversations[0]?.id
+        lastConversationId: latestConversation?.id
       }
       
       // Check for pending actions based on journey phase
@@ -113,11 +112,20 @@ export class ContinuityService {
       }
       
       // Add conversation metadata if available
-      const lastConversation = user.conversations[0]
-      if (lastConversation) {
-        state.metadata = {
-          conversationContext: lastConversation.context,
-          conversationMetadata: lastConversation.metadata
+      if (latestConversation) {
+        const conversationDetails = await this.prisma.conversation.findUnique({
+          where: { id: latestConversation.id },
+          select: {
+            metadata: true,
+            contextData: true
+          }
+        })
+        
+        if (conversationDetails) {
+          state.metadata = {
+            conversationContext: conversationDetails.contextData,
+            conversationMetadata: conversationDetails.metadata
+          }
         }
       }
       

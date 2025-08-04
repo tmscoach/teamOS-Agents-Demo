@@ -308,7 +308,7 @@ IMPORTANT:
       }]
     });
     this.prisma = new PrismaClient();
-    this.tmsAuth = new TMSAuthService();
+    this.tmsAuth = TMSAuthService.getInstance();
   }
 
   async processMessage(message: string, context: AgentContext): Promise<AgentResponse> {
@@ -334,10 +334,10 @@ IMPORTANT:
     const response = await super.processMessage(message, context);
     
     // Add proactive guidance based on phase
-    if (response && !response.requiresHandoff) {
+    if (response && !response.handoff) {
       const guidance = this.getProactiveGuidance(context);
-      if (guidance) {
-        response.content += `\n\n${guidance}`;
+      if (guidance && response.message) {
+        response.message += `\n\n${guidance}`;
       }
     }
     
@@ -355,7 +355,11 @@ IMPORTANT:
           completedAssessments: true,
           teamSignalsEligible: true,
           onboardingData: true,
-          tmsUserId: true
+          TMSAuthToken: {
+            select: {
+              tmsUserId: true
+            }
+          }
         }
       });
 
@@ -367,7 +371,7 @@ IMPORTANT:
           journeyPhase: user.journeyPhase,
           completedAssessments: user.completedAssessments || {},
           teamSignalsEligible: user.teamSignalsEligible,
-          tmsUserId: user.tmsUserId,
+          tmsUserId: user.TMSAuthToken?.tmsUserId,
           userDataLoaded: true
         };
       }
@@ -431,17 +435,21 @@ IMPORTANT:
       
       if (availableAssessments.length === 0) {
         return {
-          content: "It looks like you've already completed the available assessments. Would you like to review your results or explore other team transformation tools?",
+          message: "It looks like you've already completed the available assessments. Would you like to review your results or explore other team transformation tools?",
+          events: [],
+          context: context,
           metadata: {}
         };
       }
       
       return {
-        content: `I can help you start an assessment! Here are your available options:
+        message: `I can help you start an assessment! Here are your available options:
 
 ${availableAssessments.map((a, i) => `${i + 1}. ${a}`).join('\n')}
 
 Which assessment would you like to take? Just tell me the name or number.`,
+        events: [],
+        context: context,
         metadata: {
           awaitingSelection: true
         }
@@ -461,14 +469,18 @@ Which assessment would you like to take? Just tell me the name or number.`,
     
     if (completedAssessments[selection.type]) {
       return {
-        content: `You've already completed the ${selection.type} assessment. Would you like to review your results or try a different assessment?`,
+        message: `You've already completed the ${selection.type} assessment. Would you like to review your results or try a different assessment?`,
+        events: [],
+        context: context,
         metadata: {}
       };
     }
     
     if (selection.type === 'TeamSignals' && !context.metadata?.teamSignalsEligible) {
       return {
-        content: "Team Signals requires completing the TMP assessment first. Would you like to start with TMP instead?",
+        message: "Team Signals requires completing the TMP assessment first. Would you like to start with TMP instead?",
+        events: [],
+        context: context,
         metadata: {}
       };
     }
@@ -481,7 +493,9 @@ Which assessment would you like to take? Just tell me the name or number.`,
     const selection = context.metadata?.selectedAssessment as AssessmentSelection;
     if (!selection) {
       return {
-        content: "I need to know which assessment you'd like to take first. Please select TMP or Team Signals.",
+        message: "I need to know which assessment you'd like to take first. Please select TMP or Team Signals.",
+        events: [],
+        context: context,
         metadata: {}
       };
     }
@@ -501,7 +515,7 @@ Which assessment would you like to take? Just tell me the name or number.`,
         
         // First, check if user has any existing subscriptions
         console.log('[AssessmentAgent] About to call tms_get_dashboard_subscriptions tool...');
-        const { callEvent, outputEvent } = await this.callTool('tms_get_dashboard_subscriptions', {});
+        const { callEvent, outputEvent } = await this.callTool('tms_get_dashboard_subscriptions', {}, context);
         console.log('[AssessmentAgent] Tool call event:', callEvent);
         console.log('[AssessmentAgent] Tool output event:', outputEvent);
         
@@ -528,7 +542,9 @@ Which assessment would you like to take? Just tell me the name or number.`,
             context.metadata.selectedAssessment = selection;
             
             return {
-              content: `I found your existing ${selection.type} assessment! Let me take you to continue where you left off.`,
+              message: `I found your existing ${selection.type} assessment! Let me take you to continue where you left off.`,
+              events: [],
+              context: context,
               metadata: {
                 selectedAssessment: selection,
                 existingSubscription: true,
@@ -564,7 +580,7 @@ Which assessment would you like to take? Just tell me the name or number.`,
         workflowId: workflowId,
         userId: context.metadata?.tmsUserId || context.managerId,
         organizationId: context.organizationId || 'default-org'
-      });
+      }, context);
       
       console.log('[AssessmentAgent] Assign tool call event:', callEvent);
       console.log('[AssessmentAgent] Assign tool output event:', outputEvent);
@@ -574,7 +590,7 @@ Which assessment would you like to take? Just tell me the name or number.`,
       // Extract subscription ID from the result
       const subscriptionId = assignResult?.success && assignResult?.output?.raw?.subscriptionId 
         ? assignResult.output.raw.subscriptionId
-        : assignResult?.output?.subscriptionId || assignResult?.subscriptionId;
+        : assignResult?.output?.subscriptionId;
         
       console.log('[AssessmentAgent] Extracted subscription ID:', subscriptionId);
       
@@ -584,7 +600,7 @@ Which assessment would you like to take? Just tell me the name or number.`,
         context.metadata.selectedAssessment = selection;
         
         return {
-          content: `Great choice! I've successfully set up your ${selection.type} assessment.
+          message: `Great choice! I've successfully set up your ${selection.type} assessment.
 
 The ${selection.type} assessment will help you understand ${
   selection.type === 'TMP' 
@@ -593,6 +609,8 @@ The ${selection.type} assessment will help you understand ${
 }.
 
 Let me take you to the assessment interface now...`,
+          events: [],
+          context: context,
           metadata: {
             selectedAssessment: selection,
             subscriptionCreated: true,
@@ -609,7 +627,9 @@ Let me take you to the assessment interface now...`,
       
       // Fallback - still redirect to assessment page which will handle the error
       return {
-        content: `I'll set up your ${selection.type} assessment now. Let me take you to the assessment interface...`,
+        message: `I'll set up your ${selection.type} assessment now. Let me take you to the assessment interface...`,
+        events: [],
+        context: context,
         metadata: {
           selectedAssessment: selection,
           requiresRedirect: true,

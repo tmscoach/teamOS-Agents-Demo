@@ -31,7 +31,7 @@ export function getSubscriptionIdString(
   assessment: AssessmentSubscription | AssessmentSubscriptionWithInternalId
 ): string {
   if (hasInternalSubscriptionId(assessment)) {
-    return assessment._subscriptionId;
+    return assessment._subscriptionId!; // Type guard ensures this is defined
   }
   return assessment.SubscriptionID.toString();
 }

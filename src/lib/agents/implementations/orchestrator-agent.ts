@@ -4,6 +4,8 @@ import { PrismaClient } from '@/lib/generated/prisma';
 import { dataQueryTools } from '../tools/data-query-tools';
 import { openai } from '@/src/lib/services/openai';
 import { RoutingService } from '../routing/RoutingService';
+import { AgentRegistry } from '../registry/AgentRegistry';
+import { AgentConfigLoader } from '../config/agent-config-loader';
 import { JourneyPhase } from '@/lib/orchestrator/journey-phases';
 import { continuityService } from '@/src/lib/services/continuity/continuity.service';
 
@@ -45,7 +47,8 @@ Example responses for users who haven't completed TMP:
       handoffs: [] // Dynamic handoffs based on intent
     });
     this.prisma = new PrismaClient();
-    this.routingService = new RoutingService();
+    const registry = new AgentRegistry();
+    this.routingService = new RoutingService(registry, AgentConfigLoader);
   }
 
   /**
@@ -160,7 +163,9 @@ Example responses for users who haven't completed TMP:
         // If there's a pending action, prepare appropriate response
         if (continuityState.pendingAction?.type === 'assessment_selection') {
           return {
-            content: continuityMessage,
+            message: continuityMessage,
+            events: [],
+            context: context,
             metadata: {
               continuityDetected: true,
               suggestAssessmentModal: true
@@ -228,9 +233,13 @@ Example responses for users who haven't completed TMP:
       if (targetAgent && targetAgent !== 'OrchestratorAgent') {
         console.log('[OrchestratorAgent] Routing to specialist agent:', targetAgent);
         return {
-          content: `I'll connect you with our ${targetAgent.replace('Agent', ' specialist')} who can best help with your request.`,
-          requiresHandoff: true,
-          handoffTo: targetAgent,
+          message: `I'll connect you with our ${targetAgent.replace('Agent', ' specialist')} who can best help with your request.`,
+          events: [],
+          context: context,
+          handoff: {
+            targetAgent: targetAgent,
+            reason: 'intent_based'
+          },
           metadata: {
             routingReason: 'intent_based',
             originalQuery: message
@@ -243,15 +252,15 @@ Example responses for users who haven't completed TMP:
     const response = await super.processMessage(message, context);
     
     // Check if we should proactively suggest next steps based on journey phase
-    if (response && !response.requiresHandoff) {
+    if (response && !response.handoff) {
       const proactiveGuidance = this.getProactiveGuidance(context);
-      if (proactiveGuidance) {
-        response.content += `\n\n${proactiveGuidance}`;
+      if (proactiveGuidance && response.message) {
+        response.message += `\n\n${proactiveGuidance}`;
       }
       
       // Check if response suggests showing assessment modal
-      if (response.content.toLowerCase().includes('assessment') && 
-          response.content.toLowerCase().includes('would you like')) {
+      if (response.message && response.message.toLowerCase().includes('assessment') && 
+          response.message.toLowerCase().includes('would you like')) {
         response.metadata = {
           ...response.metadata,
           suggestAssessmentModal: true
@@ -381,12 +390,14 @@ Return ONLY the agent name, nothing else.`
   private async generateProactiveMessage(context: AgentContext): Promise<AgentResponse> {
     const hasCompletedTMP = context.metadata?.completedAssessments?.TMP || false;
     const journeyPhase = context.metadata?.journeyPhase || JourneyPhase.ASSESSMENT;
-    const userName = context.metadata?.userName || context.userName || 'there';
+    const userName = context.metadata?.userName || 'there';
     
     // New user in assessment phase who hasn't completed TMP
     if (journeyPhase === JourneyPhase.ASSESSMENT && !hasCompletedTMP) {
       return {
-        content: `Welcome to your teamOS dashboard, ${userName}! 🎉\n\nI'm Osmo, here to guide you through your team transformation journey.\n\nLet's start by learning about your leadership style with the Team Management Profile. It only takes 15 minutes and you'll get:\n• Your personal work preferences profile\n• Insights into your team role\n• 5000 credits to assess your team\n\nReady to begin? Just type "start TMP" and I'll take you there!`,
+        message: `Welcome to your teamOS dashboard, ${userName}! 🎉\n\nI'm Osmo, here to guide you through your team transformation journey.\n\nLet's start by learning about your leadership style with the Team Management Profile. It only takes 15 minutes and you'll get:\n• Your personal work preferences profile\n• Insights into your team role\n• 5000 credits to assess your team\n\nReady to begin? Just type "start TMP" and I'll take you there!`,
+        events: [],
+        context: context,
         metadata: {
           proactiveType: 'tmp_prompt',
           showStartButton: true,
@@ -398,7 +409,9 @@ Return ONLY the agent name, nothing else.`
     // User has completed TMP, now in debrief phase
     if (journeyPhase === JourneyPhase.DEBRIEF && hasCompletedTMP) {
       return {
-        content: `Welcome back, ${userName}! 🎊\n\nExcellent work completing your TMP! You've earned 5000 credits.\n\nBased on your results, you're an Explorer-Promoter. This means you excel at generating ideas and inspiring others.\n\nWould you like to:\n• Review your detailed TMP results\n• Start assessing your team members\n• Learn about other assessments\n\nWhat interests you most?`,
+        message: `Welcome back, ${userName}! 🎊\n\nExcellent work completing your TMP! You've earned 5000 credits.\n\nBased on your results, you're an Explorer-Promoter. This means you excel at generating ideas and inspiring others.\n\nWould you like to:\n• Review your detailed TMP results\n• Start assessing your team members\n• Learn about other assessments\n\nWhat interests you most?`,
+        events: [],
+        context: context,
         metadata: {
           proactiveType: 'post_tmp_guidance',
           credits: 5000
@@ -408,7 +421,9 @@ Return ONLY the agent name, nothing else.`
     
     // Default welcome for other phases
     return {
-      content: `Welcome back, ${userName}! I'm here to help guide your team transformation journey.\n\nHow can I assist you today?`,
+      message: `Welcome back, ${userName}! I'm here to help guide your team transformation journey.\n\nHow can I assist you today?`,
+      events: [],
+      context: context,
       metadata: {
         proactiveType: 'general_welcome'
       }

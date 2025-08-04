@@ -158,8 +158,7 @@ export class VoiceNavigationService {
     console.log('[VoiceNavigationService] Parsed command:', {
       type: command.type,
       parameters: command.parameters,
-      confidence: command.confidence,
-      rawTranscript: command.rawTranscript
+      confidence: command.confidence
     });
     
     this.currentSession.commands.push(command);
