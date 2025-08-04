@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QO2 Summary - {{RESPONDENT_NAME}}</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      background: #f5f5f5;
+    }
+    
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background: white;
+    }
+    
+    h1 {
+      color: #2c3e50;
+      margin-bottom: 10px;
+      font-size: 28px;
+      text-align: center;
+    }
+    
+    h2 {
+      color: #34495e;
+      margin-bottom: 8px;
+      font-size: 20px;
+      text-align: center;
+    }
+    
+    h3 {
+      color: #2c3e50;
+      margin-top: 30px;
+      margin-bottom: 15px;
+      font-size: 18px;
+      border-bottom: 2px solid #27ae60;
+      padding-bottom: 5px;
+    }
+    
+    .score-overview {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border-radius: 12px;
+      padding: 30px;
+      margin: 30px 0;
+      text-align: center;
+    }
+    
+    .main-score {
+      font-size: 72px;
+      font-weight: bold;
+      margin: 10px 0;
+    }
+    
+    .score-category {
+      font-size: 24px;
+      margin-bottom: 20px;
+    }
+    
+    .score-details {
+      display: flex;
+      justify-content: space-around;
+      margin-top: 20px;
+      flex-wrap: wrap;
+    }
+    
+    .score-item {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      padding: 15px;
+      min-width: 150px;
+      margin: 10px;
+    }
+    
+    .score-item .label {
+      font-size: 14px;
+      opacity: 0.9;
+      margin-bottom: 5px;
+    }
+    
+    .score-item .value {
+      font-size: 32px;
+      font-weight: bold;
+    }
+    
+    .insights {
+      background: #f9f9f9;
+      border-left: 4px solid #27ae60;
+      padding: 20px;
+      margin: 20px 0;
+    }
+    
+    .insights ul {
+      list-style-type: none;
+      padding-left: 0;
+    }
+    
+    .insights li {
+      padding: 8px 0;
+      padding-left: 25px;
+      position: relative;
+    }
+    
+    .insights li:before {
+      content: "→";
+      color: #27ae60;
+      font-weight: bold;
+      position: absolute;
+      left: 0;
+    }
+    
+    .gauge-container {
+      text-align: center;
+      margin: 30px 0;
+    }
+    
+    .gauge {
+      width: 300px;
+      height: 150px;
+      position: relative;
+      margin: 0 auto;
+    }
+    
+    .footer {
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 1px solid #ddd;
+      text-align: center;
+      font-size: 12px;
+      color: #666;
+    }
+    
+    @media (max-width: 768px) {
+      .container {
+        padding: 15px;
+      }
+      
+      h1 {
+        font-size: 24px;
+      }
+      
+      .main-score {
+        font-size: 56px;
+      }
+      
+      .score-category {
+        font-size: 20px;
+      }
+      
+      .score-details {
+        flex-direction: column;
+        align-items: center;
+      }
+    }
+    
+    @media print {
+      body {
+        background: white;
+      }
+      
+      .container {
+        max-width: 100%;
+        padding: 0;
+      }
+      
+      .score-overview {
+        background: none;
+        border: 2px solid #333;
+        color: #333;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Opportunities-Obstacles Quotient Summary</h1>
+    <h2>{{RESPONDENT_NAME}}</h2>
+    
+    <div class="score-overview">
+      <div class="score-label">Your QO2 Score</div>
+      <div class="main-score">{{QO2_SCORE}}</div>
+      <div class="score-category">{{QO2_CATEGORY}}</div>
+      
+      <div class="score-details">
+        <div class="score-item">
+          <div class="label">Opportunities</div>
+          <div class="value">{{OPPORTUNITIES_SCORE}}</div>
+        </div>
+        <div class="score-item">
+          <div class="label">Obstacles</div>
+          <div class="value">{{OBSTACLES_SCORE}}</div>
+        </div>
+      </div>
+    </div>
+    
+    <h3>Key Insights</h3>
+    <div class="insights">
+      <ul>
+        <li>Strong ability to identify and leverage opportunities in your environment</li>
+        <li>Effective strategies for overcoming obstacles and challenges</li>
+        <li>Balanced approach to risk assessment and opportunity evaluation</li>
+        <li>Demonstrates resilience in the face of setbacks</li>
+      </ul>
+    </div>
+    
+    <h3>Organization</h3>
+    <div style="padding: 15px; background: #f9f9f9; border-radius: 8px;">
+      <p><strong>{{ORGANIZATION_NAME}}</strong></p>
+      <p style="color: #666; font-size: 14px; margin-top: 5px;">Your results are contextualized within your organizational environment</p>
+    </div>
+    
+    <div class="footer">
+      <p>Generated: {{REPORT_DATE}} | Template: QO2 Summary v1.0 | Team Management Systems</p>
+    </div>
+  </div>
+</body>
+</html>

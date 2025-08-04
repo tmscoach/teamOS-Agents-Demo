@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { MockTMSAPIClient } from "@/src/lib/mock-tms-api/mock-api-client";
 import { TMS_TOOL_REGISTRY } from "@/src/lib/agents/tools/tms-tool-registry";
+import { 
+  getReportTypeFromSubscriptionId, 
+  wrapHTMLFragment, 
+  isHTMLFragment 
+} from "@/src/lib/utils/tms-api-utils";
 
 export async function POST(request: Request) {
   try {
@@ -124,13 +129,23 @@ export async function POST(request: Request) {
       });
     }
 
-    // For HTML reports, trigger storage with immediate processing
-    if (tool === 'tms_generate_html_report' && response) {
+    // For HTML reports and summaries, trigger storage with immediate processing
+    if ((tool === 'tms_generate_html_report' || tool === 'tms_generate_html_summary') && response) {
+      // Define logPrefix outside try block so it's available in catch block
+      const isSummary = tool === 'tms_generate_html_summary';
+      const logPrefix = isSummary ? '[TMS API Test Summary]' : '[TMS API Test]';
+      const contentType = isSummary ? 'summary' : 'report';
+      
       try {
-        const reportType = parameters.subscriptionId.startsWith('219') ? 'TMP' : 
-                          parameters.subscriptionId.startsWith('218') ? 'QO2' : 'TEAM_SIGNALS';
+        const reportType = getReportTypeFromSubscriptionId(parameters.subscriptionId);
         
-        console.log('[TMS API Test] Storing HTML report for immediate processing...');
+        console.log(`${logPrefix} Storing HTML ${contentType} for immediate processing...`);
+        
+        // For summaries, wrap fragments in complete HTML document
+        let htmlToStore = response as any;
+        if (isSummary && typeof response === 'string' && isHTMLFragment(response)) {
+          htmlToStore = wrapHTMLFragment(response);
+        }
         
         const storeResponse = await fetch(`${request.url.replace('/api/admin/tms-api/test', '/api/reports/store')}`, {
           method: 'POST',
@@ -142,7 +157,7 @@ export async function POST(request: Request) {
             reportType,
             subscriptionId: parameters.subscriptionId,
             templateId: parameters.templateId || '6',
-            rawHtml: response,
+            rawHtml: htmlToStore,
             organizationId: 'default',
             teamId: null,
             processImmediately: enableVisionProcessing,
@@ -152,12 +167,12 @@ export async function POST(request: Request) {
 
         if (storeResponse.ok) {
           const storeData = await storeResponse.json();
-          console.log('[TMS API Test] Report stored successfully:', storeData.reportId);
+          console.log(`${logPrefix} ${contentType} stored successfully:`, storeData.reportId);
         } else {
-          console.error('[TMS API Test] Failed to store report:', await storeResponse.text());
+          console.error(`${logPrefix} Failed to store ${contentType}:`, await storeResponse.text());
         }
       } catch (storeError) {
-        console.error('[TMS API Test] Error storing report:', storeError);
+        console.error(`${logPrefix} Error storing ${contentType}:`, storeError);
       }
     }
 

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { mockDataStore, resetMockDataStore } from "@/src/lib/mock-tms-api/mock-data-store";
 import { mockTMSClient } from "@/src/lib/mock-tms-api/mock-api-client";
+import { TEST_SUBSCRIPTION_IDS } from "@/src/lib/utils/tms-api-utils";
 
 export async function POST() {
   try {
@@ -93,55 +94,57 @@ export async function POST() {
     
     // TMP Subscription (assigned to current user)
     const tmpSub = {
-      subscriptionId: '21989',
+      subscriptionId: TEST_SUBSCRIPTION_IDS.TMP,
       userId: currentUser.id,  // Changed to current user
       organizationId: testOrg.id,
       workflowId: 'tmp-workflow',
       workflowName: 'Team Management Profile',
       assessmentType: 'TMP' as const,
-      status: 'not_started' as const,  // Changed to not_started for assessment
-      completionPercentage: 0,
+      status: 'completed' as const,  // Mark as completed for summary generation
+      completionPercentage: 100,
       assignedDate: new Date('2024-01-15'),
-      completedDate: undefined,
+      completedDate: new Date('2024-01-20'),
       baseContentId: 3,
       currentPageId: 2
     };
-    mockDataStore.subscriptions.set('21989', tmpSub);
+    mockDataStore.subscriptions.set(TEST_SUBSCRIPTION_IDS.TMP, tmpSub);
     subscriptions.push(tmpSub);
     console.log('Seed: Created TMP subscription for current user', tmpSub);
     
     // QO2 Subscription (assigned to test respondent)
     const qo2Sub = {
-      subscriptionId: '21983',
+      subscriptionId: TEST_SUBSCRIPTION_IDS.QO2,
       userId: testRespondent.id,
       organizationId: testOrg.id,
       workflowId: 'qo2-workflow',
       workflowName: 'Opportunities-Obstacles Quotient',
       assessmentType: 'QO2' as const,
-      status: 'not_started' as const,
-      completionPercentage: 0,
+      status: 'completed' as const,  // Mark as completed for summary generation
+      completionPercentage: 100,
       assignedDate: new Date('2024-01-15'),
+      completedDate: new Date('2024-01-21'),
       baseContentId: 5,
       currentPageId: 408
     };
-    mockDataStore.subscriptions.set('21983', qo2Sub);
+    mockDataStore.subscriptions.set(TEST_SUBSCRIPTION_IDS.QO2, qo2Sub);
     subscriptions.push(qo2Sub);
     
     // Team Signals Subscription (assigned to test respondent)
     const teamSignalsSub = {
-      subscriptionId: '21988',
+      subscriptionId: TEST_SUBSCRIPTION_IDS.TEAM_SIGNALS,
       userId: testRespondent.id,
       organizationId: testOrg.id,
       workflowId: 'team-signals-workflow',
       workflowName: 'Team Signals',
       assessmentType: 'TeamSignals' as const,
-      status: 'not_started' as const,
-      completionPercentage: 0,
+      status: 'completed' as const,  // Mark as completed for summary generation
+      completionPercentage: 100,
       assignedDate: new Date('2024-01-15'),
+      completedDate: new Date('2024-01-22'),
       baseContentId: 12,
       currentPageId: 97
     };
-    mockDataStore.subscriptions.set('21988', teamSignalsSub);
+    mockDataStore.subscriptions.set(TEST_SUBSCRIPTION_IDS.TEAM_SIGNALS, teamSignalsSub);
     subscriptions.push(teamSignalsSub);
     
     console.log('Seed: All subscriptions in store:', Array.from(mockDataStore.subscriptions.values()));
@@ -151,23 +154,24 @@ export async function POST() {
     const { workflowStateManager } = await import("@/src/lib/mock-tms-api/workflow-state-manager");
     
     // Initialize and add some answers to TMP workflow
-    workflowStateManager.getOrCreateWorkflowState('21989', 'tmp-workflow');
+    // These answers should result in Upholder Maintainer as major role
+    workflowStateManager.getOrCreateWorkflowState(TEST_SUBSCRIPTION_IDS.TMP, 'tmp-workflow');
     workflowStateManager.updateWorkflowState(
-      '21989',
+      TEST_SUBSCRIPTION_IDS.TMP,
       2,
       [
-        { questionID: 20, value: "30" },
-        { questionID: 21, value: "12" },
-        { questionID: 22, value: "21" },
-        { questionID: 23, value: "03" },
-        { questionID: 24, value: "20" }
+        { questionID: 20, value: "00" },  // Maintainer focus
+        { questionID: 21, value: "00" },  // Inspector secondary
+        { questionID: 22, value: "10" },  // Organizer third
+        { questionID: 23, value: "20" },
+        { questionID: 24, value: "31" }
       ]
     );
 
     // Initialize and add some answers to QO2 workflow
-    workflowStateManager.getOrCreateWorkflowState('21983', 'qo2-workflow');
+    workflowStateManager.getOrCreateWorkflowState(TEST_SUBSCRIPTION_IDS.QO2, 'qo2-workflow');
     workflowStateManager.updateWorkflowState(
-      '21983',
+      TEST_SUBSCRIPTION_IDS.QO2,
       408,
       [
         { questionID: 100, value: "3" },
@@ -178,9 +182,9 @@ export async function POST() {
     );
 
     // Initialize and add some answers to Team Signals workflow
-    workflowStateManager.getOrCreateWorkflowState('21988', 'team-signals-workflow');
+    workflowStateManager.getOrCreateWorkflowState(TEST_SUBSCRIPTION_IDS.TEAM_SIGNALS, 'team-signals-workflow');
     workflowStateManager.updateWorkflowState(
-      '21988',
+      TEST_SUBSCRIPTION_IDS.TEAM_SIGNALS,
       97,
       [
         { questionID: 200, value: "5" },

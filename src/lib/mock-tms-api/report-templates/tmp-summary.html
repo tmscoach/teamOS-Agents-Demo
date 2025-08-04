@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TMP Summary - {{RESPONDENT_NAME}}</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      line-height: 1.6;
+      color: #333;
+      background: #f5f5f5;
+    }
+    
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background: white;
+    }
+    
+    h1 {
+      color: #2c3e50;
+      margin-bottom: 10px;
+      font-size: 28px;
+      text-align: center;
+    }
+    
+    h2 {
+      color: #34495e;
+      margin-bottom: 8px;
+      font-size: 20px;
+      text-align: center;
+    }
+    
+    h3 {
+      color: #2c3e50;
+      margin-top: 30px;
+      margin-bottom: 15px;
+      font-size: 18px;
+      border-bottom: 2px solid #3498db;
+      padding-bottom: 5px;
+    }
+    
+    .profile-summary {
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      overflow: hidden;
+      margin: 20px 0;
+    }
+    
+    .profile-content {
+      display: flex;
+      flex-wrap: wrap;
+    }
+    
+    .wheel-container {
+      flex: 1;
+      min-width: 300px;
+      padding: 20px;
+      text-align: center;
+    }
+    
+    .wheel-container img {
+      width: 100%;
+      max-width: 300px;
+      height: auto;
+    }
+    
+    .profile-details {
+      flex: 1;
+      min-width: 300px;
+      padding: 20px;
+      display: flex;
+      align-items: center;
+    }
+    
+    .profile-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    
+    .profile-table td {
+      padding: 10px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    
+    .profile-table td:first-child {
+      font-weight: bold;
+      color: #555;
+      width: 45%;
+    }
+    
+    .work-preferences {
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 20px 0;
+    }
+    
+    .key-characteristics {
+      background: #f9f9f9;
+      border-left: 4px solid #3498db;
+      padding: 20px;
+      margin: 20px 0;
+    }
+    
+    .key-characteristics ul {
+      list-style-type: none;
+      padding-left: 0;
+    }
+    
+    .key-characteristics li {
+      padding: 8px 0;
+      padding-left: 25px;
+      position: relative;
+    }
+    
+    .key-characteristics li:before {
+      content: "✓";
+      color: #3498db;
+      font-weight: bold;
+      position: absolute;
+      left: 0;
+    }
+    
+    .footer {
+      margin-top: 40px;
+      padding-top: 20px;
+      border-top: 1px solid #ddd;
+      text-align: center;
+      font-size: 12px;
+      color: #666;
+    }
+    
+    @media (max-width: 768px) {
+      .container {
+        padding: 15px;
+      }
+      
+      h1 {
+        font-size: 24px;
+      }
+      
+      h2 {
+        font-size: 18px;
+      }
+      
+      h3 {
+        font-size: 16px;
+      }
+      
+      .profile-content {
+        flex-direction: column;
+      }
+      
+      .wheel-container,
+      .profile-details {
+        min-width: auto;
+      }
+    }
+    
+    @media print {
+      body {
+        background: white;
+      }
+      
+      .container {
+        max-width: 100%;
+        padding: 0;
+      }
+      
+      .profile-summary,
+      .work-preferences {
+        border: 1px solid #333;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Team Management Profile Summary</h1>
+    <h2>{{RESPONDENT_NAME}}</h2>
+    
+    <div class="profile-summary">
+      <div class="profile-content">
+        <div class="wheel-container">
+          <img src="{{BASE_URL}}/GetGraph?CreateTMPQWheel&mr={{MAJOR_ROLE_SCORE}}&rr1={{RELATED_ROLE_1_SCORE}}&rr2={{RELATED_ROLE_2_SCORE}}&clear=yes" 
+               alt="Team Management Wheel">
+        </div>
+        <div class="profile-details">
+          <table class="profile-table">
+            <tr>
+              <td>Major Role:</td>
+              <td>{{MAJOR_ROLE}}</td>
+            </tr>
+            <tr>
+              <td>1st Related Role:</td>
+              <td>{{RELATED_ROLE_1}}</td>
+            </tr>
+            <tr>
+              <td>2nd Related Role:</td>
+              <td>{{RELATED_ROLE_2}}</td>
+            </tr>
+            <tr>
+              <td>Organization:</td>
+              <td>{{ORGANIZATION_NAME}}</td>
+            </tr>
+          </table>
+        </div>
+      </div>
+    </div>
+    
+    <h3>Work Preferences</h3>
+    <div class="work-preferences">
+      {{WORK_PREFERENCES_HTML}}
+    </div>
+    
+    <h3>Key Characteristics</h3>
+    <div class="key-characteristics">
+      <ul>
+        {{KEY_CHARACTERISTICS}}
+      </ul>
+    </div>
+    
+    <div class="footer">
+      <p>Generated: {{REPORT_DATE}} | Template: Summary v1.0 | Team Management Systems</p>
+    </div>
+  </div>
+</body>
+</html>
