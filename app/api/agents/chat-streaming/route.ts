@@ -642,47 +642,13 @@ User message: ${message}`;
       
       for (const agentTool of agent.tools) {
         try {
-          // Convert JSON schema to Zod schema (simplified conversion)
+          // Convert JSON schema to Zod schema - simplified for now
+          // Just use z.any() for all parameters to avoid conversion issues
           const createZodSchema = (jsonSchema: any): any => {
-          if (jsonSchema.type === 'object') {
-            const shape: any = {};
-            const requiredFields = jsonSchema.required || [];
-            
-            if (jsonSchema.properties) {
-              for (const [key, value] of Object.entries(jsonSchema.properties)) {
-                const prop = value as any;
-                const isRequired = requiredFields.includes(key);
-                
-                if (prop.type === 'string') {
-                  shape[key] = isRequired ? z.string() : z.string().optional();
-                } else if (prop.type === 'number') {
-                  shape[key] = isRequired ? z.number() : z.number().optional();
-                } else if (prop.type === 'boolean') {
-                  shape[key] = isRequired ? z.boolean() : z.boolean().optional();
-                } else if (prop.type === 'array') {
-                  // Handle array types
-                  if (prop.items?.type === 'number') {
-                    shape[key] = isRequired ? z.array(z.number()) : z.array(z.number()).optional();
-                  } else if (prop.items?.type === 'string') {
-                    shape[key] = isRequired ? z.array(z.string()) : z.array(z.string()).optional();
-                  } else if (prop.items?.type === 'object') {
-                    shape[key] = isRequired ? z.array(z.any()) : z.array(z.any()).optional();
-                  } else {
-                    shape[key] = isRequired ? z.array(z.any()) : z.array(z.any()).optional();
-                  }
-                } else if (prop.type === 'object') {
-                  // Recursively handle nested objects if needed
-                  shape[key] = isRequired ? z.object({}) : z.object({}).optional();
-                } else {
-                  // Fallback for any other type
-                  shape[key] = isRequired ? z.any() : z.any().optional();
-                }
-              }
-            }
-            return z.object(shape);
-          }
-          return z.object({});
-        };
+            // For now, just accept any object shape to avoid conversion errors
+            // The agent tools will still validate their own parameters
+            return z.object({}).passthrough();
+          };
 
         tools[agentTool.name] = tool({
           description: agentTool.description,
