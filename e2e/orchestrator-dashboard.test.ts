@@ -28,37 +28,37 @@ describe('Orchestrator Dashboard E2E Tests', () => {
     }
   })
   
-  test('Dashboard loads and shows Ask Oskar widget', async () => {
+  test('Dashboard loads and shows Ask Osmo widget', async () => {
     // Navigate to dashboard
     await page.goto('http://localhost:3000/dashboard', {
       waitUntil: 'networkidle0'
     })
     
-    // Check for Ask Oskar button
-    const askOskarButton = await page.$('[aria-label="Open Ask Oskar"]')
-    expect(askOskarButton).toBeTruthy()
+    // Check for Ask Osmo button
+    const askOsmoButton = await page.$('[aria-label="Open Ask Osmo"]')
+    expect(askOsmoButton).toBeTruthy()
     
-    // Click Ask Oskar button
-    await askOskarButton?.click()
+    // Click Ask Osmo button
+    await askOsmoButton?.click()
     
     // Wait for chat overlay to appear
-    await page.waitForSelector('h3:has-text("Ask Oskar")', {
+    await page.waitForSelector('h3:has-text("Ask Osmo")', {
       timeout: 5000
     })
     
     // Verify chat is open
-    const chatOverlay = await page.$('div:has(h3:has-text("Ask Oskar"))')
+    const chatOverlay = await page.$('div:has(h3:has-text("Ask Osmo"))')
     expect(chatOverlay).toBeTruthy()
   })
   
   test('URL parameters work for test mode', async () => {
     // Navigate with test parameters
-    await page.goto('http://localhost:3000/dashboard?testAgent=OrchestratorAgent&expandOskar=true', {
+    await page.goto('http://localhost:3000/dashboard?testAgent=OrchestratorAgent&expandOsmo=true', {
       waitUntil: 'networkidle0'
     })
     
-    // Check that Ask Oskar is expanded
-    await page.waitForSelector('h3:has-text("Ask Oskar")', {
+    // Check that Ask Osmo is expanded
+    await page.waitForSelector('h3:has-text("Ask Osmo")', {
       timeout: 5000
     })
     
@@ -93,9 +93,9 @@ describe('Orchestrator Dashboard E2E Tests', () => {
       waitUntil: 'networkidle0'
     })
     
-    // Open Ask Oskar
-    const askOskarButton = await page.$('[aria-label="Open Ask Oskar"]')
-    await askOskarButton?.click()
+    // Open Ask Osmo
+    const askOsmoButton = await page.$('[aria-label="Open Ask Osmo"]')
+    await askOsmoButton?.click()
     
     // Wait for chat to load
     await page.waitForSelector('input[placeholder="Type your message..."]', {
@@ -141,18 +141,18 @@ if (require.main === module) {
       })
       console.log('✓ Dashboard loaded')
       
-      // Test 2: Ask Oskar widget
-      console.log('Test 2: Ask Oskar widget...')
+      // Test 2: Ask Osmo widget
+      console.log('Test 2: Ask Osmo widget...')
       const askOskarButton = await testPage.$('[aria-label="Open Ask Oskar"]')
       if (askOskarButton) {
         await askOskarButton.click()
         await testPage.waitForTimeout(1000)
-        console.log('✓ Ask Oskar opened')
+        console.log('✓ Ask Osmo opened')
       }
       
       // Test 3: URL parameters
       console.log('Test 3: URL parameters...')
-      await testPage.goto('http://localhost:3000/dashboard?testAgent=OrchestratorAgent&expandOskar=true', {
+      await testPage.goto('http://localhost:3000/dashboard?testAgent=OrchestratorAgent&expandOsmo=true', {
         waitUntil: 'networkidle0'
       })
       await testPage.waitForTimeout(1500)

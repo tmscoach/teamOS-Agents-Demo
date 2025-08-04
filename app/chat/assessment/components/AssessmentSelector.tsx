@@ -3,20 +3,7 @@
 import React from 'react';
 import { FileText, CheckCircle, Clock, AlertCircle } from 'lucide-react';
 import { ASSESSMENT_COLORS } from '../constants';
-
-interface AssessmentSubscription {
-  SubscriptionID: number;
-  WorkflowID: number;
-  WorkflowType: string;
-  Status: string;
-  Progress: number;
-  AssignmentDate: string;
-  CompletionDate: string | null;
-  OrganisationID: number;
-  OrganisationName: string;
-  AssessmentType: string;
-  AssessmentStatus: string;
-}
+import { AssessmentSubscription } from '../types';
 
 interface AssessmentSelectorProps {
   assessments: AssessmentSubscription[];
@@ -55,7 +42,7 @@ export default function AssessmentSelector({ assessments, onSelect }: Assessment
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {assessments.map((assessment) => (
           <button
-            key={assessment.SubscriptionID}
+            key={assessment._subscriptionId || assessment.SubscriptionID}
             onClick={() => onSelect(assessment)}
             className={`p-6 rounded-lg border-2 transition-all ${getAssessmentColor(
               assessment.AssessmentType
@@ -77,7 +64,7 @@ export default function AssessmentSelector({ assessments, onSelect }: Assessment
             
             <div className="flex items-center justify-between">
               <span className="text-xs text-gray-500">
-                ID: {assessment.SubscriptionID}
+                ID: {assessment._subscriptionId || assessment.SubscriptionID}
               </span>
               <span className={`text-xs font-medium px-2 py-1 rounded ${
                 assessment.Status === 'Completed'

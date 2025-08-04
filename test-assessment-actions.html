@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Assessment Action Testing</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    .panel {
+      background: white;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    h1, h2 {
+      margin-top: 0;
+    }
+    .log-entry {
+      padding: 8px;
+      margin: 4px 0;
+      background: #f8f9fa;
+      border-left: 3px solid #007bff;
+      font-family: monospace;
+      font-size: 12px;
+      word-break: break-all;
+    }
+    .log-entry.error {
+      border-color: #dc3545;
+      background: #fff5f5;
+    }
+    .log-entry.success {
+      border-color: #28a745;
+      background: #f5fff5;
+    }
+    .log-entry.action {
+      border-color: #ffc107;
+      background: #fffdf5;
+    }
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 4px;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    .status {
+      padding: 10px;
+      margin: 10px 0;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+    .status.connected {
+      background: #d4edda;
+      color: #155724;
+    }
+    .status.disconnected {
+      background: #f8d7da;
+      color: #721c24;
+    }
+    textarea {
+      width: 100%;
+      min-height: 100px;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-family: monospace;
+    }
+    #console {
+      max-height: 400px;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      padding: 10px;
+      background: #f8f9fa;
+    }
+  </style>
+</head>
+<body>
+  <h1>🔍 Assessment Action Testing Dashboard</h1>
+  
+  <div class="status disconnected" id="status">
+    Status: Not Connected - Open this page alongside the assessment page
+  </div>
+
+  <div class="container">
+    <div class="panel">
+      <h2>Test Actions</h2>
+      
+      <h3>Quick Tests</h3>
+      <button onclick="testSingleAnswer()">Test Single Answer (Q1 → 2-0)</button>
+      <button onclick="testMultipleAnswers()">Test Multiple (Q1,2,3 → 1-1)</button>
+      <button onclick="testAllAnswers()">Test All Questions → 2-0</button>
+      <button onclick="testNavigation()">Test Navigation (Next)</button>
+      
+      <h3>Custom Action</h3>
+      <textarea id="customAction" placeholder="Enter custom action JSON:
+{
+  &quot;action&quot;: &quot;answer_question&quot;,
+  &quot;params&quot;: &quot;1:2-0&quot;
+}"></textarea>
+      <button onclick="testCustomAction()">Send Custom Action</button>
+      
+      <h3>Simulate Chat Message</h3>
+      <textarea id="chatMessage" placeholder="Update all questions on this page and answer 2-0"></textarea>
+      <button onclick="simulateChatMessage()">Send to Chat</button>
+    </div>
+
+    <div class="panel">
+      <h2>Event Monitor</h2>
+      <div id="console"></div>
+      <button onclick="clearConsole()">Clear</button>
+      <button onclick="downloadLog()">Download Log</button>
+    </div>
+  </div>
+
+  <div class="panel" style="margin-top: 20px;">
+    <h2>Statistics</h2>
+    <div id="stats">
+      <p>Events Captured: <span id="eventCount">0</span></p>
+      <p>Actions Dispatched: <span id="actionCount">0</span></p>
+      <p>DOM Mutations: <span id="mutationCount">0</span></p>
+      <p>API Calls: <span id="apiCount">0</span></p>
+    </div>
+  </div>
+
+  <script>
+    // Global state
+    let eventLog = [];
+    let stats = {
+      events: 0,
+      actions: 0,
+      mutations: 0,
+      api: 0
+    };
+
+    // Logging function
+    function log(message, type = 'info') {
+      const timestamp = new Date().toISOString().substr(11, 12);
+      const entry = {
+        timestamp,
+        message,
+        type
+      };
+      eventLog.push(entry);
+      
+      // Update console
+      const console = document.getElementById('console');
+      const div = document.createElement('div');
+      div.className = `log-entry ${type}`;
+      div.textContent = `[${timestamp}] ${message}`;
+      console.appendChild(div);
+      console.scrollTop = console.scrollHeight;
+      
+      // Update stats
+      if (type === 'action') stats.actions++;
+      if (type === 'event') stats.events++;
+      updateStats();
+    }
+
+    function updateStats() {
+      document.getElementById('eventCount').textContent = stats.events;
+      document.getElementById('actionCount').textContent = stats.actions;
+      document.getElementById('mutationCount').textContent = stats.mutations;
+      document.getElementById('apiCount').textContent = stats.api;
+    }
+
+    // Monitor assessment action events
+    window.addEventListener('assessment-action-detected', (event) => {
+      stats.events++;
+      log(`ACTION DETECTED: ${event.detail.action} | Params: ${event.detail.params}`, 'action');
+      
+      // Show in status
+      document.getElementById('status').className = 'status connected';
+      document.getElementById('status').textContent = `Last Action: ${event.detail.action}`;
+    });
+
+    // Monitor custom events
+    const originalDispatchEvent = window.dispatchEvent;
+    window.dispatchEvent = function(event) {
+      if (event.type === 'assessment-action-detected') {
+        log(`EVENT DISPATCHED: ${event.type}`, 'event');
+      }
+      return originalDispatchEvent.apply(this, arguments);
+    };
+
+    // Monitor DOM for action tags
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        mutation.addedNodes.forEach((node) => {
+          if (node.nodeType === 1) {
+            const text = node.textContent || '';
+            if (text.includes('[ASSESSMENT_ACTION:')) {
+              stats.mutations++;
+              const matches = text.match(/\[ASSESSMENT_ACTION:([^:]+):([^\]]+)\]/g);
+              if (matches) {
+                log(`DOM ACTION TAG: ${matches.join(', ')}`, 'success');
+              }
+            }
+          }
+        });
+      });
+    });
+
+    // Start observing
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      characterData: true
+    });
+
+    // Monitor fetch for API responses
+    const originalFetch = window.fetch;
+    window.fetch = async function(...args) {
+      const [url] = args;
+      
+      if (url.includes('/api/agents/')) {
+        stats.api++;
+        log(`API CALL: ${url}`, 'info');
+      }
+      
+      const response = await originalFetch.apply(this, args);
+      
+      if (url.includes('/api/agents/')) {
+        const cloned = response.clone();
+        try {
+          const text = await cloned.text();
+          if (text.includes('[ASSESSMENT_ACTION:')) {
+            log(`API RESPONSE HAS ACTION TAGS`, 'success');
+          }
+        } catch (e) {
+          // Ignore streaming responses
+        }
+      }
+      
+      return response;
+    };
+
+    // Test functions
+    function testSingleAnswer() {
+      log('Testing single answer: Q1 → 2-0', 'info');
+      const event = new CustomEvent('assessment-action-detected', {
+        detail: { action: 'answer_question', params: '1:2-0' }
+      });
+      window.dispatchEvent(event);
+    }
+
+    function testMultipleAnswers() {
+      log('Testing multiple answers: Q1,2,3 → 1-1', 'info');
+      const event = new CustomEvent('assessment-action-detected', {
+        detail: { action: 'answer_multiple_questions', params: '1,2,3:1-1' }
+      });
+      window.dispatchEvent(event);
+    }
+
+    function testAllAnswers() {
+      log('Testing all questions → 2-0', 'info');
+      // Find all question IDs on the page
+      const questions = document.querySelectorAll('[data-question-id], .question-item');
+      const ids = Array.from(questions).map((q, i) => 
+        q.dataset.questionId || (i + 1)
+      ).join(',');
+      
+      const event = new CustomEvent('assessment-action-detected', {
+        detail: { action: 'answer_multiple_questions', params: `${ids}:2-0` }
+      });
+      window.dispatchEvent(event);
+    }
+
+    function testNavigation() {
+      log('Testing navigation: next page', 'info');
+      const event = new CustomEvent('assessment-action-detected', {
+        detail: { action: 'navigate_page', params: 'next' }
+      });
+      window.dispatchEvent(event);
+    }
+
+    function testCustomAction() {
+      const input = document.getElementById('customAction').value;
+      try {
+        const data = JSON.parse(input);
+        log(`Testing custom action: ${data.action}`, 'info');
+        const event = new CustomEvent('assessment-action-detected', {
+          detail: data
+        });
+        window.dispatchEvent(event);
+      } catch (e) {
+        log(`Invalid JSON: ${e.message}`, 'error');
+      }
+    }
+
+    function simulateChatMessage() {
+      const message = document.getElementById('chatMessage').value;
+      log(`Simulating chat message: "${message}"`, 'info');
+      
+      // Try to find and fill the chat input
+      const inputs = document.querySelectorAll('textarea, input[type="text"]');
+      let chatInput = null;
+      
+      inputs.forEach(input => {
+        if (input.placeholder && input.placeholder.toLowerCase().includes('type')) {
+          chatInput = input;
+        }
+      });
+      
+      if (chatInput) {
+        chatInput.value = message;
+        chatInput.dispatchEvent(new Event('input', { bubbles: true }));
+        
+        // Try to find and click send button
+        const buttons = document.querySelectorAll('button');
+        buttons.forEach(button => {
+          if (button.textContent.includes('Send') || 
+              button.querySelector('svg')) {
+            button.click();
+            log('Message sent to chat', 'success');
+          }
+        });
+      } else {
+        log('Could not find chat input', 'error');
+      }
+    }
+
+    function clearConsole() {
+      document.getElementById('console').innerHTML = '';
+      eventLog = [];
+      stats = { events: 0, actions: 0, mutations: 0, api: 0 };
+      updateStats();
+    }
+
+    function downloadLog() {
+      const blob = new Blob([JSON.stringify(eventLog, null, 2)], 
+        { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `assessment-log-${Date.now()}.json`;
+      a.click();
+    }
+
+    // Initial setup
+    log('Assessment Action Testing Dashboard loaded', 'success');
+    log('Open this page alongside the assessment page to monitor events', 'info');
+    
+    // Check if we're on the assessment page
+    if (window.location.pathname.includes('/assessment')) {
+      document.getElementById('status').className = 'status connected';
+      document.getElementById('status').textContent = 'Status: Connected to Assessment Page';
+    }
+  </script>
+</body>
+</html>

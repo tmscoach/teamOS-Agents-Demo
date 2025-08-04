@@ -5,7 +5,6 @@ import prisma from '@/lib/db';
 import { 
   createOnboardingAgent,
   createOrchestratorAgent,
-  createDiscoveryAgent,
   createAssessmentAgent,
   createAlignmentAgent,
   createLearningAgent,
@@ -62,7 +61,6 @@ async function initializeServices() {
   const agentPromises = [
     createOrchestratorAgent(),
     createOnboardingAgent(),
-    createDiscoveryAgent(),
     createAssessmentAgent(), // This returns a Promise
     createAlignmentAgent(),
     createLearningAgent(),

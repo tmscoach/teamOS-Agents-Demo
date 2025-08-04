@@ -3,26 +3,26 @@
 import { MessageCircle, X } from 'lucide-react'
 import { Oscar1 } from '@/app/chat/components/icons/Oscar1'
 import { ChatOverlay } from './ChatOverlay'
-import { useAskOskar } from '@/contexts/AskOskarContext'
+import { useAskOsmo } from '@/contexts/AskOsmoContext'
 import { useEffect } from 'react'
 
-export interface AskOskarWidgetProps {
+export interface AskOsmoWidgetProps {
   defaultAgent?: string;
   initiallyExpanded?: boolean;
   testMode?: boolean;
 }
 
-export function AskOskarWidget({ 
+export function AskOsmoWidget({ 
   defaultAgent = 'OrchestratorAgent',
   initiallyExpanded = false,
   testMode = false 
-}: AskOskarWidgetProps) {
-  const { isOpen, toggleWidget, setIsOpen } = useAskOskar()
+}: AskOsmoWidgetProps) {
+  const { isOpen, toggleWidget, openWidget } = useAskOsmo()
   
   // Handle initial expansion from URL params
   useEffect(() => {
     if (initiallyExpanded && !isOpen) {
-      setIsOpen(true)
+      openWidget()
     }
   }, [initiallyExpanded])
   
@@ -32,7 +32,7 @@ export function AskOskarWidget({
       <button
         onClick={toggleWidget}
         className="fixed bottom-6 right-6 z-50 flex items-center justify-center w-14 h-14 bg-blue-600 hover:bg-blue-700 text-white rounded-full shadow-lg hover:shadow-xl transition-all duration-200 group"
-        aria-label={isOpen ? 'Close Ask Oskar' : 'Open Ask Oskar'}
+        aria-label={isOpen ? 'Close Ask Osmo' : 'Open Ask Osmo'}
       >
         {isOpen ? (
           <X className="w-6 h-6" />
@@ -49,7 +49,7 @@ export function AskOskarWidget({
         <div className="fixed bottom-6 right-24 z-40 opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none">
           <div className="bg-gray-900 text-white text-sm px-3 py-2 rounded-lg whitespace-nowrap flex items-center gap-2">
             <Oscar1 className="w-4 h-4" />
-            Ask Oskar anything
+            Ask Osmo anything
           </div>
         </div>
       )}

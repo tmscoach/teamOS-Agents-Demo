@@ -38,8 +38,8 @@ describe('EmbeddedChat', () => {
   it('renders chat interface', () => {
     render(<EmbeddedChat />);
     
-    expect(screen.getByText('Chat with Oskar')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('Ask Oskar anything...')).toBeInTheDocument();
+    expect(screen.getByText('Chat with Osmo')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Ask Osmo anything...')).toBeInTheDocument();
   });
 
   it('displays messages correctly', () => {
@@ -73,7 +73,7 @@ describe('EmbeddedChat', () => {
   it('handles input changes', () => {
     render(<EmbeddedChat />);
     
-    const input = screen.getByPlaceholderText('Ask Oskar anything...');
+    const input = screen.getByPlaceholderText('Ask Osmo anything...');
     fireEvent.change(input, { target: { value: 'Test message' } });
     
     expect(mockHandleInputChange).toHaveBeenCalled();
@@ -90,7 +90,7 @@ describe('EmbeddedChat', () => {
   it('handles key press for sending', () => {
     render(<EmbeddedChat />);
     
-    const input = screen.getByPlaceholderText('Ask Oskar anything...');
+    const input = screen.getByPlaceholderText('Ask Osmo anything...');
     fireEvent.keyPress(input, { key: 'Enter', code: 'Enter', charCode: 13 });
     
     expect(mockHandleSubmit).toHaveBeenCalled();

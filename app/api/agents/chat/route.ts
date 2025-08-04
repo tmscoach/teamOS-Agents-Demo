@@ -15,7 +15,6 @@ import {
 import { 
   createOnboardingAgent,
   createOrchestratorAgent,
-  createDiscoveryAgent,
   createAssessmentAgent,
   createAlignmentAgent,
   createLearningAgent,
@@ -108,7 +107,6 @@ async function registerAgents() {
     const agents = await Promise.all([
       createOrchestratorAgent(),
       createOnboardingAgent(),
-      createDiscoveryAgent(),
       createAssessmentAgent(),
       createAlignmentAgent(),
       createLearningAgent(),

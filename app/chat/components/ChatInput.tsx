@@ -10,6 +10,7 @@ interface ChatInputProps {
   disabled?: boolean;
   placeholder?: string;
   autoFocus?: boolean;
+  voiceToggle?: React.ReactNode;
 }
 
 export interface ChatInputRef {
@@ -22,7 +23,8 @@ const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(({
   onSubmit,
   disabled = false,
   placeholder = "Type your message...",
-  autoFocus = false
+  autoFocus = false,
+  voiceToggle
 }, ref) => {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -65,6 +67,11 @@ const ChatInput = forwardRef<ChatInputRef, ChatInputProps>(({
           placeholder={placeholder}
           className="flex-1 bg-transparent outline-none [font-family:'Inter',Helvetica] font-normal text-[color:var(--shadcn-ui-foreground)] text-sm tracking-[0] leading-5 disabled:opacity-50 disabled:cursor-not-allowed"
         />
+        {voiceToggle && (
+          <div className="flex items-center">
+            {voiceToggle}
+          </div>
+        )}
         <button
           type="submit"
           disabled={disabled || !value.trim()}

@@ -29,6 +29,7 @@ export class RealtimeConnectionManager {
   private currentAudioSource: AudioBufferSourceNode | null = null;
   private playbackTimeout: NodeJS.Timeout | null = null;
   private audioFeedback: AudioFeedback;
+  private isIntentionalDisconnect = false;
   private conversationContext: {
     currentPage: number;
     answeredQuestions: Set<number>;
@@ -514,7 +515,17 @@ IMPORTANT:
       }
     });
 
-    // Handle transcription updates
+    // Handle transcription updates - in progress (for real-time display)
+    this.rt.on('conversation.item.input_audio_transcription.in_progress', (event: any) => {
+      const partialTranscript = event.transcript;
+      if (partialTranscript) {
+        console.log('[Voice] User saying (partial):', partialTranscript);
+        // Update the transcript display in real-time
+        this.config.onTranscript?.(partialTranscript);
+      }
+    });
+
+    // Handle transcription updates - completed
     this.rt.on('conversation.item.input_audio_transcription.completed', (event: any) => {
       const transcript = event.transcript;
       if (transcript) {
@@ -805,6 +816,14 @@ IMPORTANT:
       this.isConnected = false;
       console.log('[Voice] WebSocket closed:', event.code, event.reason);
       
+      // Check if this was an intentional disconnection
+      if (this.isIntentionalDisconnect) {
+        console.log('[Voice] Intentional disconnection, not reconnecting');
+        this.isIntentionalDisconnect = false; // Reset flag
+        this.config.onStateChange?.('disconnected');
+        return;
+      }
+      
       // If not a normal closure and we haven't exceeded reconnect attempts, try to reconnect
       if (event.code !== 1000 && this.reconnectAttempts < this.maxReconnectAttempts) {
         console.log('[Voice] Unexpected closure, attempting reconnection...');
@@ -833,9 +852,14 @@ IMPORTANT:
     // Send in chunks to avoid overwhelming the connection
     if (this.audioBuffer.length >= 10) { // Send every ~100ms at 24kHz
       const combinedBuffer = this.combineAudioBuffers();
-      // Debug: Log only every 10th chunk to reduce noise
-      if (this.audioBuffer.length % 10 === 0) {
-        console.log('[Voice] Sending audio chunk, size:', combinedBuffer.length);
+      // Debug: Log audio sending
+      const chunkNumber = Math.floor(this.audioBuffer.length / 10);
+      console.log(`[Voice] Sending audio chunk #${chunkNumber}, size: ${combinedBuffer.length} samples`);
+      
+      // Check if we're getting silence
+      const maxValue = Math.max(...Array.from(combinedBuffer).map(Math.abs));
+      if (maxValue < 100) {
+        console.log('[Voice] Warning: Audio appears to be silence or very quiet');
       }
       
       try {
@@ -894,6 +918,9 @@ IMPORTANT:
 
 
   async disconnect(): Promise<void> {
+    // Set flag to indicate intentional disconnection
+    this.isIntentionalDisconnect = true;
+    
     // Stop heartbeat monitoring
     this.stopHeartbeat();
     
@@ -921,7 +948,7 @@ IMPORTANT:
     }
     
     if (this.rt) {
-      this.rt.socket.close();
+      this.rt.socket.close(1000, 'Intentional disconnect');
       this.rt = null;
       this.isConnected = false;
       this.eventHandlersSetup = false;

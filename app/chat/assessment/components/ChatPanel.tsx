@@ -205,7 +205,7 @@ export function ChatPanel({
                 <path d="M19 19L14.65 14.65" stroke="url(#searchGradient)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
               <p className="relative w-fit font-normal text-gray-600 text-sm tracking-[0] leading-6 whitespace-nowrap">
-                Ask Oskar about your profile
+                Ask Osmo about your profile
               </p>
             </div>
           </button>

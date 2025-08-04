@@ -4,6 +4,8 @@ import { PrismaClient } from '@/lib/generated/prisma';
 import { dataQueryTools } from '../tools/data-query-tools';
 import { openai } from '@/src/lib/services/openai';
 import { RoutingService } from '../routing/RoutingService';
+import { AgentRegistry } from '../registry/AgentRegistry';
+import { AgentConfigLoader } from '../config/agent-config-loader';
 import { JourneyPhase } from '@/lib/orchestrator/journey-phases';
 import { continuityService } from '@/src/lib/services/continuity/continuity.service';
 
@@ -18,7 +20,25 @@ export class OrchestratorAgent extends TMSEnabledAgent {
       handoffDescription: 'Let me help guide your team transformation journey',
       instructions: (context: AgentContext) => {
         // This is now used as a fallback - the loaded configuration's systemPrompt takes precedence
-        return `You are the TMS Orchestrator Agent. Your role is to guide team managers through their transformation journey and route them to the right specialized agents based on their needs and current phase.`;
+        return `You are Osmo, the TMS Orchestrator Agent. Your role is to guide team managers through their transformation journey and route them to the right specialized agents based on their needs and current phase.
+        
+CRITICAL: If the user has NOT completed their TMP assessment yet, you should proactively encourage them to complete it first. They will earn 5000 credits for completing their TMP, which they can use to assess their team members.
+
+IMPORTANT: When suggesting actions to users:
+- Tell them to TYPE specific commands (e.g., "Just type 'start TMP' to begin")
+- DO NOT use markdown links like [Start TMP](#) - they don't work in this chat
+- DO NOT tell users to "click" anything in the chat - there are no clickable links
+- Always use clear action phrases like "type", "say", or "tell me"
+
+When a user hasn't completed TMP:
+- Be enthusiastic about the value they'll get from understanding their work preferences
+- Mention the 5000 credits incentive
+- Make it easy by telling them to type "start TMP"
+- If they ask about other things, gently redirect to TMP first
+
+Example responses for users who haven't completed TMP:
+- "Welcome! I'm excited to help you on your team transformation journey. Let's start with your Team Management Profile - it only takes 15 minutes and you'll earn 5000 credits to use with your team! Just type 'start TMP' to begin."
+- "I'd love to help with that! First though, let's complete your Team Management Profile. It'll give us insights to better address what you're asking about, plus you'll earn 5000 credits. Type 'start TMP' when you're ready!"`;
       },
       tools: dataQueryTools,
       knowledgeEnabled: true,
@@ -27,7 +47,8 @@ export class OrchestratorAgent extends TMSEnabledAgent {
       handoffs: [] // Dynamic handoffs based on intent
     });
     this.prisma = new PrismaClient();
-    this.routingService = new RoutingService();
+    const registry = new AgentRegistry();
+    this.routingService = new RoutingService(registry, AgentConfigLoader);
   }
 
   /**
@@ -81,13 +102,24 @@ export class OrchestratorAgent extends TMSEnabledAgent {
       }
     }
 
+    // Add TMP completion status
+    const hasCompletedTMP = context.metadata?.completedAssessments?.TMP || false;
+    prompt += `\n- TMP Completed: ${hasCompletedTMP ? 'Yes' : 'No (User needs to complete TMP to earn 5000 credits!)'}\n`;
+
     // Add journey phase specific guidance
     if (context.metadata?.journeyPhase === JourneyPhase.ASSESSMENT) {
       prompt += '\n\nCurrent Focus: Assessment Phase\n';
       prompt += '- The user has completed onboarding and is now in the assessment phase\n';
-      prompt += '- Guide them through available assessments (Team Signals, TMP, QO2, WoWV, LLP)\n';
-      prompt += '- Help them understand which assessments are most relevant for their needs\n';
-      prompt += '- Proactively suggest starting with TMP if they haven\'t completed any assessments\n';
+      
+      if (!hasCompletedTMP) {
+        prompt += '- PRIORITY: User has NOT completed TMP yet - encourage them to start TMP immediately\n';
+        prompt += '- Emphasize the 5000 credits they will earn\n';
+        prompt += '- Make it very easy to start by offering direct navigation to TMP\n';
+        prompt += '- If they ask about anything else, gently redirect to TMP first\n';
+      } else {
+        prompt += '- User has completed TMP - guide them through other assessments (Team Signals, QO2, WoWV, LLP)\n';
+        prompt += '- Help them understand which assessments are most relevant for their needs\n';
+      }
     } else if (context.metadata?.journeyPhase === JourneyPhase.DEBRIEF) {
       prompt += '\n\nCurrent Focus: Debrief Phase\n';
       prompt += '- The user has completed assessments and needs to review results\n';
@@ -115,6 +147,11 @@ export class OrchestratorAgent extends TMSEnabledAgent {
       await continuityService.updateActivity(context.managerId, 'OrchestratorAgent');
     }
     
+    // Handle proactive message requests
+    if (context.metadata?.requestProactiveMessage) {
+      return this.generateProactiveMessage(context);
+    }
+    
     // Check for continuity on first message
     if (context.metadata?.isFirstMessage && context.managerId) {
       const continuityState = await continuityService.checkContinuity(context.managerId);
@@ -125,13 +162,15 @@ export class OrchestratorAgent extends TMSEnabledAgent {
         
         // If there's a pending action, prepare appropriate response
         if (continuityState.pendingAction?.type === 'assessment_selection') {
-          return {
-            content: continuityMessage,
-            metadata: {
-              continuityDetected: true,
-              suggestAssessmentModal: true
-            }
+          const response = this.buildResponse(context, [], {
+            message: continuityMessage
+          });
+          response.metadata = {
+            ...response.metadata,
+            continuityDetected: true,
+            suggestAssessmentModal: true
           };
+          return response;
         }
       }
     }
@@ -193,15 +232,19 @@ export class OrchestratorAgent extends TMSEnabledAgent {
       const targetAgent = await this.determineTargetAgent(message, context);
       if (targetAgent && targetAgent !== 'OrchestratorAgent') {
         console.log('[OrchestratorAgent] Routing to specialist agent:', targetAgent);
-        return {
-          content: `I'll connect you with our ${targetAgent.replace('Agent', ' specialist')} who can best help with your request.`,
-          requiresHandoff: true,
-          handoffTo: targetAgent,
-          metadata: {
-            routingReason: 'intent_based',
-            originalQuery: message
+        const response = this.buildResponse(context, [], {
+          message: `I'll connect you with our ${targetAgent.replace('Agent', ' specialist')} who can best help with your request.`,
+          handoff: {
+            targetAgent: targetAgent,
+            reason: 'intent_based'
           }
+        });
+        response.metadata = {
+          ...response.metadata,
+          routingReason: 'intent_based',
+          originalQuery: message
         };
+        return response;
       }
     }
 
@@ -209,15 +252,15 @@ export class OrchestratorAgent extends TMSEnabledAgent {
     const response = await super.processMessage(message, context);
     
     // Check if we should proactively suggest next steps based on journey phase
-    if (response && !response.requiresHandoff) {
+    if (response && !response.handoff) {
       const proactiveGuidance = this.getProactiveGuidance(context);
-      if (proactiveGuidance) {
-        response.content += `\n\n${proactiveGuidance}`;
+      if (proactiveGuidance && response.message) {
+        response.message += `\n\n${proactiveGuidance}`;
       }
       
       // Check if response suggests showing assessment modal
-      if (response.content.toLowerCase().includes('assessment') && 
-          response.content.toLowerCase().includes('would you like')) {
+      if (response.message && response.message.toLowerCase().includes('assessment') && 
+          response.message.toLowerCase().includes('would you like')) {
         response.metadata = {
           ...response.metadata,
           suggestAssessmentModal: true
@@ -324,8 +367,10 @@ Return ONLY the agent name, nothing else.`
         return "I see you're new here! Would you like me to help you get started with the onboarding process?";
         
       case JourneyPhase.ASSESSMENT:
-        if (Object.keys(completedAssessments).length === 0) {
-          return "💡 Ready to start your first assessment? I recommend beginning with the Team Management Profile (TMP) - it provides valuable insights into your work preferences and team dynamics. Would you like to start now?";
+        if (!completedAssessments.TMP) {
+          return "💡 Ready to unlock your transformation journey? Start with the Team Management Profile (TMP) - it only takes 15 minutes and you'll earn 5000 credits! Type 'start TMP' to begin.";
+        } else if (Object.keys(completedAssessments).length === 1) {
+          return "Great job completing your TMP! You now have 5000 credits to assess your team. Would you like to invite team members or explore other assessments?";
         }
         break;
         
@@ -337,6 +382,52 @@ Return ONLY the agent name, nothing else.`
     }
     
     return null;
+  }
+  
+  /**
+   * Generate proactive messages based on user's journey state
+   */
+  private async generateProactiveMessage(context: AgentContext): Promise<AgentResponse> {
+    const hasCompletedTMP = context.metadata?.completedAssessments?.TMP || false;
+    const journeyPhase = context.metadata?.journeyPhase || JourneyPhase.ASSESSMENT;
+    const userName = context.metadata?.userName || 'there';
+    
+    // New user in assessment phase who hasn't completed TMP
+    if (journeyPhase === JourneyPhase.ASSESSMENT && !hasCompletedTMP) {
+      const response = this.buildResponse(context, [], {
+        message: `Welcome to your teamOS dashboard, ${userName}! 🎉\n\nI'm Osmo, here to guide you through your team transformation journey.\n\nLet's start by learning about your leadership style with the Team Management Profile. It only takes 15 minutes and you'll get:\n• Your personal work preferences profile\n• Insights into your team role\n• 5000 credits to assess your team\n\nReady to begin? Just type "start TMP" and I'll take you there!`
+      });
+      response.metadata = {
+        ...response.metadata,
+        proactiveType: 'tmp_prompt',
+        showStartButton: true,
+        credits: 5000
+      };
+      return response;
+    }
+    
+    // User has completed TMP, now in debrief phase
+    if (journeyPhase === JourneyPhase.DEBRIEF && hasCompletedTMP) {
+      const response = this.buildResponse(context, [], {
+        message: `Welcome back, ${userName}! 🎊\n\nExcellent work completing your TMP! You've earned 5000 credits.\n\nBased on your results, you're an Explorer-Promoter. This means you excel at generating ideas and inspiring others.\n\nWould you like to:\n• Review your detailed TMP results\n• Start assessing your team members\n• Learn about other assessments\n\nWhat interests you most?`
+      });
+      response.metadata = {
+        ...response.metadata,
+        proactiveType: 'post_tmp_guidance',
+        credits: 5000
+      };
+      return response;
+    }
+    
+    // Default welcome for other phases
+    const response = this.buildResponse(context, [], {
+      message: `Welcome back, ${userName}! I'm here to help guide your team transformation journey.\n\nHow can I assist you today?`
+    });
+    response.metadata = {
+      ...response.metadata,
+      proactiveType: 'general_welcome'
+    };
+    return response;
   }
 }
 

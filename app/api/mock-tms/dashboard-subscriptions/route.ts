@@ -1,32 +1,40 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, NextRequest } from 'next/server';
 import { getDashboardSubscriptions } from '@/src/lib/mock-tms-api/endpoints/subscriptions';
 import { mockTMSClient } from '@/src/lib/mock-tms-api/mock-api-client';
 import { mockDataStore } from '@/src/lib/mock-tms-api/mock-data-store';
 import { auth, currentUser } from '@clerk/nextjs/server';
-import { cookies } from 'next/headers';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    console.log('[dashboard-subscriptions] Starting GET request');
+    
     // Get the current user from Clerk
     const session = await auth();
     const user = await currentUser();
+    
+    console.log('[dashboard-subscriptions] Auth check:', { 
+      hasSession: !!session, 
+      sessionUserId: session?.userId,
+      hasUser: !!user,
+      env: process.env.NODE_ENV,
+      publicEnv: process.env.NEXT_PUBLIC_ENV
+    });
     
     // In dev mode, check for dev auth cookie if no Clerk session
     let userId = session?.userId;
     let userEmail: string | undefined = user?.emailAddresses?.[0]?.emailAddress;
     
-    if (!userId && process.env.NODE_ENV === 'development') {
-      const cookieStore = await cookies();
-      const devAuthCookie = cookieStore.get('dev-auth');
-      if (devAuthCookie) {
-        try {
-          const devAuth = JSON.parse(devAuthCookie.value);
-          userId = devAuth.userId;
-          userEmail = devAuth.email;
-          console.log('[dashboard-subscriptions] Using dev auth:', { userId, userEmail });
-        } catch (e) {
-          console.error('Failed to parse dev auth cookie:', e);
-        }
+    if (!userId && (process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_ENV === 'development')) {
+      // Use the getDevAuth function to properly handle dev auth
+      const { getDevAuth } = await import('@/src/lib/auth/dev-auth');
+      const devAuth = await getDevAuth();
+      
+      if (devAuth) {
+        userId = devAuth.userId;
+        userEmail = devAuth.email;
+        console.log('[dashboard-subscriptions] Using dev auth:', { userId, userEmail });
+      } else {
+        console.log('[dashboard-subscriptions] No dev auth found');
       }
     }
     
@@ -38,7 +46,7 @@ export async function GET() {
     let mockUser = mockDataStore.getUserByClerkId(userId);
     
     // In dev mode, also try to find by email if we have it
-    if (!mockUser && userEmail && process.env.NODE_ENV === 'development') {
+    if (!mockUser && userEmail && (process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_ENV === 'development')) {
       console.log('[dashboard-subscriptions] Trying to find user by email:', userEmail);
       mockUser = mockDataStore.getUserByEmail(userEmail);
       
@@ -56,13 +64,13 @@ export async function GET() {
           organization = mockDataStore.createOrganization(`Dev Org - ${emailDomain}`, userId);
         }
         
-        // Create the user
+        // Create the user as Facilitator to get automatic subscriptions
         mockUser = mockDataStore.createUser({
           email: userEmail,
           password: 'dev-mode-user', // Not used in dev mode
           firstName: 'Dev',
           lastName: 'User',
-          userType: 'Respondent',
+          userType: 'Facilitator', // Changed from 'Respondent' to ensure subscriptions are assigned
           organizationId: organization.id,
           clerkUserId: userId
         });
@@ -75,7 +83,7 @@ export async function GET() {
       console.log('No mock user found for:', { userId, userEmail });
       
       // In development, auto-create a mock user for real Clerk users
-      if (process.env.NODE_ENV === 'development' && userId && userEmail) {
+      if ((process.env.NODE_ENV === 'development' || process.env.NEXT_PUBLIC_ENV === 'development') && userId && userEmail) {
         console.log('[dashboard-subscriptions] Auto-creating mock user for real Clerk user');
         
         // First, ensure we have an organization

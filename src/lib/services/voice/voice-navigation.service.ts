@@ -52,17 +52,23 @@ export class VoiceNavigationService {
       };
 
       // Request microphone access
+      console.log('[VoiceNavigationService] Requesting microphone access...');
       await this.audioManager.requestMicrophone();
+      console.log('[VoiceNavigationService] Microphone access granted');
 
       // Connect to Realtime API
+      console.log('[VoiceNavigationService] Connecting to Realtime API...');
       await this.realtimeConnection.connect();
+      console.log('[VoiceNavigationService] Connected to Realtime API');
 
       // Start audio recording
+      console.log('[VoiceNavigationService] Starting audio recording...');
       await this.audioManager.startRecording((audioData) => {
         if (this.isActive) {
           this.realtimeConnection.sendAudio(audioData).catch(console.error);
         }
       });
+      console.log('[VoiceNavigationService] Audio recording started');
 
       this.isActive = true;
     } catch (error) {
@@ -130,7 +136,14 @@ export class VoiceNavigationService {
   }
 
   private handleTranscript(transcript: string): void {
-    if (!this.currentSession) return;
+    console.log('[VoiceNavigationService] ==== TRANSCRIPT RECEIVED ====');
+    console.log('[VoiceNavigationService] Transcript:', transcript);
+    console.log('[VoiceNavigationService] Has session:', !!this.currentSession);
+    
+    if (!this.currentSession) {
+      console.log('[VoiceNavigationService] No current session, ignoring transcript');
+      return;
+    }
 
     // Add to session transcripts
     this.currentSession.transcripts.push({
@@ -140,7 +153,14 @@ export class VoiceNavigationService {
     });
 
     // Process command
+    console.log('[VoiceNavigationService] Processing command...');
     const command = this.commandProcessor.parse(transcript);
+    console.log('[VoiceNavigationService] Parsed command:', {
+      type: command.type,
+      parameters: command.parameters,
+      confidence: command.confidence
+    });
+    
     this.currentSession.commands.push(command);
 
     // Notify listeners

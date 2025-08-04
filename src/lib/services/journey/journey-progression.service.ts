@@ -162,7 +162,7 @@ export class JourneyProgressionService {
         completedAssessments: Object.keys(completedAssessments),
         viewedDebriefs: Object.keys(viewedDebriefs),
         teamSize: teamMembers.length,
-        teamMembersInAssessment: teamMembers.filter(m => m.journeyPhase === JourneyPhase.ASSESSMENT).length,
+        teamMembersInAssessment: teamMembers.filter((m: any) => m.journeyPhase === JourneyPhase.ASSESSMENT).length,
         daysSinceLastActivity,
         hasCompletedTMP: !!completedAssessments.TMP || !!completedAssessments.tmp,
         hasViewedTMPDebrief: !!viewedDebriefs.TMP || !!viewedDebriefs.tmp

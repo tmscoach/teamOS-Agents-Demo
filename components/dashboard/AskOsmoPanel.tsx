@@ -6,7 +6,7 @@ import { Oscar1 } from '@/app/chat/components/icons/Oscar1'
 import { Loader2 } from 'lucide-react'
 import { EmbeddedChat } from './EmbeddedChat'
 
-interface AskOskarPanelProps {
+interface AskOsmoPanelProps {
   isExpanded: boolean
   onCollapse: () => void
   onExpand: () => void
@@ -14,13 +14,13 @@ interface AskOskarPanelProps {
   testMode?: boolean
 }
 
-export function AskOskarPanel({ 
+export function AskOsmoPanel({ 
   isExpanded,
   onCollapse,
   onExpand,
   defaultAgent = 'OrchestratorAgent',
   testMode = false
-}: AskOskarPanelProps) {
+}: AskOsmoPanelProps) {
   const [position, setPosition] = useState({ x: 0, y: 0 })
   const [isDragging, setIsDragging] = useState(false)
   const dragRef = useRef<HTMLDivElement>(null)
@@ -110,7 +110,7 @@ export function AskOskarPanel({
                 <path d="M19 19L14.65 14.65" stroke="url(#searchGradient)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
               <p className="relative w-fit font-normal text-gray-600 text-sm tracking-[0] leading-6 whitespace-nowrap">
-                Ask Oskar
+                Ask Osmo
               </p>
             </div>
           </button>

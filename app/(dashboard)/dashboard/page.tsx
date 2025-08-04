@@ -5,7 +5,7 @@ import { prisma } from '@/lib/db/prisma'
 import { Bell, Users, Pencil, Book, Settings, Focus, Plus, Coins, CheckCircle, User } from 'lucide-react'
 import { Oscar1 } from '@/app/chat/components/icons/Oscar1'
 import { UserDropdown } from '@/components/ui/user-dropdown'
-import { AskOskarInput } from '@/components/dashboard/AskOskarInput'
+import { AskOsmoInput } from '@/components/dashboard/AskOsmoInput'
 import { DashboardWrapper } from '@/components/dashboard/DashboardWrapper'
 import { DashboardClient } from './DashboardClient'
 import { CompleteProfileButton } from '@/components/dashboard/CompleteProfileButton'
@@ -20,11 +20,10 @@ export default async function DashboardPage({
   
   // Get URL parameters for test mode
   const testAgent = params.testAgent as string | undefined;
-  const expandOskar = params.expandOskar === 'true';
   
   const clerkUser = await currentUser()
   console.log('[Dashboard] Current user:', clerkUser ? { id: clerkUser.id, email: clerkUser.emailAddresses?.[0]?.emailAddress } : null)
-  console.log('[Dashboard] URL params:', { testAgent, expandOskar })
+  console.log('[Dashboard] URL params:', { testAgent })
   
   if (!clerkUser) {
     console.log('[Dashboard] No user found, redirecting to sign-in')
@@ -170,7 +169,7 @@ export default async function DashboardPage({
             <div className="flex flex-col items-start relative flex-1 self-stretch grow">
               {/* Header */}
               <div className="flex h-[60px] items-center justify-between px-6 relative self-stretch w-full border-b border-solid border-gray-200 backdrop-blur-[15px] backdrop-brightness-[100%] [-webkit-backdrop-filter:blur(15px)_brightness(100%)] bg-[linear-gradient(156deg,rgba(255,243,3,0.05)_0%,rgba(251,169,61,0.05)_15%,rgba(237,1,145,0.05)_30%,rgba(167,99,173,0.05)_45%,rgba(1,133,198,0.05)_60%,rgba(2,181,230,0.05)_75%,rgba(1,161,114,0.05)_90%,rgba(162,211,111,0.05)_100%)]">
-                {/* Spacer for Ask Oskar Input */}
+                {/* Spacer for Ask Osmo Input */}
                 <div className="w-96" />
 
                 {/* Right side - Credits and Avatar */}
@@ -344,14 +343,20 @@ export default async function DashboardPage({
       {/* Dashboard Client Components */}
       <DashboardClient 
         userPhase={user?.journeyPhase as any || 'ONBOARDING'}
-        completedAssessments={Object.keys(user?.completedAssessments || {})}
+        completedAssessments={user?.completedSteps || []}
         showAssessmentModal={params.showAssessmentModal === 'true'}
       />
       
-      {/* Ask Oskar Panel */}
-      <AskOskarInput 
+      {/* Ask Osmo Panel */}
+      <AskOsmoInput 
         defaultAgent={testAgent}
         testMode={testAgent ? true : false}
+        userId={user.id}
+        userName={userName}
+        hasCompletedTMP={!!user.completedSteps?.includes('TMP')}
+        credits={5000}
+        journeyPhase={user.journeyPhase as any || 'ASSESSMENT'}
+        completedSteps={user.completedSteps || []}
       />
     </div>
     </DashboardWrapper>

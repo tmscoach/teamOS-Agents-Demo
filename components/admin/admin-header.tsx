@@ -86,7 +86,7 @@ export function AdminHeader() {
           }}></div>
         </div>
 
-        {/* Ask Oskar Button */}
+        {/* Ask Osmo Button */}
         <button style={{
           display: 'flex',
           alignItems: 'center',
@@ -101,7 +101,7 @@ export function AdminHeader() {
           color: '#111827'
         }}>
           <MessageCircle style={{ width: '20px', height: '20px', color: '#6b7280' }} />
-          Ask Oskar
+          Ask Osmo
         </button>
 
         {/* Credits */}

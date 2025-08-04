@@ -49,10 +49,12 @@ export class AudioManager {
       throw new Error('No media stream available. Call requestMicrophone first.');
     }
 
+    console.log('[AudioManager] Creating AudioContext with sample rate:', this.config.sampleRate);
     this.audioContext = new AudioContext({ sampleRate: this.config.sampleRate });
     const source = this.audioContext.createMediaStreamSource(this.mediaStream);
 
     // Load audio worklet for processing
+    console.log('[AudioManager] Loading audio worklet processor...');
     await this.audioContext.audioWorklet.addModule(
       URL.createObjectURL(
         new Blob([this.getAudioWorkletProcessor()], { type: 'application/javascript' })
@@ -61,15 +63,23 @@ export class AudioManager {
 
     this.audioWorkletNode = new AudioWorkletNode(this.audioContext, 'audio-processor');
     
+    let messageCount = 0;
     this.audioWorkletNode.port.onmessage = (event) => {
       if (event.data.type === 'audio' && this.isRecording) {
+        messageCount++;
+        if (messageCount % 100 === 1) { // Log every 100th message
+          console.log(`[AudioManager] Received audio data message #${messageCount}, size: ${event.data.audio.length}`);
+        }
         onAudioData(event.data.audio);
+      } else if (event.data.type === 'error') {
+        console.error('[AudioManager] Audio worklet error:', event.data.error);
       }
     };
 
     source.connect(this.audioWorkletNode);
     this.audioWorkletNode.connect(this.audioContext.destination);
     this.isRecording = true;
+    console.log('[AudioManager] Recording started');
   }
 
   stopRecording(): void {

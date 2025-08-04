@@ -58,7 +58,7 @@ export function EmbeddedChat({
       }
       
       // Check if orchestrator wants to show assessment modal
-      if (message.metadata?.suggestAssessmentModal) {
+      if ((message as any).metadata?.suggestAssessmentModal) {
         window.dispatchEvent(new CustomEvent('show-assessment-modal'))
       }
     }
@@ -79,9 +79,8 @@ export function EmbeddedChat({
       // Send initial greeting with first message flag
       append({ 
         role: 'user', 
-        content: '',
-        metadata: { isFirstMessage: true }
-      })
+        content: ''
+      } as any)
     }
   }, [])
   
@@ -92,9 +91,8 @@ export function EmbeddedChat({
       // Send message to orchestrator about assessment selection
       append({
         role: 'user',
-        content: `I want to start the ${assessment} assessment`,
-        metadata: { selectedAssessment: assessment }
-      })
+        content: `I want to start the ${assessment} assessment`
+      } as any)
     }
     
     window.addEventListener('assessment-selected', handleAssessmentSelected as EventListener)
@@ -146,7 +144,7 @@ export function EmbeddedChat({
         {messages.length === 0 && (
           <div className="text-center py-8">
             <Oscar1 className="w-12 h-12 mx-auto text-gray-300 mb-3" />
-            <p className="text-gray-500 text-sm">Hi! I'm Oskar, your team transformation assistant.</p>
+            <p className="text-gray-500 text-sm">Hi! I'm Osmo, your team transformation assistant.</p>
             <p className="text-gray-400 text-xs mt-1">Ask me anything about your team's journey.</p>
           </div>
         )}

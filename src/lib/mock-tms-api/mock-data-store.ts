@@ -227,7 +227,7 @@ class MockDataStore {
         organizationId: user.organizationId,
         workflowId: sub.workflowId,
         workflowName: sub.workflowName,
-        assessmentType: sub.assessmentType,
+        assessmentType: sub.assessmentType as 'TMP' | 'QO2' | 'WOW' | 'LLP' | 'TeamSignals',
         status: 'not_started',
         completionPercentage: 0,
         assignedDate: new Date(),

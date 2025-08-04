@@ -124,7 +124,7 @@ export default function CollapsedChat({
           <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-500 rounded-full animate-pulse" />
         </div>
         <span className="text-sm font-medium text-gray-700 group-hover:text-gray-900">
-          Ask Oskar about your profile
+          Ask Osmo about your profile
         </span>
         {onVoiceToggle && (
           <VoiceToggle

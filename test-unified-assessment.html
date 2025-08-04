@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Unified Assessment Chat</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+        .test-button {
+            margin: 5px;
+            padding: 10px 15px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .test-button:hover {
+            background: #0056b3;
+        }
+        .log-output {
+            background: #f4f4f4;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+        .success {
+            color: green;
+            font-weight: bold;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+        .warning {
+            color: orange;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>Test Unified Assessment Chat</h1>
+    
+    <div class="test-section">
+        <h2>Event Listener Test</h2>
+        <p>This tests if the assessment-action-detected events are being dispatched and caught.</p>
+        <button class="test-button" onclick="testEventListeners()">Test Event Listeners</button>
+        <button class="test-button" onclick="simulateActionTag()">Simulate Action Tag</button>
+        <div id="event-log" class="log-output"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>DOM Monitoring</h2>
+        <p>This monitors the DOM for action tags in chat messages.</p>
+        <button class="test-button" onclick="startDomMonitoring()">Start Monitoring</button>
+        <button class="test-button" onclick="stopDomMonitoring()">Stop Monitoring</button>
+        <div id="dom-log" class="log-output"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Commands</h2>
+        <p>Copy these commands to test in the assessment chat:</p>
+        <ul>
+            <li><code>set answer 2-0 for question 1</code></li>
+            <li><code>answer all questions with 1-1</code></li>
+            <li><code>set all to 0-2</code></li>
+            <li><code>question 6 is 2-0</code></li>
+            <li><code>next page</code></li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h2>Console Output</h2>
+        <p>Check the browser console for detailed logs. Press F12 to open developer tools.</p>
+    </div>
+
+    <script>
+        let domObserver = null;
+        let eventLog = [];
+        
+        // Setup event listeners
+        window.addEventListener('assessment-action-detected', (event) => {
+            const logEntry = {
+                time: new Date().toISOString(),
+                type: 'EVENT_DETECTED',
+                action: event.detail.action,
+                params: event.detail.params
+            };
+            eventLog.push(logEntry);
+            updateEventLog();
+            console.log('[Test] Assessment action detected:', event.detail);
+        });
+
+        function testEventListeners() {
+            const log = document.getElementById('event-log');
+            log.innerHTML = '<div class="warning">Testing event listeners...</div>';
+            
+            // Check if event listener is attached
+            const hasListener = window.hasOwnProperty('assessment-action-detected');
+            
+            // Try dispatching a test event
+            const testEvent = new CustomEvent('assessment-action-detected', {
+                detail: { action: 'test_action', params: 'test_params' }
+            });
+            
+            window.dispatchEvent(testEvent);
+            
+            setTimeout(() => {
+                if (eventLog.some(e => e.action === 'test_action')) {
+                    log.innerHTML += '<div class="success">✓ Event listener is working!</div>';
+                } else {
+                    log.innerHTML += '<div class="error">✗ Event listener not responding</div>';
+                }
+            }, 100);
+        }
+
+        function simulateActionTag() {
+            const log = document.getElementById('event-log');
+            
+            // Simulate different action types
+            const actions = [
+                { action: 'answer_question', params: '1:2-0' },
+                { action: 'answer_multiple_questions', params: '1,2,3,4,5:1-1' },
+                { action: 'navigate_page', params: 'next' }
+            ];
+            
+            actions.forEach((action, index) => {
+                setTimeout(() => {
+                    const event = new CustomEvent('assessment-action-detected', {
+                        detail: action
+                    });
+                    window.dispatchEvent(event);
+                    log.innerHTML += `<div class="success">Simulated: ${action.action} with ${action.params}</div>`;
+                }, index * 500);
+            });
+        }
+
+        function updateEventLog() {
+            const log = document.getElementById('event-log');
+            const recentEvents = eventLog.slice(-10).reverse();
+            
+            log.innerHTML = '<h3>Recent Events:</h3>';
+            recentEvents.forEach(event => {
+                log.innerHTML += `
+                    <div>
+                        <span style="color: #666;">${event.time.split('T')[1].split('.')[0]}</span>
+                        <span class="success">${event.action}</span>
+                        <span>${event.params}</span>
+                    </div>
+                `;
+            });
+        }
+
+        function startDomMonitoring() {
+            const log = document.getElementById('dom-log');
+            log.innerHTML = '<div class="warning">Starting DOM monitoring...</div>';
+            
+            if (domObserver) {
+                domObserver.disconnect();
+            }
+            
+            domObserver = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                    mutation.addedNodes.forEach((node) => {
+                        if (node.nodeType === Node.ELEMENT_NODE) {
+                            const text = node.textContent || '';
+                            if (text.includes('[ASSESSMENT_ACTION:')) {
+                                const matches = text.match(/\[ASSESSMENT_ACTION:([^\]]+)\]/g);
+                                if (matches) {
+                                    matches.forEach(match => {
+                                        log.innerHTML += `<div class="success">Found in DOM: ${match}</div>`;
+                                        console.log('[DOM Monitor] Found action tag:', match);
+                                        
+                                        // Parse and dispatch the action
+                                        const actionMatch = match.match(/\[ASSESSMENT_ACTION:([^:]+):([^\]]+)\]/);
+                                        if (actionMatch) {
+                                            const [, action, params] = actionMatch;
+                                            const event = new CustomEvent('assessment-action-detected', {
+                                                detail: { action, params }
+                                            });
+                                            window.dispatchEvent(event);
+                                            log.innerHTML += `<div class="success">Dispatched: ${action} with ${params}</div>`;
+                                        }
+                                    });
+                                }
+                            }
+                        }
+                    });
+                });
+            });
+            
+            // Observe the entire document
+            domObserver.observe(document.body, {
+                childList: true,
+                subtree: true
+            });
+            
+            log.innerHTML += '<div class="success">DOM monitoring started</div>';
+        }
+
+        function stopDomMonitoring() {
+            const log = document.getElementById('dom-log');
+            if (domObserver) {
+                domObserver.disconnect();
+                domObserver = null;
+                log.innerHTML = '<div class="warning">DOM monitoring stopped</div>';
+            }
+        }
+
+        // Auto-start monitoring
+        window.addEventListener('DOMContentLoaded', () => {
+            console.log('[Test Page] Loaded and ready');
+            console.log('[Test Page] Open the assessment chat and try the test commands');
+            
+            // Check for UnifiedChat component
+            setTimeout(() => {
+                const unifiedChat = document.querySelector('.unified-chat');
+                if (unifiedChat) {
+                    console.log('[Test Page] ✓ UnifiedChat component found');
+                } else {
+                    console.log('[Test Page] ✗ UnifiedChat component not found');
+                }
+            }, 2000);
+        });
+    </script>
+</body>
+</html>

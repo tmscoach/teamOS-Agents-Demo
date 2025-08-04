@@ -21,6 +21,16 @@ const nextConfig: NextConfig = {
       }
     ],
   },
+  webpack: (config: any, { isServer }: any) => {
+    // Suppress OpenAI websocket warnings for client-side builds
+    if (!isServer) {
+      config.ignoreWarnings = [
+        { module: /openai.*file\.node\.js/ },
+        { message: /Critical dependency.*require function/ }
+      ];
+    }
+    return config;
+  },
 }
 
 export default nextConfig

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { Oscar1 } from '@/app/chat/components/icons/Oscar1'
 
-export function AskOskarInputWidget({ onToggleWidget }: { onToggleWidget: () => void }) {
+export function AskOsmoInputWidget({ onToggleWidget }: { onToggleWidget: () => void }) {
   const [query, setQuery] = useState('')
   
   const handleSubmit = (e: React.FormEvent) => {
@@ -35,7 +35,7 @@ export function AskOskarInputWidget({ onToggleWidget }: { onToggleWidget: () => 
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Ask Oskar"
+            placeholder="Ask Osmo"
             className="flex-1 bg-transparent outline-none font-normal text-gray-900 text-sm leading-6 placeholder:text-gray-500 cursor-pointer"
             autoComplete="off"
           />
