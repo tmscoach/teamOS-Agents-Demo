@@ -136,8 +136,8 @@ export async function POST(request: Request) {
         // For summaries, we need to wrap the fragment in a basic HTML document for proper rendering
         let htmlToStore = response;
         if (tool === 'tms_generate_html_summary' && typeof response === 'string' && !response.includes('<!DOCTYPE')) {
-          // It's a fragment, wrap it in basic HTML with GetGraph URLs updated to full URLs
-          const baseUrl = 'https://api-test.tms.global';
+          // It's a fragment, wrap it in basic HTML
+          // URLs are already absolute in the fragment, no need to replace them
           htmlToStore = `<!DOCTYPE html>
 <html>
 <head>
@@ -152,7 +152,7 @@ export async function POST(request: Request) {
   </style>
 </head>
 <body>
-  ${response.replace(/src="\/GetGraph/g, `src="${baseUrl}/GetGraph`)}
+  ${response}
 </body>
 </html>`;
         }

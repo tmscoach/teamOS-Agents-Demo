@@ -172,6 +172,7 @@ function generateTMPSummary(subscription: MockSubscription, state: any, template
   
   // Use the fragment template that matches TMS API exactly
   const replacements = {
+    BASE_URL: 'https://api-test.tms.global',
     MAJOR_ROLE: tmpResults.majorRole,
     RELATED_ROLE_1: tmpResults.relatedRole1,
     RELATED_ROLE_2: tmpResults.relatedRole2,
@@ -207,6 +208,7 @@ function generateQO2Summary(subscription: MockSubscription, state: any, template
   const qo2Score = 1.86; // Opportunity/Obstacle ratio
   
   const replacements = {
+    BASE_URL: 'https://api-test.tms.global',
     GVA_SCORE: gva.toString(),
     PAV_SCORE: pav.toString(),
     OV_SCORE: ov.toString(),
@@ -242,6 +244,7 @@ function generateTeamSignalsSummary(subscription: MockSubscription, state: any, 
   const overallScore = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
   
   const replacements = {
+    BASE_URL: 'https://api-test.tms.global',
     SIGNAL_COLORS: signalColors,
     TEAM_NAME: organizationName,
     OVERALL_SCORE: overallScore.toString(),
