@@ -642,8 +642,6 @@ User message: ${message}`;
       
       for (const agentTool of agent.tools) {
         try {
-          console.log(`[${context.currentAgent}] Converting tool: ${agentTool.name}`);
-          
           // Convert JSON schema to Zod schema (simplified conversion)
           const createZodSchema = (jsonSchema: any): any => {
           if (jsonSchema.type === 'object') {
@@ -914,16 +912,6 @@ User message: ${message}`;
         conversationMessagesCount: conversationMessages.length
       });
       
-      // Additional debug logging for OnboardingAgent
-      if (context.currentAgent === 'OnboardingAgent') {
-        console.log('[Streaming] OnboardingAgent Debug:', {
-          toolNames: tools ? Object.keys(tools) : [],
-          hasExtractTeamInfo: tools ? 'extractTeamInfo' in tools : false,
-          hasValidateRequiredFields: tools ? 'validateRequiredFields' in tools : false,
-          messageHistoryLength: context.messageHistory.length,
-          onboardingMetadata: context.metadata?.onboarding
-        });
-      }
       
       let result;
       try {
