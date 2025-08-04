@@ -10,6 +10,14 @@ import { PluginRenderer } from './PluginRenderer';
 export function ChatMessages() {
   const { chat, context } = useChatContext();
   const scrollRef = useRef<HTMLDivElement>(null);
+  
+  // Debug logging
+  console.log('[ChatMessages] Rendering with:', {
+    messagesCount: chat.messages.length,
+    isLoading: chat.isLoading,
+    agent: context.agent,
+    messages: chat.messages.map(m => ({ role: m.role, contentLength: m.content.length }))
+  });
 
   // Auto-scroll to bottom on new messages with smooth behavior
   useEffect(() => {

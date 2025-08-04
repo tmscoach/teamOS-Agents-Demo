@@ -86,6 +86,7 @@ export function UnifiedChat({
       console.log('[UnifiedChat] ==== RESPONSE RECEIVED ====');
       console.log('[UnifiedChat] Response status:', response.status);
       console.log('[UnifiedChat] Response headers:', response.headers);
+      console.log('[UnifiedChat] Current messages count:', chat.messages.length);
       console.log('[UnifiedChat] ==== END RESPONSE ====');
     },
     onFinish: (message, { finishReason }) => {
@@ -94,6 +95,8 @@ export function UnifiedChat({
       console.log('[UnifiedChat] Content length:', message.content.length);
       console.log('[UnifiedChat] Finish reason:', finishReason);
       console.log('[UnifiedChat] Has ASSESSMENT_ACTION:', message.content.includes('[ASSESSMENT_ACTION:'));
+      console.log('[UnifiedChat] Total messages after finish:', chat.messages.length);
+      console.log('[UnifiedChat] All messages:', chat.messages.map(m => ({ role: m.role, content: m.content.substring(0, 50) })));
       
       if (message.content.includes('[ASSESSMENT_ACTION:')) {
         const matches = message.content.match(/\[ASSESSMENT_ACTION:([^\]]+)\]/g);
