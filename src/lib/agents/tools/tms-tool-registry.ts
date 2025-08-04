@@ -416,7 +416,7 @@ export const TMS_TOOL_REGISTRY: Record<string, TMSToolDefinition> = {
     name: 'tms_generate_html_summary',
     description: 'Generate a condensed HTML summary for a completed assessment',
     category: 'debrief',
-    endpoint: '/Report/GetSummary/{subscriptionId}',
+    endpoint: '/PageContent/GetSubscriptionSummary/{subscriptionId}',
     method: 'GET',
     requiresAuth: true,
     parameters: {

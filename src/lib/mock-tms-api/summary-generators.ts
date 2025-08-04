@@ -158,16 +158,17 @@ function generateTMPSummary(subscription: MockSubscription, state: any, template
   // Calculate TMP results
   const tmpResults = calculateTMPResults(state.answers);
   
-  // Calculate net scores for the profile (simplified scoring)
+  // Calculate net scores for the profile
+  // Show only the dominant trait from each pair with net difference
+  // E/I pair: Introvert wins (22-15=7)
+  // P/C pair: Creative wins (22-19=3)  
+  // A/B pair: Beliefs wins (22-17=5)
+  // S/F pair: Structured wins (23-14=9)
   const netScores = {
-    E: 15, // Extrovert
-    I: 22, // Introvert  
-    P: 19, // Practical
-    C: 22, // Creative
-    A: 17, // Analytical
-    B: 22, // Beliefs
-    S: 23, // Structured
-    F: 14  // Flexible
+    I: 7,  // Introvert net score
+    C: 3,  // Creative net score
+    B: 5,  // Beliefs net score
+    S: 9   // Structured net score
   };
   
   // Use the fragment template that matches TMS API exactly
@@ -179,14 +180,7 @@ function generateTMPSummary(subscription: MockSubscription, state: any, template
     MAJOR_ROLE_SCORE: tmpResults.majorRoleScore.toString(),
     RELATED_ROLE_1_SCORE: tmpResults.relatedRole1Score.toString(),
     RELATED_ROLE_2_SCORE: tmpResults.relatedRole2Score.toString(),
-    EXTROVERT_SCORE: netScores.E.toString(),
-    INTROVERT_SCORE: netScores.I.toString(),
-    PRACTICAL_SCORE: netScores.P.toString(),
-    CREATIVE_SCORE: netScores.C.toString(),
-    ANALYTICAL_SCORE: netScores.A.toString(),
-    BELIEFS_SCORE: netScores.B.toString(),
-    STRUCTURED_SCORE: netScores.S.toString(),
-    FLEXIBLE_SCORE: netScores.F.toString()
+    NET_SCORES: `I:${netScores.I} C:${netScores.C} B:${netScores.B} S:${netScores.S}`
   };
   
   // Return just the HTML fragment like the TMS API does

@@ -152,7 +152,7 @@ export async function getHTMLSummary(options: {
   jwt?: string;
 }): Promise<string> {
   // Extract path parameters
-  const pathMatch = options.endpoint.match(/\/Report\/GetSummary\/(\d+)/);
+  const pathMatch = options.endpoint.match(/\/PageContent\/GetSubscriptionSummary\/(\d+)/);
   if (!pathMatch) {
     throw {
       error: 'INVALID_REQUEST',
