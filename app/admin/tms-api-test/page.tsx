@@ -1177,7 +1177,7 @@ export default function TMSApiTestPage() {
                       </button>
                     </div>
                     {/* Special rendering for HTML reports and images */}
-                    {selectedTool === 'tms_generate_html_report' && result.response.status === 200 && typeof result.response.data === 'string' ? (
+                    {(selectedTool === 'tms_generate_html_report' || selectedTool === 'tms_generate_html_summary') && result.response.status === 200 && typeof result.response.data === 'string' ? (
                       <div>
                         <div style={{ marginBottom: '12px' }}>
                           <iframe

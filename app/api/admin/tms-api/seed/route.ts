@@ -99,10 +99,10 @@ export async function POST() {
       workflowId: 'tmp-workflow',
       workflowName: 'Team Management Profile',
       assessmentType: 'TMP' as const,
-      status: 'not_started' as const,  // Changed to not_started for assessment
-      completionPercentage: 0,
+      status: 'completed' as const,  // Mark as completed for summary generation
+      completionPercentage: 100,
       assignedDate: new Date('2024-01-15'),
-      completedDate: undefined,
+      completedDate: new Date('2024-01-20'),
       baseContentId: 3,
       currentPageId: 2
     };
@@ -118,9 +118,10 @@ export async function POST() {
       workflowId: 'qo2-workflow',
       workflowName: 'Opportunities-Obstacles Quotient',
       assessmentType: 'QO2' as const,
-      status: 'not_started' as const,
-      completionPercentage: 0,
+      status: 'completed' as const,  // Mark as completed for summary generation
+      completionPercentage: 100,
       assignedDate: new Date('2024-01-15'),
+      completedDate: new Date('2024-01-21'),
       baseContentId: 5,
       currentPageId: 408
     };
@@ -135,9 +136,10 @@ export async function POST() {
       workflowId: 'team-signals-workflow',
       workflowName: 'Team Signals',
       assessmentType: 'TeamSignals' as const,
-      status: 'not_started' as const,
-      completionPercentage: 0,
+      status: 'completed' as const,  // Mark as completed for summary generation
+      completionPercentage: 100,
       assignedDate: new Date('2024-01-15'),
+      completedDate: new Date('2024-01-22'),
       baseContentId: 12,
       currentPageId: 97
     };
