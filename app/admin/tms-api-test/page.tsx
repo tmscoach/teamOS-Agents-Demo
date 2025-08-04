@@ -415,12 +415,6 @@ export default function TMSApiTestPage() {
       const data = await res.json();
       const duration = Date.now() - startTime;
 
-      // Debug logging for HTML summary
-      if (selectedTool === 'tms_generate_html_summary') {
-        console.log('[DEBUG] HTML Summary response type:', typeof data);
-        console.log('[DEBUG] HTML Summary response preview:', data?.substring ? data.substring(0, 100) : data);
-      }
-
       setResult({
         request,
         response: {

@@ -130,7 +130,32 @@ export async function POST(request: Request) {
         const reportType = parameters.subscriptionId.startsWith('219') ? 'TMP' : 
                           parameters.subscriptionId.startsWith('218') ? 'QO2' : 'TEAM_SIGNALS';
         
-        console.log('[TMS API Test] Storing HTML report for immediate processing...');
+        const logPrefix = tool === 'tms_generate_html_summary' ? '[TMS API Test Summary]' : '[TMS API Test]';
+        console.log(`${logPrefix} Storing HTML ${tool === 'tms_generate_html_summary' ? 'summary' : 'report'} for immediate processing...`);
+        
+        // For summaries, we need to wrap the fragment in a basic HTML document for proper rendering
+        let htmlToStore = response;
+        if (tool === 'tms_generate_html_summary' && typeof response === 'string' && !response.includes('<!DOCTYPE')) {
+          // It's a fragment, wrap it in basic HTML with GetGraph URLs updated to full URLs
+          const baseUrl = 'https://api-test.tms.global';
+          htmlToStore = `<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Assessment Summary</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    .table { width: 100%; border-collapse: collapse; }
+    .table td { padding: 10px; }
+    .backgroundWhite { background: white; }
+    h3 { color: #333; margin: 20px 0 10px 0; }
+  </style>
+</head>
+<body>
+  ${response.replace(/src="\/GetGraph/g, `src="${baseUrl}/GetGraph`)}
+</body>
+</html>`;
+        }
         
         const storeResponse = await fetch(`${request.url.replace('/api/admin/tms-api/test', '/api/reports/store')}`, {
           method: 'POST',
@@ -142,7 +167,7 @@ export async function POST(request: Request) {
             reportType,
             subscriptionId: parameters.subscriptionId,
             templateId: parameters.templateId || '6',
-            rawHtml: response,
+            rawHtml: htmlToStore,
             organizationId: 'default',
             teamId: null,
             processImmediately: enableVisionProcessing,
@@ -152,12 +177,12 @@ export async function POST(request: Request) {
 
         if (storeResponse.ok) {
           const storeData = await storeResponse.json();
-          console.log('[TMS API Test] Report stored successfully:', storeData.reportId);
+          console.log(`${logPrefix} ${tool === 'tms_generate_html_summary' ? 'Summary' : 'Report'} stored successfully:`, storeData.reportId);
         } else {
-          console.error('[TMS API Test] Failed to store report:', await storeResponse.text());
+          console.error(`${logPrefix} Failed to store ${tool === 'tms_generate_html_summary' ? 'summary' : 'report'}:`, await storeResponse.text());
         }
       } catch (storeError) {
-        console.error('[TMS API Test] Error storing report:', storeError);
+        console.error(`${logPrefix} Error storing ${tool === 'tms_generate_html_summary' ? 'summary' : 'report'}:`, storeError);
       }
     }
 

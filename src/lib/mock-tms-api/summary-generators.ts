@@ -151,114 +151,106 @@ export async function generateHTMLSummary(subscription: MockSubscription, templa
  * Generate TMP (Team Management Profile) HTML summary
  */
 function generateTMPSummary(subscription: MockSubscription, state: any, templateId: string): string {
-  const baseUrl = 'https://api-test.tms.global';
-  
   // Get user to access respondent name
   const { mockDataStore } = require('./mock-data-store');
   const user = mockDataStore.getUser(subscription.userId);
-  const respondentName = user?.respondentName || `${user?.firstName} ${user?.lastName}` || 'Test User';
-  
-  // Get organization name
-  const org = mockDataStore.getOrganization(subscription.organizationId);
-  const organizationName = org?.name || 'Test Organization';
   
   // Calculate TMP results
   const tmpResults = calculateTMPResults(state.answers);
   
-  // Generate work preferences bar chart HTML
-  const workPrefsHTML = generateWorkPreferencesHTML(tmpResults.workPreferences);
+  // Calculate net scores for the profile (simplified scoring)
+  const netScores = {
+    E: 15, // Extrovert
+    I: 22, // Introvert  
+    P: 19, // Practical
+    C: 22, // Creative
+    A: 17, // Analytical
+    B: 22, // Beliefs
+    S: 23, // Structured
+    F: 14  // Flexible
+  };
   
-  // Generate key characteristics based on major role
-  const keyCharacteristics = getKeyCharacteristics(tmpResults.majorRole);
-  
+  // Use the fragment template that matches TMS API exactly
   const replacements = {
-    BASE_URL: baseUrl,
-    RESPONDENT_NAME: respondentName,
-    ORGANIZATION_NAME: organizationName,
-    REPORT_DATE: new Date().toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric' }),
     MAJOR_ROLE: tmpResults.majorRole,
-    MAJOR_ROLE_CODE: tmpResults.majorRoleCode,
     RELATED_ROLE_1: tmpResults.relatedRole1,
-    RELATED_ROLE_1_CODE: tmpResults.relatedRole1Code,
     RELATED_ROLE_2: tmpResults.relatedRole2,
-    RELATED_ROLE_2_CODE: tmpResults.relatedRole2Code,
     MAJOR_ROLE_SCORE: tmpResults.majorRoleScore.toString(),
     RELATED_ROLE_1_SCORE: tmpResults.relatedRole1Score.toString(),
     RELATED_ROLE_2_SCORE: tmpResults.relatedRole2Score.toString(),
-    WORK_PREFERENCES_HTML: workPrefsHTML,
-    KEY_CHARACTERISTICS: keyCharacteristics
+    EXTROVERT_SCORE: netScores.E.toString(),
+    INTROVERT_SCORE: netScores.I.toString(),
+    PRACTICAL_SCORE: netScores.P.toString(),
+    CREATIVE_SCORE: netScores.C.toString(),
+    ANALYTICAL_SCORE: netScores.A.toString(),
+    BELIEFS_SCORE: netScores.B.toString(),
+    STRUCTURED_SCORE: netScores.S.toString(),
+    FLEXIBLE_SCORE: netScores.F.toString()
   };
   
-  return loadTemplate('tmp-summary', replacements);
+  // Return just the HTML fragment like the TMS API does
+  return loadTemplate('tmp-summary-fragment', replacements);
 }
 
 /**
  * Generate QO2 (Opportunities-Obstacles Quotient) HTML summary
  */
 function generateQO2Summary(subscription: MockSubscription, state: any, templateId: string): string {
-  const baseUrl = 'https://api-test.tms.global';
-  
-  // Get user to access respondent name
-  const { mockDataStore } = require('./mock-data-store');
-  const user = mockDataStore.getUser(subscription.userId);
-  const respondentName = user?.respondentName || `${user?.firstName} ${user?.lastName}` || 'Test User';
-  
-  // Get organization name
-  const org = mockDataStore.getOrganization(subscription.organizationId);
-  const organizationName = org?.name || 'Test Organization';
-  
   // Mock QO2 scores for summary
-  const qo2Score = 75;
-  const opportunitiesScore = 82;
-  const obstaclesScore = 68;
+  const gva = 38;
+  const pav = 33;
+  const ov = 48;
+  const tv = 70;
+  const povn = 53;
+  const opportunityScore = 65;
+  const obstacleScore = 35;
+  const qo2Score = 1.86; // Opportunity/Obstacle ratio
   
   const replacements = {
-    BASE_URL: baseUrl,
-    RESPONDENT_NAME: respondentName,
-    ORGANIZATION_NAME: organizationName,
-    REPORT_DATE: new Date().toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric' }),
-    QO2_SCORE: qo2Score.toString(),
-    OPPORTUNITIES_SCORE: opportunitiesScore.toString(),
-    OBSTACLES_SCORE: obstaclesScore.toString(),
-    QO2_CATEGORY: getQO2Category(qo2Score)
+    GVA_SCORE: gva.toString(),
+    PAV_SCORE: pav.toString(),
+    OV_SCORE: ov.toString(),
+    TV_SCORE: tv.toString(),
+    POVN_SCORE: povn.toString(),
+    OPPORTUNITY_SCORE: opportunityScore.toString(),
+    OBSTACLE_SCORE: obstacleScore.toString(),
+    QO2_SCORE: qo2Score.toFixed(2),
+    PRIMARY_FOCUS: 'Opportunity-Focused'
   };
   
-  return loadTemplate('qo2-summary', replacements);
+  // Return just the HTML fragment like the TMS API does
+  return loadTemplate('qo2-summary-fragment', replacements);
 }
 
 /**
  * Generate Team Signals HTML summary
  */
 function generateTeamSignalsSummary(subscription: MockSubscription, state: any, templateId: string): string {
-  const baseUrl = 'https://api-test.tms.global';
-  
   // Get organization name
   const { mockDataStore } = require('./mock-data-store');
   const org = mockDataStore.getOrganization(subscription.organizationId);
   const organizationName = org?.name || 'Test Organization';
   
-  // Mock team health scores
-  const teamScores = {
-    communication: 75,
-    collaboration: 82,
-    trust: 69,
-    leadership: 71,
-    engagement: 78,
-    innovation: 65,
-    performance: 73,
-    wellbeing: 77
-  };
+  // Mock team health scores and determine colors
+  const scores = [75, 45, 68, 72, 38, 42, 65, 71];
+  const colors = scores.map(score => {
+    if (score >= 75) return 'green';
+    if (score >= 50) return 'amber';
+    return 'red';
+  });
+  const signalColors = colors.join('|');
+  const overallScore = Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
   
   const replacements = {
-    BASE_URL: baseUrl,
+    SIGNAL_COLORS: signalColors,
     TEAM_NAME: organizationName,
-    REPORT_DATE: new Date().toLocaleDateString('en-US', { day: '2-digit', month: '2-digit', year: 'numeric' }),
-    OVERALL_SCORE: Math.round(Object.values(teamScores).reduce((a, b) => a + b, 0) / Object.keys(teamScores).length).toString(),
+    OVERALL_SCORE: overallScore.toString(),
     TOP_STRENGTH: 'Collaboration',
     TOP_OPPORTUNITY: 'Innovation'
   };
   
-  return loadTemplate('team-signals-summary', replacements);
+  // Return just the HTML fragment like the TMS API does
+  return loadTemplate('team-signals-summary-fragment', replacements);
 }
 
 /**
