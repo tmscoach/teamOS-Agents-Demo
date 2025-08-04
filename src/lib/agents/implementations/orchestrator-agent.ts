@@ -162,15 +162,15 @@ Example responses for users who haven't completed TMP:
         
         // If there's a pending action, prepare appropriate response
         if (continuityState.pendingAction?.type === 'assessment_selection') {
-          return {
-            message: continuityMessage,
-            events: [],
-            context: context,
-            metadata: {
-              continuityDetected: true,
-              suggestAssessmentModal: true
-            }
+          const response = this.buildResponse(context, [], {
+            message: continuityMessage
+          });
+          response.metadata = {
+            ...response.metadata,
+            continuityDetected: true,
+            suggestAssessmentModal: true
           };
+          return response;
         }
       }
     }
@@ -232,19 +232,19 @@ Example responses for users who haven't completed TMP:
       const targetAgent = await this.determineTargetAgent(message, context);
       if (targetAgent && targetAgent !== 'OrchestratorAgent') {
         console.log('[OrchestratorAgent] Routing to specialist agent:', targetAgent);
-        return {
+        const response = this.buildResponse(context, [], {
           message: `I'll connect you with our ${targetAgent.replace('Agent', ' specialist')} who can best help with your request.`,
-          events: [],
-          context: context,
           handoff: {
             targetAgent: targetAgent,
             reason: 'intent_based'
-          },
-          metadata: {
-            routingReason: 'intent_based',
-            originalQuery: message
           }
+        });
+        response.metadata = {
+          ...response.metadata,
+          routingReason: 'intent_based',
+          originalQuery: message
         };
+        return response;
       }
     }
 
@@ -394,40 +394,40 @@ Return ONLY the agent name, nothing else.`
     
     // New user in assessment phase who hasn't completed TMP
     if (journeyPhase === JourneyPhase.ASSESSMENT && !hasCompletedTMP) {
-      return {
-        message: `Welcome to your teamOS dashboard, ${userName}! 🎉\n\nI'm Osmo, here to guide you through your team transformation journey.\n\nLet's start by learning about your leadership style with the Team Management Profile. It only takes 15 minutes and you'll get:\n• Your personal work preferences profile\n• Insights into your team role\n• 5000 credits to assess your team\n\nReady to begin? Just type "start TMP" and I'll take you there!`,
-        events: [],
-        context: context,
-        metadata: {
-          proactiveType: 'tmp_prompt',
-          showStartButton: true,
-          credits: 5000
-        }
+      const response = this.buildResponse(context, [], {
+        message: `Welcome to your teamOS dashboard, ${userName}! 🎉\n\nI'm Osmo, here to guide you through your team transformation journey.\n\nLet's start by learning about your leadership style with the Team Management Profile. It only takes 15 minutes and you'll get:\n• Your personal work preferences profile\n• Insights into your team role\n• 5000 credits to assess your team\n\nReady to begin? Just type "start TMP" and I'll take you there!`
+      });
+      response.metadata = {
+        ...response.metadata,
+        proactiveType: 'tmp_prompt',
+        showStartButton: true,
+        credits: 5000
       };
+      return response;
     }
     
     // User has completed TMP, now in debrief phase
     if (journeyPhase === JourneyPhase.DEBRIEF && hasCompletedTMP) {
-      return {
-        message: `Welcome back, ${userName}! 🎊\n\nExcellent work completing your TMP! You've earned 5000 credits.\n\nBased on your results, you're an Explorer-Promoter. This means you excel at generating ideas and inspiring others.\n\nWould you like to:\n• Review your detailed TMP results\n• Start assessing your team members\n• Learn about other assessments\n\nWhat interests you most?`,
-        events: [],
-        context: context,
-        metadata: {
-          proactiveType: 'post_tmp_guidance',
-          credits: 5000
-        }
+      const response = this.buildResponse(context, [], {
+        message: `Welcome back, ${userName}! 🎊\n\nExcellent work completing your TMP! You've earned 5000 credits.\n\nBased on your results, you're an Explorer-Promoter. This means you excel at generating ideas and inspiring others.\n\nWould you like to:\n• Review your detailed TMP results\n• Start assessing your team members\n• Learn about other assessments\n\nWhat interests you most?`
+      });
+      response.metadata = {
+        ...response.metadata,
+        proactiveType: 'post_tmp_guidance',
+        credits: 5000
       };
+      return response;
     }
     
     // Default welcome for other phases
-    return {
-      message: `Welcome back, ${userName}! I'm here to help guide your team transformation journey.\n\nHow can I assist you today?`,
-      events: [],
-      context: context,
-      metadata: {
-        proactiveType: 'general_welcome'
-      }
+    const response = this.buildResponse(context, [], {
+      message: `Welcome back, ${userName}! I'm here to help guide your team transformation journey.\n\nHow can I assist you today?`
+    });
+    response.metadata = {
+      ...response.metadata,
+      proactiveType: 'general_welcome'
     };
+    return response;
   }
 }
 

@@ -434,26 +434,23 @@ IMPORTANT:
       }
       
       if (availableAssessments.length === 0) {
-        return {
-          message: "It looks like you've already completed the available assessments. Would you like to review your results or explore other team transformation tools?",
-          events: [],
-          context: context,
-          metadata: {}
-        };
+        return this.buildResponse(context, [], {
+          message: "It looks like you've already completed the available assessments. Would you like to review your results or explore other team transformation tools?"
+        });
       }
       
-      return {
+      const response = this.buildResponse(context, [], {
         message: `I can help you start an assessment! Here are your available options:
 
 ${availableAssessments.map((a, i) => `${i + 1}. ${a}`).join('\n')}
 
-Which assessment would you like to take? Just tell me the name or number.`,
-        events: [],
-        context: context,
-        metadata: {
-          awaitingSelection: true
-        }
+Which assessment would you like to take? Just tell me the name or number.`
+      });
+      response.metadata = {
+        ...response.metadata,
+        awaitingSelection: true
       };
+      return response;
     }
     
     // If assessment already selected, create subscription
@@ -468,21 +465,15 @@ Which assessment would you like to take? Just tell me the name or number.`,
     const completedAssessments = context.metadata?.completedAssessments || {};
     
     if (completedAssessments[selection.type]) {
-      return {
-        message: `You've already completed the ${selection.type} assessment. Would you like to review your results or try a different assessment?`,
-        events: [],
-        context: context,
-        metadata: {}
-      };
+      return this.buildResponse(context, [], {
+        message: `You've already completed the ${selection.type} assessment. Would you like to review your results or try a different assessment?`
+      });
     }
     
     if (selection.type === 'TeamSignals' && !context.metadata?.teamSignalsEligible) {
-      return {
-        message: "Team Signals requires completing the TMP assessment first. Would you like to start with TMP instead?",
-        events: [],
-        context: context,
-        metadata: {}
-      };
+      return this.buildResponse(context, [], {
+        message: "Team Signals requires completing the TMP assessment first. Would you like to start with TMP instead?"
+      });
     }
     
     // Create subscription
@@ -492,12 +483,9 @@ Which assessment would you like to take? Just tell me the name or number.`,
   private async createAssessmentSubscription(context: AgentContext): Promise<AgentResponse> {
     const selection = context.metadata?.selectedAssessment as AssessmentSelection;
     if (!selection) {
-      return {
-        message: "I need to know which assessment you'd like to take first. Please select TMP or Team Signals.",
-        events: [],
-        context: context,
-        metadata: {}
-      };
+      return this.buildResponse(context, [], {
+        message: "I need to know which assessment you'd like to take first. Please select TMP or Team Signals."
+      });
     }
     
     console.log('[AssessmentAgent] Creating subscription with context:', {
@@ -541,17 +529,17 @@ Which assessment would you like to take? Just tell me the name or number.`,
             selection.status = existingSubscription.Status === 'Completed' ? 'completed' : 'in_progress';
             context.metadata.selectedAssessment = selection;
             
-            return {
-              message: `I found your existing ${selection.type} assessment! Let me take you to continue where you left off.`,
-              events: [],
-              context: context,
-              metadata: {
-                selectedAssessment: selection,
-                existingSubscription: true,
-                requiresRedirect: true,
-                redirectUrl: `/chat/assessment?agent=AssessmentAgent&assessmentType=${selection.type.toLowerCase()}`
-              }
+            const response = this.buildResponse(context, [], {
+              message: `I found your existing ${selection.type} assessment! Let me take you to continue where you left off.`
+            });
+            response.metadata = {
+              ...response.metadata,
+              selectedAssessment: selection,
+              existingSubscription: true,
+              requiresRedirect: true,
+              redirectUrl: `/chat/assessment?agent=AssessmentAgent&assessmentType=${selection.type.toLowerCase()}`
             };
+            return response;
           }
         }
       } catch (error) {
@@ -599,7 +587,7 @@ Which assessment would you like to take? Just tell me the name or number.`,
         selection.status = 'in_progress';
         context.metadata.selectedAssessment = selection;
         
-        return {
+        const response = this.buildResponse(context, [], {
           message: `Great choice! I've successfully set up your ${selection.type} assessment.
 
 The ${selection.type} assessment will help you understand ${
@@ -608,17 +596,17 @@ The ${selection.type} assessment will help you understand ${
     : 'what\'s working well in your team and where to focus improvement efforts'
 }.
 
-Let me take you to the assessment interface now...`,
-          events: [],
-          context: context,
-          metadata: {
-            selectedAssessment: selection,
-            subscriptionCreated: true,
-            subscriptionId: subscriptionId,
-            requiresRedirect: true,
-            redirectUrl: `/chat/assessment?agent=AssessmentAgent&assessmentType=${selection.type.toLowerCase()}`
-          }
+Let me take you to the assessment interface now...`
+        });
+        response.metadata = {
+          ...response.metadata,
+          selectedAssessment: selection,
+          subscriptionCreated: true,
+          subscriptionId: subscriptionId,
+          requiresRedirect: true,
+          redirectUrl: `/chat/assessment?agent=AssessmentAgent&assessmentType=${selection.type.toLowerCase()}`
         };
+        return response;
       } else {
         throw new Error('Failed to create subscription - no subscription ID returned');
       }
@@ -626,17 +614,17 @@ Let me take you to the assessment interface now...`,
       console.error('[AssessmentAgent] Error creating subscription:', error);
       
       // Fallback - still redirect to assessment page which will handle the error
-      return {
-        message: `I'll set up your ${selection.type} assessment now. Let me take you to the assessment interface...`,
-        events: [],
-        context: context,
-        metadata: {
-          selectedAssessment: selection,
-          requiresRedirect: true,
-          redirectUrl: `/chat/assessment?agent=AssessmentAgent&assessmentType=${selection.type.toLowerCase()}`,
-          error: error instanceof Error ? error.message : 'Failed to create subscription'
-        }
+      const response = this.buildResponse(context, [], {
+        message: `I'll set up your ${selection.type} assessment now. Let me take you to the assessment interface...`
+      });
+      response.metadata = {
+        ...response.metadata,
+        selectedAssessment: selection,
+        requiresRedirect: true,
+        redirectUrl: `/chat/assessment?agent=AssessmentAgent&assessmentType=${selection.type.toLowerCase()}`,
+        error: error instanceof Error ? error.message : 'Failed to create subscription'
       };
+      return response;
     }
   }
 
