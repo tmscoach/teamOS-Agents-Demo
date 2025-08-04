@@ -1,6 +1,6 @@
 'use client';
 
-import { ReactNode, useState, useEffect, useRef } from 'react';
+import { ReactNode } from 'react';
 import { useChatContext } from './ChatProvider';
 import type { PluginComponentProps } from '../types';
 
@@ -8,21 +8,6 @@ interface PluginRendererProps {
   type: 'header' | 'messageRenderer' | 'inputExtensions' | 'sidePanel' | 'messageHeader';
   message?: any;
   fallback?: ReactNode;
-}
-
-// Wrapper component that tracks if its children render null
-function PluginOrFallback({ 
-  children, 
-  fallback 
-}: { 
-  children: ReactNode; 
-  fallback?: ReactNode 
-}) {
-  // If children is explicitly null, use fallback
-  if (children === null || children === undefined) {
-    return fallback ? <>{fallback}</> : null;
-  }
-  return <>{children}</>;
 }
 
 export function PluginRenderer({ type, message, fallback }: PluginRendererProps) {
@@ -44,19 +29,14 @@ export function PluginRenderer({ type, message, fallback }: PluginRendererProps)
   if (type === 'messageRenderer' && message) {
     console.log(`[PluginRenderer] Found ${relevantPlugins.length} plugins for message rendering`);
     
-    // For now, we'll render the first plugin if available, otherwise fallback
-    // In the future, plugins could have a canHandle method to check
+    // If we have plugins, use the first one that provides this component
     if (relevantPlugins.length > 0) {
       const plugin = relevantPlugins[0];
       const Component = plugin.components![type];
       if (Component) {
         console.log(`[PluginRenderer] Using plugin ${plugin.name} for message rendering`);
-        
-        // Render the plugin component, it will return null if it doesn't handle the message
-        const pluginContent = <Component message={message} context={context} />;
-        
-        // Use the wrapper to handle null returns with fallback
-        return <PluginOrFallback fallback={fallback}>{pluginContent}</PluginOrFallback>;
+        // The plugin now handles ALL messages, not just specific ones
+        return <Component message={message} context={context} />;
       }
     }
     

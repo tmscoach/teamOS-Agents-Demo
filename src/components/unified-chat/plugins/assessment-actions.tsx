@@ -65,21 +65,35 @@ const AssessmentMessageRenderer: React.ComponentType<PluginComponentProps> = ({ 
     // Remove the action tags from the display
     const cleanContent = content.replace(/\[ASSESSMENT_ACTION:[^\]]+\]/g, '').trim();
     
-    // Return the cleaned message
-    return (
-      <p>
-        {cleanContent.split('\n').map((line, i) => (
-          <span key={i}>
-            {line}
-            {i < cleanContent.split('\n').length - 1 && <br />}
-          </span>
-        ))}
-      </p>
-    );
+    // Return the cleaned message if there's content left
+    if (cleanContent) {
+      return (
+        <p>
+          {cleanContent.split('\n').map((line, i) => (
+            <span key={i}>
+              {line}
+              {i < cleanContent.split('\n').length - 1 && <br />}
+            </span>
+          ))}
+        </p>
+      );
+    }
+    // If the message was ONLY the action tag, return null
+    return null;
   }
   
-  // No actions found, return null to let default renderer handle it
-  return null;
+  // No actions found, render the content as-is
+  // This ensures regular messages like "hi" are displayed
+  return (
+    <p>
+      {content.split('\n').map((line, i) => (
+        <span key={i}>
+          {line}
+          {i < content.split('\n').length - 1 && <br />}
+        </span>
+      ))}
+    </p>
+  );
 };
 
 export const assessmentActionsPlugin: ChatPlugin = {
