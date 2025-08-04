@@ -48,16 +48,13 @@ export class ReportStorageService {
         }
       });
 
-      // Process immediately or queue async processing
+      // Process immediately if requested
       if (options.processImmediately) {
-        // Process synchronously for immediate results
+        // Process synchronously for immediate results with vision analysis
         await this.processReportAsync(report.id, options.jwt);
-      } else {
-        // Queue async processing
-        this.processReportAsync(report.id).catch(error => {
-          console.error(`Failed to process report ${report.id}:`, error);
-        });
       }
+      // If processImmediately is false, skip image processing entirely
+      // The report is stored but images are not analyzed with GPT Vision
 
       return report.id;
     } catch (error) {
