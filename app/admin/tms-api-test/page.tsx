@@ -31,6 +31,7 @@ export default function TMSApiTestPage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<ApiTestResult | null>(null);
   const [copied, setCopied] = useState(false);
+  const [enableVisionProcessing, setEnableVisionProcessing] = useState(false);
   const [mockDataStatus, setMockDataStatus] = useState<{
     users: number;
     organizations: number;
@@ -388,7 +389,8 @@ export default function TMSApiTestPage() {
           tool: selectedTool,
           parameters,
           jwtToken: toolDef.requiresAuth ? jwtToken : undefined,
-          headers: customHeaders
+          headers: customHeaders,
+          enableVisionProcessing
         })
       });
 
@@ -976,6 +978,37 @@ export default function TMSApiTestPage() {
                       </p>
                     </div>
                   </div>
+                </div>
+              )}
+
+              {/* Vision Processing Checkbox - Only for HTML Report Generation */}
+              {selectedTool === 'tms_generate_html_report' && (
+                <div style={{ marginBottom: '24px' }}>
+                  <label style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '12px',
+                    padding: '16px',
+                    backgroundColor: '#f9fafb',
+                    borderRadius: '8px',
+                    border: '1px solid #e5e7eb',
+                    cursor: 'pointer'
+                  }}>
+                    <input
+                      type="checkbox"
+                      checked={enableVisionProcessing}
+                      onChange={(e) => setEnableVisionProcessing(e.target.checked)}
+                      style={{ marginTop: '2px', cursor: 'pointer' }}
+                    />
+                    <div>
+                      <div style={{ fontSize: '14px', fontWeight: '500', color: '#111827' }}>
+                        Process images with GPT Vision
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '4px' }}>
+                        Enables enhanced debrief capabilities with visual analysis. Adds 2-3 minutes processing time.
+                      </div>
+                    </div>
+                  </label>
                 </div>
               )}
 

@@ -20,6 +20,7 @@ interface ProcessedImage {
 interface DownloadOptions {
   jwt?: string;
   userId?: string;
+  enableVisionAnalysis?: boolean;
 }
 
 export class ImageDownloadService {
@@ -49,7 +50,7 @@ export class ImageDownloadService {
     // Download each image
     for (const url of imageUrls) {
       try {
-        const processed = await this.downloadImage(url, reportId, jwt);
+        const processed = await this.downloadImage(url, reportId, jwt, options?.enableVisionAnalysis);
         if (processed) {
           imageMap.set(url, processed);
         }
@@ -99,7 +100,7 @@ export class ImageDownloadService {
   /**
    * Download a single image
    */
-  private async downloadImage(url: string, reportId: string, jwt: string | null): Promise<ProcessedImage | null> {
+  private async downloadImage(url: string, reportId: string, jwt: string | null, enableVisionAnalysis: boolean = true): Promise<ProcessedImage | null> {
     try {
       // Decode HTML entities in URL
       let decodedUrl = url
@@ -155,22 +156,26 @@ export class ImageDownloadService {
       }
       console.log(`[Image Download] Successfully uploaded to ${storagePath}`);
 
-      // Analyze image with vision AI
+      // Analyze image with vision AI (only if enabled)
       let visionAnalysis = null;
       let embedding = null;
       
-      try {
-        console.log(`[Image Download] Starting vision analysis for ${imageType} image`);
-        visionAnalysis = await this.visionService.analyzeImage(imageData, imageType, metadata);
-        
-        // Generate embedding from the detailed description
-        if (visionAnalysis.detailedDescription) {
-          embedding = await this.visionService.generateImageEmbedding(visionAnalysis.detailedDescription);
-          console.log(`[Image Download] Generated embedding with ${embedding.length} dimensions`);
+      if (enableVisionAnalysis) {
+        try {
+          console.log(`[Image Download] Starting vision analysis for ${imageType} image`);
+          visionAnalysis = await this.visionService.analyzeImage(imageData, imageType, metadata);
+          
+          // Generate embedding from the detailed description
+          if (visionAnalysis.detailedDescription) {
+            embedding = await this.visionService.generateImageEmbedding(visionAnalysis.detailedDescription);
+            console.log(`[Image Download] Generated embedding with ${embedding.length} dimensions`);
+          }
+        } catch (error) {
+          console.error(`[Image Download] Vision analysis failed:`, error);
+          // Continue without vision analysis
         }
-      } catch (error) {
-        console.error(`[Image Download] Vision analysis failed:`, error);
-        // Continue without vision analysis
+      } else {
+        console.log(`[Image Download] Vision analysis disabled - skipping for ${imageType} image`);
       }
 
       return {

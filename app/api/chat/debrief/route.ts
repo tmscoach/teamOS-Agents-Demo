@@ -167,15 +167,20 @@ export async function POST(request: NextRequest) {
       // First, try to get the stored report ID
       let reportId = null;
       if (subscriptionId) {
+        // Get the latest report for this subscription (regardless of status for testing)
         const storedReport = await prisma.userReport.findFirst({
           where: {
             subscriptionId,
-            userId: dbUser.id,
-            processingStatus: 'COMPLETED'
+            userId: dbUser.id
+            // Removed processingStatus filter to get latest report for testing
+          },
+          orderBy: {
+            createdAt: 'desc'
           },
           select: { id: true }
         });
         reportId = storedReport?.id;
+        console.log('[Debrief] Found report ID for subscription:', { subscriptionId, reportId });
       }
       
       context.metadata.reportId = reportId;

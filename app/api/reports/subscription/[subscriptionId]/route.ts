@@ -40,9 +40,10 @@ export async function GET(
 
     // Get the latest report for this subscription
     // Check both user's own reports and team reports they have access to
+    // For testing: Remove processingStatus filter to get the latest report regardless of status
     const whereConditions: any = {
       subscriptionId,
-      processingStatus: 'COMPLETED',
+      // processingStatus: 'COMPLETED', // Commented out for testing - get latest regardless
       OR: [
         { userId: user.id }
       ]
