@@ -5,6 +5,7 @@
 
 import type { MockSubscription } from './mock-data-store';
 import { WorkflowStateManager } from './workflow-state-manager';
+import { TEST_SUBSCRIPTION_IDS, TMS_API_BASE_URL } from '@/src/lib/utils/tms-api-utils';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -107,15 +108,27 @@ function calculateTMPResults(answers: Record<number, string>) {
  * Load HTML template and replace placeholders
  */
 function loadTemplate(templateName: string, replacements: Record<string, string>): string {
-  const templatePath = path.join(process.cwd(), 'src/lib/mock-tms-api/report-templates', `${templateName}.html`);
-  let template = fs.readFileSync(templatePath, 'utf8');
-  
-  // Replace all placeholders
-  for (const [key, value] of Object.entries(replacements)) {
-    template = template.replace(new RegExp(`{{${key}}}`, 'g'), value);
+  try {
+    const templatePath = path.join(process.cwd(), 'src/lib/mock-tms-api/report-templates', `${templateName}.html`);
+    
+    // Check if file exists before reading
+    if (!fs.existsSync(templatePath)) {
+      console.error(`Template file not found: ${templatePath}`);
+      throw new Error(`Template ${templateName} not found`);
+    }
+    
+    let template = fs.readFileSync(templatePath, 'utf8');
+    
+    // Replace all placeholders
+    for (const [key, value] of Object.entries(replacements)) {
+      template = template.replace(new RegExp(`{{${key}}}`, 'g'), value);
+    }
+    
+    return template;
+  } catch (error) {
+    console.error(`Error loading template ${templateName}:`, error);
+    throw new Error(`Failed to load template: ${templateName}`);
   }
-  
-  return template;
 }
 
 /**
@@ -166,10 +179,10 @@ function generateTMPSummary(subscription: MockSubscription, state: any, template
   const answers = state?.answers || {};
   const results = calculateTMPResults(answers);
   
-  // For subscription 21989, use the exact values from documentation
+  // For test TMP subscription, use the exact values from documentation
   // This matches the seed data which sets up Upholder Maintainer
-  if (subscription.subscriptionId === '21989') {
-    return '<h3>Profile Summary</h3><table class="table backgroundWhite"><tbody><tr><td style="vertical-align:top" width="350"><img id="advancedImg" src="https://api-test.tms.global/GetGraph?CreateTMPQWheel&amp;mr=8&amp;rr1=7&amp;rr2=5&amp;clear=yes" class="pull-left" style=";max-width:300px;max-height:300px;width:100%"></td><td style="vertical-align:center"><table class="table backgroundWhite"><tbody><tr><td><b>Major Role:</b></td><td>Upholder Maintainer</td></tr><tr><td><b>1st Related Role:</b></td><td>Controller Inspector</td></tr><tr><td><b>2nd Related Role:</b></td><td>Thruster Organiser</td></tr><tr><td><b>Net Scores:</b></td><td>I:7 C:3 B:5 S:9</td></tr></tbody></table></td></tr></tbody></table>';
+  if (subscription.subscriptionId === TEST_SUBSCRIPTION_IDS.TMP) {
+    return `<h3>Profile Summary</h3><table class="table backgroundWhite"><tbody><tr><td style="vertical-align:top" width="350"><img id="advancedImg" src="${TMS_API_BASE_URL}/GetGraph?CreateTMPQWheel&amp;mr=8&amp;rr1=7&amp;rr2=5&amp;clear=yes" class="pull-left" style=";max-width:300px;max-height:300px;width:100%"></td><td style="vertical-align:center"><table class="table backgroundWhite"><tbody><tr><td><b>Major Role:</b></td><td>Upholder Maintainer</td></tr><tr><td><b>1st Related Role:</b></td><td>Controller Inspector</td></tr><tr><td><b>2nd Related Role:</b></td><td>Thruster Organiser</td></tr><tr><td><b>Net Scores:</b></td><td>I:7 C:3 B:5 S:9</td></tr></tbody></table></td></tr></tbody></table>`;
   }
   
   // For other subscriptions, generate based on calculated results
@@ -183,7 +196,7 @@ function generateTMPSummary(subscription: MockSubscription, state: any, template
     .map(([key, value]) => `${key}:${value}`)
     .join(' ');
   
-  return `<h3>Profile Summary</h3><table class="table backgroundWhite"><tbody><tr><td style="vertical-align:top" width="350"><img id="advancedImg" src="https://api-test.tms.global/GetGraph?CreateTMPQWheel&amp;mr=${majorRoleScore}&amp;rr1=${relatedRole1Score}&amp;rr2=${relatedRole2Score}&amp;clear=yes" class="pull-left" style=";max-width:300px;max-height:300px;width:100%"></td><td style="vertical-align:center"><table class="table backgroundWhite"><tbody><tr><td><b>Major Role:</b></td><td>${results.majorRole}</td></tr><tr><td><b>1st Related Role:</b></td><td>${results.relatedRole1}</td></tr><tr><td><b>2nd Related Role:</b></td><td>${results.relatedRole2}</td></tr><tr><td><b>Net Scores:</b></td><td>${netScoresStr}</td></tr></tbody></table></td></tr></tbody></table>`;
+  return `<h3>Profile Summary</h3><table class="table backgroundWhite"><tbody><tr><td style="vertical-align:top" width="350"><img id="advancedImg" src="${TMS_API_BASE_URL}/GetGraph?CreateTMPQWheel&amp;mr=${majorRoleScore}&amp;rr1=${relatedRole1Score}&amp;rr2=${relatedRole2Score}&amp;clear=yes" class="pull-left" style=";max-width:300px;max-height:300px;width:100%"></td><td style="vertical-align:center"><table class="table backgroundWhite"><tbody><tr><td><b>Major Role:</b></td><td>${results.majorRole}</td></tr><tr><td><b>1st Related Role:</b></td><td>${results.relatedRole1}</td></tr><tr><td><b>2nd Related Role:</b></td><td>${results.relatedRole2}</td></tr><tr><td><b>Net Scores:</b></td><td>${netScoresStr}</td></tr></tbody></table></td></tr></tbody></table>`;
 }
 
 /**
@@ -191,7 +204,7 @@ function generateTMPSummary(subscription: MockSubscription, state: any, template
  */
 function generateQO2Summary(subscription: MockSubscription, state: any, templateId: string): string {
   // Return a simple QO2 summary HTML
-  return '<h3>QO2 Summary</h3><table class="table backgroundWhite"><tbody><tr><td style="vertical-align:top" width="350"><img src="https://api-test.tms.global/GetGraph?CreateQO2Model&amp;gva=38&amp;pav=33&amp;ov=48&amp;tv=70&amp;povn=53&amp;enq=0.9&amp;clear=yes" class="pull-left" style="max-width:300px;max-height:300px;width:100%"></td><td style="vertical-align:center"><table class="table backgroundWhite"><tbody><tr><td><b>Opportunity Score:</b></td><td>65%</td></tr><tr><td><b>Obstacle Score:</b></td><td>35%</td></tr><tr><td><b>Overall QO2:</b></td><td>1.86</td></tr><tr><td><b>Primary Focus:</b></td><td>Opportunity-Focused</td></tr></tbody></table></td></tr></tbody></table>';
+  return `<h3>QO2 Summary</h3><table class="table backgroundWhite"><tbody><tr><td style="vertical-align:top" width="350"><img src="${TMS_API_BASE_URL}/GetGraph?CreateQO2Model&amp;gva=38&amp;pav=33&amp;ov=48&amp;tv=70&amp;povn=53&amp;enq=0.9&amp;clear=yes" class="pull-left" style="max-width:300px;max-height:300px;width:100%"></td><td style="vertical-align:center"><table class="table backgroundWhite"><tbody><tr><td><b>Opportunity Score:</b></td><td>65%</td></tr><tr><td><b>Obstacle Score:</b></td><td>35%</td></tr><tr><td><b>Overall QO2:</b></td><td>1.86</td></tr><tr><td><b>Primary Focus:</b></td><td>Opportunity-Focused</td></tr></tbody></table></td></tr></tbody></table>`;
 }
 
 /**
