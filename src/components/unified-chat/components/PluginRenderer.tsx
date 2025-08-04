@@ -25,28 +25,29 @@ export function PluginRenderer({ type, message, fallback }: PluginRendererProps)
     return fallback ? <>{fallback}</> : null;
   }
 
-  // For message renderers, render all plugins and fallback
+  // For message renderers, try plugins first, then fallback
   if (type === 'messageRenderer' && message) {
     console.log(`[PluginRenderer] Found ${relevantPlugins.length} plugins for message rendering`);
     
-    // Create a wrapper component that will handle the plugin rendering
-    const PluginWrapper = () => {
-      // Try each plugin
-      for (const plugin of relevantPlugins) {
-        const Component = plugin.components![type];
-        if (Component) {
-          console.log(`[PluginRenderer] Trying plugin ${plugin.name} for message rendering`);
-          const rendered = <Component message={message} context={context} />;
-          if (rendered !== null) {
-            return <>{rendered}</>;
-          }
+    // Try each plugin by rendering them
+    // Plugins should return null if they don't handle the message
+    for (const plugin of relevantPlugins) {
+      const Component = plugin.components![type];
+      if (Component) {
+        console.log(`[PluginRenderer] Trying plugin ${plugin.name} for message rendering`);
+        // Render the component directly - if it returns null, try next plugin
+        const result = Component({ message, context } as PluginComponentProps);
+        if (result !== null) {
+          console.log(`[PluginRenderer] Plugin ${plugin.name} handled the message`);
+          return <>{result}</>;
         }
+        console.log(`[PluginRenderer] Plugin ${plugin.name} returned null, trying next`);
       }
-      // If no plugin handled it, use fallback
-      return fallback ? <>{fallback}</> : null;
-    };
+    }
     
-    return <PluginWrapper />;
+    // If no plugin handled it, use fallback
+    console.log('[PluginRenderer] No plugin handled message, using fallback');
+    return fallback ? <>{fallback}</> : null;
   }
 
   // For other component types, render all of them
