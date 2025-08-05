@@ -104,22 +104,66 @@ x-api-key: {api_key}
 - Easier to version and evolve
 - Better testability
 
+## MVP Implementation Guide
+
+### Minimum Viable Authentication (Week 1)
+Start simple with just two providers:
+
+```json
+// 1. Native authentication (existing TMS users)
+POST /api/v2/auth/native/login
+{
+  "email": "user@example.com",
+  "password": "password123"
+}
+
+// 2. SSO exchange (initially just Clerk for TeamOS)
+POST /api/v2/auth/sso/exchange
+{
+  "provider": "clerk",  // Only support "clerk" in MVP
+  "providerUserId": "clerk_user_123",
+  "metadata": { "email": "user@example.com" }
+}
+```
+
+Database additions (minimal):
+```sql
+-- Just add one table
+CREATE TABLE linked_identities (
+  tms_user_id VARCHAR,
+  provider VARCHAR,      -- 'clerk' or 'native'
+  provider_id VARCHAR,
+  UNIQUE(provider, provider_id)
+);
+```
+
+### MVP Core Features (Week 2-3)
+1. Assessment workflow endpoints
+2. Basic report generation (can return HTML initially)
+3. User management basics
+
+### Post-MVP Enhancements
+1. Add more SSO providers (Auth0, Okta)
+2. Convert reports from HTML to structured JSON
+3. Add analytics and visualization endpoints
+4. Implement OAuth 2.0 flow
+
 ## Migration Strategy
 
-### Phase 1: Core Endpoints
-1. Authentication and user management
-2. Assessment workflow (start, pages, submit)
-3. Basic report generation
+### Phase 1: MVP (2-3 weeks)
+1. Flexible auth with Clerk + native only
+2. Core assessment workflow
+3. Basic HTML report generation
 
-### Phase 2: Enhanced Features
-1. Structured report data
-2. Analytics endpoints
-3. Visualization APIs
+### Phase 2: Enhanced Features (Month 2)
+1. Structured JSON reports
+2. Additional SSO providers
+3. Analytics endpoints
 
-### Phase 3: Advanced Integration
-1. Debrief/Q&A endpoints
-2. Team composition analysis
-3. Predictive insights
+### Phase 3: Advanced Integration (Month 3)
+1. Full OAuth 2.0 support
+2. Webhook system
+3. Advanced analytics
 
 ## Example Integration Flow
 

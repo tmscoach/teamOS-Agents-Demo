@@ -96,34 +96,40 @@ graph TB
     class Stripe,Email external
 ```
 
-## 2. Authentication Flow
+## 2. Flexible Authentication Flow
 
 ```mermaid
 sequenceDiagram
     participant User
-    participant TeamOS
-    participant Clerk
-    participant TMS
-    participant Supabase
+    participant Client as Client App<br/>(TeamOS/Customer)
+    participant Auth as Auth Provider<br/>(Clerk/Auth0/etc)
+    participant TMS as TMS API
+    participant DB as TMS Database
     
-    User->>TeamOS: Access Platform
-    TeamOS->>Clerk: Check Authentication
+    User->>Client: Access Application
+    Client->>Auth: Check Authentication
     
     alt New User
-        Clerk->>User: Show Sign Up
-        User->>Clerk: Create Account
-        Clerk->>TeamOS: Return User Info + JWT
-        TeamOS->>TMS: Create TMS Account<br/>(via token exchange)
-        TMS->>TeamOS: Return TMS User ID
-        TeamOS->>Supabase: Store User Mapping<br/>(Clerk ID <-> TMS ID)
+        Auth->>User: Show Sign Up
+        User->>Auth: Create Account
+        Auth->>Client: Return Provider Token
+        Client->>TMS: POST /auth/sso/exchange<br/>{provider: "clerk", providerId: "xxx"}
+        TMS->>DB: Check linked_identities
+        DB->>TMS: Not found
+        TMS->>DB: Create TMS user
+        TMS->>DB: Link identity
+        TMS->>Client: Return TMS JWT
     else Existing User
-        Clerk->>TeamOS: Return JWT
-        TeamOS->>Supabase: Get User Mapping
-        TeamOS->>TMS: Exchange for TMS Token
-        TMS->>TeamOS: Return TMS JWT
+        Auth->>Client: Return Provider Token
+        Client->>TMS: POST /auth/sso/exchange<br/>{provider: "clerk", providerId: "xxx"}
+        TMS->>DB: Check linked_identities
+        DB->>TMS: Found tms_usr_123
+        TMS->>Client: Return TMS JWT
     end
     
-    TeamOS->>User: Grant Access
+    Client->>User: Grant Access
+    
+    Note over Client,TMS: All subsequent API calls use TMS JWT
 ```
 
 ## 3. Assessment Journey Flow

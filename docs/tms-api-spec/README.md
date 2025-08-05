@@ -57,26 +57,38 @@ TeamOS integrates with multiple systems:
 - Vector embeddings for semantic search
 - Chunked storage for efficient retrieval
 
-## 📋 Implementation Checklist
+## 📋 MVP Implementation Checklist
 
 For the external developer building the TMS API:
 
-- [ ] Review `API-SPECIFICATION.md` for overall design
-- [ ] Implement authentication endpoints (see `01-authentication.json`)
+### Week 1: Authentication Foundation
+- [ ] Review `API-SPECIFICATION.md` MVP section
+- [ ] Implement flexible auth endpoints (see `01-authentication.json`)
+  - [ ] Native login/signup endpoints
+  - [ ] SSO exchange endpoint (support "clerk" provider initially)
+  - [ ] Create `linked_identities` table
+- [ ] Add JWT token generation with provider info
+
+### Week 2-3: Core Features
 - [ ] Build assessment workflow APIs (see `02-assessments.json`)
-- [ ] Create report generation endpoints (see `03-reports.json`)
+- [ ] Create basic report generation (HTML OK for MVP)
+- [ ] Implement user management basics (see `05-user-management.json`)
+- [ ] Test TeamOS integration flow
+
+### Post-MVP: Enhancements
+- [ ] Convert reports to structured JSON (see `03-reports.json`)
 - [ ] Add visualization APIs (see `04-visualizations.json`)
-- [ ] Implement user management (see `05-user-management.json`)
 - [ ] Build analytics endpoints (see `06-dashboard-analytics.json`)
-- [ ] Test integration flows (see `USER-JOURNEY-FLOWS.md`)
-- [ ] Verify security requirements
+- [ ] Add support for more SSO providers
 
 ## 🔄 Integration Flow Example
 
 ```javascript
-// 1. Exchange Clerk ID for TMS token
-const tmsAuth = await tmsApi.auth.tokenExchange({ 
-  clerkUserId: 'clerk_user_123' 
+// 1. TeamOS exchanges Clerk ID for TMS token
+const tmsAuth = await tmsApi.auth.ssoExchange({ 
+  provider: 'clerk',
+  providerUserId: 'clerk_user_123',
+  metadata: { email: user.email }
 });
 
 // 2. Start assessment

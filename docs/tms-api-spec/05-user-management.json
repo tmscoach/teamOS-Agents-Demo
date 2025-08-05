@@ -4,22 +4,46 @@
     "endpoints": {
       "/api/v2/users": {
         "method": "POST",
-        "description": "Create a new user (facilitator or respondent)",
+        "description": "Create a new user with optional SSO linking",
         "headers": {
           "Authorization": "Bearer {token} OR x-api-key: {apiKey}"
         },
         "request": {
-          "body": {
-            "email": "newuser@company.com",
-            "firstName": "Jane",
-            "lastName": "Smith",
-            "role": "respondent",
-            "organizationId": "org_def456",
-            "clerkUserId": "clerk_user_abc789",
-            "metadata": {
-              "department": "Sales",
-              "manager": "usr_xyz123",
-              "location": "New York"
+          "examples": {
+            "withSSO": {
+              "description": "Create user linked to SSO provider",
+              "body": {
+                "email": "newuser@company.com",
+                "firstName": "Jane",
+                "lastName": "Smith",
+                "role": "respondent",
+                "organizationId": "org_def456",
+                "ssoProvider": {
+                  "provider": "clerk",
+                  "providerId": "clerk_user_abc789"
+                },
+                "metadata": {
+                  "department": "Sales",
+                  "manager": "usr_xyz123",
+                  "location": "New York"
+                }
+              }
+            },
+            "nativeAuth": {
+              "description": "Create user with native authentication",
+              "body": {
+                "email": "newuser@company.com",
+                "password": "SecurePassword123!",
+                "firstName": "Jane",
+                "lastName": "Smith",
+                "role": "respondent",
+                "organizationId": "org_def456",
+                "metadata": {
+                  "department": "Sales",
+                  "manager": "usr_xyz123",
+                  "location": "New York"
+                }
+              }
             }
           }
         },

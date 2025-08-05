@@ -21,11 +21,13 @@ sequenceDiagram
     alt Not Authenticated
         Clerk->>U: Show Login/Signup
         U->>Clerk: Create Account
-        Clerk->>API: User Created Webhook
-        API->>TMS: Create TMS User<br/>(Token Exchange)
-        API->>DB: Store User Mapping
+        Clerk->>UI: Return Clerk User
+        UI->>API: Exchange for TMS Token
+        API->>TMS: POST /auth/sso/exchange<br/>{provider: "clerk", providerId: "clerk_123"}
+        TMS->>API: Return TMS JWT
+        API->>DB: Cache TMS Token
     end
-    Clerk->>UI: Authenticated
+    UI->>UI: Authenticated with TMS Token
     
     Note over U,DA: Phase 2: Assessment Selection
     U->>UI: Open Dashboard

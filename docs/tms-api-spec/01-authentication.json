@@ -1,33 +1,34 @@
 {
   "authentication": {
-    "description": "JWT-based authentication for TMS API",
+    "description": "Flexible authentication supporting multiple identity providers",
+    "mvpNote": "MVP can start with just 'clerk' and 'native' providers, adding others later",
     "endpoints": {
-      "/api/v2/auth/signup": {
+      "/api/v2/auth/native/signup": {
         "method": "POST",
-        "description": "Create organization and initial facilitator account",
+        "description": "Create organization with native email/password authentication",
         "request": {
           "body": {
             "email": "manager@company.com",
+            "password": "SecurePassword123!",
             "firstName": "John",
             "lastName": "Doe",
             "organizationName": "Acme Corporation",
             "organizationIndustry": "Technology",
             "organizationSize": "50-250",
             "phoneNumber": "+1234567890",
-            "clerkUserId": "clerk_user_xyz123",
             "timezone": "America/New_York"
           }
         },
         "response": {
           "success": true,
           "data": {
-            "userId": "usr_abc123",
+            "userId": "tms_usr_abc123",
             "organizationId": "org_def456",
             "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
             "tokenExpiry": "2024-01-07T12:00:00Z",
             "refreshToken": "refresh_token_xyz789",
             "user": {
-              "id": "usr_abc123",
+              "id": "tms_usr_abc123",
               "email": "manager@company.com",
               "firstName": "John",
               "lastName": "Doe",
@@ -45,12 +46,13 @@
         }
       },
       
-      "/api/v2/auth/token-exchange": {
+      "/api/v2/auth/native/login": {
         "method": "POST",
-        "description": "Exchange Clerk user ID for TMS JWT token",
+        "description": "Login with email and password",
         "request": {
           "body": {
-            "clerkUserId": "clerk_user_xyz123"
+            "email": "user@company.com",
+            "password": "SecurePassword123!"
           }
         },
         "response": {
@@ -60,10 +62,51 @@
             "tokenExpiry": "2024-01-07T12:00:00Z",
             "refreshToken": "refresh_token_xyz789",
             "user": {
-              "id": "usr_abc123",
+              "id": "tms_usr_abc123",
               "email": "user@company.com",
               "role": "facilitator",
               "organizationId": "org_def456"
+            }
+          }
+        }
+      },
+      
+      "/api/v2/auth/sso/exchange": {
+        "method": "POST",
+        "description": "Exchange external provider ID for TMS JWT token (supports any SSO provider)",
+        "mvpProviders": ["clerk", "native"],
+        "futureProviders": ["auth0", "okta", "azure_ad", "google", "custom"],
+        "request": {
+          "body": {
+            "provider": "clerk",
+            "providerUserId": "clerk_user_xyz123",
+            "providerToken": "optional_provider_jwt_for_validation",
+            "metadata": {
+              "email": "user@company.com",
+              "firstName": "John",
+              "lastName": "Doe",
+              "organizationId": "org_123"
+            }
+          }
+        },
+        "response": {
+          "success": true,
+          "data": {
+            "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+            "tokenExpiry": "2024-01-07T12:00:00Z", 
+            "refreshToken": "refresh_token_xyz789",
+            "user": {
+              "id": "tms_usr_abc123",
+              "email": "user@company.com",
+              "role": "facilitator",
+              "organizationId": "org_def456",
+              "linkedIdentities": [
+                {
+                  "provider": "clerk",
+                  "providerId": "clerk_user_xyz123",
+                  "linkedAt": "2024-01-06T10:00:00Z"
+                }
+              ]
             }
           }
         }
@@ -88,15 +131,43 @@
     },
     
     "jwt_claims": {
-      "description": "JWT token payload structure",
+      "description": "Provider-agnostic JWT token payload structure",
       "example": {
-        "sub": "usr_abc123",
+        "sub": "tms_usr_abc123",
         "email": "user@company.com",
         "role": "facilitator",
         "organizationId": "org_def456",
+        "authProvider": "clerk",
+        "providerUserId": "clerk_user_xyz123",
         "permissions": ["manage_organization", "create_assessments", "view_all_reports"],
         "iat": 1704628800,
         "exp": 1704632400
+      }
+    },
+    
+    "identity_mapping": {
+      "description": "Database structure for linking external identities",
+      "tables": {
+        "tms_users": {
+          "description": "Core TMS user records",
+          "fields": {
+            "id": "tms_usr_abc123",
+            "email": "user@company.com",
+            "organizationId": "org_def456",
+            "role": "facilitator",
+            "createdAt": "2024-01-06T10:00:00Z"
+          }
+        },
+        "linked_identities": {
+          "description": "Maps external provider IDs to TMS users",
+          "fields": {
+            "tmsUserId": "tms_usr_abc123",
+            "provider": "clerk",
+            "providerId": "clerk_user_xyz123",
+            "linkedAt": "2024-01-06T10:00:00Z"
+          },
+          "uniqueConstraint": ["provider", "providerId"]
+        }
       }
     },
     
