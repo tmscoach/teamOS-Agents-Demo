@@ -96,40 +96,32 @@ graph TB
     class Stripe,Email external
 ```
 
-## 2. Flexible Authentication Flow
+## 2. Simple API Key Authentication Flow
 
 ```mermaid
 sequenceDiagram
     participant User
-    participant Client as Client App<br/>(TeamOS/Customer)
-    participant Auth as Auth Provider<br/>(Clerk/Auth0/etc)
+    participant TeamOS as TeamOS Frontend
+    participant Backend as TeamOS Backend
     participant TMS as TMS API
-    participant DB as TMS Database
     
-    User->>Client: Access Application
-    Client->>Auth: Check Authentication
+    Note over Backend,TMS: One-time: TeamOS receives API Key + Secret
     
-    alt New User
-        Auth->>User: Show Sign Up
-        User->>Auth: Create Account
-        Auth->>Client: Return Provider Token
-        Client->>TMS: POST /auth/sso/exchange<br/>{provider: "clerk", providerId: "xxx"}
-        TMS->>DB: Check linked_identities
-        DB->>TMS: Not found
-        TMS->>DB: Create TMS user
-        TMS->>DB: Link identity
-        TMS->>Client: Return TMS JWT
-    else Existing User
-        Auth->>Client: Return Provider Token
-        Client->>TMS: POST /auth/sso/exchange<br/>{provider: "clerk", providerId: "xxx"}
-        TMS->>DB: Check linked_identities
-        DB->>TMS: Found tms_usr_123
-        TMS->>Client: Return TMS JWT
+    User->>TeamOS: Login with Clerk
+    TeamOS->>Backend: User authenticated
+    
+    Backend->>Backend: Check token cache
+    alt Token not cached or expired
+        Backend->>TMS: POST /auth/token<br/>Headers: x-api-key, x-api-secret<br/>Body: {userId: "user@email.com"}
+        TMS->>Backend: JWT Token (1 hour expiry)
+        Backend->>Backend: Cache token
     end
     
-    Client->>User: Grant Access
+    Backend->>TeamOS: Return TMS token
     
-    Note over Client,TMS: All subsequent API calls use TMS JWT
+    Note over TeamOS,TMS: All API calls use JWT token
+    TeamOS->>TMS: GET /assessments<br/>Authorization: Bearer {token}
+    TMS->>TeamOS: Assessment data
 ```
 
 ## 3. Assessment Journey Flow

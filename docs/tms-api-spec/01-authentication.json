@@ -1,91 +1,33 @@
 {
   "authentication": {
-    "description": "Flexible authentication supporting multiple identity providers",
-    "mvpNote": "MVP can start with just 'clerk' and 'native' providers, adding others later",
+    "description": "Simple API key authentication system",
+    "overview": "Applications use API keys to generate JWT tokens for their users",
+    
+    "flow": {
+      "1_registration": "Application registers with TMS and receives API key + secret",
+      "2_authentication": "Application uses API key to generate JWT tokens for users", 
+      "3_requests": "All API requests use the JWT token"
+    },
+    
     "endpoints": {
-      "/api/v2/auth/native/signup": {
+      "/api/v2/auth/token": {
         "method": "POST",
-        "description": "Create organization with native email/password authentication",
-        "request": {
-          "body": {
-            "email": "manager@company.com",
-            "password": "SecurePassword123!",
-            "firstName": "John",
-            "lastName": "Doe",
-            "organizationName": "Acme Corporation",
-            "organizationIndustry": "Technology",
-            "organizationSize": "50-250",
-            "phoneNumber": "+1234567890",
-            "timezone": "America/New_York"
-          }
+        "description": "Generate JWT token for a user",
+        "rateLimit": "100 requests per minute per API key",
+        "headers": {
+          "x-api-key": "pk_live_teamOS_abc123",
+          "x-api-secret": "sk_live_teamOS_xyz789",
+          "Content-Type": "application/json"
         },
-        "response": {
-          "success": true,
-          "data": {
-            "userId": "tms_usr_abc123",
-            "organizationId": "org_def456",
-            "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-            "tokenExpiry": "2024-01-07T12:00:00Z",
-            "refreshToken": "refresh_token_xyz789",
-            "user": {
-              "id": "tms_usr_abc123",
-              "email": "manager@company.com",
-              "firstName": "John",
-              "lastName": "Doe",
-              "role": "facilitator",
-              "permissions": ["manage_organization", "create_assessments", "view_all_reports"]
-            },
-            "organization": {
-              "id": "org_def456",
-              "name": "Acme Corporation",
-              "plan": "professional",
-              "creditsRemaining": 1000,
-              "subscriptionExpiry": "2024-12-31T23:59:59Z"
-            }
-          }
-        }
-      },
-      
-      "/api/v2/auth/native/login": {
-        "method": "POST",
-        "description": "Login with email and password",
         "request": {
           "body": {
-            "email": "user@company.com",
-            "password": "SecurePassword123!"
-          }
-        },
-        "response": {
-          "success": true,
-          "data": {
-            "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-            "tokenExpiry": "2024-01-07T12:00:00Z",
-            "refreshToken": "refresh_token_xyz789",
-            "user": {
-              "id": "tms_usr_abc123",
-              "email": "user@company.com",
-              "role": "facilitator",
-              "organizationId": "org_def456"
-            }
-          }
-        }
-      },
-      
-      "/api/v2/auth/sso/exchange": {
-        "method": "POST",
-        "description": "Exchange external provider ID for TMS JWT token (supports any SSO provider)",
-        "mvpProviders": ["clerk", "native"],
-        "futureProviders": ["auth0", "okta", "azure_ad", "google", "custom"],
-        "request": {
-          "body": {
-            "provider": "clerk",
-            "providerUserId": "clerk_user_xyz123",
-            "providerToken": "optional_provider_jwt_for_validation",
+            "userId": "user@company.com",
+            "organizationId": "org_123",
+            "role": "facilitator|respondent",
             "metadata": {
-              "email": "user@company.com",
               "firstName": "John",
               "lastName": "Doe",
-              "organizationId": "org_123"
+              "department": "Engineering"
             }
           }
         },
@@ -93,95 +35,93 @@
           "success": true,
           "data": {
             "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-            "tokenExpiry": "2024-01-07T12:00:00Z", 
-            "refreshToken": "refresh_token_xyz789",
-            "user": {
-              "id": "tms_usr_abc123",
-              "email": "user@company.com",
-              "role": "facilitator",
-              "organizationId": "org_def456",
-              "linkedIdentities": [
-                {
-                  "provider": "clerk",
-                  "providerId": "clerk_user_xyz123",
-                  "linkedAt": "2024-01-06T10:00:00Z"
-                }
-              ]
-            }
+            "expiresIn": 3600,
+            "tokenType": "Bearer"
+          }
+        },
+        "errors": {
+          "401": {
+            "error": "INVALID_API_KEY",
+            "message": "Invalid API key or secret"
+          },
+          "429": {
+            "error": "RATE_LIMIT_EXCEEDED", 
+            "message": "Too many requests"
           }
         }
       },
       
       "/api/v2/auth/refresh": {
         "method": "POST",
-        "description": "Refresh JWT token using refresh token",
-        "request": {
-          "body": {
-            "refreshToken": "refresh_token_xyz789"
-          }
+        "description": "Refresh an expiring token",
+        "headers": {
+          "Authorization": "Bearer {expiring_token}"
         },
         "response": {
           "success": true,
           "data": {
             "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-            "tokenExpiry": "2024-01-08T12:00:00Z"
+            "expiresIn": 3600
+          }
+        }
+      },
+      
+      "/api/v2/auth/validate": {
+        "method": "GET",
+        "description": "Validate a token (optional endpoint for debugging)",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "response": {
+          "success": true,
+          "data": {
+            "valid": true,
+            "userId": "user@company.com",
+            "organizationId": "org_123",
+            "expiresAt": "2024-01-07T12:00:00Z"
           }
         }
       }
     },
     
-    "jwt_claims": {
-      "description": "Provider-agnostic JWT token payload structure",
-      "example": {
-        "sub": "tms_usr_abc123",
-        "email": "user@company.com",
+    "jwt_structure": {
+      "header": {
+        "alg": "HS256",
+        "typ": "JWT"
+      },
+      "payload": {
+        "sub": "user@company.com",
+        "org": "org_123",
         "role": "facilitator",
-        "organizationId": "org_def456",
-        "authProvider": "clerk",
-        "providerUserId": "clerk_user_xyz123",
-        "permissions": ["manage_organization", "create_assessments", "view_all_reports"],
+        "app": "pk_live_teamOS_abc123",
         "iat": 1704628800,
         "exp": 1704632400
       }
     },
     
-    "identity_mapping": {
-      "description": "Database structure for linking external identities",
-      "tables": {
-        "tms_users": {
-          "description": "Core TMS user records",
-          "fields": {
-            "id": "tms_usr_abc123",
-            "email": "user@company.com",
-            "organizationId": "org_def456",
-            "role": "facilitator",
-            "createdAt": "2024-01-06T10:00:00Z"
-          }
+    "api_key_management": {
+      "format": {
+        "publicKey": "pk_{environment}_{appName}_{random}",
+        "secretKey": "sk_{environment}_{appName}_{random}",
+        "environments": ["test", "live"]
+      },
+      "example_keys": {
+        "teamOS": {
+          "public": "pk_live_teamOS_abc123",
+          "secret": "sk_live_teamOS_xyz789"
         },
-        "linked_identities": {
-          "description": "Maps external provider IDs to TMS users",
-          "fields": {
-            "tmsUserId": "tms_usr_abc123",
-            "provider": "clerk",
-            "providerId": "clerk_user_xyz123",
-            "linkedAt": "2024-01-06T10:00:00Z"
-          },
-          "uniqueConstraint": ["provider", "providerId"]
+        "customerApp": {
+          "public": "pk_live_customerA_def456",
+          "secret": "sk_live_customerA_uvw098"
         }
       }
     },
     
-    "error_responses": {
-      "401": {
-        "error": "UNAUTHORIZED",
-        "message": "Invalid or expired token",
-        "code": "AUTH_001"
-      },
-      "403": {
-        "error": "FORBIDDEN",
-        "message": "Insufficient permissions for this operation",
-        "code": "AUTH_002"
-      }
+    "implementation_notes": {
+      "backend_only": "API keys must never be exposed to frontend",
+      "token_caching": "Applications should cache tokens until expiry",
+      "user_identification": "Email or any unique ID can be used as userId",
+      "no_user_storage": "TMS doesn't need to store user records upfront"
     }
   }
 }

@@ -16,13 +16,12 @@ This document outlines the recommended API design for the TMS Global legacy syst
 - Proper HTTP methods (GET, POST, PUT, DELETE)
 - Stateless operations
 
-### 3. **Flexible Authentication**
-- Provider-agnostic design supporting any identity provider
-- Native authentication (email/password) 
-- SSO token exchange (Clerk, Auth0, Okta, Azure AD, etc.)
-- API key authentication for server-to-server
-- OAuth 2.0 support for third-party apps
-- Identity mapping to link multiple providers to one TMS user
+### 3. **Simple API Key Authentication**
+- Applications register and receive API key + secret
+- Use API key to generate JWT tokens for users
+- All API requests use the JWT token
+- No complex SSO or identity mapping needed
+- Each application manages its own user authentication
 
 ### 4. **Structured Data Models**
 - Consistent field naming (camelCase)
@@ -106,47 +105,41 @@ x-api-key: {api_key}
 
 ## MVP Implementation Guide
 
-### Minimum Viable Authentication (Week 1)
-Start simple with just two providers:
-
-```json
-// 1. Native authentication (existing TMS users)
-POST /api/v2/auth/native/login
-{
-  "email": "user@example.com",
-  "password": "password123"
+### Week 1: Simple Authentication
+```javascript
+// 1. Create API key management
+POST /api/v2/auth/token
+Headers: {
+  "x-api-key": "pk_live_teamOS_abc123",
+  "x-api-secret": "sk_live_teamOS_xyz789"
+}
+Body: {
+  "userId": "user@company.com",
+  "organizationId": "org_123",
+  "role": "facilitator"
 }
 
-// 2. SSO exchange (initially just Clerk for TeamOS)
-POST /api/v2/auth/sso/exchange
-{
-  "provider": "clerk",  // Only support "clerk" in MVP
-  "providerUserId": "clerk_user_123",
-  "metadata": { "email": "user@example.com" }
+Response: {
+  "token": "eyJhbGciOiJIUzI1NiIs...",
+  "expiresIn": 3600
 }
 ```
 
-Database additions (minimal):
-```sql
--- Just add one table
-CREATE TABLE linked_identities (
-  tms_user_id VARCHAR,
-  provider VARCHAR,      -- 'clerk' or 'native'
-  provider_id VARCHAR,
-  UNIQUE(provider, provider_id)
-);
-```
+Implementation steps:
+1. Create API key table and management
+2. Implement token generation endpoint
+3. Add JWT validation middleware
+4. That's it - no complex identity mapping!
 
-### MVP Core Features (Week 2-3)
+### Week 2-3: Core Features
 1. Assessment workflow endpoints
-2. Basic report generation (can return HTML initially)
-3. User management basics
+2. Basic report generation (HTML is fine for MVP)
+3. User management endpoints
 
 ### Post-MVP Enhancements
-1. Add more SSO providers (Auth0, Okta)
-2. Convert reports from HTML to structured JSON
-3. Add analytics and visualization endpoints
-4. Implement OAuth 2.0 flow
+1. Convert reports from HTML to structured JSON
+2. Add analytics and visualization endpoints
+3. Implement webhook system
 
 ## Migration Strategy
 

@@ -61,13 +61,13 @@ TeamOS integrates with multiple systems:
 
 For the external developer building the TMS API:
 
-### Week 1: Authentication Foundation
+### Week 1: Simple Authentication
 - [ ] Review `API-SPECIFICATION.md` MVP section
-- [ ] Implement flexible auth endpoints (see `01-authentication.json`)
-  - [ ] Native login/signup endpoints
-  - [ ] SSO exchange endpoint (support "clerk" provider initially)
-  - [ ] Create `linked_identities` table
-- [ ] Add JWT token generation with provider info
+- [ ] Implement API key authentication (see `01-authentication.json`)
+  - [ ] Create API key management system
+  - [ ] Implement POST /auth/token endpoint
+  - [ ] Add JWT validation middleware
+- [ ] Test with TeamOS integration
 
 ### Week 2-3: Core Features
 - [ ] Build assessment workflow APIs (see `02-assessments.json`)
@@ -84,12 +84,19 @@ For the external developer building the TMS API:
 ## 🔄 Integration Flow Example
 
 ```javascript
-// 1. TeamOS exchanges Clerk ID for TMS token
-const tmsAuth = await tmsApi.auth.ssoExchange({ 
-  provider: 'clerk',
-  providerUserId: 'clerk_user_123',
-  metadata: { email: user.email }
+// 1. TeamOS backend gets token for user
+const token = await fetch('/api/v2/auth/token', {
+  headers: {
+    'x-api-key': process.env.TMS_API_KEY,
+    'x-api-secret': process.env.TMS_API_SECRET
+  },
+  body: JSON.stringify({
+    userId: user.email,
+    organizationId: user.orgId
+  })
 });
+
+const { token: jwtToken } = await token.json();
 
 // 2. Start assessment
 const subscription = await tmsApi.assessments.start({
