@@ -16,10 +16,13 @@ This document outlines the recommended API design for the TMS Global legacy syst
 - Proper HTTP methods (GET, POST, PUT, DELETE)
 - Stateless operations
 
-### 3. **Enhanced JWT Authentication**
-- JWT tokens include rich claims for authorization
-- Support for both password and passwordless (Clerk) authentication
-- Refresh token mechanism for long-lived sessions
+### 3. **Flexible Authentication**
+- Provider-agnostic design supporting any identity provider
+- Native authentication (email/password) 
+- SSO token exchange (Clerk, Auth0, Okta, Azure AD, etc.)
+- API key authentication for server-to-server
+- OAuth 2.0 support for third-party apps
+- Identity mapping to link multiple providers to one TMS user
 
 ### 4. **Structured Data Models**
 - Consistent field naming (camelCase)

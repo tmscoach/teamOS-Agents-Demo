@@ -1,0 +1,143 @@
+{
+  "flexibleAuthentication": {
+    "description": "Flexible authentication system supporting multiple identity providers",
+    "overview": "TMS API should support multiple authentication methods through a provider-agnostic approach",
+    
+    "authenticationMethods": {
+      "1_native_auth": {
+        "description": "Traditional username/password authentication",
+        "endpoint": "/api/v2/auth/native/login",
+        "method": "POST",
+        "request": {
+          "body": {
+            "email": "user@company.com",
+            "password": "securePassword123"
+          }
+        },
+        "response": {
+          "token": "eyJhbGciOiJIUzI1NiIs...",
+          "refreshToken": "refresh_xyz...",
+          "user": {
+            "id": "tms_usr_123",
+            "email": "user@company.com"
+          }
+        }
+      },
+      
+      "2_sso_token_exchange": {
+        "description": "Generic SSO token exchange supporting any identity provider",
+        "endpoint": "/api/v2/auth/sso/exchange",
+        "method": "POST",
+        "request": {
+          "body": {
+            "provider": "clerk|auth0|okta|azure_ad|google|custom",
+            "providerUserId": "provider_specific_user_id",
+            "providerToken": "optional_provider_jwt_for_validation",
+            "metadata": {
+              "email": "user@company.com",
+              "firstName": "John",
+              "lastName": "Doe",
+              "organizationId": "org_123"
+            }
+          }
+        },
+        "response": {
+          "token": "eyJhbGciOiJIUzI1NiIs...",
+          "refreshToken": "refresh_xyz...",
+          "user": {
+            "id": "tms_usr_123",
+            "email": "user@company.com",
+            "linkedIdentities": [
+              {
+                "provider": "clerk",
+                "providerId": "clerk_user_xyz"
+              }
+            ]
+          }
+        }
+      },
+      
+      "3_api_key_auth": {
+        "description": "API key authentication for server-to-server",
+        "headers": {
+          "x-api-key": "{api_key}",
+          "x-api-secret": "{api_secret}"
+        },
+        "notes": "Returns scoped token for specific operations"
+      },
+      
+      "4_oauth2_flow": {
+        "description": "Standard OAuth 2.0 flow for third-party apps",
+        "authorizationEndpoint": "/api/v2/oauth/authorize",
+        "tokenEndpoint": "/api/v2/oauth/token",
+        "supportedFlows": ["authorization_code", "client_credentials"]
+      }
+    },
+    
+    "identityMapping": {
+      "description": "How TMS handles multiple identity providers",
+      "dataModel": {
+        "tms_users": {
+          "id": "tms_usr_123",
+          "email": "user@company.com",
+          "created_at": "2024-01-06T10:00:00Z"
+        },
+        "linked_identities": [
+          {
+            "tms_user_id": "tms_usr_123",
+            "provider": "clerk",
+            "provider_user_id": "clerk_user_xyz",
+            "linked_at": "2024-01-06T10:00:00Z"
+          },
+          {
+            "tms_user_id": "tms_usr_123", 
+            "provider": "okta",
+            "provider_user_id": "00u1234567",
+            "linked_at": "2024-01-07T10:00:00Z"
+          }
+        ]
+      }
+    },
+    
+    "jwtStructure": {
+      "description": "Provider-agnostic JWT claims",
+      "payload": {
+        "sub": "tms_usr_123",
+        "email": "user@company.com",
+        "role": "facilitator",
+        "organizationId": "org_123",
+        "authProvider": "clerk",
+        "providerUserId": "clerk_user_xyz",
+        "permissions": ["create_assessment", "view_reports"],
+        "iat": 1704628800,
+        "exp": 1704632400
+      }
+    },
+    
+    "webhookIntegration": {
+      "description": "Webhooks for identity provider events",
+      "endpoint": "/api/v2/webhooks/identity-provider",
+      "supportedEvents": [
+        "user.created",
+        "user.updated", 
+        "user.deleted",
+        "organization.created"
+      ],
+      "request": {
+        "headers": {
+          "x-webhook-signature": "hmac_signature",
+          "x-webhook-provider": "clerk|auth0|okta"
+        },
+        "body": {
+          "event": "user.created",
+          "provider": "clerk",
+          "data": {
+            "providerId": "clerk_user_xyz",
+            "email": "user@company.com",
+            "metadata": {}
+          }
+        }
+      }
+    }
+  }
+}
