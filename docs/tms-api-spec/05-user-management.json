@@ -1,0 +1,172 @@
+{
+  "userManagement": {
+    "description": "User and organization management endpoints",
+    "endpoints": {
+      "/api/v2/users": {
+        "method": "POST",
+        "description": "Create a new user (facilitator or respondent)",
+        "headers": {
+          "Authorization": "Bearer {token} OR x-api-key: {apiKey}"
+        },
+        "request": {
+          "body": {
+            "email": "newuser@company.com",
+            "firstName": "Jane",
+            "lastName": "Smith",
+            "role": "respondent",
+            "organizationId": "org_def456",
+            "clerkUserId": "clerk_user_abc789",
+            "metadata": {
+              "department": "Sales",
+              "manager": "usr_xyz123",
+              "location": "New York"
+            }
+          }
+        },
+        "response": {
+          "success": true,
+          "data": {
+            "userId": "usr_new123",
+            "email": "newuser@company.com",
+            "role": "respondent",
+            "organizationId": "org_def456",
+            "status": "active",
+            "createdAt": "2024-01-06T11:00:00Z"
+          }
+        }
+      },
+      
+      "/api/v2/users/{userId}": {
+        "method": "GET",
+        "description": "Get user details",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "response": {
+          "success": true,
+          "data": {
+            "userId": "usr_abc123",
+            "email": "user@company.com",
+            "firstName": "John",
+            "lastName": "Doe",
+            "role": "facilitator",
+            "organizationId": "org_def456",
+            "status": "active",
+            "metadata": {
+              "department": "Engineering",
+              "title": "Team Lead",
+              "reportsTo": "usr_manager123"
+            },
+            "assessments": {
+              "completed": [
+                {
+                  "assessmentType": "TMP",
+                  "subscriptionId": "sub_xyz789",
+                  "completedAt": "2024-01-06T10:30:00Z"
+                }
+              ],
+              "inProgress": [],
+              "assigned": [
+                {
+                  "assessmentType": "QO2",
+                  "subscriptionId": "sub_pending123",
+                  "assignedAt": "2024-01-05T09:00:00Z",
+                  "dueDate": "2024-02-05T09:00:00Z"
+                }
+              ]
+            },
+            "permissions": [
+              "view_own_reports",
+              "complete_assessments",
+              "view_team_reports"
+            ]
+          }
+        }
+      },
+      
+      "/api/v2/organizations/{organizationId}/users": {
+        "method": "GET",
+        "description": "List all users in an organization",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "query": {
+          "role": "facilitator|respondent|all",
+          "status": "active|inactive|all",
+          "department": "string",
+          "page": 1,
+          "limit": 50
+        },
+        "response": {
+          "success": true,
+          "data": {
+            "users": [
+              {
+                "userId": "usr_abc123",
+                "email": "john@company.com",
+                "firstName": "John",
+                "lastName": "Doe",
+                "role": "facilitator",
+                "department": "Engineering",
+                "lastActive": "2024-01-06T10:00:00Z",
+                "assessmentsCompleted": 3
+              },
+              {
+                "userId": "usr_def456",
+                "email": "jane@company.com",
+                "firstName": "Jane",
+                "lastName": "Smith",
+                "role": "respondent",
+                "department": "Sales",
+                "lastActive": "2024-01-05T15:00:00Z",
+                "assessmentsCompleted": 2
+              }
+            ],
+            "pagination": {
+              "page": 1,
+              "limit": 50,
+              "total": 2,
+              "pages": 1
+            }
+          }
+        }
+      },
+      
+      "/api/v2/organizations/{organizationId}": {
+        "method": "GET",
+        "description": "Get organization details and usage",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "response": {
+          "success": true,
+          "data": {
+            "organizationId": "org_def456",
+            "name": "Acme Corporation",
+            "industry": "Technology",
+            "size": "50-250",
+            "plan": {
+              "name": "Professional",
+              "creditsPerMonth": 5000,
+              "creditsRemaining": 3500,
+              "renewsAt": "2024-02-01T00:00:00Z"
+            },
+            "usage": {
+              "totalUsers": 45,
+              "activeUsers": 38,
+              "assessmentsThisMonth": 24,
+              "assessmentsTotal": 287,
+              "averageCompletionRate": 0.89
+            },
+            "settings": {
+              "defaultAssessmentTypes": ["TMP", "Team Signals"],
+              "autoAssignNewUsers": true,
+              "reportVisibility": "managers_only",
+              "dataRetention": "2_years"
+            }
+          }
+        }
+      }
+    }
+  }
+}

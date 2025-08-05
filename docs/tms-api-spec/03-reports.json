@@ -1,0 +1,273 @@
+{
+  "reports": {
+    "description": "Report generation and retrieval endpoints",
+    "endpoints": {
+      "/api/v2/reports/{subscriptionId}": {
+        "method": "GET",
+        "description": "Get structured report data for a completed assessment",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "response": {
+          "success": true,
+          "data": {
+            "subscriptionId": "sub_xyz789",
+            "assessmentType": "TMP",
+            "userId": "usr_abc123",
+            "completedAt": "2024-01-06T10:30:00Z",
+            "status": "ready",
+            "metadata": {
+              "userName": "John Doe",
+              "organizationName": "Acme Corporation",
+              "department": "Engineering",
+              "reportVersion": "2.1",
+              "language": "en"
+            },
+            "results": {
+              "tmp": {
+                "majorRole": {
+                  "id": "upholder_maintainer",
+                  "name": "Upholder Maintainer",
+                  "score": 85,
+                  "description": "You prefer stability and established procedures. You excel at maintaining standards and ensuring quality.",
+                  "strengths": [
+                    "Attention to detail",
+                    "Maintaining standards",
+                    "Following procedures",
+                    "Quality assurance"
+                  ],
+                  "workStyle": "Methodical and systematic approach to tasks"
+                },
+                "relatedRoles": [
+                  {
+                    "id": "controller_inspector",
+                    "name": "Controller Inspector",
+                    "score": 72,
+                    "description": "Strong analytical skills with focus on accuracy and control"
+                  },
+                  {
+                    "id": "concluder_producer",
+                    "name": "Concluder Producer",
+                    "score": 68,
+                    "description": "Results-oriented with ability to drive completion"
+                  }
+                ],
+                "preferences": {
+                  "introvert": 75,
+                  "extrovert": 25,
+                  "facts": 80,
+                  "ideas": 20,
+                  "analytical": 70,
+                  "beliefs": 30,
+                  "structured": 85,
+                  "flexible": 15
+                },
+                "wheelData": {
+                  "sectors": [
+                    {"role": "Creator Innovator", "score": 3, "color": "#FF6B6B"},
+                    {"role": "Explorer Promoter", "score": 2, "color": "#4ECDC4"},
+                    {"role": "Assessor Developer", "score": 4, "color": "#45B7D1"},
+                    {"role": "Thruster Organizer", "score": 5, "color": "#96CEB4"},
+                    {"role": "Concluder Producer", "score": 6, "color": "#FECA57"},
+                    {"role": "Controller Inspector", "score": 7, "color": "#FF9FF3"},
+                    {"role": "Upholder Maintainer", "score": 8, "color": "#54A0FF"},
+                    {"role": "Reporter Adviser", "score": 4, "color": "#48DBFB"}
+                  ]
+                }
+              }
+            },
+            "insights": [
+              {
+                "category": "leadership",
+                "title": "Leadership Style",
+                "content": "Your Upholder Maintainer profile suggests you lead by example, maintaining high standards and ensuring team adherence to established procedures.",
+                "recommendations": [
+                  "Delegate creative problem-solving to team members with Explorer or Creator profiles",
+                  "Build in regular review cycles to maintain quality standards",
+                  "Create clear documentation and processes for your team"
+                ]
+              },
+              {
+                "category": "teamwork",
+                "title": "Team Dynamics",
+                "content": "You work best in structured environments with clear roles and responsibilities.",
+                "recommendations": [
+                  "Partner with Thruster Organizers for project implementation",
+                  "Collaborate with Creator Innovators for fresh perspectives",
+                  "Establish clear communication protocols with your team"
+                ]
+              }
+            ],
+            "developmentAreas": [
+              {
+                "area": "Flexibility",
+                "current": 15,
+                "target": 30,
+                "actions": [
+                  "Practice brainstorming without immediate evaluation",
+                  "Set aside time for unstructured thinking",
+                  "Engage with team members who have different work styles"
+                ]
+              },
+              {
+                "area": "Innovation",
+                "current": 20,
+                "target": 35,
+                "actions": [
+                  "Attend creative problem-solving workshops",
+                  "Allocate time for exploring new approaches",
+                  "Create a safe space for experimentation"
+                ]
+              }
+            ]
+          }
+        }
+      },
+      
+      "/api/v2/reports/{subscriptionId}/summary": {
+        "method": "GET",
+        "description": "Get a condensed summary of the report (1-2 pages worth)",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "response": {
+          "success": true,
+          "data": {
+            "subscriptionId": "sub_xyz789",
+            "assessmentType": "TMP",
+            "summary": {
+              "headline": "You are an Upholder Maintainer with strong Controller Inspector tendencies",
+              "keyPoints": [
+                "Highly structured and detail-oriented work style",
+                "Excel at maintaining quality and standards",
+                "Prefer established procedures over experimentation",
+                "Strong analytical and systematic thinking"
+              ],
+              "profile": {
+                "dominant": "75% Introvert, 80% Facts-based, 85% Structured",
+                "wheelBalance": "Right-side dominant (Maintainer/Controller)",
+                "teamRole": "Quality assurance and process optimization"
+              },
+              "topStrengths": [
+                "Exceptional attention to detail",
+                "Reliable and consistent performance",
+                "Strong quality control",
+                "Excellent at documentation"
+              ],
+              "growthAreas": [
+                "Embracing change and flexibility",
+                "Creative problem-solving",
+                "Risk-taking in decision making"
+              ],
+              "quickWins": [
+                "Schedule weekly 'innovation time' for creative thinking",
+                "Partner with creative team members on projects",
+                "Practice making decisions with 80% information"
+              ]
+            },
+            "visualizations": {
+              "wheelUrl": "/api/v2/reports/sub_xyz789/wheel.png",
+              "profileChart": "/api/v2/reports/sub_xyz789/profile.png"
+            }
+          }
+        }
+      },
+      
+      "/api/v2/reports/{subscriptionId}/sections": {
+        "method": "GET",
+        "description": "Get report broken down into semantic sections for AI processing",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "response": {
+          "success": true,
+          "data": {
+            "subscriptionId": "sub_xyz789",
+            "sections": [
+              {
+                "id": "profile_overview",
+                "title": "Your Team Management Profile",
+                "content": "As an Upholder Maintainer, you bring stability and quality to your team...",
+                "metadata": {
+                  "importance": "high",
+                  "category": "profile",
+                  "readingTime": 2
+                }
+              },
+              {
+                "id": "work_preferences",
+                "title": "Work Style Preferences",
+                "content": "Your responses indicate a strong preference for structured environments...",
+                "metadata": {
+                  "importance": "high",
+                  "category": "preferences",
+                  "readingTime": 3
+                },
+                "dataPoints": {
+                  "introvert_score": 75,
+                  "structure_preference": 85,
+                  "analytical_thinking": 70
+                }
+              },
+              {
+                "id": "team_dynamics",
+                "title": "Team Dynamics and Collaboration",
+                "content": "In team settings, you excel at maintaining standards...",
+                "metadata": {
+                  "importance": "medium",
+                  "category": "teamwork",
+                  "readingTime": 2
+                }
+              }
+            ]
+          }
+        }
+      },
+      
+      "/api/v2/reports/{subscriptionId}/debrief": {
+        "method": "POST",
+        "description": "Interactive Q&A about the report - for AI debrief sessions",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "request": {
+          "body": {
+            "query": "What does it mean that I'm an Upholder Maintainer?",
+            "context": {
+              "previousQueries": ["Tell me about my results"],
+              "focusAreas": ["role_meaning", "practical_application"]
+            }
+          }
+        },
+        "response": {
+          "success": true,
+          "data": {
+            "answer": "Being an Upholder Maintainer means you have a natural talent for maintaining quality and standards within your team. This role is characterized by attention to detail, systematic thinking, and a preference for established procedures. In practical terms, you're the person who ensures projects meet quality standards, documentation is complete, and processes are followed consistently.",
+            "relevantSections": [
+              {
+                "sectionId": "profile_overview",
+                "excerpt": "Upholder Maintainers excel at maintaining standards and ensuring quality..."
+              },
+              {
+                "sectionId": "work_preferences",
+                "excerpt": "Your 85% structure preference indicates you work best with clear procedures..."
+              }
+            ],
+            "followUpQuestions": [
+              "How can I leverage my Upholder Maintainer strengths in my current role?",
+              "What types of team members complement my working style?",
+              "How can I develop more flexibility while maintaining my strengths?"
+            ],
+            "resources": [
+              {
+                "title": "Working with Different TMP Types",
+                "type": "guide",
+                "url": "/resources/tmp-collaboration-guide"
+              }
+            ]
+          }
+        }
+      }
+    }
+  }
+}

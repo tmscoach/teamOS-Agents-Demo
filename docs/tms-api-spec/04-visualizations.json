@@ -1,0 +1,110 @@
+{
+  "visualizations": {
+    "description": "Chart and graph generation endpoints",
+    "endpoints": {
+      "/api/v2/visualizations/generate": {
+        "method": "POST",
+        "description": "Generate charts and visualizations with structured data response",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "request": {
+          "body": {
+            "type": "tmp_wheel",
+            "data": {
+              "roles": [
+                {"name": "Creator Innovator", "score": 3},
+                {"name": "Explorer Promoter", "score": 2},
+                {"name": "Assessor Developer", "score": 4},
+                {"name": "Thruster Organizer", "score": 5},
+                {"name": "Concluder Producer", "score": 6},
+                {"name": "Controller Inspector", "score": 7},
+                {"name": "Upholder Maintainer", "score": 8},
+                {"name": "Reporter Adviser", "score": 4}
+              ],
+              "highlight": ["Upholder Maintainer", "Controller Inspector"]
+            },
+            "format": "both",
+            "options": {
+              "size": {"width": 800, "height": 800},
+              "theme": "professional",
+              "includeLabels": true
+            }
+          }
+        },
+        "response": {
+          "success": true,
+          "data": {
+            "visualizationId": "viz_abc123",
+            "type": "tmp_wheel",
+            "formats": {
+              "png": {
+                "url": "/api/v2/visualizations/viz_abc123.png",
+                "base64": "data:image/png;base64,iVBORw0KGgoAAAANS...",
+                "size": {"width": 800, "height": 800}
+              },
+              "svg": {
+                "url": "/api/v2/visualizations/viz_abc123.svg",
+                "content": "<svg width='800' height='800'>...</svg>"
+              }
+            },
+            "metadata": {
+              "generatedAt": "2024-01-06T10:35:00Z",
+              "expiresAt": "2024-01-07T10:35:00Z"
+            }
+          }
+        }
+      },
+      
+      "/api/v2/visualizations/templates": {
+        "method": "GET",
+        "description": "Get available visualization templates",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "response": {
+          "success": true,
+          "data": [
+            {
+              "id": "tmp_wheel",
+              "name": "TMP Wheel",
+              "description": "Team Management Profile wheel showing all 8 roles",
+              "requiredData": {
+                "roles": "Array of 8 role scores"
+              },
+              "options": {
+                "highlight": "Roles to highlight",
+                "theme": ["professional", "colorful", "grayscale"],
+                "size": "Width and height in pixels"
+              }
+            },
+            {
+              "id": "qo2_model",
+              "name": "QO2 Organizational Model",
+              "description": "3D-style organizational assessment visualization",
+              "requiredData": {
+                "dimensions": "Object with organizational dimension scores"
+              }
+            },
+            {
+              "id": "team_signals",
+              "name": "Team Signals Traffic Lights",
+              "description": "8 team health indicators with traffic light colors",
+              "requiredData": {
+                "signals": "Array of 8 signal states (red/amber/green)"
+              }
+            },
+            {
+              "id": "preference_bars",
+              "name": "Preference Comparison Bars",
+              "description": "Horizontal bar chart comparing preferences",
+              "requiredData": {
+                "preferences": "Array of preference pairs with scores"
+              }
+            }
+          ]
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,203 @@
+{
+  "dashboardAnalytics": {
+    "description": "Dashboard and analytics endpoints",
+    "endpoints": {
+      "/api/v2/dashboard": {
+        "method": "GET",
+        "description": "Get user's personalized dashboard data",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "response": {
+          "success": true,
+          "data": {
+            "user": {
+              "id": "usr_abc123",
+              "name": "John Doe",
+              "role": "facilitator",
+              "lastLogin": "2024-01-06T09:00:00Z"
+            },
+            "myAssessments": [
+              {
+                "subscriptionId": "sub_xyz789",
+                "assessmentType": "TMP",
+                "status": "completed",
+                "completedAt": "2024-01-06T10:30:00Z",
+                "reportAvailable": true,
+                "score": {
+                  "summary": "Upholder Maintainer",
+                  "percentile": 85
+                }
+              },
+              {
+                "subscriptionId": "sub_pending123",
+                "assessmentType": "QO2",
+                "status": "in_progress",
+                "startedAt": "2024-01-05T14:00:00Z",
+                "progress": 45,
+                "resumeUrl": "/assessments/sub_pending123/resume"
+              }
+            ],
+            "teamAssessments": [
+              {
+                "userId": "usr_team1",
+                "userName": "Alice Johnson",
+                "assessmentType": "TMP",
+                "status": "completed",
+                "completedAt": "2024-01-04T16:00:00Z",
+                "role": "Explorer Promoter"
+              },
+              {
+                "userId": "usr_team2",
+                "userName": "Bob Wilson",
+                "assessmentType": "Team Signals",
+                "status": "assigned",
+                "assignedAt": "2024-01-06T08:00:00Z",
+                "dueDate": "2024-01-13T08:00:00Z"
+              }
+            ],
+            "organizationStats": {
+              "totalAssessments": 287,
+              "completionRate": 0.89,
+              "averageTimeToComplete": "18 minutes",
+              "topAssessment": "TMP",
+              "creditsRemaining": 3500
+            },
+            "recentActivity": [
+              {
+                "type": "assessment_completed",
+                "user": "Alice Johnson",
+                "assessmentType": "TMP",
+                "timestamp": "2024-01-04T16:00:00Z"
+              },
+              {
+                "type": "report_viewed",
+                "user": "You",
+                "assessmentType": "Team Signals",
+                "timestamp": "2024-01-03T11:30:00Z"
+              }
+            ]
+          }
+        }
+      },
+      
+      "/api/v2/analytics/team-composition": {
+        "method": "GET",
+        "description": "Get team composition analytics",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "query": {
+          "teamId": "team_abc123",
+          "assessmentType": "TMP"
+        },
+        "response": {
+          "success": true,
+          "data": {
+            "teamId": "team_abc123",
+            "assessmentType": "TMP",
+            "composition": {
+              "roles": [
+                {"role": "Creator Innovator", "count": 2, "percentage": 16.7},
+                {"role": "Explorer Promoter", "count": 1, "percentage": 8.3},
+                {"role": "Assessor Developer", "count": 2, "percentage": 16.7},
+                {"role": "Thruster Organizer", "count": 3, "percentage": 25.0},
+                {"role": "Concluder Producer", "count": 1, "percentage": 8.3},
+                {"role": "Controller Inspector", "count": 1, "percentage": 8.3},
+                {"role": "Upholder Maintainer", "count": 1, "percentage": 8.3},
+                {"role": "Reporter Adviser", "count": 1, "percentage": 8.3}
+              ],
+              "balance": {
+                "thinking": 41.7,
+                "organizing": 33.3,
+                "delivering": 16.7,
+                "adapting": 8.3
+              },
+              "gaps": [
+                {
+                  "area": "Innovation",
+                  "severity": "moderate",
+                  "recommendation": "Consider adding more Creator/Explorer profiles"
+                }
+              ],
+              "strengths": [
+                {
+                  "area": "Execution",
+                  "description": "Strong presence of Organizers and Producers"
+                }
+              ]
+            },
+            "recommendations": [
+              "Current team composition favors execution over innovation",
+              "Consider involving Creator/Explorer types in brainstorming sessions",
+              "Leverage Thruster Organizers for project management roles"
+            ]
+          }
+        }
+      },
+      
+      "/api/v2/analytics/trends": {
+        "method": "GET",
+        "description": "Get assessment completion and engagement trends",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "query": {
+          "period": "30d",
+          "groupBy": "week"
+        },
+        "response": {
+          "success": true,
+          "data": {
+            "period": {
+              "start": "2023-12-07T00:00:00Z",
+              "end": "2024-01-06T23:59:59Z"
+            },
+            "trends": [
+              {
+                "week": "2023-12-07",
+                "assessmentsStarted": 12,
+                "assessmentsCompleted": 10,
+                "completionRate": 0.83,
+                "averageTime": 19.5
+              },
+              {
+                "week": "2023-12-14",
+                "assessmentsStarted": 15,
+                "assessmentsCompleted": 14,
+                "completionRate": 0.93,
+                "averageTime": 18.2
+              },
+              {
+                "week": "2023-12-21",
+                "assessmentsStarted": 8,
+                "assessmentsCompleted": 6,
+                "completionRate": 0.75,
+                "averageTime": 20.1
+              },
+              {
+                "week": "2023-12-28",
+                "assessmentsStarted": 5,
+                "assessmentsCompleted": 4,
+                "completionRate": 0.80,
+                "averageTime": 17.8
+              },
+              {
+                "week": "2024-01-04",
+                "assessmentsStarted": 18,
+                "assessmentsCompleted": 16,
+                "completionRate": 0.89,
+                "averageTime": 18.5
+              }
+            ],
+            "insights": [
+              "Completion rates are highest in non-holiday weeks",
+              "Average completion time has decreased by 5% over the period",
+              "Friday afternoons show lowest engagement"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

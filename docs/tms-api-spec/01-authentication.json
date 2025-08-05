@@ -1,0 +1,116 @@
+{
+  "authentication": {
+    "description": "JWT-based authentication for TMS API",
+    "endpoints": {
+      "/api/v2/auth/signup": {
+        "method": "POST",
+        "description": "Create organization and initial facilitator account",
+        "request": {
+          "body": {
+            "email": "manager@company.com",
+            "firstName": "John",
+            "lastName": "Doe",
+            "organizationName": "Acme Corporation",
+            "organizationIndustry": "Technology",
+            "organizationSize": "50-250",
+            "phoneNumber": "+1234567890",
+            "clerkUserId": "clerk_user_xyz123",
+            "timezone": "America/New_York"
+          }
+        },
+        "response": {
+          "success": true,
+          "data": {
+            "userId": "usr_abc123",
+            "organizationId": "org_def456",
+            "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+            "tokenExpiry": "2024-01-07T12:00:00Z",
+            "refreshToken": "refresh_token_xyz789",
+            "user": {
+              "id": "usr_abc123",
+              "email": "manager@company.com",
+              "firstName": "John",
+              "lastName": "Doe",
+              "role": "facilitator",
+              "permissions": ["manage_organization", "create_assessments", "view_all_reports"]
+            },
+            "organization": {
+              "id": "org_def456",
+              "name": "Acme Corporation",
+              "plan": "professional",
+              "creditsRemaining": 1000,
+              "subscriptionExpiry": "2024-12-31T23:59:59Z"
+            }
+          }
+        }
+      },
+      
+      "/api/v2/auth/token-exchange": {
+        "method": "POST",
+        "description": "Exchange Clerk user ID for TMS JWT token",
+        "request": {
+          "body": {
+            "clerkUserId": "clerk_user_xyz123"
+          }
+        },
+        "response": {
+          "success": true,
+          "data": {
+            "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+            "tokenExpiry": "2024-01-07T12:00:00Z",
+            "refreshToken": "refresh_token_xyz789",
+            "user": {
+              "id": "usr_abc123",
+              "email": "user@company.com",
+              "role": "facilitator",
+              "organizationId": "org_def456"
+            }
+          }
+        }
+      },
+      
+      "/api/v2/auth/refresh": {
+        "method": "POST",
+        "description": "Refresh JWT token using refresh token",
+        "request": {
+          "body": {
+            "refreshToken": "refresh_token_xyz789"
+          }
+        },
+        "response": {
+          "success": true,
+          "data": {
+            "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+            "tokenExpiry": "2024-01-08T12:00:00Z"
+          }
+        }
+      }
+    },
+    
+    "jwt_claims": {
+      "description": "JWT token payload structure",
+      "example": {
+        "sub": "usr_abc123",
+        "email": "user@company.com",
+        "role": "facilitator",
+        "organizationId": "org_def456",
+        "permissions": ["manage_organization", "create_assessments", "view_all_reports"],
+        "iat": 1704628800,
+        "exp": 1704632400
+      }
+    },
+    
+    "error_responses": {
+      "401": {
+        "error": "UNAUTHORIZED",
+        "message": "Invalid or expired token",
+        "code": "AUTH_001"
+      },
+      "403": {
+        "error": "FORBIDDEN",
+        "message": "Insufficient permissions for this operation",
+        "code": "AUTH_002"
+      }
+    }
+  }
+}
