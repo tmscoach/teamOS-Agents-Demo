@@ -36,7 +36,7 @@
     "endpoints": {
       "/api/v2/organizations": {
         "method": "POST",
-        "description": "Create a new organization with founding admin user",
+        "description": "Create a new organization (step 1 of onboarding)",
         "headers": {
           "x-api-key": "pk_live_teamOS_abc123",
           "x-api-secret": "sk_live_teamOS_xyz789",
@@ -45,11 +45,6 @@
         "request": {
           "body": {
             "organizationName": "Acme Corporation",
-            "adminUser": {
-              "email": "founder@acme.com",
-              "firstName": "John",
-              "lastName": "Doe"
-            },
             "metadata": {
               "industry": "Technology",
               "size": "10-50",
@@ -62,18 +57,14 @@
           "data": {
             "organizationId": "org_new123",
             "organizationName": "Acme Corporation",
-            "adminUser": {
-              "userId": "usr_admin123",
-              "email": "founder@acme.com",
-              "role": "admin"
-            },
+            "status": "pending_admin",
             "createdAt": "2024-01-06T10:00:00Z"
           }
         },
         "notes": {
-          "onboarding": "Used during TeamOS onboarding when founder enters organization name",
-          "authentication": "Uses TeamOS API key - each app has one API key for all its orgs",
-          "adminCreation": "Founding user is automatically created with admin role"
+          "onboarding_step1": "Creates organization without users",
+          "onboarding_step2": "Use POST /api/v2/users with role='admin' to add founder",
+          "authentication": "Uses TeamOS API key for all operations"
         }
       },
       
@@ -81,7 +72,10 @@
         "method": "POST",
         "description": "Create a new user with specified role",
         "headers": {
-          "Authorization": "Bearer {token}"
+          "Authorization": "Bearer {token}",
+          "OR": "For initial admin creation during onboarding:",
+          "x-api-key": "pk_live_teamOS_abc123",
+          "x-api-secret": "sk_live_teamOS_xyz789"
         },
         "request": {
           "body": {
@@ -345,6 +339,58 @@
       "backwards_compatibility": {
         "facilitator": "Maps to 'manager' role",
         "respondent": "Maps to 'member' role"
+      }
+    },
+    
+    "onboarding_flow_example": {
+      "description": "Two-step process for creating organization with founder",
+      "step1": {
+        "description": "Create organization",
+        "request": "POST /api/v2/organizations",
+        "headers": {
+          "x-api-key": "pk_live_teamOS_abc123",
+          "x-api-secret": "sk_live_teamOS_xyz789"
+        },
+        "body": {
+          "organizationName": "Acme Corporation"
+        },
+        "response": {
+          "organizationId": "org_new123"
+        }
+      },
+      "step2": {
+        "description": "Create founder as admin",
+        "request": "POST /api/v2/users",
+        "headers": {
+          "x-api-key": "pk_live_teamOS_abc123",
+          "x-api-secret": "sk_live_teamOS_xyz789"
+        },
+        "body": {
+          "email": "founder@acme.com",
+          "firstName": "John",
+          "lastName": "Doe",
+          "role": "admin",
+          "organizationId": "org_new123"
+        },
+        "response": {
+          "userId": "usr_admin123"
+        }
+      },
+      "step3": {
+        "description": "Get JWT token for the admin user",
+        "request": "POST /api/v2/auth/token",
+        "headers": {
+          "x-api-key": "pk_live_teamOS_abc123",
+          "x-api-secret": "sk_live_teamOS_xyz789"
+        },
+        "body": {
+          "userId": "founder@acme.com",
+          "organizationId": "org_new123",
+          "role": "admin"
+        },
+        "response": {
+          "token": "eyJhbGciOiJIUzI1NiIs..."
+        }
       }
     }
   }
