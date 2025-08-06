@@ -104,6 +104,77 @@
             }
           ]
         }
+      },
+      
+      "/api/v2/graphs/generate": {
+        "method": "POST",
+        "description": "Generate assessment graphs/charts (legacy endpoint)",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "request": {
+          "body": {
+            "chartType": "CreateTMPQWheel",
+            "params": {
+              "mr": "8",
+              "rr1": "7",
+              "rr2": "5"
+            }
+          }
+        },
+        "response": {
+          "success": true,
+          "data": {
+            "data": "iVBORw0KGgoAAAANSUhEUgAA...",
+            "mimeType": "image/png",
+            "encoding": "base64"
+          }
+        },
+        "notes": {
+          "chartTypes": {
+            "CreateTMPQWheel": {
+              "description": "TMP wheel with 8 roles",
+              "params": {
+                "mr": "Main role score (0-10)",
+                "rr1": "Related role 1 score (0-10)", 
+                "rr2": "Related role 2 score (0-10)"
+              }
+            },
+            "CreateQO2Model": {
+              "description": "QO2 organizational model",
+              "params": {
+                "gva": "Group value score",
+                "pav": "Personal achievement value",
+                "ov": "Organizational value",
+                "tv": "Task value",
+                "povn": "Power value",
+                "enq": "ENQ score",
+                "clear": "Clear background (yes/no)"
+              }
+            },
+            "CreateTeamSignals": {
+              "description": "Team Signals traffic lights",
+              "params": {
+                "colors": "Pipe-separated colors (red|amber|green) for 8 signals"
+              },
+              "example": "amber|red|amber|amber|red|red|amber|amber"
+            },
+            "CreateWoWChart": {
+              "description": "Ways of Working chart",
+              "params": {
+                "scores": "Comma-separated scores for dimensions"
+              }
+            },
+            "CreateLLPGraph": {
+              "description": "Leadership Learning Profile graph",
+              "params": {
+                "profile": "Profile type identifier",
+                "scores": "Dimension scores"
+              }
+            }
+          },
+          "usage": "This endpoint returns base64-encoded PNG images for embedding in reports"
+        }
       }
     }
   }
