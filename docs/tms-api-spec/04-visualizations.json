@@ -1,58 +1,29 @@
 {
   "visualizations": {
-    "description": "Chart generation and data endpoints",
-    "problem": "Currently TeamOS generates images then uses GPT-4 Vision to extract the data back out. We need the raw data alongside images.",
-    "solution": "Return both image AND structured data for each chart type",
+    "description": "Modern visualization API that returns both images and structured data",
+    "overview": "Each visualization endpoint returns the image for display AND the underlying data for analysis, eliminating the need for GPT-4 Vision",
     
-    "currentEndpoints": {
-      "/GetGraph": {
-        "method": "GET",
-        "description": "Current endpoint that only returns PNG images",
-        "queryFormat": "?{chartType}&{param1}={value1}&{param2}={value2}...",
-        "examples": {
-          "tmpWheel": "/GetGraph?CreateTMPQWheel&mr=8&rr1=7&rr2=5",
-          "qo2Model": "/GetGraph?CreateQO2Model&gva=38&pav=33&ov=48&tv=70&povn=53&enq=0.9",
-          "teamSignals": "/GetGraph?CreateTeamSignals&colors=amber|red|amber|amber|red|red|amber|amber"
-        },
-        "response": {
-          "type": "image/png",
-          "content": "Binary PNG data"
-        }
-      }
-    },
-    
-    "recommendedEndpoints": {
-      "/api/v2/charts/{chartType}": {
+    "endpoints": {
+      "/api/v2/visualizations": {
         "method": "POST",
-        "description": "Generate chart with both image AND structured data",
+        "description": "Generate any visualization with full data",
         "headers": {
           "Authorization": "Bearer {token}"
         },
         "request": {
-          "examples": {
-            "tmpWheel": {
-              "chartType": "tmp-wheel",
-              "parameters": {
-                "majorRole": 8,
-                "relatedRole1": 7,
-                "relatedRole2": 5
-              }
-            },
-            "qo2Model": {
-              "chartType": "qo2-model", 
-              "parameters": {
-                "groupValue": 38,
-                "personalAchievement": 33,
-                "organizationalValue": 48,
-                "taskValue": 70,
-                "powerValue": 53,
-                "enq": 0.9
-              }
-            },
-            "teamSignals": {
-              "chartType": "team-signals",
-              "parameters": {
-                "signals": ["amber", "red", "amber", "amber", "red", "red", "amber", "amber"]
+          "body": {
+            "subscriptionId": "sub_xyz789",
+            "visualizationType": "tmp-wheel|qo2-model|team-signals|wow-chart|llp-profile",
+            "format": {
+              "image": {
+                "type": "png|svg",
+                "width": 800,
+                "height": 800,
+                "transparent": true
+              },
+              "data": {
+                "includeDescriptions": true,
+                "includeMetadata": true
               }
             }
           }
@@ -60,150 +31,346 @@
         "response": {
           "success": true,
           "data": {
-            "chartType": "tmp-wheel",
-            "image": {
-              "format": "png",
-              "base64": "iVBORw0KGgoAAAANSUhEUgAA...",
-              "url": "/api/v2/charts/cache/chart_abc123.png"
+            "subscription": {
+              "id": "sub_xyz789",
+              "assessmentType": "tmp",
+              "completedAt": "2024-01-06T10:30:00Z"
             },
-            "structuredData": {
-              "description": "THE KEY DATA that eliminates need for Vision API",
-              "tmpWheelExample": {
-                "majorRole": {
-                  "name": "Upholder Maintainer",
-                  "score": 8,
-                  "position": 7,
-                  "color": "#54A0FF",
-                  "description": "Focuses on maintaining standards and supporting team stability"
-                },
-                "relatedRole1": {
-                  "name": "Controller Inspector", 
-                  "score": 7,
-                  "position": 6,
-                  "color": "#FF9FF3",
-                  "description": "Ensures quality control and adherence to procedures"
-                },
-                "relatedRole2": {
-                  "name": "Thruster Organizer",
-                  "score": 5,
-                  "position": 3,
-                  "color": "#96CEB4",
-                  "description": "Drives action and organizes team efforts"
+            "visualization": {
+              "type": "tmp-wheel",
+              "generatedAt": "2024-01-06T11:00:00Z",
+              "image": {
+                "format": "png",
+                "base64": "iVBORw0KGgoAAAANSUhEUgAA...",
+                "width": 800,
+                "height": 800
+              },
+              "data": {
+                "see_examples_below": "Full structured data for each visualization type"
+              }
+            }
+          }
+        }
+      },
+      
+      "/api/v2/visualizations/tmp-wheel": {
+        "method": "POST",
+        "description": "Generate TMP wheel visualization with complete role data",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "request": {
+          "body": {
+            "subscriptionId": "sub_xyz789"
+          }
+        },
+        "response": {
+          "success": true,
+          "data": {
+            "visualization": {
+              "type": "tmp-wheel",
+              "image": {
+                "png": "base64_encoded_png_data",
+                "svg": "<svg>...</svg>"
+              },
+              "data": {
+                "profile": {
+                  "majorRole": {
+                    "name": "Upholder Maintainer",
+                    "code": "UM",
+                    "score": 8,
+                    "wheelPosition": 6,
+                    "color": "#54A0FF",
+                    "description": "Focuses on maintaining standards and supporting team stability",
+                    "strengths": [
+                      "Maintains high standards",
+                      "Provides stability and continuity",
+                      "Strong sense of duty"
+                    ],
+                    "potentialWeaknesses": [
+                      "May resist change",
+                      "Can be overly cautious"
+                    ]
+                  },
+                  "relatedRole1": {
+                    "name": "Controller Inspector",
+                    "code": "CI",
+                    "score": 7,
+                    "wheelPosition": 5,
+                    "color": "#FF9FF3",
+                    "relationship": "Your controlling and inspecting preferences complement your maintaining style"
+                  },
+                  "relatedRole2": {
+                    "name": "Thruster Organizer",
+                    "code": "TO",
+                    "score": 5,
+                    "wheelPosition": 3,
+                    "color": "#96CEB4",
+                    "relationship": "Your organizing abilities help you maintain systems effectively"
+                  }
                 },
                 "allRoles": [
-                  {"name": "Creator Innovator", "score": 3, "position": 0},
-                  {"name": "Explorer Promoter", "score": 2, "position": 1},
-                  {"name": "Assessor Developer", "score": 4, "position": 2},
-                  {"name": "Thruster Organizer", "score": 5, "position": 3},
-                  {"name": "Concluder Producer", "score": 6, "position": 4},
-                  {"name": "Controller Inspector", "score": 7, "position": 5},
-                  {"name": "Upholder Maintainer", "score": 8, "position": 6},
-                  {"name": "Reporter Adviser", "score": 4, "position": 7}
+                  {
+                    "name": "Creator Innovator",
+                    "code": "CI",
+                    "score": 3,
+                    "wheelPosition": 0,
+                    "color": "#FF6B6B",
+                    "percentage": 5.5
+                  },
+                  {
+                    "name": "Explorer Promoter",
+                    "code": "EP",
+                    "score": 2,
+                    "wheelPosition": 1,
+                    "color": "#4ECDC4",
+                    "percentage": 3.7
+                  },
+                  {
+                    "name": "Assessor Developer",
+                    "code": "AD",
+                    "score": 4,
+                    "wheelPosition": 2,
+                    "color": "#45B7D1",
+                    "percentage": 7.3
+                  },
+                  {
+                    "name": "Thruster Organizer",
+                    "code": "TO",
+                    "score": 5,
+                    "wheelPosition": 3,
+                    "color": "#96CEB4",
+                    "percentage": 9.1
+                  },
+                  {
+                    "name": "Concluder Producer",
+                    "code": "CP",
+                    "score": 6,
+                    "wheelPosition": 4,
+                    "color": "#FECA57",
+                    "percentage": 10.9
+                  },
+                  {
+                    "name": "Controller Inspector",
+                    "code": "CI",
+                    "score": 7,
+                    "wheelPosition": 5,
+                    "color": "#FF9FF3",
+                    "percentage": 12.7
+                  },
+                  {
+                    "name": "Upholder Maintainer",
+                    "code": "UM",
+                    "score": 8,
+                    "wheelPosition": 6,
+                    "color": "#54A0FF",
+                    "percentage": 14.5
+                  },
+                  {
+                    "name": "Reporter Adviser",
+                    "code": "RA",
+                    "score": 4,
+                    "wheelPosition": 7,
+                    "color": "#48DBFB",
+                    "percentage": 7.3
+                  }
                 ],
                 "ridoScores": {
-                  "I": 7,
-                  "C": 3,
-                  "B": 5,
-                  "S": 9
+                  "R": {"label": "Relationships", "score": 7, "description": "Focus on people and relationships"},
+                  "I": {"label": "Information", "score": 3, "description": "Gathering and analyzing information"},
+                  "D": {"label": "Decisions", "score": 5, "description": "Making decisions and judgments"},
+                  "O": {"label": "Organization", "score": 9, "description": "Organizing and implementing"}
+                },
+                "teamBalance": {
+                  "analysis": "Your team preferences show strong organizational and relationship focus",
+                  "gaps": ["Creative innovation", "Information gathering"],
+                  "recommendations": [
+                    "Partner with Creator Innovators for new ideas",
+                    "Collaborate with Reporter Advisers for data analysis"
+                  ]
                 }
+              }
+            }
+          }
+        }
+      },
+      
+      "/api/v2/visualizations/team-signals": {
+        "method": "POST",
+        "description": "Generate Team Signals visualization with health indicators",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "request": {
+          "body": {
+            "subscriptionId": "sub_xyz789"
+          }
+        },
+        "response": {
+          "success": true,
+          "data": {
+            "visualization": {
+              "type": "team-signals",
+              "image": {
+                "png": "base64_encoded_png_data",
+                "svg": "<svg>...</svg>"
               },
-              "teamSignalsExample": {
+              "data": {
                 "signals": [
                   {
-                    "name": "Purpose and Vision",
+                    "dimension": "Purpose and Vision",
+                    "position": 0,
                     "status": "amber",
                     "score": 75,
-                    "description": "Team has reasonable clarity on direction"
+                    "color": "#FFA500",
+                    "analysis": {
+                      "summary": "Team has reasonable clarity on direction but needs alignment",
+                      "strengths": [
+                        "Most team members understand the basic purpose",
+                        "Vision is documented and communicated"
+                      ],
+                      "improvements": [
+                        "Some team members unclear on organizational vision alignment",
+                        "Purpose could be more inspiring and specific"
+                      ],
+                      "recommendations": [
+                        "Run a team purpose workshop",
+                        "Create visual reminders of team vision"
+                      ]
+                    }
                   },
                   {
-                    "name": "Goals and Strategy", 
+                    "dimension": "Goals and Strategy",
+                    "position": 1,
                     "status": "red",
                     "score": 40,
-                    "description": "Goals need better definition and alignment"
-                  },
-                  {
-                    "name": "Team Roles",
-                    "status": "amber",
-                    "score": 62,
-                    "description": "Roles are defined but could be clearer"
-                  },
-                  {
-                    "name": "Team Processes",
-                    "status": "amber",
-                    "score": 68,
-                    "description": "Processes exist but need optimization"
-                  },
-                  {
-                    "name": "Team Relationships",
-                    "status": "red",
-                    "score": 45,
-                    "description": "Relationships need strengthening"
-                  },
-                  {
-                    "name": "Inter-team Relations",
-                    "status": "red",
-                    "score": 38,
-                    "description": "Cross-team collaboration is weak"
-                  },
-                  {
-                    "name": "Team Learning",
-                    "status": "amber",
-                    "score": 71,
-                    "description": "Some learning practices in place"
-                  },
-                  {
-                    "name": "Team Leadership",
-                    "status": "amber",
-                    "score": 65,
-                    "description": "Leadership is present but could be stronger"
+                    "color": "#FF0000",
+                    "analysis": {
+                      "summary": "Goals need better definition and team alignment",
+                      "strengths": [
+                        "Some high-level goals exist"
+                      ],
+                      "improvements": [
+                        "Goals are not SMART (specific, measurable, etc.)",
+                        "No clear strategy for achieving goals",
+                        "Individual goals not aligned with team goals"
+                      ],
+                      "recommendations": [
+                        "Urgent: Schedule goal-setting session",
+                        "Create goal tracking dashboard",
+                        "Link individual KPIs to team objectives"
+                      ]
+                    }
                   }
                 ],
                 "overallHealth": {
                   "score": 58,
                   "status": "amber",
-                  "redCount": 3,
-                  "amberCount": 5,
-                  "greenCount": 0
+                  "trend": "stable",
+                  "distribution": {
+                    "green": {"count": 0, "percentage": 0},
+                    "amber": {"count": 5, "percentage": 62.5},
+                    "red": {"count": 3, "percentage": 37.5}
+                  },
+                  "priorityAreas": [
+                    "Goals and Strategy",
+                    "Team Relationships",
+                    "Inter-team Relations"
+                  ],
+                  "interpretation": "The team is functioning but has significant areas needing attention. Focus on the red areas first while maintaining amber areas."
                 }
               }
             }
           }
+        }
+      },
+      
+      "/api/v2/visualizations/qo2-model": {
+        "method": "POST",
+        "description": "Generate QO2 3D model with organizational values",
+        "headers": {
+          "Authorization": "Bearer {token}"
         },
-        "benefits": [
-          "No need for GPT-4 Vision analysis",
-          "Instant access to chart data for debrief",
-          "Reduced costs and latency",
-          "Better accuracy (no vision extraction errors)",
-          "Enables rich interactions without re-parsing images"
-        ]
+        "request": {
+          "body": {
+            "subscriptionId": "sub_xyz789"
+          }
+        },
+        "response": {
+          "success": true,
+          "data": {
+            "visualization": {
+              "type": "qo2-model",
+              "image": {
+                "png": "base64_encoded_png_data"
+              },
+              "data": {
+                "dimensions": {
+                  "groupValue": {
+                    "score": 38,
+                    "label": "Group Achievement Value",
+                    "description": "Preference for collective success and team achievements"
+                  },
+                  "personalAchievement": {
+                    "score": 33,
+                    "label": "Personal Achievement Value",
+                    "description": "Drive for individual accomplishment and recognition"
+                  },
+                  "organizationalValue": {
+                    "score": 48,
+                    "label": "Organizational Value",
+                    "description": "Commitment to company goals and structures"
+                  },
+                  "taskValue": {
+                    "score": 70,
+                    "label": "Task Value",
+                    "description": "Focus on getting work done efficiently"
+                  },
+                  "powerValue": {
+                    "score": 53,
+                    "label": "Power/Influence Value",
+                    "description": "Desire to influence and lead others"
+                  }
+                },
+                "quotient": {
+                  "opportunities": 65,
+                  "obstacles": 35,
+                  "ratio": 1.86,
+                  "interpretation": "Opportunity-focused mindset with strong task orientation"
+                },
+                "profile": {
+                  "type": "Task-Driven Optimist",
+                  "description": "You see opportunities to achieve through focused task completion",
+                  "strengths": [
+                    "Strong task focus drives results",
+                    "Balanced view of organizational needs",
+                    "Optimistic outlook enables perseverance"
+                  ],
+                  "watchPoints": [
+                    "May overlook people needs in favor of tasks",
+                    "Could benefit from more group collaboration"
+                  ]
+                }
+              }
+            }
+          }
+        }
       }
     },
     
-    "implementationNotes": {
-      "backwardCompatibility": "Keep /GetGraph working as-is for legacy integrations",
-      "internalLogic": "When generating charts, TMS already has the data - just return it",
-      "chartTypes": {
-        "tmp-wheel": {
-          "description": "8-role team management wheel",
-          "requiredData": "Role scores and RIDO calculations"
-        },
-        "qo2-model": {
-          "description": "Organizational values 3D model",
-          "requiredData": "5 dimension scores plus ENQ"
-        },
-        "team-signals": {
-          "description": "8 traffic lights for team health",
-          "requiredData": "Status and scores for each dimension"
-        },
-        "wow-chart": {
-          "description": "Ways of Working preferences",
-          "requiredData": "Preference scores across dimensions"
-        },
-        "llp-graph": {
-          "description": "Leadership Learning Profile",
-          "requiredData": "Learning style scores and preferences"
-        }
-      }
+    "benefits": {
+      "unified": "Single API call returns everything needed for display and analysis",
+      "efficient": "No separate calls to get data after generating image", 
+      "accurate": "Eliminates vision API interpretation errors",
+      "rich": "Includes interpretations, recommendations, and contextual data",
+      "cost-effective": "Removes expensive GPT-4 Vision API calls"
+    },
+    
+    "migrationPath": {
+      "phase1": "Implement new endpoints alongside existing /GetGraph",
+      "phase2": "Update TeamOS to use new endpoints",
+      "phase3": "Deprecate old /GetGraph endpoint",
+      "timeline": "Can be done incrementally without breaking changes"
     }
   }
 }

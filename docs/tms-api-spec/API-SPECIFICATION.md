@@ -71,8 +71,10 @@ x-api-key: {api_key}
 - `/reports/{subscriptionId}/debrief` - Interactive Q&A
 
 ### 4. Visualizations (see `04-visualizations.json`)
-- `/GetGraph` - Current endpoint returning only PNG images
-- `/api/v2/charts/{chartType}` - Recommended: Return image + structured data to eliminate GPT-4 Vision needs
+- `/visualizations` - Generate any visualization type with image + full data
+- `/visualizations/tmp-wheel` - TMP wheel with all role data and analysis
+- `/visualizations/team-signals` - Traffic lights with detailed health analysis
+- `/visualizations/qo2-model` - QO2 values with interpretation
 
 ### 5. User Management (see `05-user-management.json`)
 - `/organizations` - Create organization with admin user
