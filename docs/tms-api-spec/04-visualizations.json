@@ -1,211 +1,207 @@
 {
   "visualizations": {
-    "description": "Chart and graph generation endpoints",
-    "overview": {
-      "current": "TMS Global currently uses GET /GetGraph with query parameters",
-      "wrapper": "TeamOS provides POST /api/v1/tms/generate-graph for agent integration",
-      "future": "The /api/v2 endpoints below are proposed improvements for cleaner API design"
-    },
-    "proposedEndpoints": {
-      "/api/v2/visualizations/generate": {
-        "method": "POST",
-        "description": "Generate charts and visualizations with structured data response",
-        "headers": {
-          "Authorization": "Bearer {token}"
-        },
-        "request": {
-          "body": {
-            "type": "tmp_wheel",
-            "data": {
-              "roles": [
-                {"name": "Creator Innovator", "score": 3},
-                {"name": "Explorer Promoter", "score": 2},
-                {"name": "Assessor Developer", "score": 4},
-                {"name": "Thruster Organizer", "score": 5},
-                {"name": "Concluder Producer", "score": 6},
-                {"name": "Controller Inspector", "score": 7},
-                {"name": "Upholder Maintainer", "score": 8},
-                {"name": "Reporter Adviser", "score": 4}
-              ],
-              "highlight": ["Upholder Maintainer", "Controller Inspector"]
-            },
-            "format": "both",
-            "options": {
-              "size": {"width": 800, "height": 800},
-              "theme": "professional",
-              "includeLabels": true
-            }
-          }
-        },
-        "response": {
-          "success": true,
-          "data": {
-            "visualizationId": "viz_abc123",
-            "type": "tmp_wheel",
-            "formats": {
-              "png": {
-                "url": "/api/v2/visualizations/viz_abc123.png",
-                "base64": "data:image/png;base64,iVBORw0KGgoAAAANS...",
-                "size": {"width": 800, "height": 800}
-              },
-              "svg": {
-                "url": "/api/v2/visualizations/viz_abc123.svg",
-                "content": "<svg width='800' height='800'>...</svg>"
-              }
-            },
-            "metadata": {
-              "generatedAt": "2024-01-06T10:35:00Z",
-              "expiresAt": "2024-01-07T10:35:00Z"
-            }
-          }
-        }
-      },
-      
-      "/api/v2/visualizations/templates": {
-        "method": "GET",
-        "description": "Get available visualization templates",
-        "headers": {
-          "Authorization": "Bearer {token}"
-        },
-        "response": {
-          "success": true,
-          "data": [
-            {
-              "id": "tmp_wheel",
-              "name": "TMP Wheel",
-              "description": "Team Management Profile wheel showing all 8 roles",
-              "requiredData": {
-                "roles": "Array of 8 role scores"
-              },
-              "options": {
-                "highlight": "Roles to highlight",
-                "theme": ["professional", "colorful", "grayscale"],
-                "size": "Width and height in pixels"
-              }
-            },
-            {
-              "id": "qo2_model",
-              "name": "QO2 Organizational Model",
-              "description": "3D-style organizational assessment visualization",
-              "requiredData": {
-                "dimensions": "Object with organizational dimension scores"
-              }
-            },
-            {
-              "id": "team_signals",
-              "name": "Team Signals Traffic Lights",
-              "description": "8 team health indicators with traffic light colors",
-              "requiredData": {
-                "signals": "Array of 8 signal states (red/amber/green)"
-              }
-            },
-            {
-              "id": "preference_bars",
-              "name": "Preference Comparison Bars",
-              "description": "Horizontal bar chart comparing preferences",
-              "requiredData": {
-                "preferences": "Array of preference pairs with scores"
-              }
-            }
-          ]
-        }
-      }
-    },
+    "description": "Chart generation and data endpoints",
+    "problem": "Currently TeamOS generates images then uses GPT-4 Vision to extract the data back out. We need the raw data alongside images.",
+    "solution": "Return both image AND structured data for each chart type",
+    
     "currentEndpoints": {
       "/GetGraph": {
         "method": "GET",
-        "description": "Generate assessment graphs/charts (legacy endpoint)",
-        "headers": {
-          "Authorization": "Bearer {token}"
-        },
+        "description": "Current endpoint that only returns PNG images",
         "queryFormat": "?{chartType}&{param1}={value1}&{param2}={value2}...",
-        "exampleRequests": {
-          "tmpWheel": "/GetGraph?CreateTMPQWheel&mr=8&rr1=7&rr2=5&clear=yes",
-          "qo2Model": "/GetGraph?CreateQO2Model&gva=38&pav=33&ov=48&tv=70&povn=53&enq=0.9&clear=yes",
+        "examples": {
+          "tmpWheel": "/GetGraph?CreateTMPQWheel&mr=8&rr1=7&rr2=5",
+          "qo2Model": "/GetGraph?CreateQO2Model&gva=38&pav=33&ov=48&tv=70&povn=53&enq=0.9",
           "teamSignals": "/GetGraph?CreateTeamSignals&colors=amber|red|amber|amber|red|red|amber|amber"
         },
         "response": {
-          "type": "binary",
-          "content": "PNG image binary data",
-          "headers": {
-            "Content-Type": "image/png"
-          }
-        },
-        "notes": {
-          "chartTypes": {
-            "CreateTMPQWheel": {
-              "description": "TMP wheel with 8 roles",
-              "params": {
-                "mr": "Main role score (0-10)",
-                "rr1": "Related role 1 score (0-10)", 
-                "rr2": "Related role 2 score (0-10)"
-              }
-            },
-            "CreateQO2Model": {
-              "description": "QO2 organizational model",
-              "params": {
-                "gva": "Group value score",
-                "pav": "Personal achievement value",
-                "ov": "Organizational value",
-                "tv": "Task value",
-                "povn": "Power value",
-                "enq": "ENQ score",
-                "clear": "Clear background (yes/no)"
-              }
-            },
-            "CreateTeamSignals": {
-              "description": "Team Signals traffic lights",
-              "params": {
-                "colors": "Pipe-separated colors (red|amber|green) for 8 signals"
-              },
-              "example": "amber|red|amber|amber|red|red|amber|amber"
-            },
-            "CreateWoWChart": {
-              "description": "Ways of Working chart",
-              "params": {
-                "scores": "Comma-separated scores for dimensions"
-              }
-            },
-            "CreateLLPGraph": {
-              "description": "Leadership Learning Profile graph",
-              "params": {
-                "profile": "Profile type identifier",
-                "scores": "Dimension scores"
-              }
-            }
-          },
-          "usage": "This endpoint returns base64-encoded PNG images for embedding in reports",
-          "apiWrapper": "TeamOS provides a POST /api/v1/tms/generate-graph wrapper that converts between the agent-friendly format and this GET endpoint"
+          "type": "image/png",
+          "content": "Binary PNG data"
         }
-      },
-      
-      "/api/v1/tms/generate-graph": {
+      }
+    },
+    
+    "recommendedEndpoints": {
+      "/api/v2/charts/{chartType}": {
         "method": "POST",
-        "description": "TeamOS wrapper for graph generation (converts to GET /GetGraph)",
+        "description": "Generate chart with both image AND structured data",
         "headers": {
           "Authorization": "Bearer {token}"
         },
         "request": {
-          "body": {
-            "chartType": "CreateTMPQWheel",
-            "params": {
-              "mr": "8",
-              "rr1": "7",
-              "rr2": "5"
+          "examples": {
+            "tmpWheel": {
+              "chartType": "tmp-wheel",
+              "parameters": {
+                "majorRole": 8,
+                "relatedRole1": 7,
+                "relatedRole2": 5
+              }
+            },
+            "qo2Model": {
+              "chartType": "qo2-model", 
+              "parameters": {
+                "groupValue": 38,
+                "personalAchievement": 33,
+                "organizationalValue": 48,
+                "taskValue": 70,
+                "powerValue": 53,
+                "enq": 0.9
+              }
+            },
+            "teamSignals": {
+              "chartType": "team-signals",
+              "parameters": {
+                "signals": ["amber", "red", "amber", "amber", "red", "red", "amber", "amber"]
+              }
             }
           }
         },
         "response": {
           "success": true,
           "data": {
-            "data": "iVBORw0KGgoAAAANSUhEUgAA...",
-            "mimeType": "image/png",
-            "encoding": "base64"
+            "chartType": "tmp-wheel",
+            "image": {
+              "format": "png",
+              "base64": "iVBORw0KGgoAAAANSUhEUgAA...",
+              "url": "/api/v2/charts/cache/chart_abc123.png"
+            },
+            "structuredData": {
+              "description": "THE KEY DATA that eliminates need for Vision API",
+              "tmpWheelExample": {
+                "majorRole": {
+                  "name": "Upholder Maintainer",
+                  "score": 8,
+                  "position": 7,
+                  "color": "#54A0FF",
+                  "description": "Focuses on maintaining standards and supporting team stability"
+                },
+                "relatedRole1": {
+                  "name": "Controller Inspector", 
+                  "score": 7,
+                  "position": 6,
+                  "color": "#FF9FF3",
+                  "description": "Ensures quality control and adherence to procedures"
+                },
+                "relatedRole2": {
+                  "name": "Thruster Organizer",
+                  "score": 5,
+                  "position": 3,
+                  "color": "#96CEB4",
+                  "description": "Drives action and organizes team efforts"
+                },
+                "allRoles": [
+                  {"name": "Creator Innovator", "score": 3, "position": 0},
+                  {"name": "Explorer Promoter", "score": 2, "position": 1},
+                  {"name": "Assessor Developer", "score": 4, "position": 2},
+                  {"name": "Thruster Organizer", "score": 5, "position": 3},
+                  {"name": "Concluder Producer", "score": 6, "position": 4},
+                  {"name": "Controller Inspector", "score": 7, "position": 5},
+                  {"name": "Upholder Maintainer", "score": 8, "position": 6},
+                  {"name": "Reporter Adviser", "score": 4, "position": 7}
+                ],
+                "ridoScores": {
+                  "I": 7,
+                  "C": 3,
+                  "B": 5,
+                  "S": 9
+                }
+              },
+              "teamSignalsExample": {
+                "signals": [
+                  {
+                    "name": "Purpose and Vision",
+                    "status": "amber",
+                    "score": 75,
+                    "description": "Team has reasonable clarity on direction"
+                  },
+                  {
+                    "name": "Goals and Strategy", 
+                    "status": "red",
+                    "score": 40,
+                    "description": "Goals need better definition and alignment"
+                  },
+                  {
+                    "name": "Team Roles",
+                    "status": "amber",
+                    "score": 62,
+                    "description": "Roles are defined but could be clearer"
+                  },
+                  {
+                    "name": "Team Processes",
+                    "status": "amber",
+                    "score": 68,
+                    "description": "Processes exist but need optimization"
+                  },
+                  {
+                    "name": "Team Relationships",
+                    "status": "red",
+                    "score": 45,
+                    "description": "Relationships need strengthening"
+                  },
+                  {
+                    "name": "Inter-team Relations",
+                    "status": "red",
+                    "score": 38,
+                    "description": "Cross-team collaboration is weak"
+                  },
+                  {
+                    "name": "Team Learning",
+                    "status": "amber",
+                    "score": 71,
+                    "description": "Some learning practices in place"
+                  },
+                  {
+                    "name": "Team Leadership",
+                    "status": "amber",
+                    "score": 65,
+                    "description": "Leadership is present but could be stronger"
+                  }
+                ],
+                "overallHealth": {
+                  "score": 58,
+                  "status": "amber",
+                  "redCount": 3,
+                  "amberCount": 5,
+                  "greenCount": 0
+                }
+              }
+            }
           }
         },
-        "notes": {
-          "purpose": "This wrapper endpoint is used by TeamOS agents for easier integration",
-          "implementation": "Internally converts POST body to GET query parameters and calls /GetGraph"
+        "benefits": [
+          "No need for GPT-4 Vision analysis",
+          "Instant access to chart data for debrief",
+          "Reduced costs and latency",
+          "Better accuracy (no vision extraction errors)",
+          "Enables rich interactions without re-parsing images"
+        ]
+      }
+    },
+    
+    "implementationNotes": {
+      "backwardCompatibility": "Keep /GetGraph working as-is for legacy integrations",
+      "internalLogic": "When generating charts, TMS already has the data - just return it",
+      "chartTypes": {
+        "tmp-wheel": {
+          "description": "8-role team management wheel",
+          "requiredData": "Role scores and RIDO calculations"
+        },
+        "qo2-model": {
+          "description": "Organizational values 3D model",
+          "requiredData": "5 dimension scores plus ENQ"
+        },
+        "team-signals": {
+          "description": "8 traffic lights for team health",
+          "requiredData": "Status and scores for each dimension"
+        },
+        "wow-chart": {
+          "description": "Ways of Working preferences",
+          "requiredData": "Preference scores across dimensions"
+        },
+        "llp-graph": {
+          "description": "Leadership Learning Profile",
+          "requiredData": "Learning style scores and preferences"
         }
       }
     }

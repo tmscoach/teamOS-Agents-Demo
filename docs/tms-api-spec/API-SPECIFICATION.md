@@ -71,10 +71,8 @@ x-api-key: {api_key}
 - `/reports/{subscriptionId}/debrief` - Interactive Q&A
 
 ### 4. Visualizations (see `04-visualizations.json`)
-- `/visualizations/generate` - Generate charts with data (future approach)
-- `/visualizations/templates` - List available templates
-- `/GetGraph` - Generate assessment graphs (current TMS endpoint, GET with query params)
-- `/api/v1/tms/generate-graph` - TeamOS wrapper for agents (POST to GET conversion)
+- `/GetGraph` - Current endpoint returning only PNG images
+- `/api/v2/charts/{chartType}` - Recommended: Return image + structured data to eliminate GPT-4 Vision needs
 
 ### 5. User Management (see `05-user-management.json`)
 - `/organizations` - Create organization with admin user
