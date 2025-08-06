@@ -106,28 +106,23 @@
         }
       },
       
-      "/api/v2/graphs/generate": {
-        "method": "POST",
+      "/GetGraph": {
+        "method": "GET",
         "description": "Generate assessment graphs/charts (legacy endpoint)",
         "headers": {
           "Authorization": "Bearer {token}"
         },
-        "request": {
-          "body": {
-            "chartType": "CreateTMPQWheel",
-            "params": {
-              "mr": "8",
-              "rr1": "7",
-              "rr2": "5"
-            }
-          }
+        "queryFormat": "?{chartType}&{param1}={value1}&{param2}={value2}...",
+        "exampleRequests": {
+          "tmpWheel": "/GetGraph?CreateTMPQWheel&mr=8&rr1=7&rr2=5&clear=yes",
+          "qo2Model": "/GetGraph?CreateQO2Model&gva=38&pav=33&ov=48&tv=70&povn=53&enq=0.9&clear=yes",
+          "teamSignals": "/GetGraph?CreateTeamSignals&colors=amber|red|amber|amber|red|red|amber|amber"
         },
         "response": {
-          "success": true,
-          "data": {
-            "data": "iVBORw0KGgoAAAANSUhEUgAA...",
-            "mimeType": "image/png",
-            "encoding": "base64"
+          "type": "binary",
+          "content": "PNG image binary data",
+          "headers": {
+            "Content-Type": "image/png"
           }
         },
         "notes": {
@@ -173,7 +168,38 @@
               }
             }
           },
-          "usage": "This endpoint returns base64-encoded PNG images for embedding in reports"
+          "usage": "This endpoint returns base64-encoded PNG images for embedding in reports",
+          "apiWrapper": "TeamOS provides a POST /api/v1/tms/generate-graph wrapper that converts between the agent-friendly format and this GET endpoint"
+        }
+      },
+      
+      "/api/v1/tms/generate-graph": {
+        "method": "POST",
+        "description": "TeamOS wrapper for graph generation (converts to GET /GetGraph)",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "request": {
+          "body": {
+            "chartType": "CreateTMPQWheel",
+            "params": {
+              "mr": "8",
+              "rr1": "7",
+              "rr2": "5"
+            }
+          }
+        },
+        "response": {
+          "success": true,
+          "data": {
+            "data": "iVBORw0KGgoAAAANSUhEUgAA...",
+            "mimeType": "image/png",
+            "encoding": "base64"
+          }
+        },
+        "notes": {
+          "purpose": "This wrapper endpoint is used by TeamOS agents for easier integration",
+          "implementation": "Internally converts POST body to GET query parameters and calls /GetGraph"
         }
       }
     }

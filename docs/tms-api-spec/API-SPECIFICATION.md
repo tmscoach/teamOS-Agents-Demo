@@ -71,9 +71,10 @@ x-api-key: {api_key}
 - `/reports/{subscriptionId}/debrief` - Interactive Q&A
 
 ### 4. Visualizations (see `04-visualizations.json`)
-- `/visualizations/generate` - Generate charts with data (modern approach)
+- `/visualizations/generate` - Generate charts with data (future approach)
 - `/visualizations/templates` - List available templates
-- `/graphs/generate` - Generate assessment graphs (legacy endpoint for TMP wheel, QO2 model, etc.)
+- `/GetGraph` - Generate assessment graphs (current TMS endpoint, GET with query params)
+- `/api/v1/tms/generate-graph` - TeamOS wrapper for agents (POST to GET conversion)
 
 ### 5. User Management (see `05-user-management.json`)
 - `/organizations` - Create organization with admin user
