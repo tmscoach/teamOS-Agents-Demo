@@ -10,7 +10,7 @@ This directory contains comprehensive documentation for integrating the TMS Glob
 - **[02-assessments.json](./02-assessments.json)** - Assessment workflow endpoints
 - **[03-reports.json](./03-reports.json)** - Report generation and retrieval endpoints
 - **[04-visualizations.json](./04-visualizations.json)** - Chart and graph generation endpoints
-- **[05-user-management.json](./05-user-management.json)** - User and organization management
+- **[05-user-management.json](./05-user-management.json)** - User management with three roles (admin, manager, member)
 - **[06-dashboard-analytics.json](./06-dashboard-analytics.json)** - Dashboard and analytics endpoints
 
 ### Architecture Diagrams
@@ -72,7 +72,9 @@ For the external developer building the TMS API:
 ### Week 2-3: Core Features
 - [ ] Build assessment workflow APIs (see `02-assessments.json`)
 - [ ] Create basic report generation (HTML OK for MVP)
-- [ ] Implement user management basics (see `05-user-management.json`)
+- [ ] Implement user management with role-based access (see `05-user-management.json`)
+  - [ ] Abstract legacy two-table system (managers in users table, members in respondents table)
+  - [ ] Support three roles: admin, manager, member
 - [ ] Test TeamOS integration flow
 
 ### Post-MVP: Enhancements

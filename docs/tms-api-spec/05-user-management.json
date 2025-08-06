@@ -1,49 +1,57 @@
 {
   "userManagement": {
-    "description": "User and organization management endpoints",
+    "description": "Unified user management system with role-based access",
+    "overview": "Single user model with three roles: admin, manager, member",
+    
+    "userRoles": {
+      "admin": {
+        "description": "Organization founder/owner",
+        "permissions": [
+          "manage_organization",
+          "manage_billing", 
+          "manage_all_users",
+          "create_assessments",
+          "view_all_reports",
+          "delete_organization"
+        ]
+      },
+      "manager": {
+        "description": "Team manager/facilitator",
+        "permissions": [
+          "manage_team_members",
+          "create_assessments",
+          "view_team_reports",
+          "export_data"
+        ]
+      },
+      "member": {
+        "description": "Team member/respondent",
+        "permissions": [
+          "complete_assessments",
+          "view_own_reports"
+        ]
+      }
+    },
+    
     "endpoints": {
       "/api/v2/users": {
         "method": "POST",
-        "description": "Create a new user with optional SSO linking",
+        "description": "Create a new user with specified role",
         "headers": {
-          "Authorization": "Bearer {token} OR x-api-key: {apiKey}"
+          "Authorization": "Bearer {token}"
         },
         "request": {
-          "examples": {
-            "withSSO": {
-              "description": "Create user linked to SSO provider",
-              "body": {
-                "email": "newuser@company.com",
-                "firstName": "Jane",
-                "lastName": "Smith",
-                "role": "respondent",
-                "organizationId": "org_def456",
-                "ssoProvider": {
-                  "provider": "clerk",
-                  "providerId": "clerk_user_abc789"
-                },
-                "metadata": {
-                  "department": "Sales",
-                  "manager": "usr_xyz123",
-                  "location": "New York"
-                }
-              }
-            },
-            "nativeAuth": {
-              "description": "Create user with native authentication",
-              "body": {
-                "email": "newuser@company.com",
-                "password": "SecurePassword123!",
-                "firstName": "Jane",
-                "lastName": "Smith",
-                "role": "respondent",
-                "organizationId": "org_def456",
-                "metadata": {
-                  "department": "Sales",
-                  "manager": "usr_xyz123",
-                  "location": "New York"
-                }
-              }
+          "body": {
+            "email": "newuser@company.com",
+            "firstName": "Jane",
+            "lastName": "Smith",
+            "role": "admin|manager|member",
+            "organizationId": "org_def456",
+            "teamId": "team_123",
+            "metadata": {
+              "department": "Sales",
+              "title": "Sales Manager",
+              "reportsTo": "usr_manager123"
             }
           }
         },
@@ -52,17 +60,22 @@
           "data": {
             "userId": "usr_new123",
             "email": "newuser@company.com",
-            "role": "respondent",
+            "role": "manager",
             "organizationId": "org_def456",
+            "teamId": "team_123",
             "status": "active",
             "createdAt": "2024-01-06T11:00:00Z"
           }
+        },
+        "notes": {
+          "legacyMapping": "Admin/Manager -> users table, Member -> respondents table",
+          "apiAbstraction": "Single endpoint handles both tables internally"
         }
       },
       
       "/api/v2/users/{userId}": {
         "method": "GET",
-        "description": "Get user details",
+        "description": "Get user details regardless of role",
         "headers": {
           "Authorization": "Bearer {token}"
         },
@@ -73,123 +86,222 @@
             "email": "user@company.com",
             "firstName": "John",
             "lastName": "Doe",
-            "role": "facilitator",
+            "role": "manager",
             "organizationId": "org_def456",
+            "teamId": "team_123",
             "status": "active",
             "metadata": {
               "department": "Engineering",
-              "title": "Team Lead",
-              "reportsTo": "usr_manager123"
-            },
-            "assessments": {
-              "completed": [
-                {
-                  "assessmentType": "TMP",
-                  "subscriptionId": "sub_xyz789",
-                  "completedAt": "2024-01-06T10:30:00Z"
-                }
-              ],
-              "inProgress": [],
-              "assigned": [
-                {
-                  "assessmentType": "QO2",
-                  "subscriptionId": "sub_pending123",
-                  "assignedAt": "2024-01-05T09:00:00Z",
-                  "dueDate": "2024-02-05T09:00:00Z"
-                }
-              ]
+              "title": "Engineering Manager",
+              "reportsTo": "usr_admin456"
             },
             "permissions": [
-              "view_own_reports",
-              "complete_assessments",
-              "view_team_reports"
-            ]
+              "manage_team_members",
+              "create_assessments",
+              "view_team_reports",
+              "export_data"
+            ],
+            "stats": {
+              "assessmentsCreated": 15,
+              "teamMembersManaged": 8,
+              "lastActive": "2024-01-06T10:00:00Z"
+            }
           }
         }
       },
       
+      "/api/v2/users/{userId}/role": {
+        "method": "PUT",
+        "description": "Change user role (handles table migration if needed)",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "requiredPermission": "manage_all_users (admin only)",
+        "request": {
+          "body": {
+            "role": "manager",
+            "reason": "Promoted to team manager"
+          }
+        },
+        "response": {
+          "success": true,
+          "data": {
+            "userId": "usr_abc123",
+            "previousRole": "member",
+            "newRole": "manager",
+            "updatedAt": "2024-01-06T11:30:00Z"
+          }
+        },
+        "implementation": "Handles moving user between legacy tables automatically"
+      },
+      
       "/api/v2/organizations/{organizationId}/users": {
         "method": "GET",
-        "description": "List all users in an organization",
+        "description": "List all users with filtering and pagination",
         "headers": {
           "Authorization": "Bearer {token}"
         },
         "query": {
-          "role": "facilitator|respondent|all",
+          "role": "admin|manager|member|all",
           "status": "active|inactive|all",
-          "department": "string",
+          "teamId": "team_123",
+          "search": "john",
           "page": 1,
-          "limit": 50
+          "limit": 50,
+          "sort": "name|role|lastActive"
         },
         "response": {
           "success": true,
           "data": {
             "users": [
               {
-                "userId": "usr_abc123",
-                "email": "john@company.com",
-                "firstName": "John",
-                "lastName": "Doe",
-                "role": "facilitator",
-                "department": "Engineering",
-                "lastActive": "2024-01-06T10:00:00Z",
-                "assessmentsCompleted": 3
+                "userId": "usr_admin456",
+                "email": "founder@company.com",
+                "name": "Sarah Johnson",
+                "role": "admin",
+                "teamIds": ["team_all"],
+                "lastActive": "2024-01-06T09:00:00Z",
+                "assessmentsManaged": 45
               },
               {
-                "userId": "usr_def456",
+                "userId": "usr_mgr789",
+                "email": "john@company.com",
+                "name": "John Doe",
+                "role": "manager",
+                "teamIds": ["team_123", "team_456"],
+                "lastActive": "2024-01-06T10:00:00Z",
+                "assessmentsManaged": 12,
+                "teamSize": 8
+              },
+              {
+                "userId": "usr_mem012",
                 "email": "jane@company.com",
-                "firstName": "Jane",
-                "lastName": "Smith",
-                "role": "respondent",
-                "department": "Sales",
+                "name": "Jane Smith",
+                "role": "member",
+                "teamIds": ["team_123"],
                 "lastActive": "2024-01-05T15:00:00Z",
-                "assessmentsCompleted": 2
+                "assessmentsCompleted": 3,
+                "manager": "usr_mgr789"
               }
             ],
+            "summary": {
+              "total": 45,
+              "byRole": {
+                "admin": 1,
+                "manager": 4,
+                "member": 40
+              },
+              "active": 42,
+              "inactive": 3
+            },
             "pagination": {
               "page": 1,
               "limit": 50,
-              "total": 2,
+              "total": 45,
               "pages": 1
             }
           }
         }
       },
       
-      "/api/v2/organizations/{organizationId}": {
-        "method": "GET",
-        "description": "Get organization details and usage",
+      "/api/v2/users/bulk": {
+        "method": "POST",
+        "description": "Create multiple users at once (CSV import)",
         "headers": {
           "Authorization": "Bearer {token}"
+        },
+        "request": {
+          "body": {
+            "users": [
+              {
+                "email": "user1@company.com",
+                "firstName": "User",
+                "lastName": "One",
+                "role": "member",
+                "teamId": "team_123"
+              },
+              {
+                "email": "user2@company.com", 
+                "firstName": "User",
+                "lastName": "Two",
+                "role": "member",
+                "teamId": "team_123"
+              }
+            ],
+            "options": {
+              "sendInvites": true,
+              "skipDuplicates": true
+            }
+          }
         },
         "response": {
           "success": true,
           "data": {
-            "organizationId": "org_def456",
-            "name": "Acme Corporation",
-            "industry": "Technology",
-            "size": "50-250",
-            "plan": {
-              "name": "Professional",
-              "creditsPerMonth": 5000,
-              "creditsRemaining": 3500,
-              "renewsAt": "2024-02-01T00:00:00Z"
-            },
-            "usage": {
-              "totalUsers": 45,
-              "activeUsers": 38,
-              "assessmentsThisMonth": 24,
-              "assessmentsTotal": 287,
-              "averageCompletionRate": 0.89
-            },
-            "settings": {
-              "defaultAssessmentTypes": ["TMP", "Team Signals"],
-              "autoAssignNewUsers": true,
-              "reportVisibility": "managers_only",
-              "dataRetention": "2_years"
-            }
+            "created": 2,
+            "skipped": 0,
+            "errors": [],
+            "users": [
+              {
+                "userId": "usr_new123",
+                "email": "user1@company.com"
+              },
+              {
+                "userId": "usr_new456",
+                "email": "user2@company.com"
+              }
+            ]
           }
         }
+      },
+      
+      "/api/v2/teams": {
+        "method": "POST",
+        "description": "Create a team within organization",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "request": {
+          "body": {
+            "name": "Engineering Team",
+            "managerId": "usr_mgr789",
+            "description": "Product engineering team",
+            "metadata": {
+              "department": "Engineering",
+              "location": "New York"
+            }
+          }
+        },
+        "response": {
+          "success": true,
+          "data": {
+            "teamId": "team_new789",
+            "name": "Engineering Team",
+            "managerId": "usr_mgr789",
+            "organizationId": "org_def456",
+            "createdAt": "2024-01-06T12:00:00Z"
+          }
+        }
+      }
+    },
+    
+    "implementation_notes": {
+      "database_abstraction": {
+        "description": "API abstracts the legacy two-table system",
+        "logic": "if (role === 'member') { use respondents table } else { use users table }",
+        "benefits": [
+          "Single API interface for all user types",
+          "Easy role changes without client-side complexity",
+          "Future migration to single table is transparent"
+        ]
+      },
+      "role_hierarchy": {
+        "admin": "Can manage all users and organization settings",
+        "manager": "Can manage team members only",
+        "member": "Can only manage own profile"
+      },
+      "backwards_compatibility": {
+        "facilitator": "Maps to 'manager' role",
+        "respondent": "Maps to 'member' role"
       }
     }
   }
