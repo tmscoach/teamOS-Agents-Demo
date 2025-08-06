@@ -121,7 +121,9 @@
       "backend_only": "API keys must never be exposed to frontend",
       "token_caching": "Applications should cache tokens until expiry",
       "user_identification": "Email or any unique ID can be used as userId",
-      "no_user_storage": "TMS doesn't need to store user records upfront"
+      "no_user_storage": "TMS doesn't need to store user records upfront",
+      "auth_separation": "TMS API is agnostic to how applications authenticate users (Clerk, SSO, etc.)",
+      "application_responsibility": "Each application handles its own user auth and then requests TMS tokens"
     }
   }
 }
