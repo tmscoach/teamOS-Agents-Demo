@@ -1,7 +1,12 @@
 {
   "visualizations": {
     "description": "Chart and graph generation endpoints",
-    "endpoints": {
+    "overview": {
+      "current": "TMS Global currently uses GET /GetGraph with query parameters",
+      "wrapper": "TeamOS provides POST /api/v1/tms/generate-graph for agent integration",
+      "future": "The /api/v2 endpoints below are proposed improvements for cleaner API design"
+    },
+    "proposedEndpoints": {
       "/api/v2/visualizations/generate": {
         "method": "POST",
         "description": "Generate charts and visualizations with structured data response",
@@ -104,8 +109,9 @@
             }
           ]
         }
-      },
-      
+      }
+    },
+    "currentEndpoints": {
       "/GetGraph": {
         "method": "GET",
         "description": "Generate assessment graphs/charts (legacy endpoint)",
