@@ -55,9 +55,13 @@ x-api-key: {api_key}
 
 ### 2. Assessments (see `02-assessments.json`)
 - `/assessments` - List available assessment types
+- `/subscriptions/assign` - Assign workflow to user (manager only)
+- `/subscriptions/dashboard` - Get dashboard subscriptions
 - `/assessments/{id}/start` - Start new assessment
 - `/assessments/{subscriptionId}/pages/{pageId}` - Get page questions
 - `/assessments/{subscriptionId}/pages/{pageId}/submit` - Submit answers
+- `/questions/actions` - Check conditional logic for questions
+- `/questions/conditional/{pageId}` - Get questions with conditional logic
 - `/assessments/{subscriptionId}/complete` - Complete assessment
 
 ### 3. Reports (see `03-reports.json`)

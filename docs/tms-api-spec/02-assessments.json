@@ -48,6 +48,102 @@
         }
       },
       
+      "/api/v2/subscriptions/assign": {
+        "method": "POST",
+        "description": "Assign a workflow subscription to a user (manager only)",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "request": {
+          "body": {
+            "userId": "usr_abc123",
+            "workflowId": "tmp-workflow",
+            "organizationId": "org_def456"
+          }
+        },
+        "response": {
+          "success": true,
+          "data": {
+            "subscriptionId": "sub_new789",
+            "userId": "usr_abc123",
+            "workflowId": "tmp-workflow",
+            "workflowName": "Team Management Profile",
+            "status": "assigned",
+            "assignedBy": "usr_mgr123",
+            "assignedAt": "2024-01-06T09:00:00Z",
+            "expiresAt": "2024-02-06T09:00:00Z"
+          }
+        },
+        "notes": {
+          "permissions": "Only managers and admins can assign subscriptions",
+          "workflowIds": "tmp-workflow, qo2-workflow, team-signals-workflow, wow-workflow, llp-workflow"
+        }
+      },
+      
+      "/api/v2/subscriptions/dashboard": {
+        "method": "GET",
+        "description": "Get dashboard subscriptions (all for managers, own for members)",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "response": {
+          "success": true,
+          "data": {
+            "userRole": "manager",
+            "subscriptions": [
+              {
+                "subscriptionId": "sub_123",
+                "workflowId": "tmp-workflow",
+                "workflowName": "Team Management Profile",
+                "userId": "usr_abc123",
+                "userName": "John Doe",
+                "userEmail": "john@company.com",
+                "status": "completed",
+                "progress": 100,
+                "startedAt": "2024-01-05T10:00:00Z",
+                "completedAt": "2024-01-05T10:30:00Z",
+                "reportAvailable": true
+              },
+              {
+                "subscriptionId": "sub_456",
+                "workflowId": "team-signals-workflow",
+                "workflowName": "Team Signals",
+                "userId": "usr_def456",
+                "userName": "Jane Smith",
+                "userEmail": "jane@company.com",
+                "status": "in_progress",
+                "progress": 60,
+                "startedAt": "2024-01-06T08:00:00Z",
+                "lastActivity": "2024-01-06T08:15:00Z",
+                "reportAvailable": false
+              },
+              {
+                "subscriptionId": "sub_789",
+                "workflowId": "qo2-workflow",
+                "workflowName": "QO2 Assessment",
+                "userId": "usr_ghi789",
+                "userName": "Bob Johnson",
+                "userEmail": "bob@company.com",
+                "status": "assigned",
+                "progress": 0,
+                "assignedAt": "2024-01-06T09:00:00Z",
+                "reportAvailable": false
+              }
+            ],
+            "summary": {
+              "total": 15,
+              "completed": 8,
+              "inProgress": 4,
+              "assigned": 3
+            }
+          }
+        },
+        "notes": {
+          "roleBasedAccess": "Managers see all team subscriptions, members see only their own",
+          "filtering": "Can filter by status, workflow type, date range via query params"
+        }
+      },
+      
       "/api/v2/assessments/{assessmentId}/start": {
         "method": "POST",
         "description": "Start a new assessment for a user",
@@ -220,6 +316,95 @@
             },
             "conditionalActions": []
           }
+        }
+      },
+      
+      "/api/v2/questions/actions": {
+        "method": "POST",
+        "description": "Check conditional logic for questions based on current answers",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "request": {
+          "body": {
+            "subscriptionId": "sub_xyz789",
+            "pageId": "tmp_p2",
+            "answers": {
+              "q_001": { "opt_a": 7, "opt_b": 3 },
+              "q_002": { "opt_a": 4, "opt_b": 6 }
+            }
+          }
+        },
+        "response": {
+          "success": true,
+          "data": {
+            "actions": [
+              {
+                "questionId": "q_003",
+                "action": "show",
+                "reason": "Based on q_001 response showing analytical preference"
+              },
+              {
+                "questionId": "q_004",
+                "action": "hide",
+                "reason": "Not applicable based on previous answers"
+              },
+              {
+                "questionId": "q_005",
+                "action": "required",
+                "reason": "Made required due to management role selection"
+              }
+            ],
+            "pageNavigation": {
+              "skipToPageId": null,
+              "showWarning": false
+            }
+          }
+        },
+        "notes": {
+          "usage": "Call after each answer change to update question visibility/requirements",
+          "performance": "Results are cached per page to minimize API calls"
+        }
+      },
+      
+      "/api/v2/questions/conditional/{pageId}": {
+        "method": "GET",
+        "description": "Get list of questions that have conditional logic on a page",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "response": {
+          "success": true,
+          "data": {
+            "pageId": "tmp_p2",
+            "conditionalQuestions": [
+              {
+                "questionId": "q_003",
+                "conditions": [
+                  {
+                    "type": "show_if",
+                    "dependsOn": "q_001",
+                    "rule": "opt_a > 5"
+                  }
+                ]
+              },
+              {
+                "questionId": "q_004",
+                "conditions": [
+                  {
+                    "type": "required_if",
+                    "dependsOn": ["q_001", "q_002"],
+                    "rule": "complex_rule"
+                  }
+                ]
+              }
+            ],
+            "hasConditionalLogic": true
+          }
+        },
+        "notes": {
+          "usage": "Call when loading a page to identify questions needing dynamic updates",
+          "optimization": "Only fetch actions for questions with conditional logic"
         }
       },
       
