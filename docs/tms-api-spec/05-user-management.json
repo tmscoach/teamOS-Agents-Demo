@@ -34,6 +34,49 @@
     },
     
     "endpoints": {
+      "/api/v2/organizations": {
+        "method": "POST",
+        "description": "Create a new organization with founding admin user",
+        "headers": {
+          "x-api-key": "pk_live_teamOS_abc123",
+          "x-api-secret": "sk_live_teamOS_xyz789",
+          "Content-Type": "application/json"
+        },
+        "request": {
+          "body": {
+            "organizationName": "Acme Corporation",
+            "adminUser": {
+              "email": "founder@acme.com",
+              "firstName": "John",
+              "lastName": "Doe"
+            },
+            "metadata": {
+              "industry": "Technology",
+              "size": "10-50",
+              "country": "US"
+            }
+          }
+        },
+        "response": {
+          "success": true,
+          "data": {
+            "organizationId": "org_new123",
+            "organizationName": "Acme Corporation",
+            "adminUser": {
+              "userId": "usr_admin123",
+              "email": "founder@acme.com",
+              "role": "admin"
+            },
+            "createdAt": "2024-01-06T10:00:00Z"
+          }
+        },
+        "notes": {
+          "onboarding": "Used during TeamOS onboarding when founder enters organization name",
+          "authentication": "Uses TeamOS API key - each app has one API key for all its orgs",
+          "adminCreation": "Founding user is automatically created with admin role"
+        }
+      },
+      
       "/api/v2/users": {
         "method": "POST",
         "description": "Create a new user with specified role",

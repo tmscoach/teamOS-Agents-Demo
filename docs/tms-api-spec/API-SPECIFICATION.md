@@ -49,9 +49,9 @@ x-api-key: {api_key}
 ## Core Endpoints
 
 ### 1. Authentication (see `01-authentication.json`)
-- `/auth/signup` - Create organization and facilitator
-- `/auth/token-exchange` - Exchange Clerk ID for JWT
+- `/auth/token` - Generate JWT token using API key
 - `/auth/refresh` - Refresh JWT token
+- `/auth/validate` - Validate token (optional)
 
 ### 2. Assessments (see `02-assessments.json`)
 - `/assessments` - List available assessment types
@@ -71,10 +71,12 @@ x-api-key: {api_key}
 - `/visualizations/templates` - List available templates
 
 ### 5. User Management (see `05-user-management.json`)
+- `/organizations` - Create organization with admin user
 - `/users` - Create user
 - `/users/{userId}` - Get user details
+- `/users/{userId}/role` - Change user role
 - `/organizations/{orgId}/users` - List organization users
-- `/organizations/{orgId}` - Get organization details
+- `/teams` - Create team
 
 ### 6. Dashboard & Analytics (see `06-dashboard-analytics.json`)
 - `/dashboard` - Get personalized dashboard
