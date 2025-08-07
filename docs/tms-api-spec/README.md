@@ -7,7 +7,7 @@ This directory contains comprehensive documentation for integrating the TMS Glob
 ### API Specifications
 - **[API-SPECIFICATION.md](./API-SPECIFICATION.md)** - Main API design document with architectural decisions
 - **[01-authentication.json](./01-authentication.json)** - Authentication endpoints and JWT structure
-- **[02-assessments.json](./02-assessments.json)** - Assessment workflow endpoints
+- **[02-assessments.json](./02-assessments.json)** - Workflow and subscription endpoints
 - **[03-reports.json](./03-reports.json)** - Report generation and retrieval endpoints
 - **[04-visualizations.json](./04-visualizations.json)** - Chart and graph generation endpoints
 - **[05-user-management.json](./05-user-management.json)** - User management with three roles (admin, manager, member)
@@ -70,7 +70,7 @@ For the external developer building the TMS API:
 - [ ] Test with TeamOS integration
 
 ### Week 2-3: Core Features
-- [ ] Build assessment workflow APIs (see `02-assessments.json`)
+- [ ] Build workflow and subscription APIs (see `02-assessments.json`)
 - [ ] Create basic report generation (HTML OK for MVP)
 - [ ] Implement user management with role-based access (see `05-user-management.json`)
   - [ ] Abstract legacy two-table system (managers in users table, members in respondents table)
@@ -100,20 +100,20 @@ const token = await fetch('/api/v2/auth/token', {
 
 const { token: jwtToken } = await token.json();
 
-// 2. Start assessment
-const subscription = await tmsApi.assessments.start({
+// 2. Start workflow subscription
+const subscription = await tmsApi.workflows.start({
   userId: tmsAuth.user.id,
-  assessmentId: 'tmp'
+  workflowId: 'tmp-workflow'
 });
 
 // 3. Get questions
-const page = await tmsApi.assessments.getPage({
+const page = await tmsApi.subscriptions.getPage({
   subscriptionId: subscription.subscriptionId,
   pageId: subscription.navigation.firstPageId
 });
 
 // 4. Submit answers
-await tmsApi.assessments.submitPage({
+await tmsApi.subscriptions.submitPage({
   subscriptionId: subscription.subscriptionId,
   pageId: page.pageId,
   answers: [...]
@@ -152,7 +152,7 @@ For questions about this specification:
 ## 🚀 Getting Started
 
 1. Start with authentication implementation
-2. Build core assessment workflow
+2. Build core workflow and subscription system
 3. Add report generation
 4. Implement remaining endpoints
 5. Test end-to-end flows

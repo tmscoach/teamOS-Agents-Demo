@@ -1,10 +1,10 @@
 {
-  "assessments": {
-    "description": "Assessment workflow management endpoints",
+  "workflows": {
+    "description": "Workflow and subscription management endpoints",
     "endpoints": {
-      "/api/v2/assessments": {
+      "/api/v2/workflows": {
         "method": "GET",
-        "description": "List available assessment types with metadata",
+        "description": "List available workflow types with metadata",
         "headers": {
           "Authorization": "Bearer {token}"
         },
@@ -144,16 +144,16 @@
         }
       },
       
-      "/api/v2/assessments/{assessmentId}/start": {
+      "/api/v2/workflows/{workflowId}/start": {
         "method": "POST",
-        "description": "Start a new assessment for a user",
+        "description": "Start a new workflow subscription for a user",
         "headers": {
           "Authorization": "Bearer {token}"
         },
         "request": {
           "body": {
             "userId": "usr_abc123",
-            "assessmentId": "tmp",
+            "workflowId": "tmp-workflow",
             "metadata": {
               "purpose": "annual_review",
               "department": "Engineering",
@@ -165,7 +165,7 @@
           "success": true,
           "data": {
             "subscriptionId": "sub_xyz789",
-            "assessmentId": "tmp",
+            "workflowId": "tmp-workflow",
             "userId": "usr_abc123",
             "status": "in_progress",
             "createdAt": "2024-01-06T10:00:00Z",
@@ -190,9 +190,9 @@
         }
       },
       
-      "/api/v2/assessments/{subscriptionId}/pages/{pageId}": {
+      "/api/v2/subscriptions/{subscriptionId}/pages/{pageId}": {
         "method": "GET",
-        "description": "Get questions for a specific assessment page",
+        "description": "Get questions for a specific subscription page",
         "headers": {
           "Authorization": "Bearer {token}"
         },
@@ -270,9 +270,9 @@
         }
       },
       
-      "/api/v2/assessments/{subscriptionId}/pages/{pageId}/submit": {
+      "/api/v2/subscriptions/{subscriptionId}/pages/{pageId}/submit": {
         "method": "POST",
-        "description": "Submit answers for an assessment page",
+        "description": "Submit answers for a subscription page",
         "headers": {
           "Authorization": "Bearer {token}"
         },
@@ -408,9 +408,9 @@
         }
       },
       
-      "/api/v2/assessments/{subscriptionId}/complete": {
+      "/api/v2/subscriptions/{subscriptionId}/complete": {
         "method": "POST",
-        "description": "Mark assessment as complete and trigger report generation",
+        "description": "Mark subscription as complete and trigger report generation",
         "headers": {
           "Authorization": "Bearer {token}"
         },

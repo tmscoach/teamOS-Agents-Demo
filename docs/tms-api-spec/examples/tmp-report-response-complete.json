@@ -3,7 +3,7 @@
   "data": {
     "reportId": "rpt_tmp_114953",
     "subscriptionId": "114953",
-    "assessmentType": "TMP",
+    "workflowType": "TMP",
     "userId": "67921",
     "completedAt": "2025-07-23T10:30:00Z",
     "status": "ready",

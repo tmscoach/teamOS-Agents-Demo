@@ -4,7 +4,7 @@
     "endpoints": {
       "/api/v2/reports/{subscriptionId}": {
         "method": "GET",
-        "description": "Get complete structured report for any assessment type (TMP, QO2, Team Signals, etc.)",
+        "description": "Get complete structured report for any workflow type (TMP, QO2, Team Signals, etc.)",
         "headers": {
           "Authorization": "Bearer {token}"
         },
@@ -13,7 +13,7 @@
           "data": {
             "reportId": "rpt_tmp_xyz789",
             "subscriptionId": "sub_xyz789",
-            "assessmentType": "TMP|QO2|TeamSignals|WoW|LLP",
+            "workflowType": "TMP|QO2|TeamSignals|WoW|LLP",
             "userId": "usr_abc123",
             "completedAt": "2024-01-06T10:30:00Z",
             "status": "ready",
@@ -290,7 +290,7 @@
           "success": true,
           "data": {
             "subscriptionId": "sub_xyz789",
-            "assessmentType": "TMP",
+            "workflowType": "TMP",
             "summary": {
               "headline": "You are an Upholder Maintainer with strong Controller Inspector tendencies",
               "keyPoints": [
@@ -332,14 +332,14 @@
   },
   
   "reportTypeAdaptation": {
-    "overview": "The /api/v2/reports/{subscriptionId} endpoint adapts its response based on the assessment type",
+    "overview": "The /api/v2/reports/{subscriptionId} endpoint adapts its response based on the workflow type",
     
     "commonStructure": {
       "description": "All reports share this base structure",
       "fields": [
         "reportId",
         "subscriptionId", 
-        "assessmentType",
+        "workflowType",
         "userId",
         "completedAt",
         "status",
@@ -389,7 +389,7 @@
     },
     
     "implementation": {
-      "approach": "Same endpoint, different section content based on assessmentType",
+      "approach": "Same endpoint, different section content based on workflowType",
       "benefits": [
         "Single integration point for all report types",
         "Consistent structure for React components",

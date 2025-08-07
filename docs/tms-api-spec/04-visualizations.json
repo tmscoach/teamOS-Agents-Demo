@@ -30,7 +30,7 @@
           "data": {
             "metadata": {
               "subscriptionId": "sub_xyz789",
-              "assessmentType": "TMP",
+              "workflowType": "TMP",
               "completedAt": "2024-01-06T10:30:00Z",
               "chartType": "CreateTMPQWheel",
               "generatedAt": "2024-01-06T11:00:00Z"
