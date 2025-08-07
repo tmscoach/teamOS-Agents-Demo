@@ -238,40 +238,99 @@ graph TD
     Tools --> Context
 ```
 
-## 6. Report Generation Pipeline
+## 6. Report Processing & Vector Storage Pipeline
 
 ```mermaid
 sequenceDiagram
     participant User
     participant TeamOS
-    participant TMS
-    participant GPT4V as GPT-4 Vision
+    participant TMS as TMS Global API
+    participant OpenAI
     participant Supabase
-    participant Vector as Vector DB
+    participant Vector as pgvector
+    participant Agent as Debrief Agent
     
+    Note over User,Agent: Phase 1: Report Generation
     User->>TeamOS: Complete Assessment
-    TeamOS->>TMS: Request Report Generation
-    TMS->>TMS: Generate HTML Report
-    TMS->>TeamOS: Return HTML + Images
+    TeamOS->>TMS: GET /api/v2/reports/{subscriptionId}
+    TMS->>TMS: Generate Report with:<br/>- Structured JSON sections<br/>- Embedded visualization data<br/>- Pre-computed vectorChunks
+    TMS->>TeamOS: Return JSON Report<br/>(14 sections with text + viz data)
     
-    TeamOS->>TeamOS: Parse HTML Structure
-    TeamOS->>GPT4V: Process Images<br/>(Extract Charts)
-    GPT4V->>TeamOS: Structured Data
-    
-    TeamOS->>TeamOS: Split into Sections
-    TeamOS->>TeamOS: Generate Embeddings
-    
-    par Store Report Data
-        TeamOS->>Supabase: Store Report Metadata
-        TeamOS->>Supabase: Store Report Chunks
-        TeamOS->>Vector: Store Embeddings
-        TeamOS->>Supabase: Store Images
+    Note over User,Agent: Phase 2: Vector Storage
+    TeamOS->>TeamOS: Process each section
+    loop For Each Section
+        TeamOS->>OpenAI: Generate embedding<br/>from section.vectorChunk
+        OpenAI->>TeamOS: Vector embedding
+        TeamOS->>Supabase: Store section content
+        TeamOS->>Vector: Store embedding with metadata
     end
     
-    TeamOS->>User: Report Ready
+    Note over User,Agent: Phase 3: Knowledge Base Integration
+    TeamOS->>Vector: Store TMS IP embeddings<br/>(methodology, frameworks, research)
+    TeamOS->>Supabase: Link report to user journey
+    
+    Note over User,Agent: Phase 4: AI-Powered Debrief
+    User->>Agent: "Tell me about my TMP results"
+    Agent->>Vector: Semantic search:<br/>1. User's report sections<br/>2. TMS IP knowledge base
+    Vector->>Agent: Relevant chunks + context
+    Agent->>OpenAI: Generate personalized insights
+    Agent->>User: Voice/text debrief with:<br/>- Report interpretation<br/>- Methodology explanation<br/>- Actionable recommendations
 ```
 
-## 7. Real-time Voice Integration
+## 7. Debrief Agent Architecture
+
+```mermaid
+graph TB
+    subgraph "Debrief Agent System"
+        User[User Query<br/>Voice or Text]
+        
+        subgraph "Context Sources"
+            UserReport[User's Report<br/>14 TMP Sections]
+            TMSIP[TMS IP Knowledge<br/>40+ Years Methodology]
+            History[Conversation<br/>History]
+        end
+        
+        subgraph "RAG Pipeline"
+            Query[Query Processing]
+            VectorSearch[Vector Search<br/>pgvector]
+            Rerank[Result Reranking]
+            Context[Context Assembly]
+        end
+        
+        subgraph "Response Generation"
+            LLM[GPT-4<br/>with Context]
+            Voice[Voice Synthesis<br/>OpenAI Realtime]
+            Text[Text Response]
+        end
+        
+        User --> Query
+        Query --> VectorSearch
+        
+        VectorSearch --> UserReport
+        VectorSearch --> TMSIP
+        VectorSearch --> History
+        
+        UserReport --> Rerank
+        TMSIP --> Rerank
+        History --> Rerank
+        
+        Rerank --> Context
+        Context --> LLM
+        
+        LLM --> Voice
+        LLM --> Text
+        
+        Voice --> User
+        Text --> User
+    end
+    
+    style User fill:#e1f5fe
+    style UserReport fill:#fff3e0
+    style TMSIP fill:#f3e5f5
+    style LLM fill:#fce4ec
+```
+
+## 8. Real-time Voice Integration
 
 ```mermaid
 graph LR
@@ -291,7 +350,54 @@ graph LR
     Tools --> DB[(Database Queries)]
 ```
 
-## 8. Infrastructure Overview
+## 9. Knowledge Base & Vector Storage Structure
+
+```mermaid
+graph TB
+    subgraph "Knowledge Sources"
+        subgraph "TMS IP Documents"
+            Handbooks[Accreditation Handbooks<br/>HET, TMP, QO2, WoWV, LLP]
+            Questionnaires[Questionnaire Content<br/>Team Signals, TMP, QO2]
+            Reports[Example Reports<br/>Finished TMP/QO2 samples]
+            Research[Research Manuals<br/>40+ years methodology]
+        end
+        
+        subgraph "User Data"
+            UserReports[User Reports<br/>Chunked by section]
+            TeamReports[Team Reports<br/>Aggregated insights]
+            OrgData[Organization Data<br/>Benchmarks, trends]
+        end
+    end
+    
+    subgraph "Vector Processing"
+        Chunker[Document Chunker<br/>Semantic sections]
+        Embedder[OpenAI Embeddings<br/>text-embedding-3-large]
+        Metadata[Metadata Enrichment<br/>Source, type, context]
+    end
+    
+    subgraph "Storage"
+        Supabase[(Supabase<br/>Raw content)]
+        pgvector[(pgvector<br/>Embeddings + metadata)]
+    end
+    
+    Handbooks --> Chunker
+    Questionnaires --> Chunker
+    Reports --> Chunker
+    Research --> Chunker
+    UserReports --> Chunker
+    
+    Chunker --> Embedder
+    Embedder --> Metadata
+    
+    Metadata --> Supabase
+    Metadata --> pgvector
+    
+    style Handbooks fill:#f3e5f5
+    style UserReports fill:#fff3e0
+    style pgvector fill:#e8f5e9
+```
+
+## 10. Infrastructure Overview
 
 ```mermaid
 graph TB
@@ -334,26 +440,28 @@ graph TB
 
 ## Key Integration Points
 
-### 1. **Clerk ↔ TMS Authentication**
-- Clerk manages user authentication
-- TMS token exchange for legacy API access
-- User mapping stored in Supabase
+### 1. **Simple API Key Authentication**
+- TeamOS uses API key + secret for TMS access
+- Generate JWT tokens for users via TMS API
+- No complex SSO or identity mapping needed
 
 ### 2. **TeamOS ↔ TMS API**
 - RESTful API communication
-- JWT-based authentication
-- Structured JSON responses (proposed)
+- JWT-based authentication per user
+- Structured JSON responses with embedded visualization data
+- Pre-computed vectorChunks for AI processing
 
-### 3. **Supabase Integration**
+### 3. **Supabase & Vector Storage**
 - Primary database for TeamOS data
-- Vector storage for semantic search
-- Blob storage for images and reports
+- pgvector for semantic search (report chunks + TMS IP)
+- Store report sections as individual records
+- Blob storage for visualization images
 
 ### 4. **OpenAI Integration**
-- GPT-4 for agent intelligence
-- Embeddings for semantic search
-- Realtime API for voice interaction
-- Vision API for chart extraction
+- GPT-4 for debrief agent intelligence
+- text-embedding-3-large for vector embeddings
+- Realtime API for voice debrief sessions
+- NO Vision API needed (data comes structured from TMS)
 
 ### 5. **Vercel Hosting**
 - Edge functions for API routes
