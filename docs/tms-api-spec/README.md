@@ -27,7 +27,7 @@ TeamOS integrates with multiple systems:
 │  (Vercel)   │     │   (Legacy)  │     │  (40+ yrs)  │
 └─────────────┘     └─────────────┘     └─────────────┘
        │                                         
-       ├────▶ Clerk (Authentication)            
+       ├────▶ Clerk (TeamOS Auth - TMS doesn't know)
        ├────▶ Supabase (Database + Storage)     
        ├────▶ OpenAI (AI Processing)            
        └────▶ Stripe (Payments)                 
@@ -41,10 +41,11 @@ TeamOS integrates with multiple systems:
 - Allows flexible UI rendering
 - Reduces payload sizes
 
-### 2. **Enhanced Authentication**
-- JWT tokens with rich claims
-- Support for both password and passwordless auth
-- Clerk ID ↔ TMS ID mapping
+### 2. **Simple API Key Authentication**
+- API key + secret for TeamOS application
+- Generate JWT tokens for users via TMS API
+- No complex SSO or identity mapping needed
+- TMS doesn't need to know about Clerk
 
 ### 3. **Structured Data Models**
 - Consistent field naming (camelCase)
@@ -52,8 +53,8 @@ TeamOS integrates with multiple systems:
 - Rich metadata for context
 
 ### 4. **Report Processing Pipeline**
-- HTML → Structured JSON transformation
-- Vision API for chart extraction
+- Structured JSON with embedded visualization data
+- Pre-computed vectorChunks (no Vision API needed)
 - Vector embeddings for semantic search
 - Chunked storage for efficient retrieval
 
@@ -94,7 +95,8 @@ const token = await fetch('/api/v2/auth/token', {
   },
   body: JSON.stringify({
     userId: user.email,
-    organizationId: user.orgId
+    organizationId: user.orgId,
+    role: user.role // admin, manager, or member
   })
 });
 
