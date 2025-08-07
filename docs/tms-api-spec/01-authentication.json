@@ -23,7 +23,7 @@
           "body": {
             "userId": "user@company.com",
             "organizationId": "org_123",
-            "role": "facilitator|respondent",
+            "role": "admin|manager|member",
             "metadata": {
               "firstName": "John",
               "lastName": "Doe",
@@ -92,7 +92,7 @@
       "payload": {
         "sub": "user@company.com",
         "org": "org_123",
-        "role": "facilitator",
+        "role": "manager",
         "app": "pk_live_teamOS_abc123",
         "iat": 1704628800,
         "exp": 1704632400

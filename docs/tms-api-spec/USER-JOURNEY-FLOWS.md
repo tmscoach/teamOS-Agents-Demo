@@ -35,16 +35,16 @@ sequenceDiagram
     API->>DB: Query Journey Phase
     DB->>API: Phase: ONBOARDING
     API->>OA: Get Recommendations
-    OA->>TMS: Get Available Assessments
+    OA->>TMS: Get Available Workflows
     OA->>U: "Welcome! I recommend starting with TMP..."
     
-    U->>OA: "Start TMP Assessment"
+    U->>OA: "Start TMP Workflow"
     OA->>TMS: Create Subscription
     TMS->>OA: Subscription ID: sub_123
     OA->>DB: Update Journey Phase<br/>to ASSESSMENT
     OA->>AA: Hand off to Assessment Agent
     
-    Note over U,DA: Phase 3: Assessment Completion
+    Note over U,DA: Phase 3: Subscription Completion
     loop For Each Page
         AA->>TMS: Get Page Questions
         TMS->>AA: Questions Data
@@ -54,10 +54,10 @@ sequenceDiagram
         AA->>DB: Track Progress
     end
     
-    AA->>TMS: Complete Assessment
+    AA->>TMS: Complete Subscription
     TMS->>AA: Trigger Report Generation
     AA->>DB: Update Journey Phase<br/>to DEBRIEF
-    AA->>U: "Assessment complete! Generating report..."
+    AA->>U: "Subscription complete! Generating report..."
     
     Note over U,DA: Phase 4: Report Processing
     API->>TMS: Get HTML Report
@@ -79,7 +79,7 @@ sequenceDiagram
     DA->>AI: Generate Answer
     DA->>U: Detailed Explanation
     
-    Note over U,DA: Journey Complete - User can explore report, ask questions, or take another assessment
+    Note over U,DA: Journey Complete - User can explore report, ask questions, or start another workflow
 ```
 
 ## 2. Voice Assessment Flow

@@ -53,28 +53,23 @@ x-api-key: {api_key}
 - `/auth/refresh` - Refresh JWT token
 - `/auth/validate` - Validate token (optional)
 
-### 2. Assessments (see `02-assessments.json`)
-- `/assessments` - List available assessment types
+### 2. Workflows & Subscriptions (see `02-assessments.json`)
+- `/workflows` - List available workflow types
 - `/subscriptions/assign` - Assign workflow to user (manager only)
 - `/subscriptions/dashboard` - Get dashboard subscriptions
-- `/assessments/{id}/start` - Start new assessment
-- `/assessments/{subscriptionId}/pages/{pageId}` - Get page questions
-- `/assessments/{subscriptionId}/pages/{pageId}/submit` - Submit answers
+- `/workflows/{workflowId}/start` - Start new workflow subscription
+- `/subscriptions/{subscriptionId}/pages/{pageId}` - Get page questions
+- `/subscriptions/{subscriptionId}/pages/{pageId}/submit` - Submit answers
 - `/questions/actions` - Check conditional logic for questions
 - `/questions/conditional/{pageId}` - Get questions with conditional logic
-- `/assessments/{subscriptionId}/complete` - Complete assessment
+- `/subscriptions/{subscriptionId}/complete` - Complete subscription
 
 ### 3. Reports (see `03-reports.json`)
-- `/reports/{subscriptionId}` - Get full report data
+- `/reports/{subscriptionId}` - Get full report data (adapts to workflow type)
 - `/reports/{subscriptionId}/summary` - Get condensed summary
-- `/reports/{subscriptionId}/sections` - Get semantic sections
-- `/reports/{subscriptionId}/debrief` - Interactive Q&A
 
 ### 4. Visualizations (see `04-visualizations.json`)
 - `/visualizations` - Generate any visualization type with image + full data
-- `/visualizations/tmp-wheel` - TMP wheel with all role data and analysis
-- `/visualizations/team-signals` - Traffic lights with detailed health analysis
-- `/visualizations/qo2-model` - QO2 values with interpretation
 
 ### 5. User Management (see `05-user-management.json`)
 - `/organizations` - Create organization with admin user
@@ -84,10 +79,9 @@ x-api-key: {api_key}
 - `/organizations/{orgId}/users` - List organization users
 - `/teams` - Create team
 
-### 6. Dashboard & Analytics (see `06-dashboard-analytics.json`)
-- `/dashboard` - Get personalized dashboard
-- `/analytics/team-composition` - Team composition analysis
-- `/analytics/trends` - Engagement trends
+### 6. Simple Analytics (see `06-simple-analytics.json`)
+- `/users/{userId}/profile-summary` - Get user's major role from latest TMP
+- `/teams/{teamId}/role-distribution` - Get simple team role counts
 
 ## Benefits of This Design
 
@@ -124,7 +118,7 @@ Headers: {
 Body: {
   "userId": "user@company.com",
   "organizationId": "org_123",
-  "role": "facilitator"
+  "role": "manager"
 }
 
 Response: {
@@ -140,7 +134,7 @@ Implementation steps:
 4. That's it - no complex identity mapping!
 
 ### Week 2-3: Core Features
-1. Assessment workflow endpoints
+1. Workflow and subscription endpoints
 2. Basic report generation (HTML is fine for MVP)
 3. User management endpoints
 
