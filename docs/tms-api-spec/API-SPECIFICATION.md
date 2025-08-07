@@ -77,11 +77,11 @@ x-api-key: {api_key}
 - `/users/{userId}` - Get user details
 - `/users/{userId}/role` - Change user role
 - `/organizations/{orgId}/users` - List organization users
-- `/teams` - Create team
+- `/teams` - Create team (FUTURE - not in MVP)
 
 ### 6. Simple Analytics (see `06-simple-analytics.json`)
 - `/users/{userId}/profile-summary` - Get user's major role from latest TMP
-- `/teams/{teamId}/role-distribution` - Get simple team role counts
+- `/teams/{teamId}/role-distribution` - Get simple team role counts (FUTURE - use org groups for MVP)
 
 ## Benefits of This Design
 

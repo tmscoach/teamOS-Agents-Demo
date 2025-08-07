@@ -4,6 +4,7 @@
   "userManagement": {
     "description": "Unified user management system with role-based access",
     "overview": "Single user model with three roles: admin, manager, member",
+    "teams_note": "⚠️ TEAMS are a FUTURE feature. TMS Global uses 'groups'. For MVP, all users belong to the organization's default group. TeamId fields in this spec are placeholders for future functionality.",
     
     "userRoles": {
       "admin": {
@@ -345,7 +346,8 @@
       
       "/api/v2/teams": {
         "method": "POST",
-        "description": "Create a team within organization",
+        "description": "[FUTURE - NOT IN MVP] Create a team within organization",
+        "mvp_note": "TMS Global uses 'groups' not 'teams'. For MVP, use default organization group. Teams are a future TeamOS concept.",
         "headers": {
           "Authorization": "Bearer {token}"
         },
@@ -427,7 +429,9 @@
       
       "group_and_team_structure": {
         "legacy_requirement": "TMS Global uses 'groups' for organizing users",
-        "mapping": "TeamOS 'teams' should map to TMS 'groups'",
+        "mapping": "TeamOS 'teams' are a FUTURE concept - for MVP just use organization's default group",
+        "mvp_approach": "All users in an organization belong to the default group",
+        "future": "Teams will eventually map to TMS groups or be a TeamOS-only layer",
         "default": "Every organization needs at least one default group"
       }
     },

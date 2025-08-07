@@ -56,7 +56,8 @@
       
       "/api/v2/teams/{teamId}/role-distribution": {
         "method": "GET",
-        "description": "Get simple count of major roles in a team",
+        "description": "[FUTURE - NOT IN MVP] Get simple count of major roles in a team",
+        "mvp_note": "For MVP, use organization-level role distribution. Teams are a future TeamOS concept.",
         "headers": {
           "Authorization": "Bearer {token}"
         },
