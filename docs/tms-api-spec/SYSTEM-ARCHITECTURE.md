@@ -217,9 +217,9 @@ graph TD
     end
     
     subgraph "AI Tools"
-        TMSTools[TMS Tools - - Get Subscriptions - - Start Workflow - - Submit Answers]
-        KBTools[Knowledge Tools - - Search TMS IP - - Get Methodology]
-        ReportTools[Report Tools - - Search Chunks - - Vector Search]
+        TMSTools[TMS Tools: Get Subscriptions, Start Workflow, Submit Answers]
+        KBTools[Knowledge Tools: Search TMS IP, Get Methodology]
+        ReportTools[Report Tools: Search Chunks, Vector Search]
     end
     
     Router --> Orch
@@ -253,7 +253,7 @@ sequenceDiagram
     Note over User,Agent: Phase 1: Report Generation
     User->>TeamOS: Complete Assessment
     TeamOS->>TMS: GET /api/v2/reports/{subscriptionId}
-    TMS->>TMS: Generate Report with: - - Structured JSON sections - - Embedded visualization data - - Pre-computed vectorChunks
+    TMS->>TMS: Generate Report with JSON sections, visualization data, vectorChunks
     TMS->>TeamOS: Return JSON Report - (14 sections with text + viz data)
     
     Note over User,Agent: Phase 2: Vector Storage
@@ -274,7 +274,7 @@ sequenceDiagram
     Agent->>Vector: Semantic search: - 1. User's report sections - 2. TMS IP knowledge base
     Vector->>Agent: Relevant chunks + context
     Agent->>OpenAI: Generate personalized insights
-    Agent->>User: Voice/text debrief with: - - Report interpretation - - Methodology explanation - - Actionable recommendations
+    Agent->>User: Voice/text debrief with interpretation, methodology, recommendations
 ```
 
 ## 7. Debrief Agent Architecture
