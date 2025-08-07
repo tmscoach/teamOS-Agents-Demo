@@ -4,13 +4,14 @@
     "endpoints": {
       "/api/v2/reports/{subscriptionId}": {
         "method": "GET",
-        "description": "Get structured report data for a completed assessment",
+        "description": "Get complete structured report with integrated visualization data",
         "headers": {
           "Authorization": "Bearer {token}"
         },
         "response": {
           "success": true,
           "data": {
+            "reportId": "rpt_tmp_xyz789",
             "subscriptionId": "sub_xyz789",
             "assessmentType": "TMP",
             "userId": "usr_abc123",
@@ -21,83 +22,238 @@
               "organizationName": "Acme Corporation",
               "department": "Engineering",
               "reportVersion": "2.1",
-              "language": "en"
+              "language": "en",
+              "totalSections": 14,
+              "estimatedReadTime": 25
             },
-            "results": {
-              "tmp": {
-                "majorRole": {
-                  "id": "upholder_maintainer",
-                  "name": "Upholder Maintainer",
-                  "score": 85,
-                  "description": "You prefer stability and established procedures. You excel at maintaining standards and ensuring quality.",
-                  "strengths": [
-                    "Attention to detail",
-                    "Maintaining standards",
-                    "Following procedures",
-                    "Quality assurance"
-                  ],
-                  "workStyle": "Methodical and systematic approach to tasks"
-                },
-                "relatedRoles": [
-                  {
-                    "id": "controller_inspector",
-                    "name": "Controller Inspector",
-                    "score": 72,
-                    "description": "Strong analytical skills with focus on accuracy and control"
-                  },
-                  {
-                    "id": "concluder_producer",
-                    "name": "Concluder Producer",
-                    "score": 68,
-                    "description": "Results-oriented with ability to drive completion"
-                  }
-                ],
-                "preferences": {
-                  "introvert": 75,
-                  "extrovert": 25,
-                  "facts": 80,
-                  "ideas": 20,
-                  "analytical": 70,
-                  "beliefs": 30,
-                  "structured": 85,
-                  "flexible": 15
-                },
-                "wheelData": {
-                  "sectors": [
-                    {"role": "Creator Innovator", "score": 3, "color": "#FF6B6B"},
-                    {"role": "Explorer Promoter", "score": 2, "color": "#4ECDC4"},
-                    {"role": "Assessor Developer", "score": 4, "color": "#45B7D1"},
-                    {"role": "Thruster Organizer", "score": 5, "color": "#96CEB4"},
-                    {"role": "Concluder Producer", "score": 6, "color": "#FECA57"},
-                    {"role": "Controller Inspector", "score": 7, "color": "#FF9FF3"},
-                    {"role": "Upholder Maintainer", "score": 8, "color": "#54A0FF"},
-                    {"role": "Reporter Adviser", "score": 4, "color": "#48DBFB"}
-                  ]
-                }
-              }
-            },
-            "insights": [
+            "sections": [
               {
-                "category": "leadership",
-                "title": "Leadership Style",
-                "content": "Your Upholder Maintainer profile suggests you lead by example, maintaining high standards and ensuring team adherence to established procedures.",
-                "recommendations": [
-                  "Delegate creative problem-solving to team members with Explorer or Creator profiles",
-                  "Build in regular review cycles to maintain quality standards",
-                  "Create clear documentation and processes for your team"
-                ]
+                "id": "cover",
+                "type": "visual",
+                "title": "Team Management Profile",
+                "order": 1,
+                "visualization": {
+                  "type": "CreateTMPQWheel",
+                  "params": { "mr": "8", "rr1": "7", "rr2": "5" },
+                  "data": {
+                    "image": { "base64": "iVBORw0KGgoAAAANS...", "format": "png" },
+                    "majorRole": { "name": "Upholder Maintainer", "position": 6, "color": "#00aee5" },
+                    "relatedRoles": [
+                      { "name": "Controller Inspector", "position": 5, "color": "#007ac2" },
+                      { "name": "Thruster Organizer", "position": 3, "color": "#ec008c" }
+                    ]
+                  }
+                },
+                "content": null,
+                "vectorChunk": "TMP Wheel showing Upholder Maintainer as major role with Controller Inspector and Thruster Organizer as related roles"
               },
               {
-                "category": "teamwork",
-                "title": "Team Dynamics",
-                "content": "You work best in structured environments with clear roles and responsibilities.",
-                "recommendations": [
-                  "Partner with Thruster Organizers for project implementation",
-                  "Collaborate with Creator Innovators for fresh perspectives",
-                  "Establish clear communication protocols with your team"
-                ]
+                "id": "introduction",
+                "type": "mixed",
+                "title": "Introduction",
+                "order": 2,
+                "content": {
+                  "text": "Your personal Team Management Profile provides you with information about your work preferences. It is a starting point for consideration and discussion of how you approach your work and your interactions with others in the workplace.",
+                  "userData": {
+                    "name": "John Doe",
+                    "organization": "Acme Corporation",
+                    "keyPreferenceAreas": "Organizing, Controlling, Advising"
+                  }
+                },
+                "visualization": {
+                  "type": "CreateTMPQIntroWheel",
+                  "params": { "mr": "8", "rr1": "7", "rr2": "5" },
+                  "data": {
+                    "image": { "base64": "iVBORw0KGgoAAAANS...", "format": "png" },
+                    "summary": "Simplified wheel highlighting your three key roles"
+                  }
+                },
+                "subsections": [
+                  {
+                    "id": "nine_activities",
+                    "title": "Nine Key Activities",
+                    "content": "All work teams need to consider nine key activities essential for high-performance:",
+                    "data": [
+                      { "activity": "Advising", "description": "Gathering and reporting information", "color": "#009a67" },
+                      { "activity": "Innovating", "description": "Creating and experimenting with ideas", "color": "#9bcd66" },
+                      { "activity": "Promoting", "description": "Exploring and presenting opportunities", "color": "#fff200" },
+                      { "activity": "Developing", "description": "Assessing and testing applicability", "color": "#f9a13a" },
+                      { "activity": "Organizing", "description": "Establishing ways of making things work", "color": "#ec008c" },
+                      { "activity": "Producing", "description": "Concluding and delivering outputs", "color": "#9b5ba4" },
+                      { "activity": "Inspecting", "description": "Controlling and auditing systems", "color": "#007ac2" },
+                      { "activity": "Maintaining", "description": "Upholding and safeguarding standards", "color": "#00aee5" },
+                      { "activity": "Linking", "description": "Coordinating and integrating work", "color": "#ffffff" }
+                    ]
+                  }
+                ],
+                "vectorChunk": "Introduction to TMP Profile for John Doe showing Upholder Maintainer major role with Controller Inspector and Thruster Organizer related roles. Nine key team activities: Advising, Innovating, Promoting, Developing, Organizing, Producing, Inspecting, Maintaining, Linking."
+              },
+              {
+                "id": "work_preference_measures",
+                "type": "visual_series",
+                "title": "Work Preference Measures",
+                "order": 3,
+                "content": {
+                  "introduction": "These four work preference measures are shown as bipolar scales ranging from 0 to 30 either side of a centre point.",
+                  "explanation": "By subtracting the lower score from the higher one for each measure, a net score is obtained. These are I: 7; C: 3; B: 5; S: 9 and are the foundation of your major role preference."
+                },
+                "visualizations": [
+                  {
+                    "dimension": "Relationships",
+                    "description": "How you relate to others",
+                    "type": "CreateTMPQRido",
+                    "params": { "lv": "15", "rv": "22", "lt": "Extrovert", "rt": "Introvert", "ll": "E", "rl": "I", "clear": "yes" },
+                    "data": {
+                      "image": { "base64": "iVBORw0KGgoAAAANS...", "format": "png" },
+                      "netScore": 7,
+                      "direction": "Introvert",
+                      "interpretation": "Preference for working quietly and independently"
+                    }
+                  },
+                  {
+                    "dimension": "Information",
+                    "description": "How you gather and use information",
+                    "type": "CreateTMPQRido",
+                    "params": { "lv": "19", "rv": "22", "lt": "Practical", "rt": "Creative", "ll": "P", "rl": "C", "clear": "yes" },
+                    "data": {
+                      "image": { "base64": "iVBORw0KGgoAAAANS...", "format": "png" },
+                      "netScore": 3,
+                      "direction": "Creative",
+                      "interpretation": "Slight preference for innovative thinking"
+                    }
+                  },
+                  {
+                    "dimension": "Decisions",
+                    "description": "How you make decisions",
+                    "type": "CreateTMPQRido",
+                    "params": { "lv": "17", "rv": "22", "lt": "Analytical", "rt": "Beliefs", "ll": "A", "rl": "B", "clear": "yes" },
+                    "data": {
+                      "image": { "base64": "iVBORw0KGgoAAAANS...", "format": "png" },
+                      "netScore": 5,
+                      "direction": "Beliefs",
+                      "interpretation": "Decisions based on values and convictions"
+                    }
+                  },
+                  {
+                    "dimension": "Organization",
+                    "description": "How you organize yourself and others",
+                    "type": "CreateTMPQRido",
+                    "params": { "lv": "23", "rv": "14", "lt": "Structured", "rt": "Flexible", "ll": "S", "rl": "F", "clear": "yes" },
+                    "data": {
+                      "image": { "base64": "iVBORw0KGgoAAAANS...", "format": "png" },
+                      "netScore": 9,
+                      "direction": "Structured",
+                      "interpretation": "Strong preference for organized approach"
+                    }
+                  }
+                ],
+                "vectorChunk": "Work Preference Measures showing ICBS profile: Introvert (net 7), Creative (net 3), Beliefs (net 5), Structured (net 9). Strong preference for structured organization and introverted working style."
+              },
+              {
+                "id": "overview",
+                "type": "text",
+                "title": "Overview",
+                "order": 4,
+                "content": {
+                  "paragraphs": [
+                    "Upholder-Maintainers play an important role in any work team. Their main concern is to set up and maintain standards. They establish close and supportive relationships with those who uphold the beliefs and values they consider important.",
+                    "As an Upholder-Maintainer, you will have quite a number of creative ideas which you will interpret through your own values. Where your theories combine with your beliefs, you have the powerful ingredients for taking and advising on action.",
+                    "You may well enjoy working on community activities, where you can contribute to the welfare and well-being of others. This could be through helping children, the elderly, a sports group or some other public cause."
+                  ]
+                },
+                "keyPoints": [
+                  "Focus on maintaining standards and quality",
+                  "Creative ideas interpreted through personal values",
+                  "Strong sense of right and wrong",
+                  "Ability to concentrate for long periods",
+                  "Pride in quality of work"
+                ],
+                "vectorChunk": "Upholder Maintainer overview: Sets up and maintains standards, creative ideas through values lens, supportive relationships, community-oriented, quality-focused, strong moral compass."
               }
             ],
+            "workPreferenceDistribution": {
+              "sectionId": "work_preference_distribution",
+              "type": "mixed",
+              "title": "Work Preference Distribution",
+              "order": 11,
+              "content": {
+                "introduction": "The Team Management Wheel highlights your major role preference and two related roles. Your work preference distribution indicates your level of preference for all eight Types of Work.",
+                "analysis": "If there is a gap of more than 15 percentage points between the highest and lowest scores, there may be some tasks that you definitely like and others that you dislike."
+              },
+              "visualization": {
+                "type": "CreateTMPQPreferenceWheel",
+                "params": {
+                  "advi": "10", "inno": "9", "prom": "11", "deve": "8",
+                  "orga": "14", "prod": "14", "insp": "15", "main": "19",
+                  "linker": "yes"
+                },
+                "data": {
+                  "image": { "base64": "iVBORw0KGgoAAAANS...", "format": "png" },
+                  "highest": { "type": "Maintaining", "percentage": 19 },
+                  "lowest": { "type": "Developing", "percentage": 8 },
+                  "gap": 11,
+                  "balance": "Right-side dominant preference"
+                }
+              },
+              "vectorChunk": "Work Preference Distribution: Maintaining 19%, Inspecting 15%, Organizing 14%, Producing 14%, Promoting 11%, Advising 10%, Innovating 9%, Developing 8%. Right-side dominant with 11-point gap."
+            },
+            "individualSummary": {
+              "sectionId": "individual_summary",
+              "type": "visual_composite",
+              "title": "Individual Summary",
+              "order": 13,
+              "content": {
+                "userData": {
+                  "name": "John Doe",
+                  "organization": "Acme Corporation",
+                  "keyPreferenceAreas": "Organizing, Controlling, Advising"
+                },
+                "reportDetails": {
+                  "reportType": "Managerial",
+                  "language": "English (International)",
+                  "version": "S1.0",
+                  "completedDate": "2024-01-06"
+                }
+              },
+              "visualizations": [
+                {
+                  "type": "CreateTMPQIntroWheel",
+                  "params": { "mr": "8", "rr1": "7", "rr2": "5" },
+                  "data": {
+                    "image": { "base64": "iVBORw0KGgoAAAANS...", "format": "png" },
+                    "summary": "Major and related roles summary"
+                  }
+                },
+                {
+                  "type": "CreateTMPQRidoSummary",
+                  "params": {
+                    "e": "15", "i": "22", "p": "19", "c": "22",
+                    "a": "17", "b": "22", "s": "23", "f": "14",
+                    "el": "E", "il": "I", "pl": "P", "cl": "C",
+                    "al": "A", "bl": "B", "sl": "S", "fl": "F",
+                    "clear": "yes"
+                  },
+                  "data": {
+                    "image": { "base64": "iVBORw0KGgoAAAANS...", "format": "png" },
+                    "profile": "ICBS",
+                    "netScores": { "I": 7, "C": 3, "B": 5, "S": 9 }
+                  }
+                },
+                {
+                  "type": "CreateTMPQPreferenceWheel",
+                  "params": {
+                    "advi": "10", "inno": "9", "prom": "11", "deve": "8",
+                    "orga": "14", "prod": "14", "insp": "15", "main": "19",
+                    "linker": "no"
+                  },
+                  "data": {
+                    "image": { "base64": "iVBORw0KGgoAAAANS...", "format": "png" },
+                    "distribution": "Complete work preference percentages"
+                  }
+                }
+              ],
+              "vectorChunk": "Individual Summary for John Doe - Upholder Maintainer with ICBS profile (I:7, C:3, B:5, S:9). Work distribution shows Maintaining 19% as highest preference."
+            },
             "developmentAreas": [
               {
                 "area": "Flexibility",
@@ -268,6 +424,58 @@
           }
         }
       }
+    }
+  },
+  
+  "integrationStrategy": {
+    "overview": "Reports and visualizations are tightly integrated using a hybrid approach optimized for both rendering and AI processing",
+    
+    "dataStructure": {
+      "sections": "Report is broken into semantic sections, each with unique ID and order",
+      "sectionTypes": [
+        "visual: Section primarily contains visualization",
+        "text: Section contains only text content",
+        "mixed: Section contains both text and visualization",
+        "visual_series: Section contains multiple related visualizations"
+      ],
+      "visualizationIntegration": {
+        "type": "Chart type matching /api/v2/visualizations endpoint",
+        "params": "Parameters to generate the visualization",
+        "data": "Pre-computed visualization data including base64 image and key insights"
+      },
+      "vectorChunk": "Pre-computed text summary of section content for vector embedding"
+    },
+    
+    "benefits": {
+      "singleApiCall": "Complete report with all visualizations in one response",
+      "flexibleCaching": "Visualization data can be cached or regenerated on-demand",
+      "aiOptimized": "Each section has vectorChunk for immediate embedding without GPT-4 Vision",
+      "reactReady": "Structured data perfect for component-based rendering",
+      "performant": "Pre-computed data eliminates multiple API calls"
+    },
+    
+    "implementation": {
+      "mockEndpoint": "/admin/tms-api-test will demonstrate fetching and combining report sections",
+      "supabaseStorage": "Each section stored as separate record for efficient chunking",
+      "vectorStrategy": [
+        "Each section's vectorChunk becomes a vector embedding",
+        "Visualization data points included in embeddings",
+        "Maintains relationships between text and visual content"
+      ],
+      "reactComponents": [
+        "SectionRenderer: Routes section to appropriate component",
+        "VisualizationRenderer: Displays charts with data",
+        "TextRenderer: Displays formatted text content",
+        "ReportLayout: Orchestrates full report display"
+      ]
+    },
+    
+    "exampleFlow": {
+      "step1": "TMS Global generates report with all sections and visualizations",
+      "step2": "TeamOS API receives and stores in Supabase",
+      "step3": "Vector embeddings created from each section's vectorChunk",
+      "step4": "React app fetches report and renders using components",
+      "step5": "AI agents can query vector DB to understand report content including visualizations"
     }
   }
 }
