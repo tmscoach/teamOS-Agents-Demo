@@ -7,16 +7,8 @@ This directory contains complete examples of the new TMS API request/response fo
 ### Request
 - `tmp-report-request.md` - Shows the API request format
 
-### Response - Complete
+### Response
 - `tmp-report-response-complete.json` - Full TMP report response with all 14 sections
-
-### Response - Parts (used to build complete)
-- `tmp-report-response-part1.json` - Cover & Introduction
-- `tmp-report-response-part2.json` - Work Preference Measures & Overview
-- `tmp-report-response-part3.json` - Leadership sections
-- `tmp-report-response-part4.json` - Team-Building & Self-Assessment
-- `tmp-report-response-part5.json` - Key Points & Related Roles
-- `tmp-report-response-part6.json` - Distribution, Linking & Summary
 
 ### Documentation
 - `tmp-report-example-summary.md` - Overview and explanation
@@ -26,8 +18,8 @@ This directory contains complete examples of the new TMS API request/response fo
 The complete JSON response includes:
 
 1. **14 Sections** covering the full TMP report
-2. **7 Different Visualizations** with parameters and data
-3. **Pre-computed vectorChunks** for each section
+2. **5 Visualizations** with parameters and data
+3. **Pre-computed vectorChunks** for visualization sections only
 4. **Complete text content** from the original HTML report
 5. **Structured data** ready for React components
 

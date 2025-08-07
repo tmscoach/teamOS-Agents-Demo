@@ -8,7 +8,7 @@
     "completedAt": "2025-07-23T10:30:00Z",
     "status": "ready",
     "metadata": {
-      "userName": "Sub One",
+      "userName": "Bryan Johnson",
       "organizationName": "BHP",
       "department": null,
       "reportVersion": "S1.0",
@@ -123,7 +123,7 @@
             ]
           }
         },
-        "vectorChunk": "TMP Profile for Sub One at BHP. Major role: Upholder Maintainer (score 8, 19%). Related roles: Controller Inspector (score 7, 15%) and Thruster Organiser (score 5, 14%). Right-side wheel dominant indicating preference for structure, control, and maintaining standards."
+        "vectorChunk": "Team Management Profile Wheel for Bryan Johnson at BHP. Major Role as Upholder Maintainer with Related Role 1: Controller Inspector and Related Role 2: Thruster Organiser. ICBS profile (Introvert 7, Creative 3, Beliefs 5, Structured 9). Highest preference Maintaining 19%, lowest Developing 8%."
       },
       {
         "id": "introduction",
@@ -132,7 +132,7 @@
         "order": 2,
         "content": {
           "userData": {
-            "name": "Sub One",
+            "name": "Bryan Johnson",
             "organization": "BHP",
             "keyPreferenceAreas": "Organising, Controlling, Advising"
           },
@@ -206,7 +206,7 @@
             "summary": "Simplified wheel showing your three key roles highlighted"
           }
         },
-        "vectorChunk": "Introduction for Sub One at BHP. Key preference areas: Organising, Controlling, Advising. Major role: Upholder Maintainer. Related roles: Controller Inspector and Thruster Organiser. Profile based on TMP Questionnaire responses measuring work preferences across nine essential team activities."
+        "vectorChunk": "Introduction for Bryan Johnson at BHP. Key preference areas: Organising, Controlling, Advising. Major role: Upholder Maintainer. Related roles: Controller Inspector and Thruster Organiser. Profile based on TMP Questionnaire responses measuring work preferences across nine essential team activities."
       },
       {
         "id": "work_preference_measures",
@@ -339,7 +339,8 @@
             "You will probably have a strong feeling of what is right and wrong, and will align yourself closely with people of similar beliefs and convictions. Your ability to read people's motives and intentions is something that is important. You can often 'see' their strengths and weaknesses, and emotional make-up soon after you have met them.",
             "You will have a vision of how things should be and will work towards it in a purposeful way. You can work for long periods by yourself in planning and preparation. Overall, you respect other people's feelings and work for what you believe is right, despite opposition on economic or other grounds."
           ]
-        }
+        },
+        "vectorChunk": ""
       },
       {
         "id": "leadership_strengths",
@@ -358,7 +359,8 @@
             "You exercise leadership by doing rather than just talking and expect others to follow your example. You will probably talk in depth only with those whom you trust. At times, others may say you don't confide in them.",
             "To what extent do you have special, group, problem-solving discussions on the key questions facing you at work? Such discussions give everyone on the team the opportunity to understand your concerns and express their views. Experienced managers have learned this is a useful way of getting people's opinions, even though specific criticisms may emerge. If handled constructively, such sessions can lead to major improvements. However, they need to be held separately from normal business meetings."
           ]
-        }
+        },
+        "vectorChunk": ""
       },
       {
         "id": "decision_making",
@@ -374,7 +376,8 @@
             "Because you like to resolve and conclude matters, rather than generate a lot of extra data, you could sometimes become impatient with others who either don't share your vision or will not commit themselves. While you prefer to work in a co-operative way, your keenness to implement your ideas can sometimes be seen by others as being 'over enthusiastic'.",
             "You can be extremely keen in your own quiet way and will work for long hours to pursue the job in hand. You do not like to be beaten and will put in tremendous effort if you believe the issue or task is worth doing. You will not easily be thrown off course and can be seen by others as stubborn and obstinate when it comes to changing direction. Essentially, you tend to have commitment to your ideas and the overall purpose, and do not like to be put off. Clearly, this is a strength, but it needs to be played in the context of other people's willingness to go along the path you have decided."
           ]
-        }
+        },
+        "vectorChunk": ""
       },
       {
         "id": "interpersonal_skills",
@@ -392,7 +395,8 @@
             "Overall, you can generate a high degree of enthusiasm and optimism among your colleagues. You also consider it important for established customs to be upheld and recognition given for service and loyalty.",
             "You can usually communicate well, particularly in the written word, where you often find the right phrase to capture the moment. This can provide the basis for you to involve others in your ideas and ideals, and get them as enthused as yourself on what can be achieved with collective efforts. You can also communicate well orally, particularly when you have had a chance to prepare."
           ]
-        }
+        },
+        "vectorChunk": ""
       },
       {
         "id": "team_building",
@@ -409,7 +413,8 @@
             "Your greatest strength is the innovative thinking and strong values you bring to the organisation. Others may find it hard to understand these ideas. Your job is to help them appreciate what you see clearly and they can only dimly see. You may be hurt by what you perceive as criticism. Try not to take it personally. Treat criticism of your ideas as a problem statement to be discussed and resolved. You won't always be right and neither will your critics.",
             "You will probably do well in a co-ordinating role, as long as people share your values. You will have an interest not only in advising others, but also in controlling the detail and direction. However, to ensure work gets finished on time, you will probably need others, particularly Concluder-Producers, to complement your efforts."
           ]
-        }
+        },
+        "vectorChunk": ""
       },
       {
         "id": "areas_for_self_assessment",
@@ -433,7 +438,8 @@
             }
           ],
           "conclusion": "Overall, you will bring to your job many strengths. In particular, you will play a key role in the team of maintaining relationships and standards, and upholding principles important to the organisation and yourself. Alongside this, you will bring in new ideas and ways of tackling problems, and an ordered approach to dealing with difficulties."
-        }
+        },
+        "vectorChunk": ""
       },
       {
         "id": "key_points",
@@ -467,7 +473,8 @@
             "You have a strong sense of what is 'right and wrong' and 'good and bad' and this guides your decision-making.",
             "You can uphold and maintain traditions and values in the organisation."
           ]
-        }
+        },
+        "vectorChunk": ""
       },
       {
         "id": "related_roles",
@@ -484,7 +491,8 @@
             "When acting in a Thruster-Organiser role, you may get resistance from others if you have not shared your thinking with them as your ideas have evolved. In the interests of getting your ideas underway, you may feel that it is sometimes better to do things yourself than waste time telling others. In this regard, you may at times have difficulties in delegating.",
             "Unlike some people with a major role as Thruster-Organiser, however, you will usually be aware of people's feelings and concerns and make sure these issues are kept to the fore in any dealings with your team members or other colleagues."
           ]
-        }
+        },
+        "vectorChunk": ""
       },
       {
         "id": "work_preference_distribution",
@@ -611,7 +619,8 @@
               "Use a whiteboard to record the details discussed; this will help you both to capture key points and keep on top of the details."
             ]
           }
-        }
+        },
+        "vectorChunk": ""
       },
       {
         "id": "individual_summary",
@@ -620,7 +629,7 @@
         "order": 14,
         "content": {
           "userData": {
-            "name": "Sub One",
+            "name": "Bryan Johnson",
             "organization": "BHP",
             "keyPreferenceAreas": "Organising, Controlling, Advising"
           },
@@ -715,7 +724,7 @@
           }
         ],
         "disclaimer": "\u00a9 Team Management Systems IP, 2024, Australia. Published by Team Management Systems. All rights reserved. The content of this report is based on data submitted through the Team Management Profile Questionnaire. While great care and diligence have been exercised, each personalised report is based on general observations and interpretations. The authors and publishers make no guarantees regarding accuracy or applicability for any specific individual or situation.",
-        "vectorChunk": "Individual Summary for Sub One at BHP. Upholder Maintainer with Controller Inspector and Thruster Organiser related roles. ICBS profile (Introvert 7, Creative 3, Beliefs 5, Structured 9). Work preferences: Organising, Controlling, Advising. Highest preference Maintaining 19%, lowest Developing 8%. Managerial report completed 23/07/2025."
+        "vectorChunk": ""
       }
     ]
   }

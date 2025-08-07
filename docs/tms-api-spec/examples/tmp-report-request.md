@@ -13,14 +13,6 @@ Content-Type: application/json
 Accept: application/json
 ```
 
-## Alternative Request (if subscription ID is in JWT)
-
-```http
-GET https://api.tms-global.com/api/v2/reports/current
-```
-
-With the subscription ID extracted from the JWT token claims.
-
 ## Expected Response Structure
 
 The response would be a JSON object with:
