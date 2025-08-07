@@ -19,8 +19,8 @@ sequenceDiagram
     TeamOS->>TMS: POST /api/v2/auth/token<br/>Headers: x-api-key, x-api-secret<br/>Body: {userId: "user@company.com"}
     TMS->>TeamOS: JWT Token for user
     
-    TeamOS->>TMS: GET /api/v2/assessments<br/>Headers: Authorization: Bearer {JWT}
-    TMS->>TeamOS: Assessment data
+    TeamOS->>TMS: GET /api/v2/workflows<br/>Headers: Authorization: Bearer {JWT}
+    TMS->>TeamOS: Workflow data
 ```
 
 ## API Implementation
@@ -29,6 +29,8 @@ sequenceDiagram
 TMS Global provides TeamOS with:
 - API Key: `pk_live_teamOS_abc123`
 - API Secret: `sk_live_teamOS_xyz789`
+- Linked to a distributor account in TMS Global
+- All organizations created via this API key belong to this distributor
 
 ### 2. Get User Token Endpoint
 ```json
@@ -39,10 +41,12 @@ Headers: {
 }
 Body: {
   "userId": "user@company.com",  // or any unique identifier
-  "userMetadata": {
+  "organizationId": "org_123",
+  "role": "admin|manager|member",  // user's role
+  "metadata": {
     "firstName": "John",
     "lastName": "Doe",
-    "organizationId": "org_123"
+    "department": "Engineering"
   }
 }
 
@@ -58,7 +62,7 @@ Response: {
 
 ### 3. Use Token for All Requests
 ```json
-GET /api/v2/assessments/{subscriptionId}
+GET /api/v2/reports/{subscriptionId}
 Headers: {
   "Authorization": "Bearer eyJhbGciOiJIUzI1NiIs..."
 }
@@ -97,8 +101,11 @@ class TMSAuthService {
       },
       body: JSON.stringify({
         userId: userEmail,
-        userMetadata: {
-          // any additional data
+        organizationId: user.organizationId,
+        role: user.role,
+        metadata: {
+          firstName: user.firstName,
+          lastName: user.lastName
         }
       })
     });
