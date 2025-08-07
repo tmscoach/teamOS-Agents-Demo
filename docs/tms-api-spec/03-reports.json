@@ -4,7 +4,7 @@
     "endpoints": {
       "/api/v2/reports/{subscriptionId}": {
         "method": "GET",
-        "description": "Get complete structured report with integrated visualization data",
+        "description": "Get complete structured report for any assessment type (TMP, QO2, Team Signals, etc.)",
         "headers": {
           "Authorization": "Bearer {token}"
         },
@@ -13,7 +13,7 @@
           "data": {
             "reportId": "rpt_tmp_xyz789",
             "subscriptionId": "sub_xyz789",
-            "assessmentType": "TMP",
+            "assessmentType": "TMP|QO2|TeamSignals|WoW|LLP",
             "userId": "usr_abc123",
             "completedAt": "2024-01-06T10:30:00Z",
             "status": "ready",
@@ -328,6 +328,74 @@
           }
         }
       }
+    }
+  },
+  
+  "reportTypeAdaptation": {
+    "overview": "The /api/v2/reports/{subscriptionId} endpoint adapts its response based on the assessment type",
+    
+    "commonStructure": {
+      "description": "All reports share this base structure",
+      "fields": [
+        "reportId",
+        "subscriptionId", 
+        "assessmentType",
+        "userId",
+        "completedAt",
+        "status",
+        "metadata",
+        "sections[] with id, type, title, order, content, visualization, vectorChunk"
+      ]
+    },
+    
+    "typeSpecificSections": {
+      "TMP": {
+        "sections": [
+          "cover: TMP wheel visualization",
+          "introduction: Profile overview",
+          "work_preference_measures: 4 RIDO charts",
+          "overview: Role description",
+          "leadership_strengths: Text section",
+          "decision_making: Text section",
+          "work_preference_distribution: Percentage wheel",
+          "individual_summary: Composite visualizations"
+        ],
+        "visualizations": ["CreateTMPQWheel", "CreateTMPQIntroWheel", "CreateTMPQRido", "CreateTMPQPreferenceWheel", "CreateTMPQRidoSummary"]
+      },
+      
+      "QO2": {
+        "sections": [
+          "cover: QO2 3D model visualization",
+          "introduction: Values overview",
+          "organizational_values: 5 dimension analysis",
+          "opportunity_obstacle: Quotient analysis",
+          "profile_type: Task-Driven Optimist etc.",
+          "recommendations: Development suggestions"
+        ],
+        "visualizations": ["CreateQO2Model", "CreateQO2Dimensions", "CreateQO2Quotient"]
+      },
+      
+      "TeamSignals": {
+        "sections": [
+          "cover: 8-dimension traffic light wheel",
+          "dimension_1_purpose: Detailed analysis",
+          "dimension_2_goals: Detailed analysis",
+          "dimension_3_etc: Through all 8 dimensions",
+          "overall_health: Summary and priorities",
+          "linking_skills: Team development"
+        ],
+        "visualizations": ["CreateTeamSignals", "CreateTeamSignalsDetail"]
+      }
+    },
+    
+    "implementation": {
+      "approach": "Same endpoint, different section content based on assessmentType",
+      "benefits": [
+        "Single integration point for all report types",
+        "Consistent structure for React components",
+        "Unified vector chunking strategy",
+        "Predictable API behavior"
+      ]
     }
   },
   
