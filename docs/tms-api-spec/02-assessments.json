@@ -1,4 +1,6 @@
 {
+  "IMPORTANT": "⚠️ This is API DOCUMENTATION - Only return the fields shown in 'response' sections. Do not return 'notes', 'implementation', or any documentation fields in actual API responses.",
+  
   "workflows": {
     "description": "Workflow and subscription management endpoints",
     "endpoints": {

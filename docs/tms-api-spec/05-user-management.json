@@ -1,4 +1,6 @@
 {
+  "IMPORTANT": "⚠️ This is API DOCUMENTATION - Do not return 'notes', 'implementation_requirements', 'implementation_warning', or 'critical_implementation_requirements' fields in actual API responses. Only return the fields shown in 'response' sections.",
+  
   "userManagement": {
     "description": "Unified user management system with role-based access",
     "overview": "Single user model with three roles: admin, manager, member",

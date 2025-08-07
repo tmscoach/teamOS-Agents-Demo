@@ -1,4 +1,6 @@
 {
+  "IMPORTANT": "⚠️ This is API DOCUMENTATION - Only return the fields shown in 'response' sections. Do not return 'notes', 'implementation', 'reportTypeAdaptation', 'integrationStrategy', or any documentation fields in actual API responses.",
+  
   "reports": {
     "description": "Report generation and retrieval endpoints",
     "endpoints": {

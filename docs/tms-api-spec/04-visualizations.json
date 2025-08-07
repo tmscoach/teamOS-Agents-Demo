@@ -1,4 +1,6 @@
 {
+  "IMPORTANT": "⚠️ This is API DOCUMENTATION - Only return the fields shown in 'response' sections. Do not return 'notes', 'implementation', 'chartDataStructures', or any documentation fields in actual API responses.",
+  
   "visualizations": {
     "description": "Flexible visualization API that returns both images and comprehensive structured data",
     "overview": "Single endpoint generates any chart type with full data alongside the image, eliminating GPT-4 Vision dependency and enabling rich vector embeddings",
