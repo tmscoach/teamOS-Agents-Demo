@@ -10,39 +10,39 @@ This document provides visual representations of how TeamOS integrates with vari
 graph TB
     subgraph "Client Layer"
         UI[Next.js UI]
-        Mobile[Mobile App<br/>Future]
+        Mobile[Mobile App - Future]
     end
     
     subgraph "TeamOS Platform - Vercel"
         API[Next.js API Routes]
-        Agents[AI Agents<br/>Orchestrator, Assessment, Debrief]
+        Agents[AI Agents - Orchestrator, Assessment, Debrief]
         UC[UnifiedChat Component]
-        Voice[Voice Service<br/>Realtime API]
+        Voice[Voice Service - Realtime API]
     end
     
     subgraph "Authentication"
-        Clerk[Clerk Auth<br/>SSO, User Mgmt]
+        Clerk[Clerk Auth - SSO, User Mgmt]
     end
     
     subgraph "Data Layer"
-        Supabase[(Supabase<br/>PostgreSQL)]
-        Vector[(Vector DB<br/>pgvector)]
-        Storage[Supabase Storage<br/>Images, Reports]
+        Supabase[(Supabase - PostgreSQL)]
+        Vector[(Vector DB - pgvector)]
+        Storage[Supabase Storage - Images, Reports]
     end
     
     subgraph "AI Services"
-        OpenAI[OpenAI API<br/>GPT-4, Embeddings]
-        Realtime[OpenAI Realtime<br/>Voice]
+        OpenAI[OpenAI API - GPT-4, Embeddings]
+        Realtime[OpenAI Realtime - Voice]
     end
     
     subgraph "Legacy System"
-        TMS[TMS Global API<br/>Assessments, Reports]
-        TMSDB[(TMS Database<br/>40+ years IP)]
+        TMS[TMS Global API - Assessments, Reports]
+        TMSDB[(TMS Database - 40+ years IP)]
     end
     
     subgraph "External Services"
-        Stripe[Stripe<br/>Payments]
-        Email[Email Service<br/>SendGrid/Resend]
+        Stripe[Stripe - Payments]
+        Email[Email Service - SendGrid/Resend]
     end
     
     %% Client connections
@@ -112,7 +112,7 @@ sequenceDiagram
     
     Backend->>Backend: Check token cache
     alt Token not cached or expired
-        Backend->>TMS: POST /auth/token<br/>Headers: x-api-key, x-api-secret<br/>Body: {userId: "user@email.com"}
+        Backend->>TMS: POST /auth/token - Headers: x-api-key, x-api-secret - Body: {userId: "user@email.com"}
         TMS->>Backend: JWT Token (1 hour expiry)
         Backend->>Backend: Cache token
     end
@@ -120,7 +120,7 @@ sequenceDiagram
     Backend->>TeamOS: Return TMS token
     
     Note over TeamOS,TMS: All API calls use JWT token
-    TeamOS->>TMS: GET /assessments<br/>Authorization: Bearer {token}
+    TeamOS->>TMS: GET /assessments - Authorization: Bearer {token}
     TMS->>TeamOS: Assessment data
 ```
 
@@ -137,7 +137,7 @@ graph LR
     subgraph "2. Take Assessment"
         U2[User] --> AA[Assessment Agent]
         AA --> UC[UnifiedChat]
-        UC --> Voice[Voice Plugin<br/>Optional]
+        UC --> Voice[Voice Plugin - Optional]
         AA --> TMS2[TMS: Get Questions]
         AA --> TMS3[TMS: Submit Answers]
         Voice --> RT[OpenAI Realtime]
@@ -146,7 +146,7 @@ graph LR
     subgraph "3. Generate Report"
         Complete[Assessment Complete] --> TMS4[TMS: Generate Report]
         TMS4 --> Process[Process Report]
-        Process --> Vision[GPT-4 Vision<br/>Extract Charts]
+        Process --> Vision[GPT-4 Vision - Extract Charts]
         Process --> Embed[Generate Embeddings]
         Process --> DB2[(Supabase: Store Chunks)]
         Process --> Vec[(Vector DB: Store Embeddings)]
@@ -169,23 +169,23 @@ graph LR
 ```mermaid
 graph TB
     subgraph "Supabase Database"
-        Users[users table<br/>Clerk ID, metadata]
-        Orgs[organizations table<br/>subscription info]
-        Reports[user_reports table<br/>report metadata]
-        Chunks[report_chunks table<br/>semantic sections]
-        Journey[user_journey table<br/>phase tracking]
-        Credits[credits_ledger table<br/>usage tracking]
+        Users[users table - Clerk ID, metadata]
+        Orgs[organizations table - subscription info]
+        Reports[user_reports table - report metadata]
+        Chunks[report_chunks table - semantic sections]
+        Journey[user_journey table - phase tracking]
+        Credits[credits_ledger table - usage tracking]
     end
     
     subgraph "Vector Storage"
-        Embeddings[report_embeddings<br/>pgvector]
-        Knowledge[tms_knowledge<br/>IP embeddings]
+        Embeddings[report_embeddings - pgvector]
+        Knowledge[tms_knowledge - IP embeddings]
     end
     
     subgraph "Blob Storage"
-        Images[Report Images<br/>Charts, Graphs]
-        PDFs[PDF Reports<br/>Full documents]
-        Audio[Voice Recordings<br/>Future]
+        Images[Report Images - Charts, Graphs]
+        PDFs[PDF Reports - Full documents]
+        Audio[Voice Recordings - Future]
     end
     
     Reports --> Chunks
@@ -201,12 +201,12 @@ graph TB
 ```mermaid
 graph TD
     subgraph "Agent System"
-        Router[Agent Router<br/>UnifiedChat]
+        Router[Agent Router - UnifiedChat]
         
         subgraph "Core Agents"
-            Orch[Orchestrator Agent<br/>Journey Management]
-            Assess[Assessment Agent<br/>Questionnaire Flow]
-            Debrief[Debrief Agent<br/>Report Q&A]
+            Orch[Orchestrator Agent - Journey Management]
+            Assess[Assessment Agent - Questionnaire Flow]
+            Debrief[Debrief Agent - Report Q&A]
         end
         
         subgraph "Agent Capabilities"
@@ -217,9 +217,9 @@ graph TD
     end
     
     subgraph "AI Tools"
-        TMSTools[TMS Tools<br/>- Get Subscriptions<br/>- Start Workflow<br/>- Submit Answers]
-        KBTools[Knowledge Tools<br/>- Search TMS IP<br/>- Get Methodology]
-        ReportTools[Report Tools<br/>- Search Chunks<br/>- Vector Search]
+        TMSTools[TMS Tools - - Get Subscriptions - - Start Workflow - - Submit Answers]
+        KBTools[Knowledge Tools - - Search TMS IP - - Get Methodology]
+        ReportTools[Report Tools - - Search Chunks - - Vector Search]
     end
     
     Router --> Orch
@@ -253,28 +253,28 @@ sequenceDiagram
     Note over User,Agent: Phase 1: Report Generation
     User->>TeamOS: Complete Assessment
     TeamOS->>TMS: GET /api/v2/reports/{subscriptionId}
-    TMS->>TMS: Generate Report with:<br/>- Structured JSON sections<br/>- Embedded visualization data<br/>- Pre-computed vectorChunks
-    TMS->>TeamOS: Return JSON Report<br/>(14 sections with text + viz data)
+    TMS->>TMS: Generate Report with: - - Structured JSON sections - - Embedded visualization data - - Pre-computed vectorChunks
+    TMS->>TeamOS: Return JSON Report - (14 sections with text + viz data)
     
     Note over User,Agent: Phase 2: Vector Storage
     TeamOS->>TeamOS: Process each section
     loop For Each Section
-        TeamOS->>OpenAI: Generate embedding<br/>from section.vectorChunk
+        TeamOS->>OpenAI: Generate embedding - from section.vectorChunk
         OpenAI->>TeamOS: Vector embedding
         TeamOS->>Supabase: Store section content
         TeamOS->>Vector: Store embedding with metadata
     end
     
     Note over User,Agent: Phase 3: Knowledge Base Integration
-    TeamOS->>Vector: Store TMS IP embeddings<br/>(methodology, frameworks, research)
+    TeamOS->>Vector: Store TMS IP embeddings - (methodology, frameworks, research)
     TeamOS->>Supabase: Link report to user journey
     
     Note over User,Agent: Phase 4: AI-Powered Debrief
     User->>Agent: "Tell me about my TMP results"
-    Agent->>Vector: Semantic search:<br/>1. User's report sections<br/>2. TMS IP knowledge base
+    Agent->>Vector: Semantic search: - 1. User's report sections - 2. TMS IP knowledge base
     Vector->>Agent: Relevant chunks + context
     Agent->>OpenAI: Generate personalized insights
-    Agent->>User: Voice/text debrief with:<br/>- Report interpretation<br/>- Methodology explanation<br/>- Actionable recommendations
+    Agent->>User: Voice/text debrief with: - - Report interpretation - - Methodology explanation - - Actionable recommendations
 ```
 
 ## 7. Debrief Agent Architecture
@@ -282,24 +282,24 @@ sequenceDiagram
 ```mermaid
 graph TB
     subgraph "Debrief Agent System"
-        User[User Query<br/>Voice or Text]
+        User[User Query - Voice or Text]
         
         subgraph "Context Sources"
-            UserReport[User's Report<br/>14 TMP Sections]
-            TMSIP[TMS IP Knowledge<br/>40+ Years Methodology]
-            History[Conversation<br/>History]
+            UserReport[User's Report - 14 TMP Sections]
+            TMSIP[TMS IP Knowledge - 40+ Years Methodology]
+            History[Conversation - History]
         end
         
         subgraph "RAG Pipeline"
             Query[Query Processing]
-            VectorSearch[Vector Search<br/>pgvector]
+            VectorSearch[Vector Search - pgvector]
             Rerank[Result Reranking]
             Context[Context Assembly]
         end
         
         subgraph "Response Generation"
-            LLM[GPT-4<br/>with Context]
-            Voice[Voice Synthesis<br/>OpenAI Realtime]
+            LLM[GPT-4 - with Context]
+            Voice[Voice Synthesis - OpenAI Realtime]
             Text[Text Response]
         end
         
@@ -336,10 +336,10 @@ graph TB
 graph LR
     subgraph "Voice Flow"
         User[User Speech] --> Mic[Microphone]
-        Mic --> WS[WebSocket<br/>Connection]
+        Mic --> WS[WebSocket - Connection]
         WS --> OAI[OpenAI Realtime API]
-        OAI --> Trans[Transcription +<br/>Processing]
-        Trans --> Agent[Active Agent<br/>Assessment/Debrief]
+        OAI --> Trans[Transcription + - Processing]
+        Trans --> Agent[Active Agent - Assessment/Debrief]
         Agent --> Response[Generate Response]
         Response --> TTS[Text-to-Speech]
         TTS --> Speaker[Audio Output]
@@ -356,28 +356,28 @@ graph LR
 graph TB
     subgraph "Knowledge Sources"
         subgraph "TMS IP Documents"
-            Handbooks[Accreditation Handbooks<br/>HET, TMP, QO2, WoWV, LLP]
-            Questionnaires[Questionnaire Content<br/>Team Signals, TMP, QO2]
-            Reports[Example Reports<br/>Finished TMP/QO2 samples]
-            Research[Research Manuals<br/>40+ years methodology]
+            Handbooks[Accreditation Handbooks - HET, TMP, QO2, WoWV, LLP]
+            Questionnaires[Questionnaire Content - Team Signals, TMP, QO2]
+            Reports[Example Reports - Finished TMP/QO2 samples]
+            Research[Research Manuals - 40+ years methodology]
         end
         
         subgraph "User Data"
-            UserReports[User Reports<br/>Chunked by section]
-            TeamReports[Team Reports<br/>Aggregated insights]
-            OrgData[Organization Data<br/>Benchmarks, trends]
+            UserReports[User Reports - Chunked by section]
+            TeamReports[Team Reports - Aggregated insights]
+            OrgData[Organization Data - Benchmarks, trends]
         end
     end
     
     subgraph "Vector Processing"
-        Chunker[Document Chunker<br/>Semantic sections]
-        Embedder[OpenAI Embeddings<br/>text-embedding-3-large]
-        Metadata[Metadata Enrichment<br/>Source, type, context]
+        Chunker[Document Chunker - Semantic sections]
+        Embedder[OpenAI Embeddings - text-embedding-3-large]
+        Metadata[Metadata Enrichment - Source, type, context]
     end
     
     subgraph "Storage"
-        Supabase[(Supabase<br/>Raw content)]
-        pgvector[(pgvector<br/>Embeddings + metadata)]
+        Supabase[(Supabase - Raw content)]
+        pgvector[(pgvector - Embeddings + metadata)]
     end
     
     Handbooks --> Chunker
@@ -409,20 +409,20 @@ graph TB
         end
         
         subgraph "Databases"
-            PG[(PostgreSQL<br/>Supabase)]
-            Redis[(Redis Cache<br/>Future)]
+            PG[(PostgreSQL - Supabase)]
+            Redis[(Redis Cache - Future)]
         end
         
         subgraph "Monitoring"
-            Sentry[Sentry<br/>Error Tracking]
+            Sentry[Sentry - Error Tracking]
             Analytics[Vercel Analytics]
             Logs[Log Aggregation]
         end
     end
     
     subgraph "Development"
-        Local[Local Dev<br/>Next.js]
-        Preview[Preview Deploys<br/>PR Branches]
+        Local[Local Dev - Next.js]
+        Preview[Preview Deploys - PR Branches]
     end
     
     CF --> Edge
@@ -473,11 +473,11 @@ graph TB
 ```mermaid
 graph TD
     subgraph "Security Layers"
-        Auth[Authentication<br/>Clerk JWT]
-        AuthZ[Authorization<br/>Role-based]
-        Encrypt[Encryption<br/>TLS/HTTPS]
-        Secrets[Secrets Management<br/>Env Variables]
-        Audit[Audit Logging<br/>All API Calls]
+        Auth[Authentication - Clerk JWT]
+        AuthZ[Authorization - Role-based]
+        Encrypt[Encryption - TLS/HTTPS]
+        Secrets[Secrets Management - Env Variables]
+        Audit[Audit Logging - All API Calls]
     end
     
     Auth --> AuthZ
