@@ -36,7 +36,7 @@
     "endpoints": {
       "/api/v2/organizations": {
         "method": "POST",
-        "description": "Create a new organization (step 1 of onboarding)",
+        "description": "Create a new organization under the distributor",
         "headers": {
           "x-api-key": "pk_live_teamOS_abc123",
           "x-api-secret": "sk_live_teamOS_xyz789",
@@ -62,9 +62,34 @@
           }
         },
         "notes": {
-          "onboarding_step1": "Creates organization without users",
-          "onboarding_step2": "Use POST /api/v2/users with role='admin' to add founder",
+          "critical": "Organization creation is complex in TMS Global",
+          "distributor": "Organization MUST be created under the distributor account associated with the API key",
           "authentication": "Uses TeamOS API key for all operations"
+        },
+        "implementation_requirements": {
+          "warning": "⚠️ CRITICAL: The following backend tasks MUST be automated in TMS Global for this endpoint to work properly",
+          "required_backend_tasks": [
+            "1. Create organization under the distributor account linked to the API key",
+            "2. Grant the new organization permissions to key workflows (TMP, QO2, Team Signals, etc.)",
+            "3. Create a default group for the organization",
+            "4. Create a wallet for the organization",
+            "5. Auto-purchase initial workflow credits (e.g., 10 TMP credits for getting started)",
+            "6. Set up default organization settings and preferences"
+          ],
+          "admin_user_setup": [
+            "When admin user is created via POST /api/v2/users:",
+            "1. Create user in the appropriate table (managers table)",
+            "2. Assign TMP facilitator accreditation to the admin user",
+            "3. Grant necessary permissions for managing the organization",
+            "4. If admin needs to take assessments, duplicate entry in respondents table"
+          ],
+          "current_limitations": [
+            "Managers/admins cannot take assessments directly - need respondent table entry",
+            "Workflow permissions must be explicitly granted to each organization",
+            "Credits must be purchased/allocated before workflows can be assigned",
+            "Facilitator accreditations required for each workflow type"
+          ],
+          "suggested_solution": "Create a stored procedure or background job that handles all these tasks atomically when a new organization is created via the API"
         }
       },
       
@@ -169,7 +194,32 @@
             "updatedAt": "2024-01-06T11:30:00Z"
           }
         },
-        "implementation": "Handles moving user between legacy tables automatically"
+        "implementation": "Handles moving user between legacy tables automatically",
+        "implementation_warning": "⚠️ COMPLEX operation in TMS Global - requires careful handling",
+        "required_logic": {
+          "member_to_manager": [
+            "1. Copy user data from respondents to users/managers table",
+            "2. Grant appropriate workflow facilitator accreditations",
+            "3. Maintain respondents entry for assessment-taking ability",
+            "4. Update group/team permissions"
+          ],
+          "manager_to_member": [
+            "1. Remove from users/managers table (or deactivate)",
+            "2. Ensure exists in respondents table",
+            "3. Revoke all facilitator accreditations",
+            "4. Update group/team associations"
+          ],
+          "manager_to_admin": [
+            "1. Update permissions in users table",
+            "2. Grant organization-level access",
+            "3. Ensure all workflow accreditations are present"
+          ],
+          "admin_to_manager": [
+            "1. Check organization has another admin",
+            "2. Revoke organization-level access",
+            "3. Update to team-level permissions only"
+          ]
+        }
       },
       
       "/api/v2/organizations/{organizationId}/users": {
@@ -318,6 +368,65 @@
             "createdAt": "2024-01-06T12:00:00Z"
           }
         }
+      }
+    },
+    
+    "critical_implementation_requirements": {
+      "warning": "⚠️⚠️⚠️ CRITICAL BACKEND REQUIREMENTS FOR TMS GLOBAL ⚠️⚠️⚠️",
+      "overview": "The TMS Global legacy system has complex requirements that MUST be handled for these endpoints to work",
+      
+      "organization_creation_automation": {
+        "problem": "Creating an organization in TMS Global requires 6+ manual steps currently",
+        "solution": "Create a stored procedure or service that handles ALL of these automatically",
+        "required_steps": [
+          "1. Create organization under the distributor linked to the API key",
+          "2. Grant organization permissions to workflows (TMP, QO2, Team Signals, WoW, LLP)",
+          "3. Create default group/team for the organization",
+          "4. Create wallet for credit management",
+          "5. Auto-purchase starter credits (e.g., 10 TMP, 5 QO2)",
+          "6. Configure default settings and preferences",
+          "7. Set up billing/subscription if applicable"
+        ],
+        "critical": "Without ALL these steps, the organization cannot function properly"
+      },
+      
+      "user_dual_table_problem": {
+        "issue": "Managers/Admins exist in 'users' table, Members in 'respondents' table",
+        "complication": "Managers/Admins who need to take assessments must exist in BOTH tables",
+        "solution_options": [
+          "Option 1: Auto-create respondent entry when manager/admin starts assessment",
+          "Option 2: Always create dual entries for managers/admins",
+          "Option 3: Create database view that unions both tables",
+          "Option 4: Migrate to single user table (long-term solution)"
+        ],
+        "recommended": "Option 2 - Always create dual entries to avoid runtime complexity"
+      },
+      
+      "facilitator_accreditation_system": {
+        "problem": "Each workflow requires specific facilitator accreditations",
+        "requirements": [
+          "TMP requires TMP Facilitator accreditation",
+          "QO2 requires QO2 Facilitator accreditation",
+          "Team Signals requires TS Facilitator accreditation"
+        ],
+        "automation_needed": "When creating admin/manager, auto-assign all relevant accreditations",
+        "validation": "Before assigning workflow, check facilitator has required accreditation"
+      },
+      
+      "credit_and_wallet_management": {
+        "requirement": "Organizations need credits to issue assessments",
+        "automation": [
+          "Auto-create wallet on organization creation",
+          "Auto-purchase starter credits",
+          "Link admin users to wallet for management",
+          "Set up credit alerts and limits"
+        ]
+      },
+      
+      "group_and_team_structure": {
+        "legacy_requirement": "TMS Global uses 'groups' for organizing users",
+        "mapping": "TeamOS 'teams' should map to TMS 'groups'",
+        "default": "Every organization needs at least one default group"
       }
     },
     
