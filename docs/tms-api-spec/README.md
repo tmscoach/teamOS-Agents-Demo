@@ -16,6 +16,7 @@ This directory contains comprehensive documentation for integrating the TMS Glob
 ### Architecture Diagrams
 - **[SYSTEM-ARCHITECTURE.md](./SYSTEM-ARCHITECTURE.md)** - Visual system architecture with Mermaid diagrams
 - **[USER-JOURNEY-FLOWS.md](./USER-JOURNEY-FLOWS.md)** - Detailed user journey and data flow diagrams
+- **[AGENT-FLOW-ARCHITECTURE.md](./AGENT-FLOW-ARCHITECTURE.md)** - Agent state machine and variable extraction patterns
 
 ## 🏗️ System Overview
 
