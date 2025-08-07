@@ -1,0 +1,433 @@
+{
+  "IMPORTANT": "⚠️ This is API DOCUMENTATION - Only return the fields shown in 'response' sections. Do not return 'notes', 'implementation', or any documentation fields in actual API responses.",
+  
+  "workflows": {
+    "description": "Workflow and subscription management endpoints",
+    "endpoints": {
+      "/api/v2/workflows": {
+        "method": "GET",
+        "description": "List available workflow types with metadata",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "response": {
+          "success": true,
+          "data": [
+            {
+              "id": "tmp",
+              "name": "Team Management Profile",
+              "code": "TMP",
+              "description": "Discover your team work preferences and management style",
+              "duration": "15-20 minutes",
+              "questionCount": 60,
+              "categories": ["leadership", "teamwork", "communication"],
+              "reportTypes": ["individual", "team", "360"],
+              "requiredCredits": 100
+            },
+            {
+              "id": "qo2",
+              "name": "Questionnaire Organisationnel 2",
+              "code": "QO2",
+              "description": "Comprehensive organizational assessment",
+              "duration": "25-30 minutes",
+              "questionCount": 80,
+              "categories": ["organization", "culture", "performance"],
+              "reportTypes": ["individual", "department", "organization"],
+              "requiredCredits": 150
+            },
+            {
+              "id": "team-signals",
+              "name": "Team Signals",
+              "code": "TS",
+              "description": "Quick team health check across 8 key dimensions",
+              "duration": "10-15 minutes",
+              "questionCount": 40,
+              "categories": ["team-health", "collaboration", "effectiveness"],
+              "reportTypes": ["team", "comparison"],
+              "requiredCredits": 75
+            }
+          ]
+        }
+      },
+      
+      "/api/v2/subscriptions/assign": {
+        "method": "POST",
+        "description": "Assign a workflow subscription to a user (manager only)",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "request": {
+          "body": {
+            "userId": "usr_abc123",
+            "workflowId": "tmp-workflow",
+            "organizationId": "org_def456"
+          }
+        },
+        "response": {
+          "success": true,
+          "data": {
+            "subscriptionId": "sub_new789",
+            "userId": "usr_abc123",
+            "workflowId": "tmp-workflow",
+            "workflowName": "Team Management Profile",
+            "status": "assigned",
+            "assignedBy": "usr_mgr123",
+            "assignedAt": "2024-01-06T09:00:00Z",
+            "expiresAt": "2024-02-06T09:00:00Z"
+          }
+        },
+        "notes": {
+          "permissions": "Only managers and admins can assign subscriptions",
+          "workflowIds": "tmp-workflow, qo2-workflow, team-signals-workflow, wow-workflow, llp-workflow"
+        }
+      },
+      
+      "/api/v2/subscriptions/dashboard": {
+        "method": "GET",
+        "description": "Get dashboard subscriptions (all for managers, own for members)",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "response": {
+          "success": true,
+          "data": {
+            "userRole": "manager",
+            "subscriptions": [
+              {
+                "subscriptionId": "sub_123",
+                "workflowId": "tmp-workflow",
+                "workflowName": "Team Management Profile",
+                "userId": "usr_abc123",
+                "userName": "John Doe",
+                "userEmail": "john@company.com",
+                "status": "completed",
+                "progress": 100,
+                "startedAt": "2024-01-05T10:00:00Z",
+                "completedAt": "2024-01-05T10:30:00Z",
+                "reportAvailable": true
+              },
+              {
+                "subscriptionId": "sub_456",
+                "workflowId": "team-signals-workflow",
+                "workflowName": "Team Signals",
+                "userId": "usr_def456",
+                "userName": "Jane Smith",
+                "userEmail": "jane@company.com",
+                "status": "in_progress",
+                "progress": 60,
+                "startedAt": "2024-01-06T08:00:00Z",
+                "lastActivity": "2024-01-06T08:15:00Z",
+                "reportAvailable": false
+              },
+              {
+                "subscriptionId": "sub_789",
+                "workflowId": "qo2-workflow",
+                "workflowName": "QO2 Assessment",
+                "userId": "usr_ghi789",
+                "userName": "Bob Johnson",
+                "userEmail": "bob@company.com",
+                "status": "assigned",
+                "progress": 0,
+                "assignedAt": "2024-01-06T09:00:00Z",
+                "reportAvailable": false
+              }
+            ],
+            "summary": {
+              "total": 15,
+              "completed": 8,
+              "inProgress": 4,
+              "assigned": 3
+            }
+          }
+        },
+        "notes": {
+          "roleBasedAccess": "Managers see all team subscriptions, members see only their own",
+          "filtering": "Can filter by status, workflow type, date range via query params"
+        }
+      },
+      
+      "/api/v2/workflows/{workflowId}/start": {
+        "method": "POST",
+        "description": "Start a new workflow subscription for a user",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "request": {
+          "body": {
+            "userId": "usr_abc123",
+            "workflowId": "tmp-workflow",
+            "metadata": {
+              "purpose": "annual_review",
+              "department": "Engineering",
+              "teamSize": 12
+            }
+          }
+        },
+        "response": {
+          "success": true,
+          "data": {
+            "subscriptionId": "sub_xyz789",
+            "workflowId": "tmp-workflow",
+            "userId": "usr_abc123",
+            "status": "in_progress",
+            "createdAt": "2024-01-06T10:00:00Z",
+            "expiresAt": "2024-02-06T10:00:00Z",
+            "navigation": {
+              "firstPageId": "tmp_intro",
+              "totalPages": 12,
+              "sections": [
+                {
+                  "id": "intro",
+                  "name": "Introduction",
+                  "pages": ["tmp_intro"]
+                },
+                {
+                  "id": "preferences",
+                  "name": "Work Preferences",
+                  "pages": ["tmp_p1", "tmp_p2", "tmp_p3", "tmp_p4"]
+                }
+              ]
+            }
+          }
+        }
+      },
+      
+      "/api/v2/subscriptions/{subscriptionId}/pages/{pageId}": {
+        "method": "GET",
+        "description": "Get questions for a specific subscription page",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "response": {
+          "success": true,
+          "data": {
+            "subscriptionId": "sub_xyz789",
+            "pageId": "tmp_p1",
+            "pageNumber": 2,
+            "totalPages": 12,
+            "section": {
+              "id": "preferences",
+              "name": "Work Preferences"
+            },
+            "progress": {
+              "completed": 1,
+              "total": 12,
+              "percentage": 8.33
+            },
+            "navigation": {
+              "previousPageId": "tmp_intro",
+              "nextPageId": "tmp_p2",
+              "canGoBack": true,
+              "canSkip": false
+            },
+            "content": {
+              "title": "Work Style Preferences",
+              "instructions": "For each pair of statements, distribute 10 points based on which describes you better.",
+              "helpText": "There are no right or wrong answers. Be honest about your natural preferences."
+            },
+            "questions": [
+              {
+                "id": "q_001",
+                "type": "distribution",
+                "required": true,
+                "totalPoints": 10,
+                "options": [
+                  {
+                    "id": "opt_a",
+                    "text": "I prefer to have all the information before making a decision",
+                    "category": "analytical"
+                  },
+                  {
+                    "id": "opt_b",
+                    "text": "I trust my instincts and make decisions quickly",
+                    "category": "intuitive"
+                  }
+                ],
+                "validation": {
+                  "sumEquals": 10,
+                  "min": 0,
+                  "max": 10
+                }
+              },
+              {
+                "id": "q_002",
+                "type": "distribution",
+                "required": true,
+                "totalPoints": 10,
+                "options": [
+                  {
+                    "id": "opt_a",
+                    "text": "I enjoy working on multiple projects simultaneously",
+                    "category": "multitasker"
+                  },
+                  {
+                    "id": "opt_b",
+                    "text": "I prefer to focus on one project at a time",
+                    "category": "focused"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      
+      "/api/v2/subscriptions/{subscriptionId}/pages/{pageId}/submit": {
+        "method": "POST",
+        "description": "Submit answers for a subscription page",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "request": {
+          "body": {
+            "answers": [
+              {
+                "questionId": "q_001",
+                "value": {
+                  "opt_a": 7,
+                  "opt_b": 3
+                }
+              },
+              {
+                "questionId": "q_002",
+                "value": {
+                  "opt_a": 4,
+                  "opt_b": 6
+                }
+              }
+            ],
+            "timeSpent": 45,
+            "metadata": {
+              "deviceType": "desktop",
+              "browserLanguage": "en-US"
+            }
+          }
+        },
+        "response": {
+          "success": true,
+          "data": {
+            "saved": true,
+            "progress": {
+              "completed": 2,
+              "total": 12,
+              "percentage": 16.67
+            },
+            "navigation": {
+              "nextPageId": "tmp_p2",
+              "isLastPage": false
+            },
+            "conditionalActions": []
+          }
+        }
+      },
+      
+      "/api/v2/questions/actions": {
+        "method": "POST",
+        "description": "Check conditional logic for questions based on current answers",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "request": {
+          "body": {
+            "subscriptionId": "sub_xyz789",
+            "pageId": "tmp_p2",
+            "answers": {
+              "q_001": { "opt_a": 7, "opt_b": 3 },
+              "q_002": { "opt_a": 4, "opt_b": 6 }
+            }
+          }
+        },
+        "response": {
+          "success": true,
+          "data": {
+            "actions": [
+              {
+                "questionId": "q_003",
+                "action": "show",
+                "reason": "Based on q_001 response showing analytical preference"
+              },
+              {
+                "questionId": "q_004",
+                "action": "hide",
+                "reason": "Not applicable based on previous answers"
+              },
+              {
+                "questionId": "q_005",
+                "action": "required",
+                "reason": "Made required due to management role selection"
+              }
+            ],
+            "pageNavigation": {
+              "skipToPageId": null,
+              "showWarning": false
+            }
+          }
+        },
+        "notes": {
+          "usage": "Call after each answer change to update question visibility/requirements",
+          "performance": "Results are cached per page to minimize API calls"
+        }
+      },
+      
+      "/api/v2/questions/conditional/{pageId}": {
+        "method": "GET",
+        "description": "Get list of questions that have conditional logic on a page",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "response": {
+          "success": true,
+          "data": {
+            "pageId": "tmp_p2",
+            "conditionalQuestions": [
+              {
+                "questionId": "q_003",
+                "conditions": [
+                  {
+                    "type": "show_if",
+                    "dependsOn": "q_001",
+                    "rule": "opt_a > 5"
+                  }
+                ]
+              },
+              {
+                "questionId": "q_004",
+                "conditions": [
+                  {
+                    "type": "required_if",
+                    "dependsOn": ["q_001", "q_002"],
+                    "rule": "complex_rule"
+                  }
+                ]
+              }
+            ],
+            "hasConditionalLogic": true
+          }
+        },
+        "notes": {
+          "usage": "Call when loading a page to identify questions needing dynamic updates",
+          "optimization": "Only fetch actions for questions with conditional logic"
+        }
+      },
+      
+      "/api/v2/subscriptions/{subscriptionId}/complete": {
+        "method": "POST",
+        "description": "Mark subscription as complete and trigger report generation",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "response": {
+          "success": true,
+          "data": {
+            "subscriptionId": "sub_xyz789",
+            "status": "completed",
+            "completedAt": "2024-01-06T10:30:00Z",
+            "reportGenerationStatus": "processing",
+            "estimatedReportTime": "2024-01-06T10:32:00Z",
+            "creditsCharged": 100
+          }
+        }
+      }
+    }
+  }
+}

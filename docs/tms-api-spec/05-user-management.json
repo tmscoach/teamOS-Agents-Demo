@@ -1,0 +1,512 @@
+{
+  "IMPORTANT": "⚠️ This is API DOCUMENTATION - Do not return 'notes', 'implementation_requirements', 'implementation_warning', or 'critical_implementation_requirements' fields in actual API responses. Only return the fields shown in 'response' sections.",
+  
+  "userManagement": {
+    "description": "Unified user management system with role-based access",
+    "overview": "Single user model with three roles: admin, manager, member",
+    "teams_note": "⚠️ TEAMS are a FUTURE feature. TMS Global uses 'groups'. For MVP, all users belong to the organization's default group. TeamId fields in this spec are placeholders for future functionality.",
+    
+    "userRoles": {
+      "admin": {
+        "description": "Organization founder/owner",
+        "permissions": [
+          "manage_organization",
+          "manage_billing", 
+          "manage_all_users",
+          "create_assessments",
+          "view_all_reports",
+          "delete_organization"
+        ]
+      },
+      "manager": {
+        "description": "Team manager/facilitator",
+        "permissions": [
+          "manage_team_members",
+          "create_assessments",
+          "view_team_reports",
+          "export_data"
+        ]
+      },
+      "member": {
+        "description": "Team member/respondent",
+        "permissions": [
+          "complete_assessments",
+          "view_own_reports"
+        ]
+      }
+    },
+    
+    "endpoints": {
+      "/api/v2/organizations": {
+        "method": "POST",
+        "description": "Create a new organization under the distributor",
+        "headers": {
+          "x-api-key": "pk_live_teamOS_abc123",
+          "x-api-secret": "sk_live_teamOS_xyz789",
+          "Content-Type": "application/json"
+        },
+        "request": {
+          "body": {
+            "organizationName": "Acme Corporation",
+            "metadata": {
+              "industry": "Technology",
+              "size": "10-50",
+              "country": "US"
+            }
+          }
+        },
+        "response": {
+          "success": true,
+          "data": {
+            "organizationId": "org_new123",
+            "organizationName": "Acme Corporation",
+            "status": "pending_admin",
+            "createdAt": "2024-01-06T10:00:00Z"
+          }
+        },
+        "notes": {
+          "critical": "Organization creation is complex in TMS Global",
+          "distributor": "Organization MUST be created under the distributor account associated with the API key",
+          "authentication": "Uses TeamOS API key for all operations"
+        },
+        "implementation_requirements": {
+          "warning": "⚠️ CRITICAL: The following backend tasks MUST be automated in TMS Global for this endpoint to work properly",
+          "required_backend_tasks": [
+            "1. Create organization under the distributor account linked to the API key",
+            "2. Grant the new organization permissions to key workflows (TMP, QO2, Team Signals, etc.)",
+            "3. Create a default group for the organization",
+            "4. Create a wallet for the organization",
+            "5. Auto-purchase initial workflow credits (e.g., 10 TMP credits for getting started)",
+            "6. Set up default organization settings and preferences"
+          ],
+          "admin_user_setup": [
+            "When admin user is created via POST /api/v2/users:",
+            "1. Create user in the appropriate table (managers table)",
+            "2. Assign TMP facilitator accreditation to the admin user",
+            "3. Grant necessary permissions for managing the organization",
+            "4. If admin needs to take assessments, duplicate entry in respondents table"
+          ],
+          "current_limitations": [
+            "Managers/admins cannot take assessments directly - need respondent table entry",
+            "Workflow permissions must be explicitly granted to each organization",
+            "Credits must be purchased/allocated before workflows can be assigned",
+            "Facilitator accreditations required for each workflow type"
+          ],
+          "suggested_solution": "Create a stored procedure or background job that handles all these tasks atomically when a new organization is created via the API"
+        }
+      },
+      
+      "/api/v2/users": {
+        "method": "POST",
+        "description": "Create a new user with specified role",
+        "headers": {
+          "Authorization": "Bearer {token}",
+          "OR": "For initial admin creation during onboarding:",
+          "x-api-key": "pk_live_teamOS_abc123",
+          "x-api-secret": "sk_live_teamOS_xyz789"
+        },
+        "request": {
+          "body": {
+            "email": "newuser@company.com",
+            "firstName": "Jane",
+            "lastName": "Smith",
+            "role": "admin|manager|member",
+            "organizationId": "org_def456",
+            "teamId": "team_123",
+            "metadata": {
+              "department": "Sales",
+              "title": "Sales Manager",
+              "reportsTo": "usr_manager123"
+            }
+          }
+        },
+        "response": {
+          "success": true,
+          "data": {
+            "userId": "usr_new123",
+            "email": "newuser@company.com",
+            "role": "manager",
+            "organizationId": "org_def456",
+            "teamId": "team_123",
+            "status": "active",
+            "createdAt": "2024-01-06T11:00:00Z"
+          }
+        },
+        "notes": {
+          "legacyMapping": "Admin/Manager -> users table, Member -> respondents table",
+          "apiAbstraction": "Single endpoint handles both tables internally"
+        }
+      },
+      
+      "/api/v2/users/{userId}": {
+        "method": "GET",
+        "description": "Get user details regardless of role",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "response": {
+          "success": true,
+          "data": {
+            "userId": "usr_abc123",
+            "email": "user@company.com",
+            "firstName": "John",
+            "lastName": "Doe",
+            "role": "manager",
+            "organizationId": "org_def456",
+            "teamId": "team_123",
+            "status": "active",
+            "metadata": {
+              "department": "Engineering",
+              "title": "Engineering Manager",
+              "reportsTo": "usr_admin456"
+            },
+            "permissions": [
+              "manage_team_members",
+              "create_assessments",
+              "view_team_reports",
+              "export_data"
+            ],
+            "stats": {
+              "assessmentsCreated": 15,
+              "teamMembersManaged": 8,
+              "lastActive": "2024-01-06T10:00:00Z"
+            }
+          }
+        }
+      },
+      
+      "/api/v2/users/{userId}/role": {
+        "method": "PUT",
+        "description": "Change user role (handles table migration if needed)",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "requiredPermission": "manage_all_users (admin only)",
+        "request": {
+          "body": {
+            "role": "manager",
+            "reason": "Promoted to team manager"
+          }
+        },
+        "response": {
+          "success": true,
+          "data": {
+            "userId": "usr_abc123",
+            "previousRole": "member",
+            "newRole": "manager",
+            "updatedAt": "2024-01-06T11:30:00Z"
+          }
+        },
+        "implementation": "Handles moving user between legacy tables automatically",
+        "implementation_warning": "⚠️ COMPLEX operation in TMS Global - requires careful handling",
+        "required_logic": {
+          "member_to_manager": [
+            "1. Copy user data from respondents to users/managers table",
+            "2. Grant appropriate workflow facilitator accreditations",
+            "3. Maintain respondents entry for assessment-taking ability",
+            "4. Update group/team permissions"
+          ],
+          "manager_to_member": [
+            "1. Remove from users/managers table (or deactivate)",
+            "2. Ensure exists in respondents table",
+            "3. Revoke all facilitator accreditations",
+            "4. Update group/team associations"
+          ],
+          "manager_to_admin": [
+            "1. Update permissions in users table",
+            "2. Grant organization-level access",
+            "3. Ensure all workflow accreditations are present"
+          ],
+          "admin_to_manager": [
+            "1. Check organization has another admin",
+            "2. Revoke organization-level access",
+            "3. Update to team-level permissions only"
+          ]
+        }
+      },
+      
+      "/api/v2/organizations/{organizationId}/users": {
+        "method": "GET",
+        "description": "List all users with filtering and pagination",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "query": {
+          "role": "admin|manager|member|all",
+          "status": "active|inactive|all",
+          "teamId": "team_123",
+          "search": "john",
+          "page": 1,
+          "limit": 50,
+          "sort": "name|role|lastActive"
+        },
+        "response": {
+          "success": true,
+          "data": {
+            "users": [
+              {
+                "userId": "usr_admin456",
+                "email": "founder@company.com",
+                "name": "Sarah Johnson",
+                "role": "admin",
+                "teamIds": ["team_all"],
+                "lastActive": "2024-01-06T09:00:00Z",
+                "assessmentsManaged": 45
+              },
+              {
+                "userId": "usr_mgr789",
+                "email": "john@company.com",
+                "name": "John Doe",
+                "role": "manager",
+                "teamIds": ["team_123", "team_456"],
+                "lastActive": "2024-01-06T10:00:00Z",
+                "assessmentsManaged": 12,
+                "teamSize": 8
+              },
+              {
+                "userId": "usr_mem012",
+                "email": "jane@company.com",
+                "name": "Jane Smith",
+                "role": "member",
+                "teamIds": ["team_123"],
+                "lastActive": "2024-01-05T15:00:00Z",
+                "assessmentsCompleted": 3,
+                "manager": "usr_mgr789"
+              }
+            ],
+            "summary": {
+              "total": 45,
+              "byRole": {
+                "admin": 1,
+                "manager": 4,
+                "member": 40
+              },
+              "active": 42,
+              "inactive": 3
+            },
+            "pagination": {
+              "page": 1,
+              "limit": 50,
+              "total": 45,
+              "pages": 1
+            }
+          }
+        }
+      },
+      
+      "/api/v2/users/bulk": {
+        "method": "POST",
+        "description": "Create multiple users at once (CSV import)",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "request": {
+          "body": {
+            "users": [
+              {
+                "email": "user1@company.com",
+                "firstName": "User",
+                "lastName": "One",
+                "role": "member",
+                "teamId": "team_123"
+              },
+              {
+                "email": "user2@company.com", 
+                "firstName": "User",
+                "lastName": "Two",
+                "role": "member",
+                "teamId": "team_123"
+              }
+            ],
+            "options": {
+              "sendInvites": true,
+              "skipDuplicates": true
+            }
+          }
+        },
+        "response": {
+          "success": true,
+          "data": {
+            "created": 2,
+            "skipped": 0,
+            "errors": [],
+            "users": [
+              {
+                "userId": "usr_new123",
+                "email": "user1@company.com"
+              },
+              {
+                "userId": "usr_new456",
+                "email": "user2@company.com"
+              }
+            ]
+          }
+        }
+      },
+      
+      "/api/v2/teams": {
+        "method": "POST",
+        "description": "[FUTURE - NOT IN MVP] Create a team within organization",
+        "mvp_note": "TMS Global uses 'groups' not 'teams'. For MVP, use default organization group. Teams are a future TeamOS concept.",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "request": {
+          "body": {
+            "name": "Engineering Team",
+            "managerId": "usr_mgr789",
+            "description": "Product engineering team",
+            "metadata": {
+              "department": "Engineering",
+              "location": "New York"
+            }
+          }
+        },
+        "response": {
+          "success": true,
+          "data": {
+            "teamId": "team_new789",
+            "name": "Engineering Team",
+            "managerId": "usr_mgr789",
+            "organizationId": "org_def456",
+            "createdAt": "2024-01-06T12:00:00Z"
+          }
+        }
+      }
+    },
+    
+    "critical_implementation_requirements": {
+      "warning": "⚠️⚠️⚠️ CRITICAL BACKEND REQUIREMENTS FOR TMS GLOBAL ⚠️⚠️⚠️",
+      "overview": "The TMS Global legacy system has complex requirements that MUST be handled for these endpoints to work",
+      
+      "organization_creation_automation": {
+        "problem": "Creating an organization in TMS Global requires 6+ manual steps currently",
+        "solution": "Create a stored procedure or service that handles ALL of these automatically",
+        "required_steps": [
+          "1. Create organization under the distributor linked to the API key",
+          "2. Grant organization permissions to workflows (TMP, QO2, Team Signals, WoW, LLP)",
+          "3. Create default group/team for the organization",
+          "4. Create wallet for credit management",
+          "5. Auto-purchase starter credits (e.g., 10 TMP, 5 QO2)",
+          "6. Configure default settings and preferences",
+          "7. Set up billing/subscription if applicable"
+        ],
+        "critical": "Without ALL these steps, the organization cannot function properly"
+      },
+      
+      "user_dual_table_problem": {
+        "issue": "Managers/Admins exist in 'users' table, Members in 'respondents' table",
+        "complication": "Managers/Admins who need to take assessments must exist in BOTH tables",
+        "solution_options": [
+          "Option 1: Auto-create respondent entry when manager/admin starts assessment",
+          "Option 2: Always create dual entries for managers/admins",
+          "Option 3: Create database view that unions both tables",
+          "Option 4: Migrate to single user table (long-term solution)"
+        ],
+        "recommended": "Option 2 - Always create dual entries to avoid runtime complexity"
+      },
+      
+      "facilitator_accreditation_system": {
+        "problem": "Each workflow requires specific facilitator accreditations",
+        "requirements": [
+          "TMP requires TMP Facilitator accreditation",
+          "QO2 requires QO2 Facilitator accreditation",
+          "Team Signals requires TS Facilitator accreditation"
+        ],
+        "automation_needed": "When creating admin/manager, auto-assign all relevant accreditations",
+        "validation": "Before assigning workflow, check facilitator has required accreditation"
+      },
+      
+      "credit_and_wallet_management": {
+        "requirement": "Organizations need credits to issue assessments",
+        "automation": [
+          "Auto-create wallet on organization creation",
+          "Auto-purchase starter credits",
+          "Link admin users to wallet for management",
+          "Set up credit alerts and limits"
+        ]
+      },
+      
+      "group_and_team_structure": {
+        "legacy_requirement": "TMS Global uses 'groups' for organizing users",
+        "mapping": "TeamOS 'teams' are a FUTURE concept - for MVP just use organization's default group",
+        "mvp_approach": "All users in an organization belong to the default group",
+        "future": "Teams will eventually map to TMS groups or be a TeamOS-only layer",
+        "default": "Every organization needs at least one default group"
+      }
+    },
+    
+    "implementation_notes": {
+      "database_abstraction": {
+        "description": "API abstracts the legacy two-table system",
+        "logic": "if (role === 'member') { use respondents table } else { use users table }",
+        "benefits": [
+          "Single API interface for all user types",
+          "Easy role changes without client-side complexity",
+          "Future migration to single table is transparent"
+        ]
+      },
+      "role_hierarchy": {
+        "admin": "Can manage all users and organization settings",
+        "manager": "Can manage team members only",
+        "member": "Can only manage own profile"
+      },
+      "backwards_compatibility": {
+        "facilitator": "Maps to 'manager' role",
+        "respondent": "Maps to 'member' role"
+      }
+    },
+    
+    "onboarding_flow_example": {
+      "description": "Two-step process for creating organization with founder",
+      "step1": {
+        "description": "Create organization",
+        "request": "POST /api/v2/organizations",
+        "headers": {
+          "x-api-key": "pk_live_teamOS_abc123",
+          "x-api-secret": "sk_live_teamOS_xyz789"
+        },
+        "body": {
+          "organizationName": "Acme Corporation"
+        },
+        "response": {
+          "organizationId": "org_new123"
+        }
+      },
+      "step2": {
+        "description": "Create founder as admin",
+        "request": "POST /api/v2/users",
+        "headers": {
+          "x-api-key": "pk_live_teamOS_abc123",
+          "x-api-secret": "sk_live_teamOS_xyz789"
+        },
+        "body": {
+          "email": "founder@acme.com",
+          "firstName": "John",
+          "lastName": "Doe",
+          "role": "admin",
+          "organizationId": "org_new123"
+        },
+        "response": {
+          "userId": "usr_admin123"
+        }
+      },
+      "step3": {
+        "description": "Get JWT token for the admin user",
+        "request": "POST /api/v2/auth/token",
+        "headers": {
+          "x-api-key": "pk_live_teamOS_abc123",
+          "x-api-secret": "sk_live_teamOS_xyz789"
+        },
+        "body": {
+          "userId": "founder@acme.com",
+          "organizationId": "org_new123",
+          "role": "admin"
+        },
+        "response": {
+          "token": "eyJhbGciOiJIUzI1NiIs..."
+        }
+      }
+    }
+  }
+}

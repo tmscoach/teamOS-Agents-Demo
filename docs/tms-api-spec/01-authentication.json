@@ -1,0 +1,131 @@
+{
+  "IMPORTANT": "⚠️ This is API DOCUMENTATION - Only return the fields shown in 'response' sections. Do not return 'notes', 'implementation', or any documentation fields in actual API responses.",
+  
+  "authentication": {
+    "description": "Simple API key authentication system",
+    "overview": "Applications use API keys to generate JWT tokens for their users",
+    
+    "flow": {
+      "1_registration": "Application registers with TMS and receives API key + secret",
+      "2_authentication": "Application uses API key to generate JWT tokens for users", 
+      "3_requests": "All API requests use the JWT token"
+    },
+    
+    "endpoints": {
+      "/api/v2/auth/token": {
+        "method": "POST",
+        "description": "Generate JWT token for a user",
+        "rateLimit": "100 requests per minute per API key",
+        "headers": {
+          "x-api-key": "pk_live_teamOS_abc123",
+          "x-api-secret": "sk_live_teamOS_xyz789",
+          "Content-Type": "application/json"
+        },
+        "request": {
+          "body": {
+            "userId": "user@company.com",
+            "organizationId": "org_123",
+            "role": "admin|manager|member",
+            "metadata": {
+              "firstName": "John",
+              "lastName": "Doe",
+              "department": "Engineering"
+            }
+          }
+        },
+        "response": {
+          "success": true,
+          "data": {
+            "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+            "expiresIn": 3600,
+            "tokenType": "Bearer"
+          }
+        },
+        "errors": {
+          "401": {
+            "error": "INVALID_API_KEY",
+            "message": "Invalid API key or secret"
+          },
+          "429": {
+            "error": "RATE_LIMIT_EXCEEDED", 
+            "message": "Too many requests"
+          }
+        }
+      },
+      
+      "/api/v2/auth/refresh": {
+        "method": "POST",
+        "description": "Refresh an expiring token",
+        "headers": {
+          "Authorization": "Bearer {expiring_token}"
+        },
+        "response": {
+          "success": true,
+          "data": {
+            "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+            "expiresIn": 3600
+          }
+        }
+      },
+      
+      "/api/v2/auth/validate": {
+        "method": "GET",
+        "description": "Validate a token (optional endpoint for debugging)",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "response": {
+          "success": true,
+          "data": {
+            "valid": true,
+            "userId": "user@company.com",
+            "organizationId": "org_123",
+            "expiresAt": "2024-01-07T12:00:00Z"
+          }
+        }
+      }
+    },
+    
+    "jwt_structure": {
+      "header": {
+        "alg": "HS256",
+        "typ": "JWT"
+      },
+      "payload": {
+        "sub": "user@company.com",
+        "org": "org_123",
+        "role": "manager",
+        "app": "pk_live_teamOS_abc123",
+        "iat": 1704628800,
+        "exp": 1704632400
+      }
+    },
+    
+    "api_key_management": {
+      "format": {
+        "publicKey": "pk_{environment}_{appName}_{random}",
+        "secretKey": "sk_{environment}_{appName}_{random}",
+        "environments": ["test", "live"]
+      },
+      "example_keys": {
+        "teamOS": {
+          "public": "pk_live_teamOS_abc123",
+          "secret": "sk_live_teamOS_xyz789"
+        },
+        "customerApp": {
+          "public": "pk_live_customerA_def456",
+          "secret": "sk_live_customerA_uvw098"
+        }
+      }
+    },
+    
+    "implementation_notes": {
+      "backend_only": "API keys must never be exposed to frontend",
+      "token_caching": "Applications should cache tokens until expiry",
+      "user_identification": "Email or any unique ID can be used as userId",
+      "no_user_storage": "TMS doesn't need to store user records upfront",
+      "auth_separation": "TMS API is agnostic to how applications authenticate users (Clerk, SSO, etc.)",
+      "application_responsibility": "Each application handles its own user auth and then requests TMS tokens"
+    }
+  }
+}
