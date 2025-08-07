@@ -4,6 +4,9 @@ This directory contains comprehensive documentation for integrating the TMS Glob
 
 ## 📁 Documentation Structure
 
+### Quick Start
+- **[ENDPOINT-OVERVIEW.md](./ENDPOINT-OVERVIEW.md)** - 🎯 Visual endpoint map with priorities and implementation flow
+
 ### API Specifications
 - **[API-SPECIFICATION.md](./API-SPECIFICATION.md)** - Main API design document with architectural decisions
 - **[01-authentication.json](./01-authentication.json)** - Authentication endpoints and JWT structure
