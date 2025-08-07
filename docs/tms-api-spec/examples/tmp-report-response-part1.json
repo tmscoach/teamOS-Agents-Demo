@@ -1,0 +1,129 @@
+{
+  "success": true,
+  "data": {
+    "reportId": "rpt_tmp_114953",
+    "subscriptionId": "114953",
+    "assessmentType": "TMP",
+    "userId": "67921",
+    "completedAt": "2025-07-23T10:30:00Z",
+    "status": "ready",
+    "metadata": {
+      "userName": "Sub One",
+      "organizationName": "BHP",
+      "department": null,
+      "reportVersion": "S1.0",
+      "language": "English (International)",
+      "reportType": "Managerial",
+      "totalSections": 14,
+      "estimatedReadTime": 25
+    },
+    "sections": [
+      {
+        "id": "cover",
+        "type": "visual",
+        "title": "Team Management Profile",
+        "order": 1,
+        "visualization": {
+          "type": "CreateTMPQWheel",
+          "params": {
+            "mr": "8",
+            "rr1": "7",
+            "rr2": "5"
+          },
+          "data": {
+            "image": {
+              "base64": "iVBORw0KGgoAAAANSUhEUgAA...[truncated for brevity]",
+              "format": "png",
+              "width": 800,
+              "height": 800
+            },
+            "majorRole": {
+              "name": "Upholder Maintainer",
+              "code": "UM",
+              "position": 6,
+              "score": 8,
+              "color": "#00aee5",
+              "percentage": 19
+            },
+            "relatedRoles": [
+              {
+                "name": "Controller Inspector",
+                "code": "CI",
+                "position": 5,
+                "score": 7,
+                "color": "#007ac2",
+                "percentage": 15
+              },
+              {
+                "name": "Thruster Organiser",
+                "code": "TO",
+                "position": 3,
+                "score": 5,
+                "color": "#ec008c",
+                "percentage": 14
+              }
+            ],
+            "allSegments": [
+              {"name": "Reporter Adviser", "position": 0, "score": 4, "color": "#009a67", "percentage": 10},
+              {"name": "Creator Innovator", "position": 1, "score": 3, "color": "#9bcd66", "percentage": 9},
+              {"name": "Explorer Promoter", "position": 2, "score": 2, "color": "#fff200", "percentage": 11},
+              {"name": "Assessor Developer", "position": 3, "score": 4, "color": "#f9a13a", "percentage": 8},
+              {"name": "Thruster Organiser", "position": 4, "score": 5, "color": "#ec008c", "percentage": 14},
+              {"name": "Concluder Producer", "position": 5, "score": 6, "color": "#9b5ba4", "percentage": 14},
+              {"name": "Controller Inspector", "position": 6, "score": 7, "color": "#007ac2", "percentage": 15},
+              {"name": "Upholder Maintainer", "position": 7, "score": 8, "color": "#00aee5", "percentage": 19}
+            ]
+          }
+        },
+        "vectorChunk": "TMP Profile for Sub One at BHP. Major role: Upholder Maintainer (score 8, 19%). Related roles: Controller Inspector (score 7, 15%) and Thruster Organiser (score 5, 14%). Right-side wheel dominant indicating preference for structure, control, and maintaining standards."
+      },
+      {
+        "id": "introduction",
+        "type": "mixed",
+        "title": "Introduction",
+        "order": 2,
+        "content": {
+          "userData": {
+            "name": "Sub One",
+            "organization": "BHP",
+            "keyPreferenceAreas": "Organising, Controlling, Advising"
+          },
+          "mainText": "Your personal Team Management Profile provides you with information about your work preferences. It is a starting point for consideration and discussion of how you approach your work and your interactions with others in the workplace.",
+          "nineActivities": {
+            "introduction": "All work teams need to consider nine key activities essential for high-performance:",
+            "activities": [
+              {"name": "Advising", "description": "Gathering and reporting information", "color": "#009a67"},
+              {"name": "Innovating", "description": "Creating and experimenting with ideas", "color": "#9bcd66"},
+              {"name": "Promoting", "description": "Exploring and presenting opportunities", "color": "#fff200"},
+              {"name": "Developing", "description": "Assessing and testing the applicability of new approaches", "color": "#f9a13a"},
+              {"name": "Organising", "description": "Establishing and implementing ways of making things work", "color": "#ec008c"},
+              {"name": "Producing", "description": "Concluding and delivering outputs", "color": "#9b5ba4"},
+              {"name": "Inspecting", "description": "Controlling and auditing the working of systems", "color": "#007ac2"},
+              {"name": "Maintaining", "description": "Upholding and safeguarding standards and processes", "color": "#00aee5"},
+              {"name": "Linking", "description": "Coordinating and integrating the work of others", "color": "#ffffff"}
+            ]
+          },
+          "profileExplanation": "Your own work preferences have been derived from your responses to the Team Management Profile Questionnaire. While you may work in any of the areas of the Wheel, your highest preference area, or Major Role, has been identified together with two Related Roles which indicate your next highest preference areas."
+        },
+        "visualization": {
+          "type": "CreateTMPQIntroWheel",
+          "params": {
+            "mr": "8",
+            "rr1": "7",
+            "rr2": "5"
+          },
+          "data": {
+            "image": {
+              "base64": "iVBORw0KGgoAAAANSUhEUgAA...[truncated]",
+              "format": "png",
+              "width": 400,
+              "height": 400
+            },
+            "summary": "Simplified wheel showing your three key roles highlighted"
+          }
+        },
+        "vectorChunk": "Introduction for Sub One at BHP. Key preference areas: Organising, Controlling, Advising. Major role: Upholder Maintainer. Related roles: Controller Inspector and Thruster Organiser. Profile based on TMP Questionnaire responses measuring work preferences across nine essential team activities."
+      }
+    ]
+  }
+}

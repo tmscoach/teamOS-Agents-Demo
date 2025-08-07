@@ -1,0 +1,57 @@
+{
+  "sections_continued": [
+    {
+      "id": "key_points",
+      "type": "text",
+      "title": "Key Points of Note for Upholder Maintainers",
+      "order": 10,
+      "content": {
+        "points": [
+          "You are usually quietly confident and persevering in the team's interests.",
+          "You tend to be strong on ideas and innovation.",
+          "You may prefer a co-ordinating, advisory role, but will act in an executive role.",
+          "You tend to be individualistic and it is sometimes hard for others to know what you are thinking.",
+          "Your personal convictions and beliefs are important in your decision-making.",
+          "You are often single-minded and determined about ideas that you believe in.",
+          "You may be easily hurt by criticism of your ideas or behaviour.",
+          "You continually look for new approaches to old problems.",
+          "You enjoy work where there is a wider meaning or purpose.",
+          "You need to work with others who are strong on details regarding costs and benefits.",
+          "You can concentrate for long periods working alone, although you like to balance this with time spent 'managing by wandering around'.",
+          "You may support community organisations as a voluntary worker.",
+          "You enjoy a close working relationship with a few trusted colleagues.",
+          "Your enthusiasm and optimism can be great strengths.",
+          "You have the ability to see opportunities and possibilities, often in advance of others.",
+          "You can represent the organisation effectively if you believe in the cause and are well briefed.",
+          "You have the ability to communicate clearly and usually succinctly.",
+          "You can express yourself well in writing.",
+          "You need to regularly review your priorities to ensure they have not been subverted by other people's.",
+          "You can take a lot of time to be supportive and helpful to others.",
+          "You dislike sudden change and prefer gradual evolution.",
+          "You appreciate specific recognition and appreciation for what you have done.",
+          "You have a strong sense of what is 'right and wrong' and 'good and bad' and this guides your decision-making.",
+          "You can uphold and maintain traditions and values in the organisation."
+        ]
+      },
+      "vectorChunk": "Key Points for Upholder Maintainers: Quietly confident, persevering, strong on ideas and innovation. Prefers coordinating/advisory roles. Individualistic, hard to read. Decisions guided by personal convictions. Single-minded about beliefs. Sensitive to criticism. Seeks new approaches. Needs purposeful work. Requires detail-oriented partners. Concentrates alone but balances with interaction. Supports community causes. Values close trusted relationships. Enthusiastic and optimistic. Sees opportunities early. Effective representative when aligned. Clear communication, strong writing. Needs priority management. Supportive of others. Prefers gradual change. Values recognition. Strong moral compass. Maintains traditions and values."
+    },
+    {
+      "id": "related_roles",
+      "type": "text",
+      "title": "Related Roles",
+      "order": 11,
+      "content": {
+        "paragraphs": [
+          "In the constructs of the Team Management Profile Questionnaire, you scored strongest in the areas of introversion and structured organisation. These two factors have combined with your scores on the other two factors to locate you in the Upholder-Maintainer sector of the Team Management Wheel. Here, you will want to work quietly on your own, ensuring standards are upheld and organisational systems maintained so that everyone can work in an optimum way for the benefit of the organisation. Your related roles lie in the Controller-Inspector and Thruster-Organiser sectors and there are times when you show some of the characteristics of both these sectors. Many people with this pattern of scoring excel in administration management positions.",
+          "Although you showed a preference to work creatively with information, it is usually within the bounds of practical reality. This means you are unlikely to get carried away with ideas and concepts unless you can see their immediate relevance to what you do. This is the Controller-Inspector side of your working pattern, where you will want to work with ideas that have been well thought through and, if possible, fully tested before they are implemented.",
+          "It is one of your strengths that you reach a conclusion and make a judgement. On occasions, you will be so concerned to make a decision that you may not hear sufficient of the views being expressed by others. They may even see you as being unprepared to listen, particularly where the decision is related to something that you strongly believe in. To you, however, it is simply a question of efficiency and not letting matters drag on when you believe you have enough information to make a decision.",
+          "It is interesting that your combination of scores gives you a Split Wheel where your major and related roles are not adjacent. This is a less common pattern found in less than 5% of people who have completed the Team Management Profile Questionnaire.",
+          "Although you will tend to make decisions according to your beliefs, you will usually want to analyse situations fully before taking action. Where an analysis supports your beliefs, you will have no hesitation in pushing your ideas forward. Indeed, you may surprise yourself and others at times as to the urgency and commitment you bring to some of the tasks you are involved in. It is at these times that you are more likely to be wearing your Thruster-Organiser 'hat'. Where an analysis is contrary to your beliefs, you are more likely to request further information, hoping to find something that supports your hunches. On occasions, there may even be an internal conflict between your need to get action on a project and your concern to implement a decision that feels right to you.",
+          "When acting in a Thruster-Organiser role, you may get resistance from others if you have not shared your thinking with them as your ideas have evolved. In the interests of getting your ideas underway, you may feel that it is sometimes better to do things yourself than waste time telling others. In this regard, you may at times have difficulties in delegating.",
+          "Unlike some people with a major role as Thruster-Organiser, however, you will usually be aware of people's feelings and concerns and make sure these issues are kept to the fore in any dealings with your team members or other colleagues."
+        ]
+      },
+      "vectorChunk": "Related Roles explanation: Strongest in introversion and structured organisation, placing in Upholder-Maintainer sector. Related roles are Controller-Inspector and Thruster-Organiser. Shows characteristics of both sectors. Excel in administration management. Creative within practical bounds (Controller-Inspector side). Strong at reaching conclusions and making judgements. Has Split Wheel pattern (less than 5% of profiles) with non-adjacent roles. Decisions blend beliefs with analysis. Shows urgency when beliefs align with analysis (Thruster-Organiser mode). May have delegation difficulties. Aware of people's feelings unlike typical Thruster-Organisers."
+    }
+  ]
+}
