@@ -1,0 +1,103 @@
+{
+  "simpleAnalytics": {
+    "description": "Simple analytics endpoints for MVP phase",
+    "endpoints": {
+      "/api/v2/users/{userId}/profile-summary": {
+        "method": "GET",
+        "description": "Get user's major role and basic profile summary from their latest completed TMP",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "response": {
+          "success": true,
+          "data": {
+            "userId": "usr_abc123",
+            "userName": "John Doe",
+            "hasCompletedTMP": true,
+            "latestTMPProfile": {
+              "subscriptionId": "sub_xyz789",
+              "completedAt": "2024-01-06T10:30:00Z",
+              "majorRole": {
+                "name": "Upholder Maintainer",
+                "code": "UM",
+                "color": "#00aee5"
+              },
+              "relatedRoles": [
+                {
+                  "name": "Controller Inspector",
+                  "code": "CI",
+                  "color": "#007ac2"
+                },
+                {
+                  "name": "Thruster Organizer",
+                  "code": "TO", 
+                  "color": "#ec008c"
+                }
+              ],
+              "workPreferences": {
+                "profile": "ICBS",
+                "scores": {
+                  "introvert": 7,
+                  "creative": 3,
+                  "beliefs": 5,
+                  "structured": 9
+                }
+              }
+            }
+          }
+        },
+        "notes": {
+          "usage": "Used to display user's role badge in UI and for basic personalization",
+          "fallback": "Returns hasCompletedTMP: false if user hasn't completed TMP yet"
+        }
+      },
+      
+      "/api/v2/teams/{teamId}/role-distribution": {
+        "method": "GET",
+        "description": "Get simple count of major roles in a team",
+        "headers": {
+          "Authorization": "Bearer {token}"
+        },
+        "response": {
+          "success": true,
+          "data": {
+            "teamId": "team_abc123",
+            "teamName": "Engineering Team",
+            "totalMembers": 12,
+            "membersWithTMP": 10,
+            "roleDistribution": [
+              {"role": "Creator Innovator", "count": 2},
+              {"role": "Explorer Promoter", "count": 1},
+              {"role": "Assessor Developer", "count": 2},
+              {"role": "Thruster Organizer", "count": 3},
+              {"role": "Concluder Producer", "count": 1},
+              {"role": "Controller Inspector", "count": 0},
+              {"role": "Upholder Maintainer", "count": 1},
+              {"role": "Reporter Adviser", "count": 0}
+            ]
+          }
+        },
+        "notes": {
+          "usage": "Simple team composition view for managers",
+          "permissions": "Only accessible by managers or team members"
+        }
+      }
+    }
+  },
+  
+  "implementation": {
+    "mvpScope": [
+      "Focus on TMP major roles only for now",
+      "No complex analytics or trends",
+      "No cross-assessment comparisons",
+      "Just enough data for basic UI personalization"
+    ],
+    "futureEnhancements": [
+      "Add completion trends over time",
+      "Cross-assessment insights (TMP + QO2)",
+      "Team balance analytics",
+      "Engagement metrics",
+      "Predictive insights"
+    ]
+  }
+}
