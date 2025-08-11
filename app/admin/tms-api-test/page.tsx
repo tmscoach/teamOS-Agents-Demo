@@ -45,6 +45,21 @@ export default function TMSApiTestPage() {
   }>({});
   const [workflowScenarios] = useState([
     {
+      name: "JSON Report - TMP",
+      tool: "tms_get_json_report",
+      params: { subscriptionId: "21989" }
+    },
+    {
+      name: "JSON Report - QO2",
+      tool: "tms_get_json_report",
+      params: { subscriptionId: "21983" }
+    },
+    {
+      name: "JSON Report - Team Signals",
+      tool: "tms_get_json_report",
+      params: { subscriptionId: "21988" }
+    },
+    {
       name: "TMP Workflow - Start",
       tool: "tms_workflow_start",
       params: { workflowId: "tmp-workflow", subscriptionId: "21989" }
@@ -321,6 +336,9 @@ export default function TMSApiTestPage() {
         userId: testData.facilitator?.id || "user_123",
         workflowId: "tmp-workflow",
         organizationId: testData.facilitator?.organizationId || orgId
+      },
+      tms_get_json_report: {
+        subscriptionId: subscriptionId
       }
     };
 
@@ -527,6 +545,41 @@ export default function TMSApiTestPage() {
         <p style={{ color: '#6b7280' }}>
           Test mock TMS Global API endpoints with sample data
         </p>
+      </div>
+
+      {/* Workflow Scenarios */}
+      <div style={{
+        backgroundColor: 'white',
+        borderRadius: '12px',
+        padding: '20px',
+        marginBottom: '24px',
+        boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)'
+      }}>
+        <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '16px', color: '#111827' }}>
+          Quick Test Scenarios
+        </h3>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          {workflowScenarios.map((scenario) => (
+            <button
+              key={scenario.name}
+              onClick={() => {
+                handleToolSelect(scenario.tool);
+                setParameters(scenario.params);
+              }}
+              style={{
+                padding: '6px 12px',
+                fontSize: '13px',
+                border: '1px solid #e5e7eb',
+                borderRadius: '6px',
+                backgroundColor: selectedTool === scenario.tool ? '#dbeafe' : 'white',
+                color: selectedTool === scenario.tool ? '#1e40af' : '#374151',
+                cursor: 'pointer'
+              }}
+            >
+              {scenario.name}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Status Cards */}

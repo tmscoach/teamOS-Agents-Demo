@@ -274,6 +274,134 @@ export class ReportStorageService {
   }
 
   /**
+   * Process JSON report and generate vector embeddings
+   */
+  async processJSONReport(reportId: string, jsonData: any): Promise<void> {
+    try {
+      // Update status to processing
+      await this.prisma.userReport.update({
+        where: { id: reportId },
+        data: { processingStatus: 'PROCESSING' }
+      });
+
+      const report = await this.prisma.userReport.findUnique({
+        where: { id: reportId }
+      });
+
+      if (!report) {
+        throw new Error('Report not found');
+      }
+
+      // Extract sections from JSON data
+      const sections = jsonData.data?.sections || jsonData.sections || [];
+      
+      // Import embedding service
+      const { EmbeddingService } = await import('@/src/lib/knowledge-base/ingestion/embeddings');
+      const embeddingService = new EmbeddingService();
+
+      // Process each section
+      for (let index = 0; index < sections.length; index++) {
+        const section = sections[index];
+        
+        // Extract meaningful text for embedding
+        let content = '';
+        
+        // Add vector chunk if present
+        if (section.vectorChunk) {
+          content = section.vectorChunk;
+        } else {
+          // Build content from section data
+          if (section.title) {
+            content += section.title + '. ';
+          }
+          
+          if (section.content?.text) {
+            content += section.content.text + ' ';
+          }
+          
+          if (section.content?.subsections) {
+            for (const subsection of section.content.subsections) {
+              content += subsection.title + ': ' + subsection.content + ' ';
+            }
+          }
+          
+          // Add visualization description if present
+          if (section.visualization?.data?.majorRole) {
+            const role = section.visualization.data.majorRole;
+            content += `Major role: ${role.name}. `;
+          }
+          
+          if (section.visualization?.data?.relatedRoles) {
+            const roles = section.visualization.data.relatedRoles.map((r: any) => r.name).join(', ');
+            content += `Related roles: ${roles}. `;
+          }
+        }
+        
+        // Skip if no content
+        if (!content.trim()) continue;
+        
+        // First create the chunk without embedding
+        const chunk = await this.prisma.reportChunk.create({
+          data: {
+            reportId,
+            sectionId: section.id,
+            sectionTitle: section.title,
+            content,
+            chunkIndex: index,
+            charCount: content.length,
+            metadata: {
+              sectionType: section.type,
+              hasVisualization: !!section.visualization,
+              order: section.order
+            } as Prisma.JsonObject
+          }
+        });
+        
+        // Generate embedding
+        let embedding;
+        try {
+          embedding = await embeddingService.generateEmbedding(content);
+          
+          if (embedding && embedding.length > 0) {
+            // Update with embedding using raw SQL
+            const vectorString = `[${embedding.join(',')}]`;
+            await this.prisma.$executeRawUnsafe(
+              `UPDATE "ReportChunk" SET embedding = $1::vector WHERE id = $2`,
+              vectorString,
+              chunk.id
+            );
+          }
+        } catch (embError) {
+          console.error(`Failed to generate/store embedding for ${section.title}:`, embError);
+          // Continue without embedding
+        }
+      }
+
+      // Update report with JSON data and mark as completed
+      await this.prisma.userReport.update({
+        where: { id: reportId },
+        data: {
+          jsonData: jsonData as Prisma.JsonObject,
+          processingStatus: 'COMPLETED',
+          processedAt: new Date()
+        }
+      });
+
+      console.log(`Successfully processed JSON report ${reportId} with ${sections.length} sections`);
+    } catch (error) {
+      console.error(`Failed to process JSON report ${reportId}:`, error);
+      
+      // Update status to failed
+      await this.prisma.userReport.update({
+        where: { id: reportId },
+        data: { processingStatus: 'FAILED' }
+      }).catch(() => {}); // Ignore update errors
+      
+      throw error;
+    }
+  }
+
+  /**
    * Log report access
    */
   private async logAccess(reportId: string, userId: string, accessType: 'VIEW' | 'SEARCH' | 'SHARE'): Promise<void> {

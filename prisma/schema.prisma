@@ -292,6 +292,7 @@ model UserReport {
   templateId       String
   rawHtml          String
   processedHtml    String?
+  jsonData         Json?
   metadata         Json?
   processingStatus ProcessingStatus  @default(PENDING)
   processedAt      DateTime?
