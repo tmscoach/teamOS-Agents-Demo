@@ -511,6 +511,25 @@ export const TMS_TOOL_REGISTRY: Record<string, TMSToolDefinition> = {
     }
   },
 
+  tms_get_json_report: {
+    name: 'tms_get_json_report',
+    description: 'Retrieve structured JSON format assessment report with sections and vector chunks',
+    category: 'debrief',
+    endpoint: '/api/v2/reports/{subscriptionId}',
+    method: 'GET',
+    requiresAuth: true,
+    parameters: {
+      type: 'object',
+      properties: {
+        subscriptionId: {
+          type: 'string',
+          description: 'The subscription ID for the completed assessment'
+        }
+      },
+      required: ['subscriptionId']
+    }
+  },
+
   // Reporting Tools (1) - Manager-specific reports
   tms_generate_team_signals_360: {
     name: 'tms_generate_team_signals_360',
@@ -576,7 +595,8 @@ export function getToolsForAgent(agentName: string): string[] {
       'tms_get_dashboard_subscriptions',
       'tms_generate_html_report',
       'tms_generate_graph',
-      'tms_debrief_report'
+      'tms_debrief_report',
+      'tms_get_json_report'
     ],
     'ReportingAgent': [
       'tms_generate_html_report',

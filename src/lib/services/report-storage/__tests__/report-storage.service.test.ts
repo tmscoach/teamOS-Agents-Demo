@@ -19,9 +19,12 @@ jest.mock('@/lib/generated/prisma', () => ({
       createMany: jest.fn()
     },
     reportChunk: {
+      create: jest.fn(),
       createMany: jest.fn(),
       findMany: jest.fn()
     },
+    $executeRawUnsafe: jest.fn(),
+    $queryRaw: jest.fn(),
     reportAccessLog: {
       create: jest.fn()
     }
@@ -31,6 +34,13 @@ jest.mock('@/lib/generated/prisma', () => ({
 // Mock the processing and image services
 jest.mock('../report-processing.service');
 jest.mock('../image-download.service');
+
+// Mock embedding service  
+jest.mock('@/src/lib/knowledge-base/ingestion/embeddings', () => ({
+  EmbeddingService: jest.fn().mockImplementation(() => ({
+    generateEmbedding: jest.fn()
+  }))
+}));
 
 describe('ReportStorageService', () => {
   let service: ReportStorageService;
@@ -204,6 +214,176 @@ describe('ReportStorageService', () => {
         orderBy: { createdAt: 'desc' },
         take: 10
       });
+    });
+  });
+
+  describe('processJSONReport', () => {
+    const mockReportId = 'test-report-123';
+    const mockJSONData = {
+      success: true,
+      data: {
+        reportId: 'rpt_tmp_21989',
+        subscriptionId: '21989',
+        workflowType: 'TMP',
+        sections: [
+          {
+            id: 'section-1',
+            type: 'visual',
+            title: 'Team Profile',
+            order: 1,
+            vectorChunk: 'Team profile showing leadership styles',
+            visualization: {
+              type: 'wheel',
+              data: { majorRole: { name: 'Upholder' } }
+            }
+          },
+          {
+            id: 'section-2',
+            type: 'content',
+            title: 'Work Preferences',
+            order: 2,
+            content: {
+              text: 'Analysis of work preferences',
+              subsections: [
+                { title: 'Communication', content: 'Prefers written' }
+              ]
+            }
+          }
+        ]
+      }
+    };
+
+    it('should process JSON report and create chunks', async () => {
+      // Setup mocks
+      mockPrisma.userReport.update
+        .mockResolvedValueOnce({ id: mockReportId, processingStatus: 'PROCESSING' })
+        .mockResolvedValueOnce({ id: mockReportId, processingStatus: 'COMPLETED' });
+      
+      mockPrisma.userReport.findUnique.mockResolvedValue({
+        id: mockReportId,
+        userId: 'user-123',
+        reportType: 'TMP'
+      });
+
+      mockPrisma.reportChunk.create
+        .mockResolvedValueOnce({ id: 'chunk-1', reportId: mockReportId })
+        .mockResolvedValueOnce({ id: 'chunk-2', reportId: mockReportId });
+
+      await service.processJSONReport(mockReportId, mockJSONData);
+
+      // Verify chunks were created
+      expect(mockPrisma.reportChunk.create).toHaveBeenCalledTimes(2);
+      
+      // Verify first chunk
+      expect(mockPrisma.reportChunk.create).toHaveBeenNthCalledWith(1, {
+        data: expect.objectContaining({
+          reportId: mockReportId,
+          sectionId: 'section-1',
+          sectionTitle: 'Team Profile',
+          content: 'Team profile showing leadership styles',
+          chunkIndex: 0
+        })
+      });
+
+      // Verify report was marked as completed
+      expect(mockPrisma.userReport.update).toHaveBeenLastCalledWith({
+        where: { id: mockReportId },
+        data: expect.objectContaining({
+          jsonData: mockJSONData,
+          processingStatus: 'COMPLETED'
+        })
+      });
+    });
+
+    it('should generate embeddings when OpenAI key is available', async () => {
+      // Setup environment
+      const originalEnv = process.env.OPENAI_API_KEY;
+      process.env.OPENAI_API_KEY = 'test-key';
+
+      // Mock embedding service
+      const { EmbeddingService } = require('@/src/lib/knowledge-base/ingestion/embeddings');
+      const mockEmbedding = new Array(1536).fill(0.1);
+      EmbeddingService.mockImplementation(() => ({
+        generateEmbedding: jest.fn().mockResolvedValue(mockEmbedding)
+      }));
+
+      // Setup other mocks
+      mockPrisma.userReport.findUnique.mockResolvedValue({
+        id: mockReportId,
+        userId: 'user-123'
+      });
+
+      mockPrisma.reportChunk.create.mockResolvedValue({
+        id: 'chunk-1',
+        reportId: mockReportId
+      });
+
+      mockPrisma.$executeRawUnsafe.mockResolvedValue(1);
+
+      await service.processJSONReport(mockReportId, mockJSONData);
+
+      // Verify embeddings were stored
+      expect(mockPrisma.$executeRawUnsafe).toHaveBeenCalled();
+      expect(mockPrisma.$executeRawUnsafe).toHaveBeenCalledWith(
+        expect.stringContaining('UPDATE "ReportChunk" SET embedding'),
+        expect.any(String),
+        expect.any(String)
+      );
+
+      // Cleanup
+      process.env.OPENAI_API_KEY = originalEnv;
+    });
+
+    it('should handle errors gracefully', async () => {
+      // Setup mock to throw error
+      mockPrisma.userReport.findUnique.mockRejectedValue(
+        new Error('Database error')
+      );
+
+      // Execute and expect error
+      await expect(
+        service.processJSONReport(mockReportId, mockJSONData)
+      ).rejects.toThrow('Database error');
+
+      // Verify status was updated to FAILED
+      expect(mockPrisma.userReport.update).toHaveBeenLastCalledWith({
+        where: { id: mockReportId },
+        data: { processingStatus: 'FAILED' }
+      });
+    });
+
+    it('should skip sections without content', async () => {
+      const dataWithEmptySection = {
+        ...mockJSONData,
+        data: {
+          ...mockJSONData.data,
+          sections: [
+            {
+              id: 'empty-section',
+              type: 'visual',
+              title: 'Empty Section',
+              order: 1
+              // No vectorChunk or content
+            },
+            ...mockJSONData.data.sections
+          ]
+        }
+      };
+
+      mockPrisma.userReport.findUnique.mockResolvedValue({
+        id: mockReportId,
+        userId: 'user-123'
+      });
+
+      mockPrisma.reportChunk.create.mockResolvedValue({
+        id: 'chunk-1',
+        reportId: mockReportId
+      });
+
+      await service.processJSONReport(mockReportId, dataWithEmptySection);
+
+      // Should only create 2 chunks (skipping the empty one)
+      expect(mockPrisma.reportChunk.create).toHaveBeenCalledTimes(2);
     });
   });
 });
