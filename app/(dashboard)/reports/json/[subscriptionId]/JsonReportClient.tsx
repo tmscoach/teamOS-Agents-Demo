@@ -42,7 +42,14 @@ export function JsonReportClient({ user, report }: JsonReportClientProps) {
         // If we already have jsonData, use it
         if (report.jsonData) {
           console.log('[JsonReportClient] Using jsonData from props')
-          setReportData(report.jsonData)
+          // Check if the data is wrapped in success/data structure
+          const jsonData = report.jsonData as any
+          if (jsonData.success && jsonData.data) {
+            console.log('[JsonReportClient] Unwrapping success/data structure')
+            setReportData(jsonData.data)
+          } else {
+            setReportData(report.jsonData)
+          }
           setLoading(false)
           return
         }

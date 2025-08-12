@@ -1229,8 +1229,56 @@ export default function TMSApiTestPage() {
                         Copy
                       </button>
                     </div>
-                    {/* Special rendering for HTML reports and images */}
-                    {(selectedTool === 'tms_generate_html_report' || selectedTool === 'tms_generate_html_summary') && result.response.status === 200 && typeof result.response.data === 'string' ? (
+                    {/* Special rendering for JSON reports */}
+                    {selectedTool === 'tms_get_json_report' && result.response.status === 200 && result.response.data?.success ? (
+                      <div>
+                        <div style={{ 
+                          marginBottom: '12px',
+                          padding: '12px',
+                          backgroundColor: '#f0f9ff',
+                          borderRadius: '6px',
+                          border: '1px solid #0ea5e9'
+                        }}>
+                          <p style={{ fontSize: '14px', color: '#0369a1', marginBottom: '8px' }}>
+                            JSON Report loaded successfully! Subscription ID: {parameters.subscriptionId}
+                          </p>
+                          <button
+                            onClick={() => window.open(`/reports/json/${parameters.subscriptionId}`, '_blank')}
+                            style={{
+                              padding: '8px 16px',
+                              borderRadius: '6px',
+                              border: 'none',
+                              backgroundColor: '#0ea5e9',
+                              color: 'white',
+                              fontSize: '14px',
+                              fontWeight: '500',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '8px'
+                            }}
+                          >
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                              <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                              <polyline points="15 3 21 3 21 9"></polyline>
+                              <line x1="10" y1="14" x2="21" y2="3"></line>
+                            </svg>
+                            View in Report Viewer
+                          </button>
+                        </div>
+                        <pre style={{
+                          padding: '12px',
+                          backgroundColor: '#1e293b',
+                          borderRadius: '6px',
+                          fontSize: '12px',
+                          color: '#e2e8f0',
+                          overflow: 'auto',
+                          maxHeight: '400px'
+                        }}>
+                          {JSON.stringify(result.response.data, null, 2)}
+                        </pre>
+                      </div>
+                    ) : (selectedTool === 'tms_generate_html_report' || selectedTool === 'tms_generate_html_summary') && result.response.status === 200 && typeof result.response.data === 'string' ? (
                       <div>
                         <div style={{ marginBottom: '12px' }}>
                           <iframe

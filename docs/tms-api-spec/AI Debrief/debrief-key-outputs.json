@@ -1,0 +1,278 @@
+{
+  "conversational_extraction_variables": {
+    "opening_context": {
+      "assessment_motivation": {
+        "type": "string",
+        "description": "Why they decided to take the TMP assessment",
+        "example": "My manager suggested it for our team restructure"
+      },
+      "current_role_tenure": {
+        "type": "string",
+        "description": "How long in current position",
+        "example": "2 years"
+      },
+      "current_challenges": {
+        "type": "array",
+        "description": "What they're currently struggling with at work",
+        "example": ["team communication", "project deadlines", "resource management"]
+      },
+      "initial_expectations": {
+        "type": "string",
+        "description": "What they hoped to learn from the assessment",
+        "example": "Understanding why I clash with certain team members"
+      }
+    },
+    "role_recognition": {
+      "role_resonance_level": {
+        "type": "string",
+        "description": "How well the major role fits their self-perception",
+        "values": ["completely accurate", "mostly accurate", "somewhat accurate", "not sure", "doesn't fit"],
+        "example": "mostly accurate"
+      },
+      "role_evidence_examples": {
+        "type": "array",
+        "description": "Specific examples where they've demonstrated their major role",
+        "example": ["Last week I spent hours perfecting our compliance documentation", "I always double-check everyone's work before submission"]
+      },
+      "role_surprises": {
+        "type": "string",
+        "description": "What surprised them about their profile",
+        "example": "I didn't realize how much I value structure until seeing it scored at 9"
+      }
+    },
+    "work_preferences_reality": {
+      "strongest_preference_example": {
+        "type": "string",
+        "description": "Real situation demonstrating their strongest preference",
+        "example": "I created a 20-page process manual that no one asked for because I felt we needed standards"
+      },
+      "preference_conflicts": {
+        "type": "array",
+        "description": "When their preferences clash with work demands",
+        "example": ["Being asked to brainstorm without an agenda drives me crazy", "Having to present ideas before they're fully formed"]
+      },
+      "coping_mechanisms": {
+        "type": "array",
+        "description": "How they handle working against preferences",
+        "example": ["I schedule 'thinking time' before meetings", "I write everything down first"]
+      }
+    },
+    "team_dynamics": {
+      "best_working_relationships": {
+        "type": "array",
+        "description": "Who they work well with and why",
+        "example": [{"name": "Sarah", "reason": "She's also detail-oriented and appreciates structure"}]
+      },
+      "challenging_relationships": {
+        "type": "array",
+        "description": "Who they struggle to work with and why",
+        "example": [{"name": "Tom", "reason": "He always wants to 'wing it' without planning"}]
+      },
+      "team_role_perception": {
+        "type": "string",
+        "description": "How they think their team sees them",
+        "example": "Probably as the quality police or the one who slows things down with questions"
+      },
+      "collaboration_patterns": {
+        "type": "string",
+        "description": "Their typical collaboration style",
+        "example": "I prefer to work alone first, then share completed drafts for feedback"
+      }
+    },
+    "leadership_experiences": {
+      "leadership_style_description": {
+        "type": "string",
+        "description": "How they describe their leadership/influence approach",
+        "example": "I lead by example and expect others to maintain the same standards"
+      },
+      "leadership_successes": {
+        "type": "array",
+        "description": "When their leadership worked well",
+        "example": ["Successfully implemented new quality control system", "Mentored junior team member to improve attention to detail"]
+      },
+      "leadership_failures": {
+        "type": "array",
+        "description": "When their leadership approach didn't work",
+        "example": ["Team felt I was micromanaging during product launch", "Lost buy-in when I pushed my solution without enough consultation"]
+      },
+      "influence_strategies": {
+        "type": "string",
+        "description": "How they get others on board",
+        "example": "I prepare detailed documentation and evidence to support my recommendations"
+      }
+    },
+    "challenge_acknowledgment": {
+      "recognized_weaknesses": {
+        "type": "array",
+        "description": "Weaknesses they acknowledge",
+        "example": ["I can be too critical", "I sometimes don't share my thinking until it's complete"]
+      },
+      "blind_spot_reactions": {
+        "type": "string",
+        "description": "Response to potential blind spots surfaced",
+        "example": "I hadn't realized that people might feel excluded when I work alone for long periods"
+      },
+      "past_feedback_alignment": {
+        "type": "array",
+        "description": "How profile aligns with previous feedback received",
+        "example": ["My manager has said I need to be more flexible", "360 feedback mentioned I should communicate more during projects"]
+      }
+    },
+    "values_and_meaning": {
+      "core_values": {
+        "type": "array",
+        "description": "Personal values that drive them",
+        "example": ["integrity", "excellence", "fairness", "helping others"]
+      },
+      "meaningful_work_description": {
+        "type": "string",
+        "description": "What makes work meaningful for them",
+        "example": "When I can see that my standards and processes protect the team from errors and rework"
+      },
+      "values_alignment_level": {
+        "type": "integer",
+        "description": "How aligned current role is with values (1-10)",
+        "example": 7
+      },
+      "values_conflicts": {
+        "type": "array",
+        "description": "When work conflicts with their values",
+        "example": ["Being asked to rush something that compromises quality", "Having to support decisions I don't believe in"]
+      }
+    },
+    "communication_preferences": {
+      "ideal_communication_style": {
+        "type": "string",
+        "description": "How they prefer others communicate with them",
+        "example": "Give me time to process, preferably send things in writing first"
+      },
+      "communication_pet_peeves": {
+        "type": "array",
+        "description": "What frustrates them in communication",
+        "example": ["Ambiguous requests", "Last-minute meetings", "Interruptions when I'm focused"]
+      },
+      "team_communication_tips": {
+        "type": "array",
+        "description": "Their top 3 tips for team to communicate with them",
+        "example": ["Schedule meetings in advance", "Put requests in writing", "Give me time to think before expecting answers"]
+      }
+    },
+    "work_distribution_reality": {
+      "current_work_alignment": {
+        "type": "object",
+        "description": "Percentage of time in preference areas vs. non-preference",
+        "example": {"in_preference": 60, "outside_preference": 40}
+      },
+      "energy_draining_tasks": {
+        "type": "array",
+        "description": "Tasks that drain their energy",
+        "example": ["Brainstorming sessions", "Networking events", "Presenting rough ideas"]
+      },
+      "energy_giving_tasks": {
+        "type": "array",
+        "description": "Tasks that energize them",
+        "example": ["Creating systems", "Quality reviews", "Deep analytical work"]
+      },
+      "delegation_opportunities": {
+        "type": "array",
+        "description": "What they could/should delegate",
+        "example": ["Initial research", "Stakeholder socializing", "Creative ideation"]
+      }
+    },
+    "insights_and_surprises": {
+      "biggest_insight": {
+        "type": "string",
+        "description": "Main realization from the conversation",
+        "example": "I need to bring my team along during my thinking process, not just at the end"
+      },
+      "profile_surprises": {
+        "type": "array",
+        "description": "What surprised them about their profile",
+        "example": ["The split wheel pattern explains my internal conflicts", "My beliefs score being higher than analytical"]
+      },
+      "connection_moments": {
+        "type": "array",
+        "description": "When things clicked or made sense",
+        "example": ["This explains why I struggle with John's working style", "Now I understand why quick decisions stress me out"]
+      }
+    },
+    "action_commitments": {
+      "immediate_experiments": {
+        "type": "array",
+        "description": "What they'll try in the next week",
+        "example": ["Share my draft thoughts in the Monday meeting", "Ask for written briefs before meetings"]
+      },
+      "month_goals": {
+        "type": "array",
+        "description": "30-day behavior change goals",
+        "example": ["Hold weekly 'thinking out loud' sessions with my team", "Delegate the creative brief development"]
+      },
+      "support_needed": {
+        "type": "array",
+        "description": "Support required to make changes",
+        "example": ["Manager to help protect focused work time", "Team agreement on communication protocols"]
+      },
+      "success_metrics": {
+        "type": "array",
+        "description": "How they'll measure success",
+        "example": ["Team feedback on inclusion", "Reduced stress levels", "Projects completed without last-minute scrambles"]
+      }
+    },
+    "team_integration": {
+      "team_sharing_plan": {
+        "type": "string",
+        "description": "How they'll share insights with their team",
+        "example": "Present my profile at next team meeting with specific collaboration tips"
+      },
+      "manager_discussion_points": {
+        "type": "array",
+        "description": "What to discuss with their manager",
+        "example": ["Need for structured planning time", "Preference for written briefs", "Value of quality over speed"]
+      },
+      "team_requests": {
+        "type": "array",
+        "description": "Specific requests for team members",
+        "example": ["Advance notice for meetings", "Clear deadlines", "Respect for processing time"]
+      }
+    },
+    "follow_up_preferences": {
+      "additional_questions": {
+        "type": "array",
+        "description": "Questions they still have",
+        "example": ["How do I work better with opposite types?", "Can preferences change over time?"]
+      },
+      "follow_up_timeline": {
+        "type": "string",
+        "description": "When they'd like to reconnect",
+        "example": "In one month after trying changes"
+      },
+      "follow_up_topics": {
+        "type": "array",
+        "description": "What to cover in follow-up",
+        "example": ["Progress on experiments", "Team feedback", "New challenges that emerged"]
+      }
+    },
+    "metadata": {
+      "session_energy_level": {
+        "type": "string",
+        "description": "Their engagement throughout",
+        "values": ["highly engaged", "engaged", "neutral", "reluctant", "defensive"]
+      },
+      "openness_to_feedback": {
+        "type": "string",
+        "description": "How they received challenging insights",
+        "values": ["very open", "mostly open", "somewhat resistant", "defensive"]
+      },
+      "change_readiness": {
+        "type": "string",
+        "description": "Likelihood of implementing changes",
+        "values": ["highly motivated", "motivated", "considering", "skeptical", "resistant"]
+      },
+      "key_breakthrough_moment": {
+        "type": "string",
+        "description": "When the biggest shift in understanding occurred",
+        "example": "When we discussed how my need for complete thoughts impacts team inclusion"
+      }
+    }
+  }
+}

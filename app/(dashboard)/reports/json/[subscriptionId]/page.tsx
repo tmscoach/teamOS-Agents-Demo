@@ -49,7 +49,8 @@ export default async function JsonReportPage({
       organizationId: null
     }
     
-    // Try to find report without user restriction for testing
+    // Development mode: Allow viewing any report for testing
+    // TODO: Remove this fallback in production
     const report = await prisma.userReport.findFirst({
       where: {
         subscriptionId
@@ -107,10 +108,18 @@ export default async function JsonReportPage({
   console.log('[JsonReportPage] Found user:', { id: user.id, email: user.email, orgId: userOrgId })
   console.log('[JsonReportPage] Looking for report with subscriptionId:', subscriptionId)
   
-  // For development, let's just find any report with this subscription ID
+  // TODO: For production, add proper access control
+  // Currently allows any authenticated user to view any report (development mode)
+  // In production, should check:
+  // 1. User owns this report (userId matches)
+  // 2. OR user is team manager/admin for the report owner
+  // 3. OR user is organization admin
   const report = await prisma.userReport.findFirst({
     where: {
-      subscriptionId
+      subscriptionId,
+      // TODO: Add user access control for production
+      // Example: userId: user.id
+      // OR: user.organizationId and appropriate role check
     },
     select: {
       id: true,
@@ -142,6 +151,13 @@ export default async function JsonReportPage({
       </div>
     )
   }
+  
+  console.log('[JsonReportPage] Report found:', {
+    id: report.id,
+    hasJsonData: !!report.jsonData,
+    jsonDataKeys: report.jsonData ? Object.keys(report.jsonData) : [],
+    sectionsCount: (report.jsonData as any)?.sections?.length || 0
+  })
 
   return (
     <JsonReportClient

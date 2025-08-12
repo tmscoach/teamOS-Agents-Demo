@@ -11,8 +11,18 @@ interface ReportSectionProps {
 }
 
 export function ReportSection({ section, isExpanded, onToggle, isActive }: ReportSectionProps) {
-  const hasVisualization = section.visualization && section.type === 'visual'
-  const hasContent = section.content && (section.content.text || section.content.subsections)
+  const hasVisualization = section.visualization || section.visualizations
+  const hasContent = section.content && (
+    section.content.text || 
+    section.content.subsections || 
+    section.content.paragraphs ||
+    section.content.points ||
+    section.content.introduction ||
+    section.content.explanation ||
+    section.content.analysis ||
+    section.content.mainText ||
+    section.content.userData
+  )
 
   return (
     <div 
@@ -45,10 +55,26 @@ export function ReportSection({ section, isExpanded, onToggle, isActive }: Repor
       {/* Section Content */}
       {isExpanded && (
         <div className="px-6 pb-6 border-t border-gray-100">
-          {/* Visualization */}
-          {hasVisualization && (
+          {/* Single Visualization */}
+          {section.visualization && (
             <div className="mt-6">
               <ReportVisualization visualization={section.visualization} />
+            </div>
+          )}
+
+          {/* Multiple Visualizations (for Work Preference Measures, Individual Summary) */}
+          {section.visualizations && Array.isArray(section.visualizations) && (
+            <div className="mt-6 space-y-6">
+              {section.visualizations.map((viz: any, index: number) => (
+                <div key={index}>
+                  {viz.dimension && (
+                    <h4 className="text-sm font-semibold text-gray-700 mb-2">
+                      {viz.dimension}: {viz.description}
+                    </h4>
+                  )}
+                  <ReportVisualization visualization={viz} />
+                </div>
+              ))}
             </div>
           )}
 
@@ -60,6 +86,150 @@ export function ReportSection({ section, isExpanded, onToggle, isActive }: Repor
                   __html: formatContent(section.content.text) 
                 }}
               />
+            </div>
+          )}
+
+          {/* Paragraphs (for Overview, Leadership Strengths, etc.) */}
+          {hasContent && section.content.paragraphs && (
+            <div className="mt-6 prose prose-gray max-w-none space-y-4">
+              {section.content.paragraphs.map((paragraph: string, index: number) => (
+                <p key={index} className="text-gray-700 leading-relaxed">
+                  {paragraph}
+                </p>
+              ))}
+            </div>
+          )}
+
+          {/* Points (for Key Points, Areas for Self-Assessment) */}
+          {hasContent && section.content.points && (
+            <div className="mt-6 space-y-2">
+              <ul className="list-disc list-inside space-y-2 text-gray-700">
+                {section.content.points.map((point: any, index: number) => (
+                  <li key={index}>
+                    {typeof point === 'string' ? point : point.text}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Introduction text */}
+          {hasContent && section.content.introduction && (
+            <div className="mt-6 prose prose-gray max-w-none">
+              <p className="text-gray-700 font-medium">{section.content.introduction}</p>
+            </div>
+          )}
+
+          {/* Main text */}
+          {hasContent && section.content.mainText && (
+            <div className="mt-6 prose prose-gray max-w-none">
+              <p className="text-gray-700">{section.content.mainText}</p>
+            </div>
+          )}
+
+          {/* User data */}
+          {hasContent && section.content.userData && (
+            <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+              <dl className="space-y-2">
+                {Object.entries(section.content.userData).map(([key, value]) => (
+                  <div key={key} className="flex">
+                    <dt className="font-medium text-gray-600 capitalize w-40">
+                      {key.replace(/([A-Z])/g, ' $1').trim()}:
+                    </dt>
+                    <dd className="text-gray-900">{String(value)}</dd>
+                  </div>
+                ))}
+              </dl>
+            </div>
+          )}
+
+          {/* Nine Activities (for Introduction section) */}
+          {hasContent && section.content.nineActivities && (
+            <div className="mt-6">
+              <h3 className="font-semibold text-gray-800 mb-3">
+                {section.content.nineActivities.introduction}
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {section.content.nineActivities.activities?.map((activity: any, index: number) => (
+                  <div key={index} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
+                    <div 
+                      className="w-4 h-4 rounded-full flex-shrink-0 mt-0.5" 
+                      style={{ backgroundColor: activity.color }}
+                    />
+                    <div>
+                      <p className="font-medium text-gray-900">{activity.name}</p>
+                      <p className="text-sm text-gray-600">{activity.description}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Profile Explanation */}
+          {hasContent && section.content.profileExplanation && (
+            <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+              <p className="text-gray-700">{section.content.profileExplanation}</p>
+            </div>
+          )}
+
+          {/* Explanation text */}
+          {hasContent && section.content.explanation && (
+            <div className="mt-4 text-gray-700">
+              <p>{section.content.explanation}</p>
+            </div>
+          )}
+
+          {/* Analysis text */}
+          {hasContent && section.content.analysis && (
+            <div className="mt-4 text-gray-700">
+              <p>{section.content.analysis}</p>
+            </div>
+          )}
+
+          {/* Balance text */}
+          {hasContent && section.content.balance && (
+            <div className="mt-4 text-gray-700">
+              <p>{section.content.balance}</p>
+            </div>
+          )}
+
+          {/* Interpretation Guide */}
+          {hasContent && section.content.interpretationGuide && (
+            <div className="mt-4 p-4 bg-amber-50 rounded-lg">
+              <p className="text-gray-700">{section.content.interpretationGuide}</p>
+            </div>
+          )}
+
+          {/* Conclusion */}
+          {hasContent && section.content.conclusion && (
+            <div className="mt-6 p-4 bg-green-50 rounded-lg">
+              <p className="text-gray-700">{section.content.conclusion}</p>
+            </div>
+          )}
+
+          {/* Guidance (for Linking section) */}
+          {hasContent && section.content.guidance && (
+            <div className="mt-6 text-gray-700">
+              <p>{section.content.guidance}</p>
+            </div>
+          )}
+
+          {/* Pacing Points (for Linking section) */}
+          {hasContent && section.content.pacingPoints && (
+            <div className="mt-6">
+              {section.content.pacingPoints.introduction && (
+                <p className="text-gray-700 font-medium mb-4">
+                  {section.content.pacingPoints.introduction}
+                </p>
+              )}
+              {section.content.pacingPoints.points && (
+                <ul className="list-disc list-inside space-y-2 text-gray-700">
+                  {section.content.pacingPoints.points.map((point: string, index: number) => (
+                    <li key={index}>{point}</li>
+                  ))}
+                </ul>
+              )}
             </div>
           )}
 
@@ -126,15 +296,6 @@ export function ReportSection({ section, isExpanded, onToggle, isActive }: Repor
                   ))}
                 </tbody>
               </table>
-            </div>
-          )}
-
-          {/* Vector Chunk (if present) */}
-          {section.vectorChunk && (
-            <div className="mt-6 p-4 bg-blue-50 rounded-lg">
-              <p className="text-sm text-blue-800">
-                {section.vectorChunk}
-              </p>
             </div>
           )}
 

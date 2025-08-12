@@ -1,0 +1,291 @@
+{
+    "flow_metadata": {
+      "type": "tmp_debrief_v2",
+      "version": "2.0",
+      "total_duration": "30-45 minutes",
+      "approach": "educational_then_exploratory",
+      "core_framework": "energy_management"
+    },
+    "states": [
+      {
+        "name": "practical_context_gathering",
+        "duration": "3-4 minutes",
+        "objectives": [
+          "Understand current role and responsibilities",
+          "Map team structure and reporting lines",
+          "Capture typical day description",
+          "Identify current priorities and challenges"
+        ],
+        "key_questions": [
+          "Could you describe your role and responsibilities?",
+          "Do you have any direct reports?",
+          "What does a typical day look like for you?",
+          "How long have you been in your current role?",
+          "What are your top priorities at the moment?",
+          "If you could change one thing to make your job easier, what would it be?"
+        ],
+        "key_outputs": [
+          "role_description",
+          "team_size",
+          "tenure",
+          "daily_activities",
+          "current_challenges",
+          "desired_changes"
+        ]
+      },
+      {
+        "name": "energy_audit",
+        "duration": "2-3 minutes",
+        "objectives": [
+          "Establish energy framework",
+          "Identify energizers and drainers",
+          "Create emotional baseline"
+        ],
+        "key_questions": [
+          "You come home and someone asks 'how was your day?' - what does an awesome day look like?",
+          "What does a crappy day look like?",
+          "What energizes you at work?",
+          "What drains you at work?"
+        ],
+        "key_outputs": [
+          "peak_day_description",
+          "worst_day_description",
+          "energy_sources",
+          "energy_drains"
+        ]
+      },
+      {
+        "name": "initial_profile_reaction",
+        "duration": "2 minutes",
+        "objectives": [
+          "Gauge familiarity with profile",
+          "Capture initial surprises",
+          "Check previous TMP experience"
+        ],
+        "key_questions": [
+          "What were the key points that resonated with you?",
+          "Was there anything that surprised you?",
+          "How does this compare to your previous TMP (if applicable)?"
+        ],
+        "key_outputs": [
+          "resonance_points",
+          "surprises",
+          "profile_evolution"
+        ]
+      },
+      {
+        "name": "types_of_work_education",
+        "duration": "6-8 minutes",
+        "objectives": [
+          "Explain nine types of work model",
+          "Use project flow analogy",
+          "Connect to their specific project/work",
+          "Identify outlier patterns"
+        ],
+        "teaching_sequence": [
+          "Project flow walkthrough (advising → innovating → promoting → developing → organizing/producing → inspecting → maintaining)",
+          "Linking as coordination skill",
+          "Their specific distribution analysis",
+          "Outlier identification and percentile context"
+        ],
+        "personalization": {
+          "connect_to_current_project": true,
+          "identify_statistical_uniqueness": true,
+          "energy_bar_metaphor": true
+        },
+        "key_outputs": [
+          "work_preference_understanding",
+          "outlier_recognition",
+          "preference_percentage_awareness"
+        ]
+      },
+      {
+        "name": "rido_deep_dive",
+        "duration": "8-10 minutes",
+        "objectives": [
+          "Explain each RIDO scale with workplace examples",
+          "Show raw vs net scores",
+          "Identify flex capacity (white bars)",
+          "Connect to team dynamics"
+        ],
+        "scale_sequence": [
+          {
+            "scale": "relationships",
+            "focus": "Energy from people vs solitude",
+            "workplace_examples": true,
+            "team_comparison": true
+          },
+          {
+            "scale": "information",
+            "focus": "Tactical vs strategic",
+            "workplace_examples": true,
+            "delegation_opportunities": true
+          },
+          {
+            "scale": "decisions",
+            "focus": "Objective vs people-impact",
+            "workplace_examples": true,
+            "blind_spot_identification": true
+          },
+          {
+            "scale": "organization",
+            "focus": "Deadlines vs quality",
+            "workplace_examples": true,
+            "team_conflict_potential": true
+          }
+        ],
+        "key_outputs": [
+          "scale_understanding",
+          "flex_capacity_awareness",
+          "team_complementarity_insights"
+        ]
+      },
+      {
+        "name": "team_role_positioning",
+        "duration": "3-4 minutes",
+        "objectives": [
+          "Explain major role placement",
+          "Clarify inner/outer wheel distinction",
+          "Connect RIDO to role",
+          "Explain related roles"
+        ],
+        "key_concepts": [
+          "How RIDO creates role",
+          "Inner vs outer wheel meaning",
+          "Flex potential to other roles",
+          "Team complementarity"
+        ],
+        "key_outputs": [
+          "role_understanding",
+          "flexibility_awareness",
+          "team_fit_insights"
+        ]
+      },
+      {
+        "name": "practical_application_planning",
+        "duration": "4-5 minutes",
+        "objectives": [
+          "Connect insights to current challenges",
+          "Introduce diagnostic tools",
+          "Create action plan",
+          "Prepare for manager conversation"
+        ],
+        "tools_introduction": [
+          {
+            "tool": "Job Match",
+            "purpose": "Compare role expectations to preferences",
+            "application": "Manager conversation about job crafting"
+          },
+          {
+            "tool": "Pacing Diagnostic",
+            "purpose": "Improve specific relationship",
+            "application": "Better communication with chosen colleague"
+          }
+        ],
+        "key_outputs": [
+          "tool_assignments",
+          "manager_talking_points",
+          "communication_improvements"
+        ]
+      },
+      {
+        "name": "energy_management_strategies",
+        "duration": "3-4 minutes",
+        "objectives": [
+          "Apply 2/3 rule to current role",
+          "Identify delegation opportunities",
+          "Create sustainability plan"
+        ],
+        "key_questions": [
+          "Looking at your preference distribution, how much of your current work aligns?",
+          "Who in your team might have complementary preferences?",
+          "What could you delegate or trade?"
+        ],
+        "key_outputs": [
+          "current_alignment_percentage",
+          "delegation_targets",
+          "sustainability_plan"
+        ]
+      },
+      {
+        "name": "next_steps_homework",
+        "duration": "2-3 minutes",
+        "objectives": [
+          "Assign specific sections to review",
+          "Set up diagnostic tool usage",
+          "Plan manager conversation",
+          "Schedule follow-up if needed"
+        ],
+        "assignments": [
+          "Complete Job Match diagnostic",
+          "Complete Pacing diagnostic for one relationship",
+          "Review specific report sections based on challenges",
+          "Highlight communication preferences in Linking section",
+          "Prepare job crafting conversation"
+        ],
+        "key_outputs": [
+          "homework_list",
+          "timeline_commitments",
+          "follow_up_plan"
+        ]
+      }
+    ],
+    "dynamic_adaptations": {
+      "outlier_detection": {
+        "triggers": [
+          "single_preference_over_40",
+          "all_scales_over_20",
+          "extreme_net_scores"
+        ],
+        "responses": [
+          "percentile_contextualization",
+          "uniqueness_acknowledgment",
+          "special_considerations_discussion"
+        ]
+      },
+      "energy_crisis_detection": {
+        "triggers": [
+          "working_outside_preference_over_50",
+          "burnout_risk_indicators",
+          "role_misalignment_severe"
+        ],
+        "responses": [
+          "immediate_job_crafting_focus",
+          "urgent_delegation_planning",
+          "manager_conversation_priority"
+        ]
+      }
+    },
+    "conversational_techniques": {
+      "education_methods": [
+        "visual_reference_constant",
+        "analogies_workplace_specific",
+        "project_based_examples",
+        "percentile_comparisons"
+      ],
+      "engagement_maintaining": [
+        "personal_example_sharing",
+        "team_member_comparisons",
+        "immediate_relevance_connections",
+        "curiosity_validation"
+      ],
+      "resistance_handling": [
+        "normalize_preferences",
+        "emphasize_energy_not_ability",
+        "offer_skip_options",
+        "adjust_depth_based_on_engagement"
+      ]
+    },
+    "key_improvements_from_real_debrief": [
+      "More educational than exploratory initially",
+      "Energy management as central theme throughout",
+      "Concrete workplace examples over abstract concepts",
+      "Visual/page references constant",
+      "Statistical context for outliers",
+      "Practical tools introduction mandatory",
+      "Less values/emotional exploration",
+      "More team complementarity focus",
+      "Job crafting as primary outcome",
+      "Homework assignments essential"
+    ]
+  }

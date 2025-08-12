@@ -470,8 +470,12 @@ Then be ready to help them with the assessment.`;
     
     // Special handling for DebriefAgent
     if (context.currentAgent === 'DebriefAgent') {
-      // First message - inject subscription check instruction
-      if (conversationMessages.length === 0 || userMessageContent === '[User joined the conversation]') {
+      // Skip subscription check if we're in debrief mode (launched from report viewer)
+      const isDebriefMode = context.metadata?.isDebriefMode === true;
+      const hasReportContext = context.metadata?.subscriptionId && context.metadata?.reportId;
+      
+      // First message - inject subscription check instruction ONLY if not in debrief mode
+      if (!isDebriefMode && !hasReportContext && (conversationMessages.length === 0 || userMessageContent === '[User joined the conversation]')) {
         console.log(`[${context.currentAgent}] First message detected - injecting subscription check instruction`);
         userMessageContent = `The user has just joined the conversation. Please check what completed assessments they have available for debrief.
 
@@ -482,6 +486,13 @@ If completed reports are available, proactively offer: "I see you have completed
 If no completed reports available, inform user: "I don't see any completed assessments ready for debrief. Would you like me to check your assessment status?"
 
 User message: ${userMessageContent}`;
+      } else if (isDebriefMode && hasReportContext) {
+        console.log(`[${context.currentAgent}] Debrief mode detected with report context - using direct question`);
+        console.log(`[${context.currentAgent}] Report context:`, {
+          subscriptionId: context.metadata.subscriptionId,
+          reportId: context.metadata.reportId,
+          assessmentType: context.metadata.assessmentType
+        });
       }
       // Check if user is confirming after we've offered a debrief
       else if (context.messageHistory?.length > 0) {

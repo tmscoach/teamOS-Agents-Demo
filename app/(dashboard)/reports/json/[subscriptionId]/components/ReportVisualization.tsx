@@ -4,6 +4,7 @@ import { TMPWheel } from './visualizations/TMPWheel'
 import { QO2Model } from './visualizations/QO2Model'
 import { BarChart } from './visualizations/BarChart'
 import { LineChart } from './visualizations/LineChart'
+import { TMPVisualization } from './visualizations/TMPVisualization'
 
 interface ReportVisualizationProps {
   visualization: any
@@ -14,18 +15,42 @@ export function ReportVisualization({ visualization }: ReportVisualizationProps)
 
   const { type, params, data } = visualization
 
+  // If the visualization has a base64 image, display it directly
+  if (data?.image?.base64) {
+    return (
+      <div className="flex justify-center items-center p-4 bg-white rounded-lg">
+        <img 
+          src={`data:${data.image.format || 'image/png'};base64,${data.image.base64}`}
+          alt={type}
+          className="max-w-full h-auto"
+          style={{ 
+            maxHeight: data.image.height || 400,
+            maxWidth: data.image.width || 400 
+          }}
+        />
+      </div>
+    )
+  }
+
   // Route to appropriate visualization component based on type
   switch (type) {
     case 'CreateTMPQWheel':
-      return <TMPWheel params={params} data={data} />
+    case 'CreateTMPQIntroWheel':
+    case 'CreateTMPQRido':
+    case 'CreateTMPQRidoSummary':
+    case 'CreateTMPQPreferenceWheel':
+      // Use our custom TMP visualization component
+      return <TMPVisualization type={type} params={params} data={data} />
     
     case 'CreateQO2Model':
       return <QO2Model params={params} data={data} />
     
     case 'BarChart':
+    case 'bar':
       return <BarChart data={data} />
     
     case 'LineChart':
+    case 'line':
       return <LineChart data={data} />
     
     default:
