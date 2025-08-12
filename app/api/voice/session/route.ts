@@ -9,9 +9,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get workflow state from request body
+    // Get workflow state or report context from request body
     const body = await request.json();
-    const { workflowState } = body;
+    const { workflowState, reportContext } = body;
 
     // Check if we have an API key
     const apiKey = process.env.OPENAI_API_KEY;
@@ -24,7 +24,16 @@ export async function POST(request: NextRequest) {
     }
     
     console.log('Creating ephemeral session with API key:', apiKey.substring(0, 10) + '...');
-    console.log('Workflow state questions:', workflowState?.questions?.length || 0);
+    if (workflowState) {
+      console.log('Workflow state questions:', workflowState?.questions?.length || 0);
+    }
+    if (reportContext) {
+      console.log('Report context:', {
+        reportId: reportContext.reportId,
+        reportType: reportContext.reportType,
+        subscriptionId: reportContext.subscriptionId
+      });
+    }
     
     // Create ephemeral session token with OpenAI
     const response = await fetch('https://api.openai.com/v1/realtime/sessions', {
@@ -37,7 +46,9 @@ export async function POST(request: NextRequest) {
         model: 'gpt-4o-realtime-preview-2024-12-17',
         modalities: ['audio', 'text'],  // Audio first for voice-first experience
         voice: 'alloy',
-        instructions: 'You are OSmos, the Team Assessment Assistant. You will receive detailed instructions when the session starts.',
+        instructions: reportContext 
+          ? `You are OSmos, the Team Assessment Report Debrief Assistant. You will receive detailed instructions when the session starts about the user's ${reportContext.reportType || 'assessment'} report.`
+          : 'You are OSmos, the Team Assessment Assistant. You will receive detailed instructions when the session starts.',
         turn_detection: {
           type: 'server_vad',
           threshold: 0.5,

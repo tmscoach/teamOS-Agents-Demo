@@ -16,6 +16,7 @@ export class RealtimeConnectionManager {
   private hasPlayedAudio = false; // Track if we've played any audio yet
   private pcm16Buffer = new Uint8Array(0); // Buffer for incomplete PCM16 samples
   private workflowState: any = null;
+  private reportContext: any = null; // For report debrief mode
   private onAnswerUpdate?: (questionId: number, value: string) => void;
   private onNavigateNext?: () => void;
   private eventHandlersSetup = false;
@@ -69,6 +70,15 @@ export class RealtimeConnectionManager {
       // Update the session with new page info
       this.updateSessionForNewPage();
     }
+  }
+
+  setReportContext(context: any) {
+    this.reportContext = context;
+    console.log('[Voice] Report context set:', {
+      reportId: context?.reportId,
+      reportType: context?.reportType,
+      subscriptionId: context?.subscriptionId
+    });
   }
 
   setAnswerUpdateCallback(callback: (questionId: number, value: string) => void) {
@@ -126,6 +136,7 @@ export class RealtimeConnectionManager {
         },
         body: JSON.stringify({
           workflowState: this.workflowState, // Pass workflow state to server
+          reportContext: this.reportContext, // Pass report context if available
         }),
       });
       

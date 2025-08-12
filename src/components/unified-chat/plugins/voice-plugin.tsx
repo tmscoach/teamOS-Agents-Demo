@@ -48,10 +48,13 @@ const VoiceBanner = () => {
     toast.info('Voice features require microphone access');
   };
   
-  // Only show for AssessmentAgent with an active assessment
-  if (context.agent !== 'AssessmentAgent' || 
-      !context.metadata?.selectedAssessment || 
-      hasShownVoiceEntry) {
+  // Show for AssessmentAgent with active assessment OR DebriefAgent with report
+  const showVoiceEntry = (
+    (context.agent === 'AssessmentAgent' && context.metadata?.selectedAssessment) ||
+    (context.agent === 'DebriefAgent' && context.metadata?.reportId)
+  ) && !hasShownVoiceEntry;
+  
+  if (!showVoiceEntry) {
     return null;
   }
   
@@ -80,9 +83,11 @@ const VoiceInputToggle = () => {
   const [isTogglingVoice, setIsTogglingVoice] = useState(false);
   
   // Prefetch voice session for faster startup
-  const { sessionToken: prefetchedSessionToken } = useVoiceSessionPrefetch(
-    context.agent === 'AssessmentAgent' && !!context.metadata?.selectedAssessment
+  const shouldPrefetch = (
+    (context.agent === 'AssessmentAgent' && !!context.metadata?.selectedAssessment) ||
+    (context.agent === 'DebriefAgent' && !!context.metadata?.reportId)
   );
+  const { sessionToken: prefetchedSessionToken } = useVoiceSessionPrefetch(shouldPrefetch);
   
   // Create a ref to track if we should auto-start voice
   const shouldAutoStartVoice = useRef(false);
@@ -119,6 +124,7 @@ const VoiceInputToggle = () => {
         window.dispatchEvent(event);
       }
     }
+    // For debrief agent, no specific command handling needed - it's conversational
   }, [context.agent]);
   
   // Initialize voice navigation hook
@@ -130,6 +136,7 @@ const VoiceInputToggle = () => {
     startVoice,
     stopVoice,
     setWorkflowState,
+    setReportContext,
     setAnswerUpdateCallback,
     setNavigateNextCallback
   } = useVoiceNavigation({
@@ -146,7 +153,7 @@ const VoiceInputToggle = () => {
     transcriptLength: transcript?.length || 0
   });
   
-  // Set up voice callbacks for assessment
+  // Set up voice callbacks for assessment or report context
   useEffect(() => {
     if (context.agent === 'AssessmentAgent' && context.metadata?.workflowState) {
       setWorkflowState(context.metadata.workflowState);
@@ -171,8 +178,17 @@ const VoiceInputToggle = () => {
         });
         window.dispatchEvent(event);
       });
+    } else if (context.agent === 'DebriefAgent' && context.metadata?.reportId) {
+      // For debrief, we pass report context instead of workflow state
+      setWorkflowState(null); // Clear any existing workflow state
+      setReportContext({
+        reportId: context.metadata.reportId,
+        reportType: context.metadata.assessmentType || context.metadata.reportType,
+        subscriptionId: context.metadata.subscriptionId,
+        userId: context.metadata.userId,
+      });
     }
-  }, [context.agent, context.metadata?.workflowState, setWorkflowState, setAnswerUpdateCallback, setNavigateNextCallback]);
+  }, [context.agent, context.metadata?.workflowState, context.metadata?.reportId, context.metadata?.assessmentType, context.metadata?.reportType, context.metadata?.subscriptionId, context.metadata?.userId, setWorkflowState, setReportContext, setAnswerUpdateCallback, setNavigateNextCallback]);
   
   const handleVoiceToggle = async () => {
     if (isTogglingVoice) {
@@ -203,7 +219,7 @@ const VoiceInputToggle = () => {
           return;
         }
         
-        // Make sure workflow state is set before starting voice
+        // Make sure workflow state or report context is set before starting voice
         if (context.agent === 'AssessmentAgent' && context.metadata?.workflowState) {
           console.log('[VoiceToggle] Setting workflow state before starting voice:', {
             questions: context.metadata.workflowState.questions?.length || 0,
@@ -211,6 +227,21 @@ const VoiceInputToggle = () => {
             assessmentType: context.metadata.assessmentType
           });
           setWorkflowState(context.metadata.workflowState);
+          
+          // Small delay to ensure state is set
+          await new Promise(resolve => setTimeout(resolve, 100));
+        } else if (context.agent === 'DebriefAgent' && context.metadata?.reportId) {
+          console.log('[VoiceToggle] Setting report context before starting voice:', {
+            reportId: context.metadata.reportId,
+            reportType: context.metadata.assessmentType || context.metadata.reportType,
+            subscriptionId: context.metadata.subscriptionId
+          });
+          setReportContext({
+            reportId: context.metadata.reportId,
+            reportType: context.metadata.assessmentType || context.metadata.reportType,
+            subscriptionId: context.metadata.subscriptionId,
+            userId: context.metadata.userId,
+          });
           
           // Small delay to ensure state is set
           await new Promise(resolve => setTimeout(resolve, 100));
