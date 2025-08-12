@@ -63,6 +63,7 @@ const VoiceBanner = () => {
       <VoiceModeEntry
         onStartVoice={handleVoiceEntryStart}
         onDismiss={handleVoiceEntryDismiss}
+        mode={context.agent === 'DebriefAgent' ? 'debrief' : 'assessment'}
       />
       
       <VoicePermissionDialog

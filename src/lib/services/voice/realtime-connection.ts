@@ -255,26 +255,57 @@ export class RealtimeConnectionManager {
       
       console.log('Question mapping:', questionMapping);
 
-      // Configure session with full assessment context
-      console.log('[Voice] Sending session update...');
-      await this.rt.send({
-        type: 'session.update',
-        session: {
-          modalities: ['audio', 'text'],  // Audio first for voice-first experience
-          voice: 'alloy',
-          input_audio_format: 'pcm16',
-          output_audio_format: 'pcm16',
-          input_audio_transcription: {
-            model: 'whisper-1',
-          },
-          turn_detection: {
-            type: 'server_vad',
-            threshold: 0.5,
-            prefix_padding_ms: 300,
-            silence_duration_ms: 200,
-            create_response: true,  // Enable automatic responses when user stops speaking
-          },
-          instructions: `You are OSmos, the Team Assessment Assistant conducting a voice-based questionnaire.
+      // Build instructions and tools based on context
+      let sessionInstructions: string;
+      let sessionTools: any[] = [];
+      
+      if (this.reportContext) {
+        // Report debrief mode - conversational Q&A about the completed report
+        console.log('[Voice] Configuring session for report debrief:', this.reportContext);
+        
+        sessionInstructions = `You are OSmos, an expert Team Management Profile (TMP) practitioner and coach for voice conversations.
+
+You're helping ${this.reportContext.userName || 'the user'} understand their completed ${this.reportContext.reportType || 'TMP'} assessment report.
+
+Key Context:
+- Report ID: ${this.reportContext.reportId}
+- Subscription ID: ${this.reportContext.subscriptionId}
+- Report Type: ${this.reportContext.reportType || 'TMP'}
+- This is a DEBRIEF conversation about their COMPLETED report
+
+Your Role:
+1. Answer questions about their assessment results naturally and conversationally
+2. Explain their major role and what it means for their work style
+3. Discuss how their related roles complement their major role
+4. Clarify specific scores, percentages, and report sections when asked
+5. Provide practical workplace applications and insights
+6. Explain TMS concepts and terminology clearly
+
+Voice Conversation Guidelines:
+- Be warm, conversational, and supportive
+- Keep responses concise for voice (2-3 sentences ideal, max 4-5 for complex topics)
+- Use natural, spoken language - avoid jargon
+- Summarize data points rather than listing them all
+- Ask clarifying questions if something is unclear
+- Reference specific pages and percentages from their report when relevant
+- Connect insights to their actual workplace situations
+
+Remember: You have access to their full report data including:
+- Major and related roles
+- Work preference scores
+- Leadership strengths
+- Decision-making patterns
+- Team dynamics insights
+- All report sections and detailed analysis
+
+Focus on having a natural, helpful conversation about their results. DO NOT mention question numbers, navigation commands, or assessment completion - this is about understanding their completed report.`;
+        
+        // No tools needed for report debrief - it's pure conversation
+        sessionTools = [];
+        
+      } else {
+        // Assessment mode - keep existing questionnaire flow
+        sessionInstructions = `You are OSmos, the Team Assessment Assistant conducting a voice-based questionnaire.
 
 CRITICAL: You are conducting a TMP (Team Management Profile) assessment with these exact questions:
 ${questionText}
@@ -361,8 +392,10 @@ IMPORTANT:
 - For "answer all" or "X for all questions", collect all question IDs from the current page and use answer_multiple_questions
 - The questions on this page have these IDs: ${questions.map((q: any) => q.QuestionID || q.questionID).join(', ')}
 - Required questions (Type 18 - seesaw questions) that must be answered: ${questions.filter((q: any) => q.Type === 18).map((q: any) => `Question ${q.Number} (ID: ${q.QuestionID || q.questionID})`).join(', ')}
-- When all required questions have been answered, ask if the user wants to continue to the next page`,
-          tools: [
+- When all required questions have been answered, ask if the user wants to continue to the next page`;
+        
+        // Assessment-specific tools
+        sessionTools = [
             {
               type: 'function',
               name: 'answer_question',
@@ -405,7 +438,30 @@ IMPORTANT:
               description: 'Go back to the previous question when user wants to change their answer',
               parameters: { type: 'object', properties: {} }
             }
-          ]
+          ];
+      }
+      
+      // Configure session with the appropriate instructions and tools
+      console.log('[Voice] Sending session update...');
+      await this.rt.send({
+        type: 'session.update',
+        session: {
+          modalities: ['audio', 'text'],  // Audio first for voice-first experience
+          voice: 'alloy',
+          input_audio_format: 'pcm16',
+          output_audio_format: 'pcm16',
+          input_audio_transcription: {
+            model: 'whisper-1',
+          },
+          turn_detection: {
+            type: 'server_vad',
+            threshold: 0.5,
+            prefix_padding_ms: 300,
+            silence_duration_ms: 200,
+            create_response: true,  // Enable automatic responses when user stops speaking
+          },
+          instructions: sessionInstructions,
+          tools: sessionTools
         },
       });
 
