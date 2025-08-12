@@ -60,7 +60,49 @@ export function createGetReportContextTool(): AgentTool {
           };
         }
 
-        // Extract key information from metadata
+        // Check if we have JSON data first
+        if (report.jsonData) {
+          const jsonData = report.jsonData as any;
+          let summary = `# ${jsonData.data?.workflowType || report.reportType} Assessment Report\n\n`;
+          
+          // Extract from JSON structure
+          if (jsonData.data?.metadata) {
+            const meta = jsonData.data.metadata;
+            summary += `## Report Information\n`;
+            summary += `- **User**: ${meta.userName}\n`;
+            summary += `- **Organization**: ${meta.organizationName}\n`;
+            summary += `- **Completed**: ${jsonData.data.completedAt}\n\n`;
+          }
+          
+          // Process sections
+          if (jsonData.data?.sections) {
+            summary += `## Report Sections\n`;
+            for (const section of jsonData.data.sections) {
+              summary += `\n### ${section.title}\n`;
+              
+              if (section.visualization?.data?.majorRole) {
+                summary += `**Major Role**: ${section.visualization.data.majorRole.name}\n`;
+              }
+              
+              if (section.content?.text) {
+                summary += `${section.content.text}\n`;
+              }
+              
+              if (section.content?.subsections) {
+                for (const sub of section.content.subsections) {
+                  summary += `\n**${sub.title}**\n${sub.content}\n`;
+                }
+              }
+            }
+          }
+          
+          return {
+            success: true,
+            output: summary
+          };
+        }
+
+        // Fallback to metadata extraction for HTML reports
         const metadata = report.metadata as any;
         let summary = `# ${report.reportType} Assessment Report\n\n`;
         

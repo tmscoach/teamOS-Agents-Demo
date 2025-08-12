@@ -48,7 +48,7 @@ async function testJSONReportProcessing() {
         userId: testUser.id,
         organizationId: 'test-org',
         reportType: 'TMP',
-        subscriptionId: '21989-test-' + Date.now(),
+        subscriptionId: '21989',
         templateId: '6',
         rawHtml: '<html><body>Test Report</body></html>',
         processingStatus: 'PENDING'
@@ -157,14 +157,9 @@ async function testJSONReportProcessing() {
     
     console.log('\n✅ All Phase 1 tests completed successfully!');
     
-    // Optional: Comment out cleanup to inspect data in Supabase
-    const cleanup = await prisma.userReport.delete({
-      where: { id: testReport.id }
-    });
-    console.log('\n🧹 Test data cleaned up');
-    
-    // Alternative: Keep data for inspection
-    // console.log('\n💾 Test data kept for inspection. Report ID:', testReport.id);
+    // Keep data for testing the UI
+    console.log('\n💾 Test data kept for inspection. Report ID:', testReport.id);
+    console.log('📌 View report at: http://localhost:3000/reports/json/21989');
     
   } catch (error) {
     console.error('\n❌ Test failed:', error);

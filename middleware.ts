@@ -8,6 +8,7 @@ const isProtectedRoute = createRouteMatcher([
   '/api/protected(.*)',
   '/onboarding(.*)',
   '/chat(.*)',
+  '/reports(.*)',
 ])
 
 const isAdminRoute = createRouteMatcher([
@@ -56,7 +57,7 @@ export default clerkMiddleware(async (auth, req) => {
     const devAuthCookie = req.cookies.get('__dev_auth')
     if (devAuthCookie) {
       console.log('[Middleware] Dev auth cookie found:', devAuthCookie.value.substring(0, 50) + '...')
-      // Dev auth is present, allow access
+      // Dev auth is present, allow access to all routes including admin
       return NextResponse.next()
     }
   }
