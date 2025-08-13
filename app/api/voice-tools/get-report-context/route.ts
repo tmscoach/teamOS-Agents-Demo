@@ -15,8 +15,21 @@ export async function POST(request: NextRequest) {
     const { subscriptionId, userId, context } = body;
 
     // Use subscription ID from params or context
-    const finalSubscriptionId = subscriptionId || context?.subscriptionId;
-    const finalUserId = userId || context?.userId;
+    // Ignore placeholder values like "user_subscription_id" or "user_id"
+    const isPlaceholder = (value: string) => 
+      value === 'user_subscription_id' || 
+      value === 'user_id' || 
+      value === 'subscription_id' ||
+      value === 'subscriptionId' ||
+      value === 'user' ||  // Add 'user' as a placeholder
+      value === 'userId';
+    
+    const finalSubscriptionId = (subscriptionId && !isPlaceholder(subscriptionId)) 
+      ? subscriptionId 
+      : context?.subscriptionId;
+    const finalUserId = (userId && !isPlaceholder(userId)) 
+      ? userId 
+      : context?.userId;
     
     if (!finalSubscriptionId) {
       return NextResponse.json(
@@ -26,37 +39,86 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('[Voice Tool: get-report-context] Getting report context:', {
-      subscriptionId: finalSubscriptionId,
-      userId: finalUserId
+      receivedSubscriptionId: subscriptionId,
+      receivedUserId: userId,
+      contextSubscriptionId: context?.subscriptionId,
+      contextUserId: context?.userId,
+      finalSubscriptionId,
+      finalUserId,
+      isUserIdPlaceholder: userId ? isPlaceholder(userId) : 'not provided'
     });
 
     try {
       // Fetch the report from the database
-      const report = await prisma.userReport.findFirst({
-        where: {
-          subscriptionId: finalSubscriptionId,
-          ...(finalUserId ? { userId: finalUserId } : {})
-        },
-        include: {
-          chunks: {
-            orderBy: {
-              sequenceNumber: 'asc'
-            },
-            take: 10 // Get first 10 chunks for summary
+      // First try to get by exact report ID if provided in context
+      let report;
+      if (context?.reportId) {
+        console.log('[Voice Tool: get-report-context] Searching by reportId:', context.reportId);
+        report = await prisma.userReport.findUnique({
+          where: {
+            id: context.reportId
+          },
+          include: {
+            ReportChunk: {
+              orderBy: {
+                chunkIndex: 'asc'
+              },
+              take: 10 // Get first 10 chunks for summary
+            }
           }
-        }
-      });
+        });
+      }
+      
+      // If not found by ID or no ID provided, search by subscription
+      if (!report) {
+        console.log('[Voice Tool: get-report-context] Searching by subscriptionId (no userId filter):', finalSubscriptionId);
+        report = await prisma.userReport.findFirst({
+          where: {
+            subscriptionId: finalSubscriptionId
+            // Removed userId filter to match any report with this subscriptionId
+          },
+          orderBy: {
+            createdAt: 'desc' // Get the most recent report
+          },
+          include: {
+            ReportChunk: {
+              orderBy: {
+                chunkIndex: 'asc'
+              },
+              take: 10 // Get first 10 chunks for summary
+            }
+          }
+        });
+      }
 
       if (!report) {
-        console.log('[Voice Tool: get-report-context] No report found');
+        console.log('[Voice Tool: get-report-context] No report found with query:', {
+          subscriptionId: finalSubscriptionId,
+          userId: finalUserId
+        });
         return NextResponse.json({
           success: false,
           error: 'Report not found'
         });
       }
+      
+      console.log('[Voice Tool: get-report-context] Report found:', {
+        reportId: report.id,
+        subscriptionId: report.subscriptionId,
+        userId: report.userId,
+        chunkCount: report.ReportChunk?.length || 0,
+        hasJsonData: !!report.jsonData,
+        jsonDataKeys: report.jsonData ? Object.keys(report.jsonData).slice(0, 10) : []
+      });
 
       // Parse the JSON report data
-      const reportData = report.reportData as any;
+      let reportData = report.jsonData as any;
+      
+      // Check if jsonData is wrapped in success/data structure
+      if (reportData?.success && reportData?.data) {
+        console.log('[Voice Tool: get-report-context] Unwrapping success/data structure');
+        reportData = reportData.data;
+      }
       
       // Build a summary from the report
       let summary = `# Assessment Report\n\n`;
@@ -67,13 +129,31 @@ export async function POST(request: NextRequest) {
         summary += `- Report Type: ${reportData.workflowType || 'TMP'}\n`;
         summary += `- Completed: ${report.createdAt.toISOString()}\n\n`;
         
+        // Look for profile/role information in various possible locations
+        const profile = reportData.profile || reportData.metadata?.profile;
+        const majorRole = profile?.majorRole || 
+                         reportData.majorRole || 
+                         reportData.sections?.find((s: any) => s.visualization?.data?.majorRole)?.visualization?.data?.majorRole;
+        
+        console.log('[Voice Tool: get-report-context] Major role search:', {
+          profileMajorRole: profile?.majorRole,
+          reportDataMajorRole: reportData.majorRole,
+          sectionsWithVisualization: reportData.sections?.filter((s: any) => s.visualization?.data?.majorRole).map((s: any) => ({
+            title: s.title,
+            majorRole: s.visualization?.data?.majorRole
+          })),
+          foundMajorRole: majorRole
+        });
+        
         // Add profile information if available
-        if (reportData.profile) {
+        if (profile || majorRole) {
           summary += `## Profile\n`;
-          summary += `- Name: ${reportData.profile.name || 'N/A'}\n`;
-          summary += `- Major Role: ${reportData.profile.majorRole || 'N/A'}\n`;
-          if (reportData.profile.relatedRoles?.length > 0) {
-            summary += `- Related Roles: ${reportData.profile.relatedRoles.join(', ')}\n`;
+          if (profile?.name) summary += `- Name: ${profile.name}\n`;
+          if (majorRole) {
+            summary += `- Major Role: ${typeof majorRole === 'object' ? majorRole.name : majorRole}\n`;
+          }
+          if (profile?.relatedRoles?.length > 0) {
+            summary += `- Related Roles: ${profile.relatedRoles.join(', ')}\n`;
           }
           summary += '\n';
         }
@@ -97,9 +177,9 @@ export async function POST(request: NextRequest) {
       }
       
       // Add chunk content if available
-      if (report.chunks.length > 0) {
+      if (report.ReportChunk && report.ReportChunk.length > 0) {
         summary += `\n## Key Content\n`;
-        report.chunks.forEach(chunk => {
+        report.ReportChunk.forEach((chunk: any) => {
           if (chunk.sectionTitle) {
             summary += `\n### ${chunk.sectionTitle}\n`;
           }

@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
         },
         take: limit,
         orderBy: {
-          sequenceNumber: 'asc'
+          chunkIndex: 'asc'
         },
         select: {
           content: true,

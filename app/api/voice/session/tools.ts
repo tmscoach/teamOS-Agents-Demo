@@ -63,7 +63,7 @@ export function getDebriefTools() {
           },
           subscriptionId: {
             type: 'string',
-            description: 'The subscription ID of the report'
+            description: 'The subscription ID of the report - use the exact value from the Key Context section in your instructions, NOT placeholder values'
           },
           limit: {
             type: 'number',
@@ -76,17 +76,17 @@ export function getDebriefTools() {
     {
       type: 'function',
       name: 'get_report_context',
-      description: 'Get the full context and details of the user\'s assessment report including scores, roles, and key sections',
+      description: 'Get the full context and details of the user\'s assessment report including scores, roles, and key sections. ALWAYS call this first to get the report data.',
       parameters: {
         type: 'object',
         properties: {
           subscriptionId: {
             type: 'string',
-            description: 'The subscription ID of the report (use the one from context)'
+            description: 'The subscription ID of the report - use the exact value from the Key Context section in your instructions, NOT placeholder values'
           },
           userId: {
             type: 'string',
-            description: 'The user ID (use the one from context)'
+            description: 'The user ID - use the exact value from the Key Context section in your instructions, NOT placeholder values'
           }
         },
         required: []

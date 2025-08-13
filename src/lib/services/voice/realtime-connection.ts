@@ -1,6 +1,7 @@
 import { OpenAIRealtimeWebSocket } from 'openai/beta/realtime/websocket';
 import { VoiceConfig } from './types';
 import { AudioFeedback } from './audio-feedback';
+import { AudioPlaybackManager } from './audio-playback-manager';
 
 export class RealtimeConnectionManager {
   private rt: any | null = null; // Using any to avoid type issues
@@ -8,13 +9,8 @@ export class RealtimeConnectionManager {
   private audioChunkCounter: number = 0;
   private isConnected = false;
   private sessionToken: string | null = null;
-  private audioContext: AudioContext | null = null;
-  private audioQueue: Float32Array[] = [];
-  private isPlaying = false;
-  private nextStartTime = 0;
+  private audioPlaybackManager: AudioPlaybackManager | null = null;
   private isSpeaking = false;
-  private audioQueueLimit = 1000; // Very high limit to never drop audio
-  private hasPlayedAudio = false; // Track if we've played any audio yet
   private pcm16Buffer = new Uint8Array(0); // Buffer for incomplete PCM16 samples
   private workflowState: any = null;
   private reportContext: any = null; // For report debrief mode
@@ -28,8 +24,6 @@ export class RealtimeConnectionManager {
   private connectionTimeout: NodeJS.Timeout | null = null;
   private sessionExpiresAt: number | null = null;
   private sessionRefreshTimer: NodeJS.Timeout | null = null;
-  private currentAudioSource: AudioBufferSourceNode | null = null;
-  private playbackTimeout: NodeJS.Timeout | null = null;
   private audioFeedback: AudioFeedback;
   private isIntentionalDisconnect = false;
   private systemPromptFromDb: string | null = null; // Store system prompt from database
@@ -47,11 +41,8 @@ export class RealtimeConnectionManager {
   };
   
   constructor(private config: VoiceConfig) {
-    // Initialize Web Audio API for audio playback
-    // Note: This is separate from the recording AudioContext in AudioManager
-    if (typeof window !== 'undefined' && window.AudioContext) {
-      this.audioContext = new AudioContext();
-    }
+    // Initialize audio playback manager
+    this.audioPlaybackManager = new AudioPlaybackManager();
     
     // Initialize audio feedback
     this.audioFeedback = new AudioFeedback();
@@ -80,7 +71,8 @@ export class RealtimeConnectionManager {
     console.log('[Voice] Report context set:', {
       reportId: context?.reportId,
       reportType: context?.reportType,
-      subscriptionId: context?.subscriptionId
+      subscriptionId: context?.subscriptionId,
+      userId: context?.userId
     });
   }
 
@@ -136,12 +128,20 @@ export class RealtimeConnectionManager {
     try {
       this.config.onStateChange?.('connecting');
       
+      // Initialize audio playback manager
+      await this.audioPlaybackManager?.initialize((stats) => {
+        if (stats.underruns > 0) {
+          console.warn(`[Voice] Audio stats: buffer=${stats.bufferSize.toFixed(2)}s, underruns=${stats.underruns}`);
+        }
+      });
+      
       // First, get an ephemeral session token from our API
       const sessionResponse = await fetch('/api/voice/session', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include', // Include cookies for authentication
         body: JSON.stringify({
           workflowState: this.workflowState, // Pass workflow state to server
           reportContext: this.reportContext, // Pass report context if available
@@ -296,6 +296,11 @@ Key Context:
 - Subscription ID: ${this.reportContext.subscriptionId}
 - Report Type: ${this.reportContext.reportType || 'TMP'}
 - This is a DEBRIEF conversation about their COMPLETED report
+
+CRITICAL: When calling the get_report_context tool, you MUST use these exact values:
+- subscriptionId: "${this.reportContext.subscriptionId}"
+- userId: "${this.reportContext.userId || ''}"
+Do NOT use placeholder values like "user-unique-subscription-id" or "user_subscription_id".
 
 Your Role:
 1. Answer questions about their assessment results naturally and conversationally
@@ -572,7 +577,7 @@ IMPORTANT:
     if (this.reportContext) {
       console.log('[Voice] Adding initial assistant context for debrief greeting...');
       try {
-        // Add a system message to trigger the greeting
+        // Add a system message to trigger the greeting and proactively fetch report
         await this.rt.send({
           type: 'conversation.item.create',
           item: {
@@ -580,7 +585,7 @@ IMPORTANT:
             role: 'user',
             content: [{
               type: 'input_text',
-              text: '[System: Please greet the user and introduce yourself as their TMP report debrief assistant. Let them know you have access to their report and can answer any questions about it.]'
+              text: `[System: Please greet the user and introduce yourself as their TMP report debrief assistant. First, call the get_report_context tool with subscriptionId="${this.reportContext.subscriptionId}" and userId="${this.reportContext.userId || ''}" to load their report data, then let them know you have access to their report and can answer any questions about it.]`
             }]
           }
         });
@@ -716,9 +721,11 @@ IMPORTANT:
             headers: {
               'Content-Type': 'application/json',
             },
+            credentials: 'include', // Include cookies for authentication
             body: JSON.stringify({
               ...parsedArgs,
               context: {
+                reportId: this.reportContext?.reportId,
                 subscriptionId: this.reportContext?.subscriptionId,
                 userId: this.reportContext?.userId
               }
@@ -730,7 +737,13 @@ IMPORTANT:
           }
 
           const result = await response.json();
-          console.log('[Voice] Tool API response:', result);
+          console.log('[Voice] Tool API response:', {
+            toolName: name,
+            success: result.success,
+            hasOutput: !!result.output,
+            outputType: result.output ? typeof result.output : 'none',
+            resultCount: result.output?.results?.length || result.output?.methodology?.length || 0
+          });
 
           // Send result back to OpenAI
           await this.rt.send({
@@ -1073,20 +1086,19 @@ IMPORTANT:
     // Handle audio playback
     let audioChunkIndex = 0;
     this.rt.on('response.audio.delta', (event: any) => {
-      if (event.delta && this.audioContext) {
+      if (event.delta && this.audioPlaybackManager) {
         const chunkId = audioChunkIndex++;
-        
-        // Don't use circuit breaker - let audio accumulate and play naturally
         
         // Convert base64 audio to playable format
         const audioData = this.base64ToAudioData(event.delta);
         
         // Log every 10th chunk to reduce noise
         if (chunkId % 10 === 0) {
-          console.log(`[Voice] Audio chunk ${chunkId} received: ${audioData.length} samples, queue: ${this.audioQueue.length} chunks`);
+          console.log(`[Voice] Audio chunk ${chunkId} received: ${audioData.length} samples`);
         }
         
-        this.queueAudioForPlayback(audioData, chunkId);
+        // Queue audio for playback in the AudioWorklet
+        this.audioPlaybackManager.queueAudio(audioData);
         
         // Only update state once when speaking starts
         if (!this.isSpeaking) {
@@ -1274,22 +1286,8 @@ IMPORTANT:
       this.sessionRefreshTimer = null;
     }
     
-    // Stop any playing audio
-    if (this.currentAudioSource) {
-      try {
-        this.currentAudioSource.stop();
-        this.currentAudioSource.disconnect();
-      } catch (e) {
-        // Ignore errors from already stopped sources
-      }
-      this.currentAudioSource = null;
-    }
-    
-    // Clear playback timeout
-    if (this.playbackTimeout) {
-      clearTimeout(this.playbackTimeout);
-      this.playbackTimeout = null;
-    }
+    // Clear audio playback
+    this.audioPlaybackManager?.clearBuffer();
     
     if (this.rt) {
       this.rt.socket.close(1000, 'Intentional disconnect');
@@ -1298,29 +1296,25 @@ IMPORTANT:
       this.eventHandlersSetup = false;
       this.isSpeaking = false;
       this.isGeneratingResponse = false;
-      this.audioQueue = [];
-      this.isPlaying = false;
-      this.nextStartTime = 0;
       this.sessionExpiresAt = null;
     }
     
-    // Reset audio state
-    this.resetAudioSystem();
+    // Dispose audio playback manager
+    await this.audioPlaybackManager?.dispose();
   }
   
   private resetAudioSystem(): void {
     // Stop all audio
     this.stopAllAudio();
     
-    // Close existing AudioContext if having issues
-    if (this.audioContext && this.audioContext.state !== 'closed') {
-      this.audioContext.close().catch(console.error);
-    }
-    
-    // Create fresh AudioContext
-    if (typeof window !== 'undefined' && window.AudioContext) {
-      this.audioContext = new AudioContext();
-    }
+    // Reinitialize audio playback manager if needed
+    this.audioPlaybackManager?.dispose();
+    this.audioPlaybackManager = new AudioPlaybackManager();
+    this.audioPlaybackManager.initialize((stats) => {
+      if (stats.underruns > 0) {
+        console.warn(`[Voice] Audio stats: buffer=${stats.bufferSize.toFixed(2)}s, underruns=${stats.underruns}`);
+      }
+    }).catch(console.error);
     
     // Clear all audio state
     this.audioQueue = [];
@@ -1535,217 +1529,16 @@ IMPORTANT:
     return float32;
   }
 
-  private queueAudioForPlayback(audioData: Float32Array, chunkId?: number): void {
-    // Simply add to queue without dropping
-    this.audioQueue.push(audioData);
-    
-    // Simplified buffering - only buffer at the very start of a NEW response
-    const MIN_INITIAL_CHUNKS = 3; // Reduced from 5 for faster start
-    
-    if (!this.isPlaying) {
-      // If we're still generating a response, always try to play
-      if (this.isGeneratingResponse && this.audioQueue.length > 0) {
-        console.log(`[Voice] Starting/resuming playback during generation, queue: ${this.audioQueue.length}`);
-        this.playNextAudioChunk();
-      }
-      // Otherwise, only buffer at the very start
-      else if (!this.hasPlayedAudio && this.audioQueue.length >= MIN_INITIAL_CHUNKS) {
-        console.log(`[Voice] Initial playback with ${this.audioQueue.length} buffered chunks`);
-        this.playNextAudioChunk();
-      }
-      // If we've played before but stopped, resume immediately if we have audio
-      else if (this.hasPlayedAudio && this.audioQueue.length > 0) {
-        console.log(`[Voice] Resuming playback, queue: ${this.audioQueue.length}`);
-        this.playNextAudioChunk();
-      }
-    }
-  }
-
   private stopAllAudio(): void {
     const caller = new Error().stack?.split('\n')[2]?.trim() || 'unknown';
     console.log(`[Voice] stopAllAudio called from: ${caller}`);
     
-    // Stop current audio source
-    if (this.currentAudioSource) {
-      try {
-        this.currentAudioSource.stop();
-        this.currentAudioSource.disconnect();
-        console.log('[Voice] Stopped current audio source');
-      } catch (e) {
-        // Ignore errors from already stopped sources
-      }
-      this.currentAudioSource = null;
-    }
-    
-    // Clear audio queue
-    const queueSize = this.audioQueue.length;
-    const queueDuration = this.audioQueue.reduce((sum, chunk) => sum + chunk.length, 0) / 24000;
-    if (queueSize > 0) {
-      console.log(`[Voice] Clearing ${queueSize} audio chunks (${queueDuration.toFixed(2)}s) from queue`);
-      this.audioQueue = [];
-    }
-    
-    // Clear any pending playback
-    if (this.playbackTimeout) {
-      clearTimeout(this.playbackTimeout);
-      this.playbackTimeout = null;
-    }
+    // Clear audio buffer in the playback manager
+    this.audioPlaybackManager?.clearBuffer();
     
     // Reset playback state
-    this.isPlaying = false;
     this.isSpeaking = false;
     this.pcm16Buffer = new Uint8Array(0); // Clear any partial audio data
-    
-    // Reset audio context timing to prevent audio drift
-    if (this.audioContext) {
-      const currentTime = this.audioContext.currentTime;
-      this.nextStartTime = currentTime + 0.01;
-      console.log(`[Voice] Reset audio timing. Current time: ${currentTime.toFixed(3)}, Next start: ${this.nextStartTime.toFixed(3)}`);
-    } else {
-      this.nextStartTime = 0;
-    }
-    
-    // Note: We don't send response.cancel here because:
-    // 1. It only works for responses being generated, not audio already received
-    // 2. The interrupt_response setting in turn_detection handles interruption automatically
-    // 3. Trying to cancel when there's no active generation causes errors
-  }
-
-  private async playNextAudioChunk(): Promise<void> {
-    if (!this.audioContext || this.audioQueue.length === 0) {
-      this.isPlaying = false;
-      this.currentAudioSource = null;
-      return;
-    }
-    
-    // Resume AudioContext if it's suspended (e.g., due to browser autoplay policy)
-    if (this.audioContext.state === 'suspended') {
-      try {
-        console.log('[Voice] Resuming suspended AudioContext');
-        await this.audioContext.resume();
-        // Give it a moment to fully initialize
-        await new Promise(resolve => setTimeout(resolve, 50));
-      } catch (error) {
-        console.error('[Voice] Failed to resume AudioContext:', error);
-        return; // Don't try to play if we can't resume
-      }
-    }
-    
-    // Stop any existing audio source to prevent overlapping
-    if (this.currentAudioSource) {
-      try {
-        this.currentAudioSource.stop();
-        this.currentAudioSource.disconnect();
-      } catch (e) {
-        // Ignore errors from already stopped sources
-      }
-      this.currentAudioSource = null;
-    }
-    
-    // Clear any pending playback timeout
-    if (this.playbackTimeout) {
-      clearTimeout(this.playbackTimeout);
-      this.playbackTimeout = null;
-    }
-    
-    this.isPlaying = true;
-    const audioData = this.audioQueue.shift()!;
-    const playbackId = Date.now();
-    
-    // Log playback details only periodically
-    if (playbackId % 10 === 0) {
-      console.log(`[Voice] Playing chunk: queue=${this.audioQueue.length}, duration=${(audioData.length / 24000).toFixed(2)}s`);
-    }
-    
-    // Create audio buffer at the source sample rate (24kHz)
-    // The Web Audio API will automatically resample to the AudioContext's sample rate
-    const sourceSampleRate = 24000; // OpenAI's output rate
-    const audioBuffer = this.audioContext.createBuffer(1, audioData.length, sourceSampleRate);
-    audioBuffer.copyToChannel(audioData, 0);
-    
-    // Create and connect audio source with gain for smooth transitions
-    const gainNode = this.audioContext.createGain();
-    const source = this.audioContext.createBufferSource();
-    source.buffer = audioBuffer;
-    source.connect(gainNode);
-    gainNode.connect(this.audioContext.destination);
-    
-    // Apply fade-in for the first few chunks to prevent pops/clicks
-    // Check if this is truly the first audio of the response AND the very first chunk
-    const isFirstChunk = !this.hasPlayedAudio && this.nextStartTime === 0;
-    if (isFirstChunk) {
-      gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
-      gainNode.gain.linearRampToValueAtTime(1, this.audioContext.currentTime + 0.15); // 150ms fade-in for smoother start
-      this.hasPlayedAudio = true; // Mark that we've started playing audio
-    }
-    
-    // Store current source for cleanup
-    this.currentAudioSource = source;
-    
-    // Schedule audio playback for seamless streaming
-    const currentTime = this.audioContext.currentTime;
-    
-    // For the first audio, start immediately
-    // For subsequent audio, ensure seamless continuation
-    let startTime: number;
-    if (this.nextStartTime === 0) {
-      // First audio chunk - start with small delay to ensure buffer is ready
-      startTime = currentTime + 0.05;
-    } else {
-      // Subsequent chunks - ensure no gap
-      startTime = Math.max(currentTime, this.nextStartTime);
-    }
-    
-    // Set initial gain
-    gainNode.gain.setValueAtTime(1, startTime);
-    
-    // Play the audio at the scheduled time
-    source.start(startTime);
-    
-    // Update next start time for seamless playback
-    this.nextStartTime = startTime + audioBuffer.duration;
-    
-    // Only log if queue is getting problematic
-    const queueLength = this.audioQueue.length;
-    if (queueLength > 20) {
-      const queueDuration = this.audioQueue.reduce((sum, chunk) => sum + chunk.length, 0) / 24000;
-      console.warn(`[Voice] Audio queue high: ${queueLength} chunks (${queueDuration.toFixed(2)}s)`);
-    }
-    
-    // Handle when audio ends
-    source.onended = () => {
-      if (source === this.currentAudioSource) {
-        this.currentAudioSource = null;
-      }
-      
-      // Play next chunk immediately if available
-      if (this.audioQueue.length > 0) {
-        this.playNextAudioChunk();
-      } else {
-        // No more audio in queue
-        // Keep playing state true if still generating to prevent re-buffering
-        if (this.isGeneratingResponse) {
-          // Still generating - mark as not playing but ready to resume
-          this.isPlaying = false;
-          // Keep nextStartTime to maintain seamless playback
-          // Don't reset hasPlayedAudio or isSpeaking
-          console.log('[Voice] Audio queue empty but still generating, ready to resume');
-        } else {
-          // Response is done and no more audio
-          this.isPlaying = false;
-          this.isSpeaking = false;
-          this.nextStartTime = 0; // Reset timing for next audio stream
-          this.config.onStateChange?.('ready');
-          console.log('[Voice] Playback complete, response finished');
-        }
-        
-        // Clear any remaining timeout
-        if (this.playbackTimeout) {
-          clearTimeout(this.playbackTimeout);
-          this.playbackTimeout = null;
-        }
-      }
-    };
   }
 
   private scheduleSessionRefresh(): void {
