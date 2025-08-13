@@ -70,8 +70,6 @@ Remember to:
     // Initialize report search tools
     this.reportSearchTool = createSearchReportChunksTool();
     this.reportContextTool = createGetReportContextTool();
-    
-    console.log(`[${this.name}] Constructor completed, tools count: ${this.tools.length}`);
   }
   
   /**

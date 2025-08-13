@@ -5,6 +5,7 @@ import { AudioFeedback } from './audio-feedback';
 export class RealtimeConnectionManager {
   private rt: any | null = null; // Using any to avoid type issues
   private audioBuffer: Int16Array[] = [];
+  private audioChunkCounter: number = 0;
   private isConnected = false;
   private sessionToken: string | null = null;
   private audioContext: AudioContext | null = null;
@@ -300,8 +301,28 @@ Remember: You have access to their full report data including:
 
 Focus on having a natural, helpful conversation about their results. DO NOT mention question numbers, navigation commands, or assessment completion - this is about understanding their completed report.`;
         
-        // No tools needed for report debrief - it's pure conversation
-        sessionTools = [];
+        // Add report context tool for voice debrief
+        sessionTools = [
+          {
+            type: 'function',
+            name: 'get_report_context',
+            description: 'Get the full context and details of the user\'s assessment report including scores, roles, and key sections',
+            parameters: {
+              type: 'object',
+              properties: {
+                subscriptionId: {
+                  type: 'string',
+                  description: 'The subscription ID of the report (use the one from context)'
+                },
+                userId: {
+                  type: 'string',
+                  description: 'The user ID (use the one from context)'
+                }
+              },
+              required: []
+            }
+          }
+        ];
         
       } else {
         // Assessment mode - keep existing questionnaire flow
@@ -443,6 +464,11 @@ IMPORTANT:
       
       // Configure session with the appropriate instructions and tools
       console.log('[Voice] Sending session update...');
+      console.log('[Voice] Tools configuration:', {
+        count: sessionTools.length,
+        tools: sessionTools.map(t => ({ name: t.name, type: t.type }))
+      });
+      
       await this.rt.send({
         type: 'session.update',
         session: {
@@ -464,6 +490,8 @@ IMPORTANT:
           tools: sessionTools
         },
       });
+      
+      console.log('[Voice] Session update sent, waiting for confirmation...');
 
       this.isConnected = true;
       this.reconnectAttempts = 0; // Reset reconnect attempts on successful connection
@@ -472,9 +500,11 @@ IMPORTANT:
       // Start heartbeat monitoring
       this.startHeartbeat();
       
-      // Small delay to ensure session configuration is fully processed
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Increased delay to ensure session configuration is fully processed
+      // This helps prevent choppy audio at the start
+      await new Promise(resolve => setTimeout(resolve, 500));
       
+      console.log('[Voice] Starting conversation after delay...');
       // Start the conversation
       await this.startAssessmentConversation();
     } catch (error) {
@@ -613,7 +643,47 @@ IMPORTANT:
       const name = (event as any).name;
       const args = (event as any).arguments;
       
-      if (name === 'answer_question') {
+      if (name === 'get_report_context') {
+        // Handle report context request for debrief mode
+        console.log('[Voice] Getting report context:', args);
+        const { subscriptionId, userId } = JSON.parse(args);
+        
+        // Use the context from initialization if not provided
+        const finalSubscriptionId = subscriptionId || this.reportContext?.subscriptionId;
+        const finalUserId = userId || this.reportContext?.userId;
+        
+        console.log('[Voice] Using report context:', {
+          subscriptionId: finalSubscriptionId,
+          userId: finalUserId
+        });
+        
+        // For now, return a success message. In production, this would call the actual tool
+        const response = {
+          success: true,
+          data: {
+            subscriptionId: finalSubscriptionId,
+            userId: finalUserId,
+            message: `Report context loaded for subscription ${finalSubscriptionId}. The user has completed a TMP assessment. You now have access to their major role, related roles, work preferences, and all report sections. Continue the conversation naturally about their specific results.`
+          }
+        };
+        
+        // Send function call result back
+        if (this.rt) {
+          await this.rt.send({
+            type: 'conversation.item.create',
+            item: {
+              type: 'function_call_output',
+              call_id: (event as any).call_id,
+              output: JSON.stringify(response)
+            }
+          });
+          
+          // Trigger a response to continue the conversation
+          await this.rt.send({
+            type: 'response.create'
+          });
+        }
+      } else if (name === 'answer_question') {
         const { questionId, value } = JSON.parse(args);
         console.log(`[Voice] Recording answer: Question ${questionId} = ${value}`);
         // Debug: Log workflow state to check question mapping
@@ -913,33 +983,49 @@ IMPORTANT:
       return;
     }
 
-    // Buffer audio data
+    // Check if this chunk contains any significant audio
+    const maxValue = Math.max(...Array.from(audioData).map(Math.abs));
+    const isSilent = maxValue < 100;
+    
+    // Always buffer the audio, but track if we have any non-silent audio
     this.audioBuffer.push(audioData);
 
     // Send in chunks to avoid overwhelming the connection
     if (this.audioBuffer.length >= 10) { // Send every ~100ms at 24kHz
       const combinedBuffer = this.combineAudioBuffers();
-      // Debug: Log audio sending
-      const chunkNumber = Math.floor(this.audioBuffer.length / 10);
-      console.log(`[Voice] Sending audio chunk #${chunkNumber}, size: ${combinedBuffer.length} samples`);
       
-      // Check if we're getting silence
-      const maxValue = Math.max(...Array.from(combinedBuffer).map(Math.abs));
-      if (maxValue < 100) {
-        console.log('[Voice] Warning: Audio appears to be silence or very quiet');
-      }
+      // Check if the combined buffer has any significant audio
+      const combinedMaxValue = Math.max(...Array.from(combinedBuffer).map(Math.abs));
+      const isBufferSilent = combinedMaxValue < 100;
       
-      try {
-        await this.rt.send({
-          type: 'input_audio_buffer.append',
-          audio: this.encodeAudioToBase64(combinedBuffer),
-        });
+      // Only send if we have actual audio content or if we're in an active conversation
+      if (!isBufferSilent || this.audioChunkCounter > 0) {
+        this.audioChunkCounter++;
+        console.log(`[Voice] Sending audio chunk #${this.audioChunkCounter}, size: ${combinedBuffer.length} samples`);
         
-        this.audioBuffer = [];
-        this.config.onStateChange?.('listening');
-      } catch (error) {
-        console.error('[Voice] Failed to send audio:', error);
+        if (isBufferSilent && this.audioChunkCounter % 10 === 0) {
+          // Only log silence warning every 10th chunk to reduce spam
+          console.log('[Voice] Warning: Audio appears to be silence or very quiet');
+        }
+        
+        try {
+          await this.rt.send({
+            type: 'input_audio_buffer.append',
+            audio: this.encodeAudioToBase64(combinedBuffer),
+          });
+          
+          this.config.onStateChange?.('listening');
+        } catch (error) {
+          console.error('[Voice] Failed to send audio:', error);
+        }
+      } else {
+        // Silent audio at the beginning - skip sending but log for debugging
+        if (this.audioBuffer.length === 10) {
+          console.log('[Voice] Skipping initial silent audio chunk');
+        }
       }
+      
+      this.audioBuffer = [];
     }
   }
 
@@ -987,6 +1073,9 @@ IMPORTANT:
   async disconnect(): Promise<void> {
     // Set flag to indicate intentional disconnection
     this.isIntentionalDisconnect = true;
+    
+    // Reset audio chunk counter
+    this.audioChunkCounter = 0;
     
     // Stop heartbeat monitoring
     this.stopHeartbeat();

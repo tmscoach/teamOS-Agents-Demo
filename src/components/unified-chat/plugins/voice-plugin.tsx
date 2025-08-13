@@ -29,18 +29,34 @@ const VoiceBanner = () => {
     }
   };
   
-  const handleVoiceEntryStart = () => {
+  const handleVoiceEntryStart = async () => {
     setHasShownVoiceEntry(true);
-    setShowVoicePermission(true);
     if (typeof window !== 'undefined') {
       localStorage.setItem('voiceEntryDismissed', 'true');
+    }
+    
+    // Check permissions first
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      toast.error('Voice features are not supported in your browser');
+      return;
+    }
+    
+    try {
+      await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Permission granted, trigger voice start
+      const event = new CustomEvent('start-voice-mode', { detail: { type: 'debrief' } });
+      window.dispatchEvent(event);
+    } catch (err) {
+      // Permission denied or error, show permission dialog
+      setShowVoicePermission(true);
     }
   };
   
   const handleVoicePermissionAllow = async () => {
     setShowVoicePermission(false);
-    // The actual voice start will be handled by the voice toggle
-    toast.success('Voice features enabled! Click the microphone button to start.');
+    // After permission granted, start voice mode
+    const event = new CustomEvent('start-voice-mode', { detail: { type: 'debrief' } });
+    window.dispatchEvent(event);
   };
   
   const handleVoicePermissionDeny = () => {
@@ -53,6 +69,15 @@ const VoiceBanner = () => {
     (context.agent === 'AssessmentAgent' && context.metadata?.selectedAssessment) ||
     (context.agent === 'DebriefAgent' && context.metadata?.reportId)
   ) && !hasShownVoiceEntry;
+  
+  console.log('[VoiceBanner] Debug:', {
+    agent: context.agent,
+    hasReportId: !!context.metadata?.reportId,
+    reportId: context.metadata?.reportId,
+    hasShownVoiceEntry,
+    showVoiceEntry,
+    metadata: context.metadata
+  });
   
   if (!showVoiceEntry) {
     return null;
@@ -182,6 +207,7 @@ const VoiceInputToggle = () => {
     } else if (context.agent === 'DebriefAgent' && context.metadata?.reportId) {
       // For debrief, we pass report context instead of workflow state
       setWorkflowState(null); // Clear any existing workflow state
+      console.log('[VoicePlugin] Setting report context with metadata:', context.metadata);
       setReportContext({
         reportId: context.metadata.reportId,
         reportType: context.metadata.assessmentType || context.metadata.reportType,
@@ -281,7 +307,7 @@ const VoiceInputToggle = () => {
   useEffect(() => {
     const handleStartVoiceMode = (event: CustomEvent) => {
       console.log('[VoiceInputToggle] Received start-voice-mode event:', event.detail);
-      if (event.detail?.type === 'assessment' && !voiceModeEnabled && !isTogglingVoice) {
+      if ((event.detail?.type === 'assessment' || event.detail?.type === 'debrief') && !voiceModeEnabled && !isTogglingVoice) {
         handleVoiceToggle();
       }
     };

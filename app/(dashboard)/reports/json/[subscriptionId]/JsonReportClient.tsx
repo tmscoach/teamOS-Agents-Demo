@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { JsonReportViewer } from './components/JsonReportViewer'
 import { ReportChatWrapper } from './components/ReportChatWrapper'
+import { VoiceDebriefModal } from './components/VoiceDebriefModal'
 import { Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -107,6 +108,14 @@ export function JsonReportClient({ user, report }: JsonReportClientProps) {
 
   return (
     <div className="h-screen w-full flex bg-gray-50">
+      {/* Voice Debrief Modal - Always shown for testing */}
+      <VoiceDebriefModal
+        reportId={report.id}
+        reportType={report.reportType || reportData.workflowType || 'TMP'}
+        subscriptionId={report.subscriptionId}
+        userId={user.id}
+      />
+      
       {/* Main Report Viewer */}
       <div className="flex-1 overflow-auto">
         <JsonReportViewer 

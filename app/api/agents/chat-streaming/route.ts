@@ -493,6 +493,16 @@ User message: ${userMessageContent}`;
           reportId: context.metadata.reportId,
           assessmentType: context.metadata.assessmentType
         });
+        
+        // Inject report context instruction
+        userMessageContent = `The user is viewing their completed ${context.metadata.assessmentType || 'TMP'} assessment report.
+Report ID: ${context.metadata.reportId}
+Subscription ID: ${context.metadata.subscriptionId}
+
+IMPORTANT: DO NOT use tms_get_dashboard_subscriptions - we already know they have a completed report.
+Use get_report_context with the subscription ID and user ID from the metadata to access the report data.
+
+User message: ${message}`;
       }
       // Check if user is confirming after we've offered a debrief
       else if (context.messageHistory?.length > 0) {
