@@ -502,7 +502,7 @@ IMPORTANT:
       
       // Increased delay to ensure session configuration is fully processed
       // This helps prevent choppy audio at the start
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise(resolve => setTimeout(resolve, 750));
       
       console.log('[Voice] Starting conversation after delay...');
       // Start the conversation
@@ -1351,8 +1351,12 @@ IMPORTANT:
     // Simply add to queue without dropping
     this.audioQueue.push(audioData);
     
-    // Start playback if not already playing
-    if (!this.isPlaying && this.audioQueue.length > 0) {
+    // Buffer minimum chunks before starting playback for smoother experience
+    const MIN_CHUNKS_BEFORE_PLAYBACK = 3; // Wait for 3 chunks (~375ms of audio at 125ms/chunk)
+    
+    // Start playback if not already playing and we have enough buffered
+    if (!this.isPlaying && this.audioQueue.length >= MIN_CHUNKS_BEFORE_PLAYBACK) {
+      console.log(`[Voice] Starting playback with ${this.audioQueue.length} buffered chunks`);
       this.playNextAudioChunk();
     }
   }
@@ -1465,6 +1469,13 @@ IMPORTANT:
     source.buffer = audioBuffer;
     source.connect(gainNode);
     gainNode.connect(this.audioContext.destination);
+    
+    // Apply fade-in for the first few chunks to prevent pops/clicks
+    const isFirstChunks = this.audioQueue.length === 0 && !this.currentAudioSource;
+    if (isFirstChunks) {
+      gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
+      gainNode.gain.linearRampToValueAtTime(1, this.audioContext.currentTime + 0.05); // 50ms fade-in
+    }
     
     // Store current source for cleanup
     this.currentAudioSource = source;
