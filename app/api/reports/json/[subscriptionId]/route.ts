@@ -38,7 +38,7 @@ export async function GET(
       select: { 
         id: true, 
         organizationId: true,
-        tmsApiToken: true 
+        TMSAuthToken: true  // Changed from tmsApiToken to TMSAuthToken
       }
     })
 
@@ -84,7 +84,7 @@ export async function GET(
         parameters: {
           subscriptionId
         },
-        jwt: user.tmsApiToken || undefined
+        jwt: user.TMSAuthToken || undefined
       })
 
       if (result.success && result.data) {

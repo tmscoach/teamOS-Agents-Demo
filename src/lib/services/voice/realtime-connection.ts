@@ -32,6 +32,7 @@ export class RealtimeConnectionManager {
   private playbackTimeout: NodeJS.Timeout | null = null;
   private audioFeedback: AudioFeedback;
   private isIntentionalDisconnect = false;
+  private systemPromptFromDb: string | null = null; // Store system prompt from database
   private conversationContext: {
     currentPage: number;
     answeredQuestions: Set<number>;
@@ -148,6 +149,9 @@ export class RealtimeConnectionManager {
       const sessionData = await sessionResponse.json();
       console.log('Session data received:', sessionData);
       this.sessionToken = sessionData.session.token;
+      
+      // Store system prompt from database if available
+      this.systemPromptFromDb = sessionData.session.systemPrompt;
       
       // Store session expiration time
       if (sessionData.session.expires_at) {
@@ -270,9 +274,16 @@ export class RealtimeConnectionManager {
         // Report debrief mode - conversational Q&A about the completed report
         console.log('[Voice] Configuring session for report debrief:', this.reportContext);
         
-        sessionInstructions = `You are OSmos, an expert Team Management Profile (TMP) practitioner and coach for voice conversations.
+        // Use system prompt from database if available, otherwise use default
+        if (this.systemPromptFromDb) {
+          console.log('[Voice] Using system prompt from database');
+          sessionInstructions = this.systemPromptFromDb;
+        } else {
+          sessionInstructions = `You are OSmos, an expert Team Management Profile (TMP) practitioner and coach for voice conversations.
 
 You're helping ${this.reportContext.userName || 'the user'} understand their completed ${this.reportContext.reportType || 'TMP'} assessment report.
+
+IMPORTANT: Start the conversation immediately with: "Hello! I'm here to help you understand your TMP assessment results. I can see you've completed the assessment and I have your full report here. What would you like to know about your results? For example, I can explain your major role, work preferences, or any specific section of the report."
 
 Key Context:
 - Report ID: ${this.reportContext.reportId}
@@ -306,6 +317,7 @@ Remember: You have access to their full report data including:
 - All report sections and detailed analysis
 
 Focus on having a natural, helpful conversation about their results. DO NOT mention question numbers, navigation commands, or assessment completion - this is about understanding their completed report.`;
+        }
         
         // Add report context tool for voice debrief
         sessionTools = [
@@ -663,15 +675,83 @@ IMPORTANT:
           userId: finalUserId
         });
         
-        // For now, return a success message. In production, this would call the actual tool
-        const response = {
-          success: true,
-          data: {
-            subscriptionId: finalSubscriptionId,
-            userId: finalUserId,
-            message: `Report context loaded for subscription ${finalSubscriptionId}. The user has completed a TMP assessment. You now have access to their major role, related roles, work preferences, and all report sections. Continue the conversation naturally about their specific results.`
+        // Call the report API endpoint to get report context
+        let response: any;
+        try {
+          console.log('[Voice] Fetching report from API:', {
+            subscriptionId: finalSubscriptionId
+          });
+          
+          // Make API call to get report data
+          const apiResponse = await fetch(`/api/reports/json/${finalSubscriptionId}`);
+          
+          if (!apiResponse.ok) {
+            throw new Error(`Failed to fetch report: ${apiResponse.status}`);
           }
-        };
+          
+          const reportData = await apiResponse.json();
+          
+          console.log('[Voice] Report API response:', {
+            success: reportData.success,
+            hasData: !!reportData.data,
+            reportType: reportData.data?.workflowType
+          });
+          
+          if (reportData.success && reportData.data) {
+            // Format the report summary for the voice agent
+            const data = reportData.data;
+            let summary = `# ${data.workflowType || 'TMP'} Assessment Report\n\n`;
+            
+            // Add metadata if available
+            if (data.metadata) {
+              summary += `## Report Information\n`;
+              summary += `- User: ${data.metadata.userName}\n`;
+              summary += `- Organization: ${data.metadata.organizationName}\n`;
+              summary += `- Completed: ${data.completedAt || 'N/A'}\n\n`;
+            }
+            
+            // Add sections
+            if (data.sections && Array.isArray(data.sections)) {
+              for (const section of data.sections) {
+                summary += `\n### ${section.title}\n`;
+                
+                if (section.visualization?.data?.majorRole) {
+                  summary += `**Major Role**: ${section.visualization.data.majorRole.name}\n`;
+                }
+                
+                if (section.content?.text) {
+                  summary += `${section.content.text}\n`;
+                }
+                
+                if (section.content?.subsections) {
+                  for (const sub of section.content.subsections) {
+                    summary += `\n**${sub.title}**\n${sub.content}\n`;
+                  }
+                }
+              }
+            }
+            
+            response = {
+              success: true,
+              data: {
+                subscriptionId: finalSubscriptionId,
+                userId: finalUserId,
+                reportSummary: summary
+              }
+            };
+          } else {
+            response = {
+              success: false,
+              error: 'No report data available'
+            };
+          }
+        } catch (error) {
+          console.error('[Voice] Error fetching report:', error);
+          response = {
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error retrieving report'
+          };
+        }
         
         // Send function call result back
         if (this.rt) {
@@ -922,6 +1002,8 @@ IMPORTANT:
       console.log('[Voice] Response created, marking as generating');
       // Don't clear audio here - let it finish naturally
       this.isGeneratingResponse = true;
+      this.hasPlayedAudio = false; // Reset for new response to enable fade-in
+      this.nextStartTime = 0; // Reset timing for new response
     });
     
     // Handle response completion
@@ -935,7 +1017,8 @@ IMPORTANT:
       // Reset generation state
       this.isGeneratingResponse = false;
       
-      // Note: Don't reset isSpeaking here as audio might still be playing
+      // Note: Don't reset hasPlayedAudio here - it should only reset on response.created
+      // Don't reset isSpeaking here as audio might still be playing
       // It will be reset when audio playback completes
       
       // Wait a bit for audio to finish playing before changing state
@@ -1358,12 +1441,20 @@ IMPORTANT:
     this.audioQueue.push(audioData);
     
     // Buffer minimum chunks before starting playback for smoother experience
-    const MIN_CHUNKS_BEFORE_PLAYBACK = 3; // Wait for 3 chunks (~375ms of audio at 125ms/chunk)
+    const MIN_CHUNKS_BEFORE_PLAYBACK = 5; // Wait for 5 chunks (~625ms of audio at 125ms/chunk) for smoother start
     
-    // Start playback if not already playing and we have enough buffered
-    if (!this.isPlaying && this.audioQueue.length >= MIN_CHUNKS_BEFORE_PLAYBACK) {
-      console.log(`[Voice] Starting playback with ${this.audioQueue.length} buffered chunks`);
-      this.playNextAudioChunk();
+    // Only buffer at the very start of a response (when we haven't played any audio yet)
+    // If we're already playing or have played audio, continue immediately
+    if (!this.isPlaying) {
+      if (!this.hasPlayedAudio && this.audioQueue.length >= MIN_CHUNKS_BEFORE_PLAYBACK) {
+        // First time playing audio for this response - we've buffered enough
+        console.log(`[Voice] Starting playback with ${this.audioQueue.length} buffered chunks`);
+        this.playNextAudioChunk();
+      } else if (this.hasPlayedAudio && this.audioQueue.length > 0) {
+        // We've already started playing but stopped (queue was empty) - resume immediately
+        console.log(`[Voice] Resuming playback, queue: ${this.audioQueue.length}`);
+        this.playNextAudioChunk();
+      }
     }
   }
 
@@ -1477,10 +1568,12 @@ IMPORTANT:
     gainNode.connect(this.audioContext.destination);
     
     // Apply fade-in for the first few chunks to prevent pops/clicks
-    const isFirstChunks = this.audioQueue.length === 0 && !this.currentAudioSource;
-    if (isFirstChunks) {
+    // Check if this is truly the first audio of the response AND the very first chunk
+    const isFirstChunk = !this.hasPlayedAudio && this.nextStartTime === 0;
+    if (isFirstChunk) {
       gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
-      gainNode.gain.linearRampToValueAtTime(1, this.audioContext.currentTime + 0.05); // 50ms fade-in
+      gainNode.gain.linearRampToValueAtTime(1, this.audioContext.currentTime + 0.15); // 150ms fade-in for smoother start
+      this.hasPlayedAudio = true; // Mark that we've started playing audio
     }
     
     // Store current source for cleanup
@@ -1526,14 +1619,19 @@ IMPORTANT:
       if (this.audioQueue.length > 0) {
         this.playNextAudioChunk();
       } else {
-        // No more audio to play
-        this.isPlaying = false;
-        this.isSpeaking = false;
-        this.nextStartTime = 0; // Reset timing for next audio stream
-        
-        // Update state to ready if not generating a new response
+        // No more audio in queue
+        // Only truly stop if we're not still generating a response
         if (!this.isGeneratingResponse) {
+          // Response is done and no more audio
+          this.isPlaying = false;
+          this.isSpeaking = false;
+          this.nextStartTime = 0; // Reset timing for next audio stream
           this.config.onStateChange?.('ready');
+        } else {
+          // Still generating - just pause playback but stay in playing mode
+          // This prevents re-buffering mid-stream
+          this.isPlaying = false;
+          // Keep nextStartTime to maintain seamless playback
         }
         
         // Clear any remaining timeout

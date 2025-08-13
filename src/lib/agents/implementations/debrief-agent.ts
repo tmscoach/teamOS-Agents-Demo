@@ -60,7 +60,7 @@ Remember to:
       tools: [], // TMS tools will be loaded dynamically
       knowledgeEnabled: true,
       tmsToolsEnabled: true, // DebriefAgent uses TMS report tools
-      loadFromConfig: false, // Use hardcoded tools, not database config
+      loadFromConfig: true, // Load from database config including system prompt
       handoffs: [{
         targetAgent: 'AlignmentAgent',
         condition: () => true

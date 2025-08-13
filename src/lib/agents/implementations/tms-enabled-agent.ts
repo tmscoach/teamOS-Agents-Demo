@@ -56,6 +56,12 @@ export class TMSEnabledAgent extends KnowledgeEnabledAgent {
       // Load configuration from database
       const config = await AgentConfigLoader.loadConfiguration(this.name);
       
+      // Use system prompt from database if available
+      if (config?.systemPrompt) {
+        this.instructions = config.systemPrompt;
+        console.log(`[${this.name}] Loaded system prompt from database configuration`);
+      }
+      
       if (config?.toolsConfig && this.tmsToolsEnabled) {
         // Get enabled tools from configuration
         const enabledToolNames = Object.entries(config.toolsConfig)
