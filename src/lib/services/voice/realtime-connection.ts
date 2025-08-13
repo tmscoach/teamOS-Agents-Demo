@@ -33,6 +33,7 @@ export class RealtimeConnectionManager {
   private audioFeedback: AudioFeedback;
   private isIntentionalDisconnect = false;
   private systemPromptFromDb: string | null = null; // Store system prompt from database
+  private agentTools: any[] = []; // Store agent tools for dynamic registration
   private conversationContext: {
     currentPage: number;
     answeredQuestions: Set<number>;
@@ -81,6 +82,11 @@ export class RealtimeConnectionManager {
       reportType: context?.reportType,
       subscriptionId: context?.subscriptionId
     });
+  }
+
+  setAgentTools(tools: any[]) {
+    this.agentTools = tools;
+    console.log('[Voice] Agent tools set:', tools.map(t => t.name));
   }
 
   setAnswerUpdateCallback(callback: (questionId: number, value: string) => void) {
@@ -319,28 +325,40 @@ Remember: You have access to their full report data including:
 Focus on having a natural, helpful conversation about their results. DO NOT mention question numbers, navigation commands, or assessment completion - this is about understanding their completed report.`;
         }
         
-        // Add report context tool for voice debrief
-        sessionTools = [
-          {
+        // Use agent tools if available, otherwise fall back to minimal tools
+        if (this.agentTools && this.agentTools.length > 0) {
+          console.log('[Voice] Using agent tools from DebriefAgent:', this.agentTools.map(t => t.name));
+          sessionTools = this.agentTools.map(tool => ({
             type: 'function',
-            name: 'get_report_context',
-            description: 'Get the full context and details of the user\'s assessment report including scores, roles, and key sections',
-            parameters: {
-              type: 'object',
-              properties: {
-                subscriptionId: {
-                  type: 'string',
-                  description: 'The subscription ID of the report (use the one from context)'
+            name: tool.name,
+            description: tool.description,
+            parameters: tool.parameters
+          }));
+        } else {
+          console.log('[Voice] No agent tools provided, using fallback get_report_context tool');
+          // Fallback to minimal tool set
+          sessionTools = [
+            {
+              type: 'function',
+              name: 'get_report_context',
+              description: 'Get the full context and details of the user\'s assessment report including scores, roles, and key sections',
+              parameters: {
+                type: 'object',
+                properties: {
+                  subscriptionId: {
+                    type: 'string',
+                    description: 'The subscription ID of the report (use the one from context)'
+                  },
+                  userId: {
+                    type: 'string',
+                    description: 'The user ID (use the one from context)'
+                  }
                 },
-                userId: {
-                  type: 'string',
-                  description: 'The user ID (use the one from context)'
-                }
-              },
-              required: []
+                required: []
+              }
             }
-          }
-        ];
+          ];
+        }
         
       } else {
         // Assessment mode - keep existing questionnaire flow
@@ -545,10 +563,31 @@ IMPORTANT:
     }
 
     // Wait a moment to ensure audio system is fully ready
-    await new Promise(resolve => setTimeout(resolve, 300));
+    await new Promise(resolve => setTimeout(resolve, 500));
     
     // Mark that we're generating a response
     this.isGeneratingResponse = true;
+
+    // For debrief mode, add an initial assistant message to prompt greeting
+    if (this.reportContext) {
+      console.log('[Voice] Adding initial assistant context for debrief greeting...');
+      try {
+        // Add a system message to trigger the greeting
+        await this.rt.send({
+          type: 'conversation.item.create',
+          item: {
+            type: 'message',
+            role: 'user',
+            content: [{
+              type: 'input_text',
+              text: '[System: Please greet the user and introduce yourself as their TMP report debrief assistant. Let them know you have access to their report and can answer any questions about it.]'
+            }]
+          }
+        });
+      } catch (error) {
+        console.error('[Voice] Failed to add greeting context:', error);
+      }
+    }
 
     // Trigger the assistant to start the conversation
     console.log('[Voice] Sending response.create to start conversation...');
@@ -562,6 +601,7 @@ IMPORTANT:
       console.log('[Voice] response.create sent successfully');
     } catch (error) {
       console.error('[Voice] Failed to send response.create:', error);
+      this.isGeneratingResponse = false; // Reset on error
     }
   }
 
@@ -661,7 +701,63 @@ IMPORTANT:
       const name = (event as any).name;
       const args = (event as any).arguments;
       
-      if (name === 'get_report_context') {
+      // Check if this is a tool from the agent (knowledge base, report search, etc.)
+      if (this.agentTools && this.agentTools.some(t => t.name === name)) {
+        console.log('[Voice] Executing agent tool via API bridge:', name);
+        const parsedArgs = JSON.parse(args);
+        
+        try {
+          // Call the API bridge for this tool
+          const response = await fetch(`/api/voice-tools/${name}`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              ...parsedArgs,
+              context: {
+                subscriptionId: this.reportContext?.subscriptionId,
+                userId: this.reportContext?.userId
+              }
+            })
+          });
+
+          if (!response.ok) {
+            throw new Error(`API call failed: ${response.status}`);
+          }
+
+          const result = await response.json();
+          console.log('[Voice] Tool API response:', result);
+
+          // Send result back to OpenAI
+          await this.rt.send({
+            type: 'conversation.item.create',
+            item: {
+              type: 'function_call_output',
+              call_id: (event as any).call_id,
+              output: JSON.stringify(result)
+            }
+          });
+
+          // Trigger a response to continue the conversation
+          await this.rt.send({
+            type: 'response.create'
+          });
+        } catch (error) {
+          console.error('[Voice] Error executing tool via API:', error);
+          await this.rt.send({
+            type: 'conversation.item.create',
+            item: {
+              type: 'function_call_output',
+              call_id: (event as any).call_id,
+              output: JSON.stringify({
+                success: false,
+                error: error instanceof Error ? error.message : 'Tool execution failed'
+              })
+            }
+          });
+        }
+      } else if (name === 'get_report_context') {
         // Handle report context request for debrief mode
         console.log('[Voice] Getting report context:', args);
         const { subscriptionId, userId } = JSON.parse(args);
@@ -1440,18 +1536,22 @@ IMPORTANT:
     // Simply add to queue without dropping
     this.audioQueue.push(audioData);
     
-    // Buffer minimum chunks before starting playback for smoother experience
-    const MIN_CHUNKS_BEFORE_PLAYBACK = 5; // Wait for 5 chunks (~625ms of audio at 125ms/chunk) for smoother start
+    // Simplified buffering - only buffer at the very start of a NEW response
+    const MIN_INITIAL_CHUNKS = 3; // Reduced from 5 for faster start
     
-    // Only buffer at the very start of a response (when we haven't played any audio yet)
-    // If we're already playing or have played audio, continue immediately
     if (!this.isPlaying) {
-      if (!this.hasPlayedAudio && this.audioQueue.length >= MIN_CHUNKS_BEFORE_PLAYBACK) {
-        // First time playing audio for this response - we've buffered enough
-        console.log(`[Voice] Starting playback with ${this.audioQueue.length} buffered chunks`);
+      // If we're still generating a response, always try to play
+      if (this.isGeneratingResponse && this.audioQueue.length > 0) {
+        console.log(`[Voice] Starting/resuming playback during generation, queue: ${this.audioQueue.length}`);
         this.playNextAudioChunk();
-      } else if (this.hasPlayedAudio && this.audioQueue.length > 0) {
-        // We've already started playing but stopped (queue was empty) - resume immediately
+      }
+      // Otherwise, only buffer at the very start
+      else if (!this.hasPlayedAudio && this.audioQueue.length >= MIN_INITIAL_CHUNKS) {
+        console.log(`[Voice] Initial playback with ${this.audioQueue.length} buffered chunks`);
+        this.playNextAudioChunk();
+      }
+      // If we've played before but stopped, resume immediately if we have audio
+      else if (this.hasPlayedAudio && this.audioQueue.length > 0) {
         console.log(`[Voice] Resuming playback, queue: ${this.audioQueue.length}`);
         this.playNextAudioChunk();
       }
@@ -1620,18 +1720,20 @@ IMPORTANT:
         this.playNextAudioChunk();
       } else {
         // No more audio in queue
-        // Only truly stop if we're not still generating a response
-        if (!this.isGeneratingResponse) {
+        // Keep playing state true if still generating to prevent re-buffering
+        if (this.isGeneratingResponse) {
+          // Still generating - mark as not playing but ready to resume
+          this.isPlaying = false;
+          // Keep nextStartTime to maintain seamless playback
+          // Don't reset hasPlayedAudio or isSpeaking
+          console.log('[Voice] Audio queue empty but still generating, ready to resume');
+        } else {
           // Response is done and no more audio
           this.isPlaying = false;
           this.isSpeaking = false;
           this.nextStartTime = 0; // Reset timing for next audio stream
           this.config.onStateChange?.('ready');
-        } else {
-          // Still generating - just pause playback but stay in playing mode
-          // This prevents re-buffering mid-stream
-          this.isPlaying = false;
-          // Keep nextStartTime to maintain seamless playback
+          console.log('[Voice] Playback complete, response finished');
         }
         
         // Clear any remaining timeout

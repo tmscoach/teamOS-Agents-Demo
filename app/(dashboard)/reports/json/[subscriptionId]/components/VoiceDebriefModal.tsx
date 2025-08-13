@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Mic, Sparkles, X, Volume2 } from 'lucide-react';
 import { useVoiceNavigation } from '@/app/chat/assessment/hooks/useVoiceNavigation';
 import { VoicePermissionDialog } from '@/app/chat/assessment/components/voice/VoicePermissionDialog';
 import { VoiceToggle } from '@/app/chat/assessment/components/voice/VoiceToggle';
 import { TranscriptDisplay } from '@/app/chat/assessment/components/voice/TranscriptDisplay';
 import { toast } from 'sonner';
+import { DebriefAgent } from '@/src/lib/agents/implementations/debrief-agent';
 
 interface VoiceDebriefModalProps {
   reportId: string;
@@ -19,6 +20,8 @@ export function VoiceDebriefModal({ reportId, reportType, subscriptionId, userId
   const [isOpen, setIsOpen] = useState(true);
   const [showPermission, setShowPermission] = useState(false);
   const [voiceModeActive, setVoiceModeActive] = useState(false);
+  const [isInitializingAgent, setIsInitializingAgent] = useState(false);
+  const agentRef = useRef<DebriefAgent | null>(null);
   
   const {
     voiceState,
@@ -28,7 +31,37 @@ export function VoiceDebriefModal({ reportId, reportType, subscriptionId, userId
     startVoice,
     stopVoice,
     setReportContext,
+    setAgentTools,
   } = useVoiceNavigation();
+  
+  // Initialize DebriefAgent and load its tools
+  useEffect(() => {
+    const initializeAgent = async () => {
+      try {
+        console.log('[VoiceDebriefModal] Initializing DebriefAgent...');
+        setIsInitializingAgent(true);
+        
+        // Create and initialize the DebriefAgent
+        const agent = new DebriefAgent();
+        await agent.initialize(); // This loads config from database
+        
+        agentRef.current = agent;
+        
+        // Pass the agent's tools to the voice service
+        const tools = agent.tools || [];
+        console.log('[VoiceDebriefModal] Passing agent tools to voice service:', tools.map((t: any) => t.name));
+        setAgentTools(tools);
+        
+        setIsInitializingAgent(false);
+      } catch (error) {
+        console.error('[VoiceDebriefModal] Failed to initialize agent:', error);
+        toast.error('Failed to initialize voice agent');
+        setIsInitializingAgent(false);
+      }
+    };
+
+    initializeAgent();
+  }, [setAgentTools]);
   
   // Set report context on mount
   useEffect(() => {

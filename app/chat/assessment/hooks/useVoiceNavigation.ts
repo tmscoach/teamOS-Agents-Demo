@@ -33,6 +33,8 @@ export interface UseVoiceNavigationReturn {
   resumeVoice: () => Promise<void>;
   sendTextCommand: (text: string) => Promise<void>;
   setWorkflowState: (state: any) => void;
+  setReportContext: (context: any) => void;
+  setAgentTools: (tools: any[]) => void;
   setAnswerUpdateCallback: (callback: (questionId: number, value: string) => void) => void;
   setNavigateNextCallback: (callback: () => void) => void;
   
@@ -196,6 +198,12 @@ export function useVoiceNavigation(
     }
   }, []);
 
+  const setAgentTools = useCallback((tools: any[]) => {
+    if (voiceServiceRef.current) {
+      voiceServiceRef.current.setAgentTools(tools);
+    }
+  }, []);
+
   const setAnswerUpdateCallback = useCallback((callback: (questionId: number, value: string) => void) => {
     console.log('[useVoiceNavigation] Setting answer callback, service exists:', !!voiceServiceRef.current);
     if (voiceServiceRef.current) {
@@ -231,6 +239,7 @@ export function useVoiceNavigation(
     sendTextCommand,
     setWorkflowState,
     setReportContext,
+    setAgentTools,
     setAnswerUpdateCallback,
     setNavigateNextCallback,
     
