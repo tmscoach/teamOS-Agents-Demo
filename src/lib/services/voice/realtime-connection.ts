@@ -231,9 +231,15 @@ export class RealtimeConnectionManager {
           }, { once: true });
           
           this.rt.socket.addEventListener('close', (event: any) => {
-            console.error('[Voice] WebSocket closed unexpectedly:', event.code, event.reason);
             clearTimeout(timeout);
-            reject(new Error(`WebSocket closed: ${event.code} ${event.reason}`));
+            // Only treat as error if not an intentional disconnect
+            if (!this.isIntentionalDisconnect) {
+              console.error('[Voice] WebSocket closed unexpectedly:', event.code, event.reason);
+              reject(new Error(`WebSocket closed: ${event.code} ${event.reason}`));
+            } else {
+              console.log('[Voice] WebSocket closed intentionally');
+              resolve(); // Resolve instead of reject for intentional disconnects
+            }
           }, { once: true });
         } else {
           clearTimeout(timeout);

@@ -1,0 +1,63 @@
+{
+    "workplace_reality_variables": {
+      "current_work_breakdown": {
+        "type": "object",
+        "description": "Percentage of time in each work type currently",
+        "example": {"innovating": 10, "producing": 40, "organizing": 30}
+      },
+      "trenches_vs_strategic": {
+        "type": "ratio",
+        "description": "Balance between tactical and strategic work",
+        "example": "80/20 tactical"
+      },
+      "meeting_load": {
+        "type": "string",
+        "description": "How much time in meetings vs solo work",
+        "example": "Too many meetings, need more solo time"
+      },
+      "delegation_blockers": {
+        "type": "array",
+        "description": "What prevents delegation",
+        "example": ["resource constraints", "team skill gaps", "budget"]
+      }
+    },
+    "energy_management_variables": {
+      "peak_energy_activities": {
+        "type": "array",
+        "description": "Specific tasks that energize",
+        "example": ["solving new problems", "creative work alone"]
+      },
+      "energy_drain_patterns": {
+        "type": "array",
+        "description": "Specific situations that drain",
+        "example": ["not moving fast enough", "too many meetings"]
+      },
+      "current_energy_balance": {
+        "type": "string",
+        "description": "Overall energy state",
+        "values": ["energized", "balanced", "depleted", "burned out"]
+      },
+      "recharge_strategies": {
+        "type": "array",
+        "description": "How they currently recharge",
+        "example": ["calendar blocks", "working from home days"]
+      }
+    },
+    "team_complementarity_variables": {
+      "team_preference_distribution": {
+        "type": "string",
+        "description": "Overall team composition",
+        "example": "Mostly introverts in dev team"
+      },
+      "complementary_colleagues": {
+        "type": "array",
+        "description": "Who has opposite preferences",
+        "example": ["Sarah loves producing work", "Tom is very structured"]
+      },
+      "delegation_targets": {
+        "type": "object",
+        "description": "Who could take which work types",
+        "example": {"producing": "Sarah", "inspecting": "Tom"}
+      }
+    }
+  }

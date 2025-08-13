@@ -1,0 +1,431 @@
+{
+    "flow_metadata": {
+      "type": "tmp_debrief",
+      "version": "1.0",
+      "total_duration": "20-30 minutes",
+      "required_data": ["tmp_report_json", "respondent_name", "organization"],
+      "dynamic_elements": ["major_role", "related_roles", "work_preferences", "split_wheel_status"]
+    },
+    "states": [
+      {
+        "name": "opening_rapport",
+        "duration": "1-2 minutes",
+        "objectives": [
+          "Warm introduction as TMS specialist",
+          "Acknowledge respondent completed TMP",
+          "Build initial rapport"
+        ],
+        "description": "Establish connection and understand motivation for assessment",
+        "key_questions": [
+          "How are you feeling today, and what prompted you to complete the TMP assessment?",
+          "What aspects of your work style or team dynamics were you most curious about?"
+        ],
+        "key_outputs": [
+          "assessment_motivation",
+          "initial_curiosities",
+          "current_role_context"
+        ]
+      },
+      {
+        "name": "profile_introduction",
+        "duration": "2-3 minutes",
+        "objectives": [
+          "Introduce Major Role dynamically",
+          "Highlight unique patterns (e.g., split wheel)",
+          "Create initial resonance check"
+        ],
+        "description": "Present core profile identity and check for recognition",
+        "key_questions": [
+          "When you think about your role as [MAJOR_ROLE], how does that resonate with your day-to-day experience?",
+          "Does this initial description feel accurate to how you see yourself?"
+        ],
+        "key_outputs": [
+          "major_role_resonance",
+          "initial_accuracy_check",
+          "role_recognition_level"
+        ],
+        "dynamic_content": {
+          "major_role_description": "{{fetch_from_report}}",
+          "special_patterns": "{{check_split_wheel}}"
+        }
+      },
+      {
+        "name": "work_preferences_exploration",
+        "duration": "3-4 minutes",
+        "objectives": [
+          "Explore ICBS/EPAB scores",
+          "Identify strongest preference",
+          "Connect preferences to real experiences"
+        ],
+        "description": "Deep dive into four work preference dimensions",
+        "key_questions": [
+          "Your [STRONGEST_PREFERENCE] preference is strongest at [SCORE]. Can you tell me about a recent situation where this really showed up?",
+          "How do you balance your [PREFERENCE_1] tendency with your [PREFERENCE_2] approach?"
+        ],
+        "key_outputs": [
+          "preference_examples",
+          "preference_challenges",
+          "balance_strategies"
+        ],
+        "dynamic_content": {
+          "icbs_scores": "{{extract_work_preferences}}",
+          "strongest_dimension": "{{calculate_max_preference}}"
+        }
+      },
+      {
+        "name": "strengths_recognition",
+        "duration": "3-4 minutes",
+        "objectives": [
+          "Validate key strengths from profile",
+          "Gather evidence of strengths in action",
+          "Build confidence in positive attributes"
+        ],
+        "description": "Explore and validate identified strengths",
+        "key_questions": [
+          "Your profile highlights [KEY_STRENGTH]. How does this show up in your best work?",
+          "Can you share an example where [STRENGTH_2] really made a difference?"
+        ],
+        "key_outputs": [
+          "strength_examples",
+          "strength_application",
+          "strength_recognition"
+        ],
+        "dynamic_content": {
+          "top_strengths": "{{extract_from_leadership_section}}",
+          "unique_capabilities": "{{extract_from_overview}}"
+        }
+      },
+      {
+        "name": "leadership_style_analysis",
+        "duration": "2-3 minutes",
+        "objectives": [
+          "Explore leadership approach",
+          "Identify leadership challenges",
+          "Connect to team dynamics"
+        ],
+        "description": "Understand how profile influences leadership",
+        "key_questions": [
+          "How do you typically approach leading or influencing others?",
+          "When do you find it easiest/hardest to get others on board with your ideas?"
+        ],
+        "key_outputs": [
+          "leadership_style",
+          "leadership_challenges",
+          "team_influence_patterns"
+        ],
+        "conditional_exploration": {
+          "if_manager": "deep_dive",
+          "if_individual_contributor": "influence_focus"
+        }
+      },
+      {
+        "name": "challenge_areas_exploration",
+        "duration": "3-4 minutes",
+        "objectives": [
+          "Surface development areas sensitively",
+          "Explore coping strategies",
+          "Identify support needs"
+        ],
+        "description": "Address potential blind spots and growth areas",
+        "key_questions": [
+          "Your profile suggests [COMMON_CHALLENGE] might sometimes be tricky. Have you noticed this?",
+          "How do you currently handle situations that require [LOW_PREFERENCE_AREA]?"
+        ],
+        "key_outputs": [
+          "acknowledged_challenges",
+          "current_coping_strategies",
+          "support_requirements"
+        ],
+        "dynamic_content": {
+          "development_areas": "{{extract_from_self_assessment}}",
+          "lowest_preferences": "{{identify_from_distribution}}"
+        }
+      },
+      {
+        "name": "team_dynamics_mapping",
+        "duration": "2-3 minutes",
+        "objectives": [
+          "Understand team composition",
+          "Identify collaboration patterns",
+          "Surface team tensions"
+        ],
+        "description": "Explore how profile affects team interactions",
+        "key_questions": [
+          "Who do you work best with on your team, and what makes that collaboration smooth?",
+          "Are there team members whose work style creates friction with yours?"
+        ],
+        "key_outputs": [
+          "effective_partnerships",
+          "challenging_relationships",
+          "team_composition_needs"
+        ],
+        "analysis_prompts": {
+          "complementary_roles": "{{suggest_based_on_profile}}",
+          "potential_conflicts": "{{identify_role_tensions}}"
+        }
+      },
+      {
+        "name": "related_roles_integration",
+        "duration": "2-3 minutes",
+        "objectives": [
+          "Explore Related Roles flexibility",
+          "Identify role-switching triggers",
+          "Understand internal conflicts"
+        ],
+        "description": "Understand how Related Roles show up",
+        "key_questions": [
+          "When do you find yourself shifting into [RELATED_ROLE_1] mode?",
+          "Do you ever feel internal conflict between [ASPECT_1] and [ASPECT_2]?"
+        ],
+        "key_outputs": [
+          "role_flexibility",
+          "switching_triggers",
+          "internal_tensions"
+        ],
+        "dynamic_content": {
+          "related_roles": "{{extract_related_roles}}",
+          "split_wheel_discussion": "{{if_applicable}}"
+        }
+      },
+      {
+        "name": "work_distribution_analysis",
+        "duration": "2-3 minutes",
+        "objectives": [
+          "Review preference percentages",
+          "Identify satisfaction levels",
+          "Explore delegation opportunities"
+        ],
+        "description": "Analyze work preference distribution and current role fit",
+        "key_questions": [
+          "Looking at your highest preference [TOP_WORK_TYPE] at [PERCENTAGE]%, how much of your current role involves this?",
+          "Your lowest preference is [BOTTOM_WORK_TYPE]. How do you handle these tasks currently?"
+        ],
+        "key_outputs": [
+          "role_alignment",
+          "satisfaction_gaps",
+          "delegation_opportunities"
+        ],
+        "dynamic_content": {
+          "preference_distribution": "{{extract_percentages}}",
+          "two_thirds_rule": "{{calculate_optimal_balance}}"
+        }
+      },
+      {
+        "name": "communication_optimization",
+        "duration": "2-3 minutes",
+        "objectives": [
+          "Identify communication preferences",
+          "Create team communication guide",
+          "Address linking skills"
+        ],
+        "description": "Develop strategies for better team communication",
+        "key_questions": [
+          "If you could give your team three tips for communicating with you effectively, what would they be?",
+          "What communication situations drain your energy most?"
+        ],
+        "key_outputs": [
+          "communication_preferences",
+          "energy_drains",
+          "team_communication_guide"
+        ],
+        "pacing_points": {
+          "extract_from": "{{linking_section}}",
+          "customize_by": "{{major_role}}"
+        }
+      },
+      {
+        "name": "values_alignment_check",
+        "duration": "2-3 minutes",
+        "objectives": [
+          "Explore values-work alignment",
+          "Identify meaning and purpose",
+          "Surface motivational drivers"
+        ],
+        "description": "Connect profile to personal values and meaning",
+        "key_questions": [
+          "How well does your current role align with your personal values?",
+          "What aspects of your work feel most meaningful to you?"
+        ],
+        "key_outputs": [
+          "values_alignment",
+          "meaningful_work_elements",
+          "motivation_sources"
+        ],
+        "conditional": {
+          "high_beliefs_score": "deep_exploration",
+          "low_beliefs_score": "skip_or_light"
+        }
+      },
+      {
+        "name": "insight_synthesis",
+        "duration": "2-3 minutes",
+        "objectives": [
+          "Identify key surprises",
+          "Synthesize main takeaways",
+          "Create coherent narrative"
+        ],
+        "description": "Pull together key insights from conversation",
+        "key_questions": [
+          "What aspect of your profile surprised you most?",
+          "What's the most valuable insight you're taking from this conversation?"
+        ],
+        "key_outputs": [
+          "surprising_insights",
+          "key_takeaways",
+          "personal_narrative"
+        ]
+      },
+      {
+        "name": "action_planning",
+        "duration": "2-3 minutes",
+        "objectives": [
+          "Create specific experiments",
+          "Set realistic goals",
+          "Identify support needs"
+        ],
+        "description": "Develop concrete next steps and experiments",
+        "key_questions": [
+          "What's one thing you'd like to experiment with changing in the next month?",
+          "What support would help you make these changes?"
+        ],
+        "key_outputs": [
+          "action_experiments",
+          "support_requirements",
+          "timeline_commitments"
+        ]
+      },
+      {
+        "name": "closing_next_steps",
+        "duration": "1-2 minutes",
+        "objectives": [
+          "Summarize journey",
+          "Confirm next actions",
+          "Offer continued support"
+        ],
+        "description": "Wrap up with clear next steps and support options",
+        "key_questions": [
+          "What questions do you still have about your profile?",
+          "Would you like suggestions for sharing these insights with your team?"
+        ],
+        "key_outputs": [
+          "remaining_questions",
+          "team_sharing_plan",
+          "follow_up_preferences"
+        ]
+      }
+    ],
+    "transitions": [
+      {
+        "from": "opening_rapport",
+        "to": "profile_introduction",
+        "condition": "rapport_established && motivation_understood",
+        "action": "introduce_major_role"
+      },
+      {
+        "from": "profile_introduction",
+        "to": "work_preferences_exploration",
+        "condition": "role_acknowledged",
+        "action": "dive_into_preferences"
+      },
+      {
+        "from": "work_preferences_exploration",
+        "to": "strengths_recognition",
+        "condition": "preferences_explored",
+        "action": "validate_strengths"
+      },
+      {
+        "from": "strengths_recognition",
+        "to": "leadership_style_analysis",
+        "condition": "strengths_acknowledged",
+        "action": "explore_leadership"
+      },
+      {
+        "from": "leadership_style_analysis",
+        "to": "challenge_areas_exploration",
+        "condition": "leadership_discussed || skip_if_not_applicable",
+        "action": "surface_challenges"
+      },
+      {
+        "from": "challenge_areas_exploration",
+        "to": "team_dynamics_mapping",
+        "condition": "challenges_acknowledged",
+        "action": "explore_team_fit"
+      },
+      {
+        "from": "team_dynamics_mapping",
+        "to": "related_roles_integration",
+        "condition": "team_context_understood",
+        "action": "discuss_flexibility"
+      },
+      {
+        "from": "related_roles_integration",
+        "to": "work_distribution_analysis",
+        "condition": "roles_explored",
+        "action": "analyze_preferences"
+      },
+      {
+        "from": "work_distribution_analysis",
+        "to": "communication_optimization",
+        "condition": "distribution_reviewed",
+        "action": "optimize_communication"
+      },
+      {
+        "from": "communication_optimization",
+        "to": "values_alignment_check",
+        "condition": "communication_addressed",
+        "action": "check_values"
+      },
+      {
+        "from": "values_alignment_check",
+        "to": "insight_synthesis",
+        "condition": "values_explored || skipped",
+        "action": "synthesize_insights"
+      },
+      {
+        "from": "insight_synthesis",
+        "to": "action_planning",
+        "condition": "insights_identified",
+        "action": "create_actions"
+      },
+      {
+        "from": "action_planning",
+        "to": "closing_next_steps",
+        "condition": "actions_defined",
+        "action": "wrap_up_session"
+      },
+      {
+        "from": "closing_next_steps",
+        "to": "END",
+        "condition": "session_complete",
+        "action": "generate_summary_report"
+      }
+    ],
+    "adaptive_elements": {
+      "pace_adjustment": {
+        "based_on": "respondent_engagement_level",
+        "options": ["accelerate", "maintain", "slow_down", "deep_dive"]
+      },
+      "topic_emphasis": {
+        "based_on": "respondent_interest_signals",
+        "can_extend": ["strengths", "challenges", "team_dynamics", "values"],
+        "can_abbreviate": ["less_relevant_sections"]
+      },
+      "language_adaptation": {
+        "based_on": "respondent_sophistication",
+        "options": ["technical", "conversational", "simple"]
+      }
+    },
+    "data_extraction_keys": [
+      "major_role",
+      "related_role_1",
+      "related_role_2",
+      "work_preference_scores",
+      "preference_distribution",
+      "split_wheel_status",
+      "key_strengths",
+      "development_areas",
+      "leadership_points",
+      "team_building_insights",
+      "linking_recommendations"
+    ]
+  }
