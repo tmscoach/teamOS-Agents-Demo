@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { currentUser } from '@/src/lib/auth/clerk-dev-wrapper';
 import { AgentConfigLoader } from '@/src/lib/agents/config/agent-config-loader';
-import { DebriefAgent } from '@/src/lib/agents/implementations/debrief-agent';
+import { getDebriefTools } from './tools';
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,7 +12,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Get workflow state or report context from request body
-    const body = await request.json();
+    let body;
+    try {
+      body = await request.json();
+    } catch (e) {
+      console.error('[Voice Session] Failed to parse request body:', e);
+      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+    }
     const { workflowState, reportContext } = body;
     
     // Load DebriefAgent config and tools if in report context mode
@@ -28,23 +34,14 @@ export async function POST(request: NextRequest) {
           console.log('[Voice Session] Loaded DebriefAgent system prompt from database');
         }
         
-        // Create and initialize DebriefAgent to get tools
-        const agent = new DebriefAgent();
-        await agent.initialize();
+        // Get debrief tools without importing DebriefAgent
+        tools = getDebriefTools();
         
-        // Convert agent tools to OpenAI Realtime format
-        tools = agent.tools.map(tool => ({
-          type: 'function',
-          function: {
-            name: tool.name,
-            description: tool.description,
-            parameters: tool.parameters
-          }
-        }));
-        
-        console.log('[Voice Session] Loaded tools for debrief:', tools.map(t => t.function.name));
+        console.log('[Voice Session] Loaded tools for debrief:', tools.map(t => t.name));
       } catch (error) {
         console.error('[Voice Session] Failed to load DebriefAgent config/tools:', error);
+        // Continue without tools rather than failing completely
+        tools = [];
       }
     }
 
@@ -128,14 +125,19 @@ export async function POST(request: NextRequest) {
         token: ephemeralKey,
         expires_at: data.expires_at,
         systemPrompt: systemPrompt || null, // Include the system prompt for client
+        tools: tools, // Return the tools for client-side registration
         // Also return the full data for debugging
         debug: data
       }
     });
   } catch (error) {
     console.error('Voice session creation error:', error);
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack');
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { 
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }
