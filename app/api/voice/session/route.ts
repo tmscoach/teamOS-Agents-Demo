@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { currentUser } from '@/src/lib/auth/clerk-dev-wrapper';
+import { AgentConfigLoader } from '@/src/lib/agents/config/agent-config-loader';
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,9 +10,23 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    // Get workflow state from request body
+    // Get workflow state or report context from request body
     const body = await request.json();
-    const { workflowState } = body;
+    const { workflowState, reportContext } = body;
+    
+    // Load DebriefAgent config if in report context mode
+    let systemPrompt = '';
+    if (reportContext) {
+      try {
+        const debriefConfig = await AgentConfigLoader.loadConfiguration('DebriefAgent');
+        if (debriefConfig?.systemPrompt) {
+          systemPrompt = debriefConfig.systemPrompt;
+          console.log('[Voice Session] Loaded DebriefAgent system prompt from database');
+        }
+      } catch (error) {
+        console.error('[Voice Session] Failed to load DebriefAgent config:', error);
+      }
+    }
 
     // Check if we have an API key
     const apiKey = process.env.OPENAI_API_KEY;
@@ -24,7 +39,16 @@ export async function POST(request: NextRequest) {
     }
     
     console.log('Creating ephemeral session with API key:', apiKey.substring(0, 10) + '...');
-    console.log('Workflow state questions:', workflowState?.questions?.length || 0);
+    if (workflowState) {
+      console.log('Workflow state questions:', workflowState?.questions?.length || 0);
+    }
+    if (reportContext) {
+      console.log('Report context:', {
+        reportId: reportContext.reportId,
+        reportType: reportContext.reportType,
+        subscriptionId: reportContext.subscriptionId
+      });
+    }
     
     // Create ephemeral session token with OpenAI
     const response = await fetch('https://api.openai.com/v1/realtime/sessions', {
@@ -37,7 +61,11 @@ export async function POST(request: NextRequest) {
         model: 'gpt-4o-realtime-preview-2024-12-17',
         modalities: ['audio', 'text'],  // Audio first for voice-first experience
         voice: 'alloy',
-        instructions: 'You are OSmos, the Team Assessment Assistant. You will receive detailed instructions when the session starts.',
+        instructions: reportContext && systemPrompt
+          ? systemPrompt  // Use the database system prompt for debrief
+          : reportContext 
+          ? `You are OSmos, the Team Assessment Report Debrief Assistant. You will receive detailed instructions when the session starts about the user's ${reportContext.reportType || 'assessment'} report.`
+          : 'You are OSmos, the Team Assessment Assistant. You will receive detailed instructions when the session starts.',
         turn_detection: {
           type: 'server_vad',
           threshold: 0.5,
@@ -78,6 +106,7 @@ export async function POST(request: NextRequest) {
         id: data.id,
         token: ephemeralKey,
         expires_at: data.expires_at,
+        systemPrompt: systemPrompt || null, // Include the system prompt for client
         // Also return the full data for debugging
         debug: data
       }

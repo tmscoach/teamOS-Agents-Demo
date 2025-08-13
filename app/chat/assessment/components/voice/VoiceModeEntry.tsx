@@ -7,15 +7,19 @@ interface VoiceModeEntryProps {
   onStartVoice: () => void;
   onDismiss: () => void;
   hasShownBefore?: boolean;
+  mode?: 'assessment' | 'debrief';
 }
 
 export function VoiceModeEntry({ 
   onStartVoice, 
   onDismiss,
-  hasShownBefore = false 
+  hasShownBefore = false,
+  mode = 'assessment'
 }: VoiceModeEntryProps) {
   if (hasShownBefore) return null;
 
+  const isDebrief = mode === 'debrief';
+  
   return (
     <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6 mb-6 
                     border border-blue-200 shadow-sm">
@@ -34,14 +38,15 @@ export function VoiceModeEntry({
         <div className="flex-1 space-y-3">
           <div>
             <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-              New! Complete this assessment using voice
+              {isDebrief ? 'Talk about your report with voice' : 'New! Complete this assessment using voice'}
               <span className="text-xs font-normal text-purple-600 bg-purple-100 px-2 py-1 rounded-full">
                 BETA
               </span>
             </h3>
             <p className="text-sm text-gray-600 mt-1">
-              Have a natural conversation with OSmos instead of typing. 
-              It's faster, more engaging, and completely hands-free.
+              {isDebrief 
+                ? 'Ask OSmos questions about your assessment results. Get insights about your major role, strengths, and work preferences through natural conversation.'
+                : 'Have a natural conversation with OSmos instead of typing. It\'s faster, more engaging, and completely hands-free.'}
             </p>
           </div>
           
@@ -49,15 +54,15 @@ export function VoiceModeEntry({
           <div className="flex flex-wrap gap-4 text-sm text-gray-700">
             <div className="flex items-center gap-1">
               <div className="w-1.5 h-1.5 bg-green-500 rounded-full" />
-              <span>Natural conversation</span>
+              <span>{isDebrief ? 'Ask about your major role' : 'Natural conversation'}</span>
             </div>
             <div className="flex items-center gap-1">
               <div className="w-1.5 h-1.5 bg-green-500 rounded-full" />
-              <span>30% faster completion</span>
+              <span>{isDebrief ? 'Explore your strengths' : '30% faster completion'}</span>
             </div>
             <div className="flex items-center gap-1">
               <div className="w-1.5 h-1.5 bg-green-500 rounded-full" />
-              <span>Voice commands</span>
+              <span>{isDebrief ? 'Understand work preferences' : 'Voice commands'}</span>
             </div>
           </div>
           
@@ -69,7 +74,7 @@ export function VoiceModeEntry({
                        rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
             >
               <Mic size={16} />
-              Start Voice Assessment
+              {isDebrief ? 'Start Voice Debrief' : 'Start Voice Assessment'}
             </button>
             <button
               onClick={onDismiss}

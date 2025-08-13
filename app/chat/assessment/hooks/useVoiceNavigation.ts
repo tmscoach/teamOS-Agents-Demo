@@ -190,6 +190,12 @@ export function useVoiceNavigation(
     }
   }, []);
 
+  const setReportContext = useCallback((context: any) => {
+    if (voiceServiceRef.current) {
+      voiceServiceRef.current.setReportContext(context);
+    }
+  }, []);
+
   const setAnswerUpdateCallback = useCallback((callback: (questionId: number, value: string) => void) => {
     console.log('[useVoiceNavigation] Setting answer callback, service exists:', !!voiceServiceRef.current);
     if (voiceServiceRef.current) {
@@ -224,6 +230,7 @@ export function useVoiceNavigation(
     resumeVoice,
     sendTextCommand,
     setWorkflowState,
+    setReportContext,
     setAnswerUpdateCallback,
     setNavigateNextCallback,
     

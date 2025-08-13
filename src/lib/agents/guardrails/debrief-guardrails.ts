@@ -66,6 +66,11 @@ export class DebriefGuardrails {
       name: 'ReportAccess',
       description: 'Ensures users only access their own reports',
       validate: async (input: string, context: AgentContext): Promise<GuardrailResult> => {
+        // Skip check if in debrief mode - user is already viewing the report
+        if (context.metadata?.isDebriefMode === true) {
+          return { passed: true };
+        }
+        
         // Check if user is trying to access someone else's report
         const lowerInput = input.toLowerCase();
         

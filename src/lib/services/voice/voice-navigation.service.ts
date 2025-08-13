@@ -25,6 +25,10 @@ export class VoiceNavigationService {
     this.realtimeConnection.setWorkflowState(state);
   }
 
+  setReportContext(context: any) {
+    this.realtimeConnection.setReportContext(context);
+  }
+
   setAnswerUpdateCallback(callback: (questionId: number, value: string) => void) {
     this.realtimeConnection.setAnswerUpdateCallback(callback);
   }

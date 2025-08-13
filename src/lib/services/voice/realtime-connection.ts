@@ -5,6 +5,7 @@ import { AudioFeedback } from './audio-feedback';
 export class RealtimeConnectionManager {
   private rt: any | null = null; // Using any to avoid type issues
   private audioBuffer: Int16Array[] = [];
+  private audioChunkCounter: number = 0;
   private isConnected = false;
   private sessionToken: string | null = null;
   private audioContext: AudioContext | null = null;
@@ -16,6 +17,7 @@ export class RealtimeConnectionManager {
   private hasPlayedAudio = false; // Track if we've played any audio yet
   private pcm16Buffer = new Uint8Array(0); // Buffer for incomplete PCM16 samples
   private workflowState: any = null;
+  private reportContext: any = null; // For report debrief mode
   private onAnswerUpdate?: (questionId: number, value: string) => void;
   private onNavigateNext?: () => void;
   private eventHandlersSetup = false;
@@ -30,6 +32,7 @@ export class RealtimeConnectionManager {
   private playbackTimeout: NodeJS.Timeout | null = null;
   private audioFeedback: AudioFeedback;
   private isIntentionalDisconnect = false;
+  private systemPromptFromDb: string | null = null; // Store system prompt from database
   private conversationContext: {
     currentPage: number;
     answeredQuestions: Set<number>;
@@ -69,6 +72,15 @@ export class RealtimeConnectionManager {
       // Update the session with new page info
       this.updateSessionForNewPage();
     }
+  }
+
+  setReportContext(context: any) {
+    this.reportContext = context;
+    console.log('[Voice] Report context set:', {
+      reportId: context?.reportId,
+      reportType: context?.reportType,
+      subscriptionId: context?.subscriptionId
+    });
   }
 
   setAnswerUpdateCallback(callback: (questionId: number, value: string) => void) {
@@ -126,6 +138,7 @@ export class RealtimeConnectionManager {
         },
         body: JSON.stringify({
           workflowState: this.workflowState, // Pass workflow state to server
+          reportContext: this.reportContext, // Pass report context if available
         }),
       });
       
@@ -136,6 +149,9 @@ export class RealtimeConnectionManager {
       const sessionData = await sessionResponse.json();
       console.log('Session data received:', sessionData);
       this.sessionToken = sessionData.session.token;
+      
+      // Store system prompt from database if available
+      this.systemPromptFromDb = sessionData.session.systemPrompt;
       
       // Store session expiration time
       if (sessionData.session.expires_at) {
@@ -219,9 +235,15 @@ export class RealtimeConnectionManager {
           }, { once: true });
           
           this.rt.socket.addEventListener('close', (event: any) => {
-            console.error('[Voice] WebSocket closed unexpectedly:', event.code, event.reason);
             clearTimeout(timeout);
-            reject(new Error(`WebSocket closed: ${event.code} ${event.reason}`));
+            // Only treat as error if not an intentional disconnect
+            if (!this.isIntentionalDisconnect) {
+              console.error('[Voice] WebSocket closed unexpectedly:', event.code, event.reason);
+              reject(new Error(`WebSocket closed: ${event.code} ${event.reason}`));
+            } else {
+              console.log('[Voice] WebSocket closed intentionally');
+              resolve(); // Resolve instead of reject for intentional disconnects
+            }
           }, { once: true });
         } else {
           clearTimeout(timeout);
@@ -244,26 +266,85 @@ export class RealtimeConnectionManager {
       
       console.log('Question mapping:', questionMapping);
 
-      // Configure session with full assessment context
-      console.log('[Voice] Sending session update...');
-      await this.rt.send({
-        type: 'session.update',
-        session: {
-          modalities: ['audio', 'text'],  // Audio first for voice-first experience
-          voice: 'alloy',
-          input_audio_format: 'pcm16',
-          output_audio_format: 'pcm16',
-          input_audio_transcription: {
-            model: 'whisper-1',
-          },
-          turn_detection: {
-            type: 'server_vad',
-            threshold: 0.5,
-            prefix_padding_ms: 300,
-            silence_duration_ms: 200,
-            create_response: true,  // Enable automatic responses when user stops speaking
-          },
-          instructions: `You are OSmos, the Team Assessment Assistant conducting a voice-based questionnaire.
+      // Build instructions and tools based on context
+      let sessionInstructions: string;
+      let sessionTools: any[] = [];
+      
+      if (this.reportContext) {
+        // Report debrief mode - conversational Q&A about the completed report
+        console.log('[Voice] Configuring session for report debrief:', this.reportContext);
+        
+        // Use system prompt from database if available, otherwise use default
+        if (this.systemPromptFromDb) {
+          console.log('[Voice] Using system prompt from database');
+          sessionInstructions = this.systemPromptFromDb;
+        } else {
+          sessionInstructions = `You are OSmos, an expert Team Management Profile (TMP) practitioner and coach for voice conversations.
+
+You're helping ${this.reportContext.userName || 'the user'} understand their completed ${this.reportContext.reportType || 'TMP'} assessment report.
+
+IMPORTANT: Start the conversation immediately with: "Hello! I'm here to help you understand your TMP assessment results. I can see you've completed the assessment and I have your full report here. What would you like to know about your results? For example, I can explain your major role, work preferences, or any specific section of the report."
+
+Key Context:
+- Report ID: ${this.reportContext.reportId}
+- Subscription ID: ${this.reportContext.subscriptionId}
+- Report Type: ${this.reportContext.reportType || 'TMP'}
+- This is a DEBRIEF conversation about their COMPLETED report
+
+Your Role:
+1. Answer questions about their assessment results naturally and conversationally
+2. Explain their major role and what it means for their work style
+3. Discuss how their related roles complement their major role
+4. Clarify specific scores, percentages, and report sections when asked
+5. Provide practical workplace applications and insights
+6. Explain TMS concepts and terminology clearly
+
+Voice Conversation Guidelines:
+- Be warm, conversational, and supportive
+- Keep responses concise for voice (2-3 sentences ideal, max 4-5 for complex topics)
+- Use natural, spoken language - avoid jargon
+- Summarize data points rather than listing them all
+- Ask clarifying questions if something is unclear
+- Reference specific pages and percentages from their report when relevant
+- Connect insights to their actual workplace situations
+
+Remember: You have access to their full report data including:
+- Major and related roles
+- Work preference scores
+- Leadership strengths
+- Decision-making patterns
+- Team dynamics insights
+- All report sections and detailed analysis
+
+Focus on having a natural, helpful conversation about their results. DO NOT mention question numbers, navigation commands, or assessment completion - this is about understanding their completed report.`;
+        }
+        
+        // Add report context tool for voice debrief
+        sessionTools = [
+          {
+            type: 'function',
+            name: 'get_report_context',
+            description: 'Get the full context and details of the user\'s assessment report including scores, roles, and key sections',
+            parameters: {
+              type: 'object',
+              properties: {
+                subscriptionId: {
+                  type: 'string',
+                  description: 'The subscription ID of the report (use the one from context)'
+                },
+                userId: {
+                  type: 'string',
+                  description: 'The user ID (use the one from context)'
+                }
+              },
+              required: []
+            }
+          }
+        ];
+        
+      } else {
+        // Assessment mode - keep existing questionnaire flow
+        sessionInstructions = `You are OSmos, the Team Assessment Assistant conducting a voice-based questionnaire.
 
 CRITICAL: You are conducting a TMP (Team Management Profile) assessment with these exact questions:
 ${questionText}
@@ -350,8 +431,10 @@ IMPORTANT:
 - For "answer all" or "X for all questions", collect all question IDs from the current page and use answer_multiple_questions
 - The questions on this page have these IDs: ${questions.map((q: any) => q.QuestionID || q.questionID).join(', ')}
 - Required questions (Type 18 - seesaw questions) that must be answered: ${questions.filter((q: any) => q.Type === 18).map((q: any) => `Question ${q.Number} (ID: ${q.QuestionID || q.questionID})`).join(', ')}
-- When all required questions have been answered, ask if the user wants to continue to the next page`,
-          tools: [
+- When all required questions have been answered, ask if the user wants to continue to the next page`;
+        
+        // Assessment-specific tools
+        sessionTools = [
             {
               type: 'function',
               name: 'answer_question',
@@ -394,9 +477,39 @@ IMPORTANT:
               description: 'Go back to the previous question when user wants to change their answer',
               parameters: { type: 'object', properties: {} }
             }
-          ]
+          ];
+      }
+      
+      // Configure session with the appropriate instructions and tools
+      console.log('[Voice] Sending session update...');
+      console.log('[Voice] Tools configuration:', {
+        count: sessionTools.length,
+        tools: sessionTools.map(t => ({ name: t.name, type: t.type }))
+      });
+      
+      await this.rt.send({
+        type: 'session.update',
+        session: {
+          modalities: ['audio', 'text'],  // Audio first for voice-first experience
+          voice: 'alloy',
+          input_audio_format: 'pcm16',
+          output_audio_format: 'pcm16',
+          input_audio_transcription: {
+            model: 'whisper-1',
+          },
+          turn_detection: {
+            type: 'server_vad',
+            threshold: 0.5,
+            prefix_padding_ms: 300,
+            silence_duration_ms: 200,
+            create_response: true,  // Enable automatic responses when user stops speaking
+          },
+          instructions: sessionInstructions,
+          tools: sessionTools
         },
       });
+      
+      console.log('[Voice] Session update sent, waiting for confirmation...');
 
       this.isConnected = true;
       this.reconnectAttempts = 0; // Reset reconnect attempts on successful connection
@@ -405,9 +518,11 @@ IMPORTANT:
       // Start heartbeat monitoring
       this.startHeartbeat();
       
-      // Small delay to ensure session configuration is fully processed
-      await new Promise(resolve => setTimeout(resolve, 100));
+      // Increased delay to ensure session configuration is fully processed
+      // This helps prevent choppy audio at the start
+      await new Promise(resolve => setTimeout(resolve, 750));
       
+      console.log('[Voice] Starting conversation after delay...');
       // Start the conversation
       await this.startAssessmentConversation();
     } catch (error) {
@@ -546,7 +661,115 @@ IMPORTANT:
       const name = (event as any).name;
       const args = (event as any).arguments;
       
-      if (name === 'answer_question') {
+      if (name === 'get_report_context') {
+        // Handle report context request for debrief mode
+        console.log('[Voice] Getting report context:', args);
+        const { subscriptionId, userId } = JSON.parse(args);
+        
+        // Use the context from initialization if not provided
+        const finalSubscriptionId = subscriptionId || this.reportContext?.subscriptionId;
+        const finalUserId = userId || this.reportContext?.userId;
+        
+        console.log('[Voice] Using report context:', {
+          subscriptionId: finalSubscriptionId,
+          userId: finalUserId
+        });
+        
+        // Call the report API endpoint to get report context
+        let response: any;
+        try {
+          console.log('[Voice] Fetching report from API:', {
+            subscriptionId: finalSubscriptionId
+          });
+          
+          // Make API call to get report data
+          const apiResponse = await fetch(`/api/reports/json/${finalSubscriptionId}`);
+          
+          if (!apiResponse.ok) {
+            throw new Error(`Failed to fetch report: ${apiResponse.status}`);
+          }
+          
+          const reportData = await apiResponse.json();
+          
+          console.log('[Voice] Report API response:', {
+            success: reportData.success,
+            hasData: !!reportData.data,
+            reportType: reportData.data?.workflowType
+          });
+          
+          if (reportData.success && reportData.data) {
+            // Format the report summary for the voice agent
+            const data = reportData.data;
+            let summary = `# ${data.workflowType || 'TMP'} Assessment Report\n\n`;
+            
+            // Add metadata if available
+            if (data.metadata) {
+              summary += `## Report Information\n`;
+              summary += `- User: ${data.metadata.userName}\n`;
+              summary += `- Organization: ${data.metadata.organizationName}\n`;
+              summary += `- Completed: ${data.completedAt || 'N/A'}\n\n`;
+            }
+            
+            // Add sections
+            if (data.sections && Array.isArray(data.sections)) {
+              for (const section of data.sections) {
+                summary += `\n### ${section.title}\n`;
+                
+                if (section.visualization?.data?.majorRole) {
+                  summary += `**Major Role**: ${section.visualization.data.majorRole.name}\n`;
+                }
+                
+                if (section.content?.text) {
+                  summary += `${section.content.text}\n`;
+                }
+                
+                if (section.content?.subsections) {
+                  for (const sub of section.content.subsections) {
+                    summary += `\n**${sub.title}**\n${sub.content}\n`;
+                  }
+                }
+              }
+            }
+            
+            response = {
+              success: true,
+              data: {
+                subscriptionId: finalSubscriptionId,
+                userId: finalUserId,
+                reportSummary: summary
+              }
+            };
+          } else {
+            response = {
+              success: false,
+              error: 'No report data available'
+            };
+          }
+        } catch (error) {
+          console.error('[Voice] Error fetching report:', error);
+          response = {
+            success: false,
+            error: error instanceof Error ? error.message : 'Unknown error retrieving report'
+          };
+        }
+        
+        // Send function call result back
+        if (this.rt) {
+          await this.rt.send({
+            type: 'conversation.item.create',
+            item: {
+              type: 'function_call_output',
+              call_id: (event as any).call_id,
+              output: JSON.stringify(response)
+            }
+          });
+          
+          // Trigger a response to continue the conversation
+          await this.rt.send({
+            type: 'response.create'
+          });
+        }
+      } else if (name === 'answer_question') {
         const { questionId, value } = JSON.parse(args);
         console.log(`[Voice] Recording answer: Question ${questionId} = ${value}`);
         // Debug: Log workflow state to check question mapping
@@ -779,6 +1002,8 @@ IMPORTANT:
       console.log('[Voice] Response created, marking as generating');
       // Don't clear audio here - let it finish naturally
       this.isGeneratingResponse = true;
+      this.hasPlayedAudio = false; // Reset for new response to enable fade-in
+      this.nextStartTime = 0; // Reset timing for new response
     });
     
     // Handle response completion
@@ -792,7 +1017,8 @@ IMPORTANT:
       // Reset generation state
       this.isGeneratingResponse = false;
       
-      // Note: Don't reset isSpeaking here as audio might still be playing
+      // Note: Don't reset hasPlayedAudio here - it should only reset on response.created
+      // Don't reset isSpeaking here as audio might still be playing
       // It will be reset when audio playback completes
       
       // Wait a bit for audio to finish playing before changing state
@@ -846,33 +1072,49 @@ IMPORTANT:
       return;
     }
 
-    // Buffer audio data
+    // Check if this chunk contains any significant audio
+    const maxValue = Math.max(...Array.from(audioData).map(Math.abs));
+    const isSilent = maxValue < 100;
+    
+    // Always buffer the audio, but track if we have any non-silent audio
     this.audioBuffer.push(audioData);
 
     // Send in chunks to avoid overwhelming the connection
     if (this.audioBuffer.length >= 10) { // Send every ~100ms at 24kHz
       const combinedBuffer = this.combineAudioBuffers();
-      // Debug: Log audio sending
-      const chunkNumber = Math.floor(this.audioBuffer.length / 10);
-      console.log(`[Voice] Sending audio chunk #${chunkNumber}, size: ${combinedBuffer.length} samples`);
       
-      // Check if we're getting silence
-      const maxValue = Math.max(...Array.from(combinedBuffer).map(Math.abs));
-      if (maxValue < 100) {
-        console.log('[Voice] Warning: Audio appears to be silence or very quiet');
-      }
+      // Check if the combined buffer has any significant audio
+      const combinedMaxValue = Math.max(...Array.from(combinedBuffer).map(Math.abs));
+      const isBufferSilent = combinedMaxValue < 100;
       
-      try {
-        await this.rt.send({
-          type: 'input_audio_buffer.append',
-          audio: this.encodeAudioToBase64(combinedBuffer),
-        });
+      // Only send if we have actual audio content or if we're in an active conversation
+      if (!isBufferSilent || this.audioChunkCounter > 0) {
+        this.audioChunkCounter++;
+        console.log(`[Voice] Sending audio chunk #${this.audioChunkCounter}, size: ${combinedBuffer.length} samples`);
         
-        this.audioBuffer = [];
-        this.config.onStateChange?.('listening');
-      } catch (error) {
-        console.error('[Voice] Failed to send audio:', error);
+        if (isBufferSilent && this.audioChunkCounter % 10 === 0) {
+          // Only log silence warning every 10th chunk to reduce spam
+          console.log('[Voice] Warning: Audio appears to be silence or very quiet');
+        }
+        
+        try {
+          await this.rt.send({
+            type: 'input_audio_buffer.append',
+            audio: this.encodeAudioToBase64(combinedBuffer),
+          });
+          
+          this.config.onStateChange?.('listening');
+        } catch (error) {
+          console.error('[Voice] Failed to send audio:', error);
+        }
+      } else {
+        // Silent audio at the beginning - skip sending but log for debugging
+        if (this.audioBuffer.length === 10) {
+          console.log('[Voice] Skipping initial silent audio chunk');
+        }
       }
+      
+      this.audioBuffer = [];
     }
   }
 
@@ -920,6 +1162,9 @@ IMPORTANT:
   async disconnect(): Promise<void> {
     // Set flag to indicate intentional disconnection
     this.isIntentionalDisconnect = true;
+    
+    // Reset audio chunk counter
+    this.audioChunkCounter = 0;
     
     // Stop heartbeat monitoring
     this.stopHeartbeat();
@@ -1195,9 +1440,21 @@ IMPORTANT:
     // Simply add to queue without dropping
     this.audioQueue.push(audioData);
     
-    // Start playback if not already playing
-    if (!this.isPlaying && this.audioQueue.length > 0) {
-      this.playNextAudioChunk();
+    // Buffer minimum chunks before starting playback for smoother experience
+    const MIN_CHUNKS_BEFORE_PLAYBACK = 5; // Wait for 5 chunks (~625ms of audio at 125ms/chunk) for smoother start
+    
+    // Only buffer at the very start of a response (when we haven't played any audio yet)
+    // If we're already playing or have played audio, continue immediately
+    if (!this.isPlaying) {
+      if (!this.hasPlayedAudio && this.audioQueue.length >= MIN_CHUNKS_BEFORE_PLAYBACK) {
+        // First time playing audio for this response - we've buffered enough
+        console.log(`[Voice] Starting playback with ${this.audioQueue.length} buffered chunks`);
+        this.playNextAudioChunk();
+      } else if (this.hasPlayedAudio && this.audioQueue.length > 0) {
+        // We've already started playing but stopped (queue was empty) - resume immediately
+        console.log(`[Voice] Resuming playback, queue: ${this.audioQueue.length}`);
+        this.playNextAudioChunk();
+      }
     }
   }
 
@@ -1310,6 +1567,15 @@ IMPORTANT:
     source.connect(gainNode);
     gainNode.connect(this.audioContext.destination);
     
+    // Apply fade-in for the first few chunks to prevent pops/clicks
+    // Check if this is truly the first audio of the response AND the very first chunk
+    const isFirstChunk = !this.hasPlayedAudio && this.nextStartTime === 0;
+    if (isFirstChunk) {
+      gainNode.gain.setValueAtTime(0, this.audioContext.currentTime);
+      gainNode.gain.linearRampToValueAtTime(1, this.audioContext.currentTime + 0.15); // 150ms fade-in for smoother start
+      this.hasPlayedAudio = true; // Mark that we've started playing audio
+    }
+    
     // Store current source for cleanup
     this.currentAudioSource = source;
     
@@ -1353,14 +1619,19 @@ IMPORTANT:
       if (this.audioQueue.length > 0) {
         this.playNextAudioChunk();
       } else {
-        // No more audio to play
-        this.isPlaying = false;
-        this.isSpeaking = false;
-        this.nextStartTime = 0; // Reset timing for next audio stream
-        
-        // Update state to ready if not generating a new response
+        // No more audio in queue
+        // Only truly stop if we're not still generating a response
         if (!this.isGeneratingResponse) {
+          // Response is done and no more audio
+          this.isPlaying = false;
+          this.isSpeaking = false;
+          this.nextStartTime = 0; // Reset timing for next audio stream
           this.config.onStateChange?.('ready');
+        } else {
+          // Still generating - just pause playback but stay in playing mode
+          // This prevents re-buffering mid-stream
+          this.isPlaying = false;
+          // Keep nextStartTime to maintain seamless playback
         }
         
         // Clear any remaining timeout
