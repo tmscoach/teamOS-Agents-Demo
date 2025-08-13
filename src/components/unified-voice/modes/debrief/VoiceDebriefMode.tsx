@@ -1,7 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
-import { DebriefAgent } from '@/src/lib/agents/implementations/debrief-agent';
+import React, { useEffect, useState } from 'react';
 import { AgentToolBridge } from '../../bridges/AgentToolBridge';
 import { useVoiceNavigation } from '@/app/chat/assessment/hooks/useVoiceNavigation';
 
@@ -23,8 +22,7 @@ interface VoiceDebriefModeProps {
 export function VoiceDebriefMode({ reportContext }: VoiceDebriefModeProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const agentRef = useRef<DebriefAgent | null>(null);
-  const toolsRegisteredRef = useRef(false);
+  const [tools, setTools] = useState<any[]>([]);
   
   const {
     voiceState,
@@ -32,34 +30,40 @@ export function VoiceDebriefMode({ reportContext }: VoiceDebriefModeProps) {
     startVoice,
     stopVoice,
     setReportContext,
+    setAgentTools,
   } = useVoiceNavigation();
 
-  // Initialize the agent and load its configuration
+  // Fetch agent tools configuration from API
   useEffect(() => {
-    const initializeAgent = async () => {
+    const fetchTools = async () => {
       try {
-        console.log('[VoiceDebriefMode] Initializing DebriefAgent...');
+        console.log('[VoiceDebriefMode] Fetching agent tools...');
         
-        // Create and initialize the DebriefAgent
-        const agent = new DebriefAgent();
-        await agent.initialize(); // This loads config from database
+        const response = await fetch('/api/agents/debrief/tools');
+        if (!response.ok) {
+          throw new Error('Failed to fetch agent tools');
+        }
         
-        agentRef.current = agent;
+        const { tools } = await response.json();
+        setTools(tools);
         
-        console.log('[VoiceDebriefMode] DebriefAgent initialized with tools:', 
-          agent.tools.map((t: any) => t.name)
+        // Pass tools to voice service
+        setAgentTools(tools);
+        
+        console.log('[VoiceDebriefMode] Agent tools loaded:', 
+          tools.map((t: any) => t.name)
         );
         
         setIsLoading(false);
       } catch (err) {
-        console.error('[VoiceDebriefMode] Failed to initialize agent:', err);
-        setError(err instanceof Error ? err.message : 'Failed to initialize agent');
+        console.error('[VoiceDebriefMode] Failed to fetch tools:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load voice tools');
         setIsLoading(false);
       }
     };
 
-    initializeAgent();
-  }, []);
+    fetchTools();
+  }, [setAgentTools]);
 
   // Set report context for the voice service
   useEffect(() => {
@@ -67,28 +71,17 @@ export function VoiceDebriefMode({ reportContext }: VoiceDebriefModeProps) {
     setReportContext(reportContext);
   }, [reportContext, setReportContext]);
 
-  // Register tools when voice starts
-  useEffect(() => {
-    if (voiceState === 'ready' && agentRef.current && !toolsRegisteredRef.current) {
-      console.log('[VoiceDebriefMode] Registering agent tools for voice...');
-      
-      // Get the realtime connection from the voice service
-      // This will be implemented when we refactor RealtimeConnection
-      // For now, we'll need to pass tools differently
-      
-      toolsRegisteredRef.current = true;
-    }
-  }, [voiceState]);
-
   const handleStartVoice = async () => {
-    if (!agentRef.current) {
-      console.error('[VoiceDebriefMode] Cannot start voice - agent not initialized');
+    if (isLoading) {
+      console.log('[VoiceDebriefMode] Still loading tools...');
       return;
     }
     
+    if (tools.length === 0) {
+      console.warn('[VoiceDebriefMode] No tools available, starting with limited functionality');
+    }
+    
     try {
-      // The tools will be registered via the voice service
-      // which will be updated to load them from the agent
       await startVoice();
     } catch (err) {
       console.error('[VoiceDebriefMode] Failed to start voice:', err);

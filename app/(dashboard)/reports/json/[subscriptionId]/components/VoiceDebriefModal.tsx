@@ -7,7 +7,6 @@ import { VoicePermissionDialog } from '@/app/chat/assessment/components/voice/Vo
 import { VoiceToggle } from '@/app/chat/assessment/components/voice/VoiceToggle';
 import { TranscriptDisplay } from '@/app/chat/assessment/components/voice/TranscriptDisplay';
 import { toast } from 'sonner';
-import { DebriefAgent } from '@/src/lib/agents/implementations/debrief-agent';
 
 interface VoiceDebriefModalProps {
   reportId: string;
@@ -20,8 +19,7 @@ export function VoiceDebriefModal({ reportId, reportType, subscriptionId, userId
   const [isOpen, setIsOpen] = useState(true);
   const [showPermission, setShowPermission] = useState(false);
   const [voiceModeActive, setVoiceModeActive] = useState(false);
-  const [isInitializingAgent, setIsInitializingAgent] = useState(false);
-  const agentRef = useRef<DebriefAgent | null>(null);
+  const [isInitializingTools, setIsInitializingTools] = useState(false);
   
   const {
     voiceState,
@@ -34,33 +32,35 @@ export function VoiceDebriefModal({ reportId, reportType, subscriptionId, userId
     setAgentTools,
   } = useVoiceNavigation();
   
-  // Initialize DebriefAgent and load its tools
+  // Fetch agent tools configuration from API
   useEffect(() => {
-    const initializeAgent = async () => {
+    const fetchAgentTools = async () => {
       try {
-        console.log('[VoiceDebriefModal] Initializing DebriefAgent...');
-        setIsInitializingAgent(true);
+        console.log('[VoiceDebriefModal] Fetching agent tools configuration...');
+        setIsInitializingTools(true);
         
-        // Create and initialize the DebriefAgent
-        const agent = new DebriefAgent();
-        await agent.initialize(); // This loads config from database
+        // Fetch the tools configuration from an API endpoint
+        const response = await fetch('/api/agents/debrief/tools');
+        if (!response.ok) {
+          throw new Error('Failed to fetch agent tools');
+        }
         
-        agentRef.current = agent;
+        const { tools } = await response.json();
         
-        // Pass the agent's tools to the voice service
-        const tools = agent.tools || [];
+        // Pass the tools to the voice service
         console.log('[VoiceDebriefModal] Passing agent tools to voice service:', tools.map((t: any) => t.name));
         setAgentTools(tools);
         
-        setIsInitializingAgent(false);
+        setIsInitializingTools(false);
       } catch (error) {
-        console.error('[VoiceDebriefModal] Failed to initialize agent:', error);
-        toast.error('Failed to initialize voice agent');
-        setIsInitializingAgent(false);
+        console.error('[VoiceDebriefModal] Failed to fetch agent tools:', error);
+        // Use empty tools array as fallback
+        setAgentTools([]);
+        setIsInitializingTools(false);
       }
     };
 
-    initializeAgent();
+    fetchAgentTools();
   }, [setAgentTools]);
   
   // Set report context on mount
@@ -81,6 +81,12 @@ export function VoiceDebriefModal({ reportId, reportType, subscriptionId, userId
   
   const handleStartVoice = async () => {
     console.log('[VoiceDebriefModal] Starting voice mode...');
+    
+    // Check if tools are still loading
+    if (isInitializingTools) {
+      toast.info('Please wait, initializing voice assistant...');
+      return;
+    }
     
     // Check permissions first
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
