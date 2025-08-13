@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { currentUser } from '@/src/lib/auth/clerk-dev-wrapper';
 import { AgentConfigLoader } from '@/src/lib/agents/config/agent-config-loader';
+import { DebriefAgent } from '@/src/lib/agents/implementations/debrief-agent';
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,17 +15,36 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { workflowState, reportContext } = body;
     
-    // Load DebriefAgent config if in report context mode
+    // Load DebriefAgent config and tools if in report context mode
     let systemPrompt = '';
+    let tools: any[] = [];
+    
     if (reportContext) {
       try {
+        // Load system prompt from config
         const debriefConfig = await AgentConfigLoader.loadConfiguration('DebriefAgent');
         if (debriefConfig?.systemPrompt) {
           systemPrompt = debriefConfig.systemPrompt;
           console.log('[Voice Session] Loaded DebriefAgent system prompt from database');
         }
+        
+        // Create and initialize DebriefAgent to get tools
+        const agent = new DebriefAgent();
+        await agent.initialize();
+        
+        // Convert agent tools to OpenAI Realtime format
+        tools = agent.tools.map(tool => ({
+          type: 'function',
+          function: {
+            name: tool.name,
+            description: tool.description,
+            parameters: tool.parameters
+          }
+        }));
+        
+        console.log('[Voice Session] Loaded tools for debrief:', tools.map(t => t.function.name));
       } catch (error) {
-        console.error('[Voice Session] Failed to load DebriefAgent config:', error);
+        console.error('[Voice Session] Failed to load DebriefAgent config/tools:', error);
       }
     }
 
@@ -62,10 +82,11 @@ export async function POST(request: NextRequest) {
         modalities: ['audio', 'text'],  // Audio first for voice-first experience
         voice: 'alloy',
         instructions: reportContext && systemPrompt
-          ? systemPrompt  // Use the database system prompt for debrief
+          ? `${systemPrompt}\n\nIMPORTANT: Start the conversation immediately with a friendly greeting like "Hello! I'm here to help you understand your ${reportContext.reportType || 'TMP'} assessment results. I have your full report here. What would you like to know about your results?"`
           : reportContext 
-          ? `You are OSmos, the Team Assessment Report Debrief Assistant. You will receive detailed instructions when the session starts about the user's ${reportContext.reportType || 'assessment'} report.`
+          ? `You are OSmos, the Team Assessment Report Debrief Assistant. Start with: "Hello! I'm here to help you understand your ${reportContext.reportType || 'assessment'} report. What would you like to know about your results?"`
           : 'You are OSmos, the Team Assessment Assistant. You will receive detailed instructions when the session starts.',
+        tools: tools.length > 0 ? tools : undefined,  // Add tools if available
         turn_detection: {
           type: 'server_vad',
           threshold: 0.5,

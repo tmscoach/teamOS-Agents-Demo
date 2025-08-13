@@ -30,8 +30,11 @@ export class AgentToolBridge {
     try {
       console.log(`[AgentToolBridge] Executing tool: ${toolName}`, args);
       
+      // Convert underscores to hyphens for API path
+      const apiPath = toolName.replace(/_/g, '-');
+      
       // Route to the appropriate API endpoint
-      const response = await fetch(`/api/voice-tools/${toolName}`, {
+      const response = await fetch(`/api/voice-tools/${apiPath}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

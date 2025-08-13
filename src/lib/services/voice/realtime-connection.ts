@@ -707,8 +707,11 @@ IMPORTANT:
         const parsedArgs = JSON.parse(args);
         
         try {
+          // Convert underscores to hyphens for API path (get_report_context -> get-report-context)
+          const apiPath = name.replace(/_/g, '-');
+          
           // Call the API bridge for this tool
-          const response = await fetch(`/api/voice-tools/${name}`, {
+          const response = await fetch(`/api/voice-tools/${apiPath}`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
