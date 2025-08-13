@@ -470,9 +470,19 @@ Then be ready to help them with the assessment.`;
     
     // Special handling for DebriefAgent
     if (context.currentAgent === 'DebriefAgent') {
+      // Debug logging
+      console.log(`[${context.currentAgent}] Full metadata:`, JSON.stringify(context.metadata, null, 2));
+      
       // Skip subscription check if we're in debrief mode (launched from report viewer)
       const isDebriefMode = context.metadata?.isDebriefMode === true;
       const hasReportContext = context.metadata?.subscriptionId && context.metadata?.reportId;
+      
+      console.log(`[${context.currentAgent}] Debrief mode check:`, {
+        isDebriefMode,
+        hasReportContext,
+        subscriptionId: context.metadata?.subscriptionId,
+        reportId: context.metadata?.reportId
+      });
       
       // First message - inject subscription check instruction ONLY if not in debrief mode
       if (!isDebriefMode && !hasReportContext && (conversationMessages.length === 0 || userMessageContent === '[User joined the conversation]')) {
@@ -494,15 +504,20 @@ User message: ${userMessageContent}`;
           assessmentType: context.metadata.assessmentType
         });
         
-        // Inject report context instruction
+        // Inject report context instruction for EVERY message in debrief mode
         userMessageContent = `The user is viewing their completed ${context.metadata.assessmentType || 'TMP'} assessment report.
 Report ID: ${context.metadata.reportId}
 Subscription ID: ${context.metadata.subscriptionId}
+User ID: ${context.metadata.userId || dbUser?.id}
 
-IMPORTANT: DO NOT use tms_get_dashboard_subscriptions - we already know they have a completed report.
-Use get_report_context with the subscription ID and user ID from the metadata to access the report data.
+CRITICAL: You are in DEBRIEF MODE for a specific completed report.
+DO NOT use tms_get_dashboard_subscriptions - we already know they have a completed report.
+IMMEDIATELY use get_report_context with subscriptionId="${context.metadata.subscriptionId}" and userId="${context.metadata.userId || dbUser?.id}" to access the report data.
 
 User message: ${message}`;
+      } else if (conversationMessages.length > 0) {
+        // Not first message, not in debrief mode - just pass through
+        console.log(`[${context.currentAgent}] Regular message, no special handling`);
       }
       // Check if user is confirming after we've offered a debrief
       else if (context.messageHistory?.length > 0) {
