@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Mic, Sparkles, X, Volume2 } from 'lucide-react';
 import { useVoiceNavigation } from '@/app/chat/assessment/hooks/useVoiceNavigation';
 import { VoicePermissionDialog } from '@/app/chat/assessment/components/voice/VoicePermissionDialog';
@@ -19,6 +19,7 @@ export function VoiceDebriefModal({ reportId, reportType, subscriptionId, userId
   const [isOpen, setIsOpen] = useState(true);
   const [showPermission, setShowPermission] = useState(false);
   const [voiceModeActive, setVoiceModeActive] = useState(false);
+  const [isInitializingTools, setIsInitializingTools] = useState(false);
   
   const {
     voiceState,
@@ -28,7 +29,39 @@ export function VoiceDebriefModal({ reportId, reportType, subscriptionId, userId
     startVoice,
     stopVoice,
     setReportContext,
+    setAgentTools,
   } = useVoiceNavigation();
+  
+  // Fetch agent tools configuration from API
+  useEffect(() => {
+    const fetchAgentTools = async () => {
+      try {
+        console.log('[VoiceDebriefModal] Fetching agent tools configuration...');
+        setIsInitializingTools(true);
+        
+        // Fetch the tools configuration from an API endpoint
+        const response = await fetch('/api/agents/debrief/tools');
+        if (!response.ok) {
+          throw new Error('Failed to fetch agent tools');
+        }
+        
+        const { tools } = await response.json();
+        
+        // Pass the tools to the voice service
+        console.log('[VoiceDebriefModal] Passing agent tools to voice service:', tools.map((t: any) => t.name));
+        setAgentTools(tools);
+        
+        setIsInitializingTools(false);
+      } catch (error) {
+        console.error('[VoiceDebriefModal] Failed to fetch agent tools:', error);
+        // Use empty tools array as fallback
+        setAgentTools([]);
+        setIsInitializingTools(false);
+      }
+    };
+
+    fetchAgentTools();
+  }, [setAgentTools]);
   
   // Set report context on mount
   useEffect(() => {
@@ -48,6 +81,12 @@ export function VoiceDebriefModal({ reportId, reportType, subscriptionId, userId
   
   const handleStartVoice = async () => {
     console.log('[VoiceDebriefModal] Starting voice mode...');
+    
+    // Check if tools are still loading
+    if (isInitializingTools) {
+      toast.info('Please wait, initializing voice assistant...');
+      return;
+    }
     
     // Check permissions first
     if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { currentUser } from '@/src/lib/auth/clerk-dev-wrapper';
 import { AgentConfigLoader } from '@/src/lib/agents/config/agent-config-loader';
+import { getDebriefTools } from './tools';
 
 export async function POST(request: NextRequest) {
   try {
@@ -11,20 +12,36 @@ export async function POST(request: NextRequest) {
     }
 
     // Get workflow state or report context from request body
-    const body = await request.json();
+    let body;
+    try {
+      body = await request.json();
+    } catch (e) {
+      console.error('[Voice Session] Failed to parse request body:', e);
+      return NextResponse.json({ error: 'Invalid request body' }, { status: 400 });
+    }
     const { workflowState, reportContext } = body;
     
-    // Load DebriefAgent config if in report context mode
+    // Load DebriefAgent config and tools if in report context mode
     let systemPrompt = '';
+    let tools: any[] = [];
+    
     if (reportContext) {
       try {
+        // Load system prompt from config
         const debriefConfig = await AgentConfigLoader.loadConfiguration('DebriefAgent');
         if (debriefConfig?.systemPrompt) {
           systemPrompt = debriefConfig.systemPrompt;
           console.log('[Voice Session] Loaded DebriefAgent system prompt from database');
         }
+        
+        // Get debrief tools without importing DebriefAgent
+        tools = getDebriefTools();
+        
+        console.log('[Voice Session] Loaded tools for debrief:', tools.map(t => t.name));
       } catch (error) {
-        console.error('[Voice Session] Failed to load DebriefAgent config:', error);
+        console.error('[Voice Session] Failed to load DebriefAgent config/tools:', error);
+        // Continue without tools rather than failing completely
+        tools = [];
       }
     }
 
@@ -62,10 +79,11 @@ export async function POST(request: NextRequest) {
         modalities: ['audio', 'text'],  // Audio first for voice-first experience
         voice: 'alloy',
         instructions: reportContext && systemPrompt
-          ? systemPrompt  // Use the database system prompt for debrief
+          ? `${systemPrompt}\n\nIMPORTANT: Start the conversation immediately with a friendly greeting like "Hello! I'm here to help you understand your ${reportContext.reportType || 'TMP'} assessment results. I have your full report here. What would you like to know about your results?"`
           : reportContext 
-          ? `You are OSmos, the Team Assessment Report Debrief Assistant. You will receive detailed instructions when the session starts about the user's ${reportContext.reportType || 'assessment'} report.`
+          ? `You are OSmos, the Team Assessment Report Debrief Assistant. Start with: "Hello! I'm here to help you understand your ${reportContext.reportType || 'assessment'} report. What would you like to know about your results?"`
           : 'You are OSmos, the Team Assessment Assistant. You will receive detailed instructions when the session starts.',
+        tools: tools.length > 0 ? tools : undefined,  // Add tools if available
         turn_detection: {
           type: 'server_vad',
           threshold: 0.5,
@@ -107,14 +125,19 @@ export async function POST(request: NextRequest) {
         token: ephemeralKey,
         expires_at: data.expires_at,
         systemPrompt: systemPrompt || null, // Include the system prompt for client
+        tools: tools, // Return the tools for client-side registration
         // Also return the full data for debugging
         debug: data
       }
     });
   } catch (error) {
     console.error('Voice session creation error:', error);
+    console.error('Error stack:', error instanceof Error ? error.stack : 'No stack');
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { 
+        error: 'Internal server error',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      },
       { status: 500 }
     );
   }

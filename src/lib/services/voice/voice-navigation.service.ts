@@ -9,6 +9,7 @@ export class VoiceNavigationService {
   private commandProcessor: VoiceCommandProcessor;
   private currentSession: VoiceSession | null = null;
   private isActive = false;
+  private agentTools: any[] = [];
 
   constructor(private config: VoiceConfig) {
     this.audioManager = new AudioManager();
@@ -19,6 +20,11 @@ export class VoiceNavigationService {
       onError: this.handleError.bind(this),
     });
     this.commandProcessor = new VoiceCommandProcessor();
+  }
+
+  setAgentTools(tools: any[]) {
+    this.agentTools = tools;
+    this.realtimeConnection.setAgentTools(tools);
   }
 
   setWorkflowState(state: any) {
