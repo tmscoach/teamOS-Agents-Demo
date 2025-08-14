@@ -39,15 +39,17 @@ export async function POST(request: NextRequest) {
 
     try {
       // Search report chunks in the database
-      // This is a simplified version - you may want to use vector search here
+      // Convert query to lowercase for case-insensitive search
+      const searchQuery = query.toLowerCase();
+      
       const chunks = await prisma.reportChunk.findMany({
         where: {
           UserReport: {
             subscriptionId: finalSubscriptionId
           },
           OR: [
-            { content: { contains: query, mode: 'insensitive' } },
-            { sectionTitle: { contains: query, mode: 'insensitive' } }
+            { content: { contains: searchQuery } },
+            { sectionTitle: { contains: searchQuery } }
           ]
         },
         take: limit,
@@ -57,7 +59,6 @@ export async function POST(request: NextRequest) {
         select: {
           content: true,
           sectionTitle: true,
-          pageNumber: true,
           metadata: true
         }
       });
@@ -70,7 +71,6 @@ export async function POST(request: NextRequest) {
           chunks: chunks.map(chunk => ({
             content: chunk.content,
             section: chunk.sectionTitle,
-            page: chunk.pageNumber,
             metadata: chunk.metadata
           }))
         }
