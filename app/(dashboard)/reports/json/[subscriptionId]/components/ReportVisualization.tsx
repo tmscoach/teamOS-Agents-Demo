@@ -15,23 +15,6 @@ export function ReportVisualization({ visualization }: ReportVisualizationProps)
 
   const { type, params, data } = visualization
 
-  // If the visualization has a base64 image, display it directly
-  if (data?.image?.base64) {
-    return (
-      <div className="flex justify-center items-center p-4 bg-white rounded-lg">
-        <img 
-          src={`data:${data.image.format || 'image/png'};base64,${data.image.base64}`}
-          alt={type}
-          className="max-w-full h-auto"
-          style={{ 
-            maxHeight: data.image.height || 400,
-            maxWidth: data.image.width || 400 
-          }}
-        />
-      </div>
-    )
-  }
-
   // Route to appropriate visualization component based on type
   switch (type) {
     case 'CreateTMPQWheel':
@@ -54,6 +37,23 @@ export function ReportVisualization({ visualization }: ReportVisualizationProps)
       return <LineChart data={data} />
     
     default:
+      // If the visualization has a base64 image and isn't handled above, display the image
+      if (data?.image?.base64) {
+        return (
+          <div className="flex justify-center items-center p-4 bg-white rounded-lg">
+            <img 
+              src={`data:${data.image.format || 'image/png'};base64,${data.image.base64}`}
+              alt={type}
+              className="max-w-full h-auto"
+              style={{ 
+                maxHeight: data.image.height || 400,
+                maxWidth: data.image.width || 400 
+              }}
+            />
+          </div>
+        )
+      }
+      
       // Fallback for unknown visualization types
       return (
         <div className="p-6 bg-gray-50 rounded-lg">

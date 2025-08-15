@@ -38,39 +38,34 @@ export async function POST(request: NextRequest) {
     });
 
     try {
-      // Search report chunks in the database
-      // This is a simplified version - you may want to use vector search here
-      const chunks = await prisma.reportChunk.findMany({
-        where: {
-          UserReport: {
-            subscriptionId: finalSubscriptionId
-          },
-          OR: [
-            { content: { contains: query, mode: 'insensitive' } },
-            { sectionTitle: { contains: query, mode: 'insensitive' } }
-          ]
-        },
-        take: limit,
-        orderBy: {
-          chunkIndex: 'asc'
-        },
-        select: {
-          content: true,
-          sectionTitle: true,
-          pageNumber: true,
-          metadata: true
-        }
-      });
+      // Search report chunks in the database using raw SQL for case-insensitive search
+      // Using ILIKE for PostgreSQL case-insensitive pattern matching
+      const chunks = await prisma.$queryRaw<Array<{
+        content: string;
+        sectionTitle: string;
+        metadata: any;
+      }>>`
+        SELECT rc."content", rc."sectionTitle", rc."metadata"
+        FROM "ReportChunk" rc
+        INNER JOIN "UserReport" ur ON rc."reportId" = ur."id"
+        WHERE ur."subscriptionId" = ${finalSubscriptionId}
+        AND (
+          rc."content" ILIKE ${`%${query}%`}
+          OR rc."sectionTitle" ILIKE ${`%${query}%`}
+        )
+        ORDER BY rc."chunkIndex" ASC
+        LIMIT ${limit}
+      `;
 
-      console.log('[Voice Tool: search-report-chunks] Found', chunks.length, 'chunks');
+      const chunkArray = chunks || [];
+      console.log('[Voice Tool: search-report-chunks] Found', chunkArray.length, 'chunks');
 
       return NextResponse.json({
         success: true,
         output: {
-          chunks: chunks.map(chunk => ({
+          chunks: chunkArray.map(chunk => ({
             content: chunk.content,
             section: chunk.sectionTitle,
-            page: chunk.pageNumber,
             metadata: chunk.metadata
           }))
         }
