@@ -14,11 +14,22 @@ This is a TMS (Team Management Systems) transformation platform that analyzes 40
 
 ## Project Structure
 
-- `/.documentation/` - Contains TMS IP documents and project overview
+- `/.documentation/` - Contains TMS IP documents (protected assets)
   - Accreditation Handbooks (HET framework, TMP, QO2, WoWV, LLP)
   - Questionnaire Content (Team Signals, TMP, QO2, WoW, LLP)
   - Finished Report Examples
   - Research Manuals
+- `/docs/` - Project documentation
+  - `/guides/` - User guides and how-to documentation
+  - `/setup/` - Setup and configuration guides
+  - `/archive/` - Historical planning documents and issues
+  - `/analysis/` - System analysis documentation
+  - `/features/` - Feature documentation
+  - `/tms-api-spec/` - API specifications
+- `/scripts/` - Utility scripts
+  - `/test/` - Test scripts and utilities
+  - `/db/` - Database migration and setup scripts
+- `/config/` - JavaScript configuration files
 - `/scratchpads/` - Temporary working files (gitignored)
 - `/marker-env/` - Python virtual environment for PDF processing (gitignored)
 
