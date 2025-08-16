@@ -29,7 +29,6 @@ This is a TMS (Team Management Systems) transformation platform that analyzes 40
 - `/scripts/` - Utility scripts
   - `/test/` - Test scripts and utilities
   - `/db/` - Database migration and setup scripts
-- `/config/` - JavaScript configuration files
 - `/scratchpads/` - Temporary working files (gitignored)
 - `/marker-env/` - Python virtual environment for PDF processing (gitignored)
 
